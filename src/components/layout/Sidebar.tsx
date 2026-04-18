@@ -45,7 +45,7 @@ export default function Sidebar({ profile }: SidebarProps) {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0">
+    <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
       <div className="p-5 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
