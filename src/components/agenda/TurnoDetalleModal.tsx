@@ -30,8 +30,10 @@ export default function TurnoDetalleModal({
   const fecha = parseISO(turno.fecha_hora)
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 md:p-4">
-      <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-sm max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 pointer-events-none">
+      <div className="relative pointer-events-auto bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-sm overflow-y-auto overscroll-contain" style={{ maxHeight: '92dvh' }}>
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border', ESTADO_TURNO_COLORS[turno.estado])}>
@@ -134,6 +136,7 @@ export default function TurnoDetalleModal({
             Eliminar turno
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

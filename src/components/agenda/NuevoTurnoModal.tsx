@@ -83,8 +83,12 @@ export default function NuevoTurnoModal({
   const pacientesActivos = pacientes.filter((p) => p.activo)
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 md:p-4">
-      <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50">
+      {/* Backdrop separado para no interferir con el scroll del modal */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      {/* Panel del modal */}
+      <div className="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4 pointer-events-none">
+      <div className="relative pointer-events-auto bg-white rounded-t-2xl md:rounded-2xl shadow-xl w-full md:max-w-md overflow-y-auto overscroll-contain" style={{ maxHeight: '92dvh' }}>
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Nuevo turno</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -208,6 +212,7 @@ export default function NuevoTurnoModal({
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   )
