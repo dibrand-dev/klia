@@ -30,7 +30,8 @@ export interface Paciente {
   updated_at: string
 }
 
-export interface Turno {
+// Solo columnas de la tabla (sin joins)
+export interface TurnoRow {
   id: string
   terapeuta_id: string
   paciente_id: string
@@ -42,6 +43,10 @@ export interface Turno {
   notas: string | null
   created_at: string
   updated_at: string
+}
+
+// Con el join de paciente (para uso en componentes)
+export interface Turno extends TurnoRow {
   paciente?: Paciente
 }
 
@@ -50,23 +55,101 @@ export type Database = {
     Tables: {
       profiles: {
         Row: Profile
-        Insert: Omit<Profile, 'created_at' | 'updated_at'>
-        Update: Partial<Omit<Profile, 'id' | 'created_at' | 'updated_at'>>
+        Insert: {
+          id: string
+          email: string
+          nombre: string
+          apellido: string
+          matricula?: string | null
+          especialidad?: string | null
+          telefono?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          email?: string
+          nombre?: string
+          apellido?: string
+          matricula?: string | null
+          especialidad?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       pacientes: {
         Row: Paciente
-        Insert: Omit<Paciente, 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Omit<Paciente, 'id' | 'terapeuta_id' | 'created_at' | 'updated_at'>>
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          nombre: string
+          apellido: string
+          dni?: string | null
+          fecha_nacimiento?: string | null
+          telefono?: string | null
+          email?: string | null
+          obra_social?: string | null
+          numero_afiliado?: string | null
+          notas?: string | null
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          nombre?: string
+          apellido?: string
+          dni?: string | null
+          fecha_nacimiento?: string | null
+          telefono?: string | null
+          email?: string | null
+          obra_social?: string | null
+          numero_afiliado?: string | null
+          notas?: string | null
+          activo?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       turnos: {
-        Row: Turno
-        Insert: Omit<Turno, 'id' | 'created_at' | 'updated_at' | 'paciente'>
-        Update: Partial<Omit<Turno, 'id' | 'terapeuta_id' | 'created_at' | 'updated_at' | 'paciente'>>
+        Row: TurnoRow
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          fecha_hora: string
+          duracion_min?: number
+          modalidad?: ModalidadTurno
+          estado?: EstadoTurno
+          monto?: number | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          paciente_id?: string
+          fecha_hora?: string
+          duracion_min?: number
+          modalidad?: ModalidadTurno
+          estado?: EstadoTurno
+          monto?: number | null
+          notas?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
     }
     Enums: {
       estado_turno: EstadoTurno
       modalidad_turno: ModalidadTurno
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
