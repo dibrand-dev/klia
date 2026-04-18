@@ -2,28 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
-import type { Paciente, NotaClinica } from '@/types/database'
+import type { Paciente } from '@/types/database'
 
 const OBRAS_SOCIALES_COMUNES = [
   'OSDE', 'Swiss Medical', 'Galeno', 'IOMA', 'PAMI', 'OMINT',
   'Medicus', 'Sancor Salud', 'Accord Salud', 'Particular',
 ]
 
-type Tab = 'datos' | 'historial'
-
-interface PacienteDetalleProps {
-  paciente: Paciente
-  notasIniciales: NotaClinica[]
-  terapeutaId: string
-}
-
-export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId }: PacienteDetalleProps) {
+export default function PacienteDetalle({ paciente }: { paciente: Paciente }) {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('datos')
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState({
     nombre: paciente.nombre,
@@ -38,10 +30,6 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [notas, setNotas] = useState<NotaClinica[]>(notasIniciales)
-  const [nuevaNota, setNuevaNota] = useState('')
-  const [guardandoNota, setGuardandoNota] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -88,33 +76,11 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
     router.refresh()
   }
 
-  async function agregarNota() {
-    if (!nuevaNota.trim()) return
-    setGuardandoNota(true)
-    const supabase = createClient()
-    const { data, error: dbError } = await supabase
-      .from('notas_clinicas')
-      .insert({
-        terapeuta_id: terapeutaId,
-        paciente_id: paciente.id,
-        turno_id: null,
-        fecha: format(new Date(), 'yyyy-MM-dd'),
-        contenido: nuevaNota.trim(),
-      })
-      .select()
-      .single()
-    if (!dbError && data) {
-      setNotas((prev) => [data, ...prev])
-      setNuevaNota('')
-    }
-    setGuardandoNota(false)
-  }
-
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
 
   return (
     <div className="space-y-4">
-      {/* Cabecera con avatar */}
+      {/* Cabecera */}
       <div className="card p-5 flex items-center gap-4">
         <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-xl font-bold text-primary-700">{iniciales}</span>
@@ -129,7 +95,7 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
             </span>
           )}
         </div>
-        {!editando && tab === 'datos' && (
+        {!editando && (
           <button
             onClick={() => setEditando(true)}
             className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
@@ -145,36 +111,21 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
         <button
-          onClick={() => { setTab('datos'); setEditando(false) }}
-          className={cn(
-            'flex-1 py-2.5 text-sm font-medium transition-colors',
-            tab === 'datos'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500 hover:text-gray-700'
-          )}
+          onClick={() => setEditando(false)}
+          className="flex-1 py-2.5 text-sm font-medium text-primary-600 border-b-2 border-primary-600"
         >
           Datos
         </button>
-        <button
-          onClick={() => setTab('historial')}
-          className={cn(
-            'flex-1 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5',
-            tab === 'historial'
-              ? 'text-primary-600 border-b-2 border-primary-600'
-              : 'text-gray-500 hover:text-gray-700'
-          )}
+        <Link
+          href={`/pacientes/${paciente.id}/historial`}
+          className="flex-1 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 text-center transition-colors"
         >
           Historial clínico
-          {notas.length > 0 && (
-            <span className="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-full leading-none">
-              {notas.length}
-            </span>
-          )}
-        </button>
+        </Link>
       </div>
 
-      {/* ── Tab Datos ── */}
-      {tab === 'datos' && !editando && (
+      {/* Vista */}
+      {!editando ? (
         <>
           <div className="card p-4 space-y-3">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Datos personales</p>
@@ -203,10 +154,8 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
             </div>
           )}
         </>
-      )}
-
-      {/* ── Tab Datos en modo edición ── */}
-      {tab === 'datos' && editando && (
+      ) : (
+        /* Formulario de edición */
         <form onSubmit={handleGuardar} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
@@ -276,52 +225,6 @@ export default function PacienteDetalle({ paciente, notasIniciales, terapeutaId 
             </button>
           </div>
         </form>
-      )}
-
-      {/* ── Tab Historial ── */}
-      {tab === 'historial' && (
-        <div className="space-y-4">
-          {/* Nueva nota manual */}
-          <div className="card p-4 space-y-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Agregar nota</p>
-            <textarea
-              value={nuevaNota}
-              onChange={(e) => setNuevaNota(e.target.value)}
-              rows={3}
-              placeholder="Escribí una nota de sesión o anotación clínica..."
-              className="input-field resize-none"
-            />
-            <button
-              onClick={agregarNota}
-              disabled={guardandoNota || !nuevaNota.trim()}
-              className={cn('btn-primary w-full py-2.5', (guardandoNota || !nuevaNota.trim()) && 'opacity-50')}
-            >
-              {guardandoNota ? 'Guardando...' : 'Guardar nota'}
-            </button>
-          </div>
-
-          {/* Lista de notas */}
-          {notas.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-sm font-medium">Todavía no hay notas de sesión para este paciente</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {notas.map((nota) => (
-                <div key={nota.id} className="card p-4 space-y-1.5">
-                  <p className="text-xs text-gray-500 font-medium capitalize">
-                    {format(parseISO(nota.fecha), "d 'de' MMMM yyyy", { locale: es })}
-                  </p>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{nota.contenido}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       )}
     </div>
   )

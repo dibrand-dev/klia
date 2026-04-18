@@ -63,6 +63,8 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
   })
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
   const [notaSesion, setNotaSesion] = useState('')
+  const [realizandoExito, setRealizandoExito] = useState(false)
+  const [notaFueGuardada, setNotaFueGuardada] = useState(false)
 
   async function guardarEdicion() {
     setLoading(true)
@@ -104,13 +106,14 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
     setLoading(false)
   }
 
-  async function confirmarRealizado() {
+  async function confirmarRealizado(guardarNota: boolean) {
     setLoading(true)
     setError(null)
     const supabase = createClient()
     const { error: dbError } = await supabase.from('turnos').update({ estado: 'realizado' }).eq('id', turno.id)
     if (dbError) { setError('Error al actualizar estado.'); setLoading(false); return }
-    if (notaSesion.trim()) {
+    const habeNota = guardarNota && !!notaSesion.trim()
+    if (habeNota) {
       await supabase.from('notas_clinicas').insert({
         terapeuta_id: turno.terapeuta_id,
         paciente_id: turno.paciente_id,
@@ -120,7 +123,8 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
       })
     }
     onTurnoActualizado({ ...turno, estado: 'realizado' })
-    setModo('ver')
+    setNotaFueGuardada(habeNota)
+    setRealizandoExito(true)
     setLoading(false)
   }
 
@@ -237,31 +241,67 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
 
   // ─── Modo realizando ──────────────────────────────────────────
   if (modo === 'realizando') {
+    if (realizandoExito) {
+      return (
+        <ModalShell onBackdropClick={() => { setModo('ver'); setRealizandoExito(false) }}>
+          <div className="p-5 space-y-4 text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Sesión registrada</h3>
+              <p className="text-sm text-gray-500 mt-1">El turno fue marcado como realizado</p>
+            </div>
+            {notaFueGuardada && (
+              <Link
+                href={`/pacientes/${turno.paciente_id}/historial`}
+                onClick={() => { setModo('ver'); setRealizandoExito(false); onClose() }}
+                className="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Ver nota en historial →
+              </Link>
+            )}
+            <button
+              onClick={() => { setModo('ver'); setRealizandoExito(false) }}
+              className="btn-secondary w-full py-3"
+            >
+              Listo
+            </button>
+          </div>
+        </ModalShell>
+      )
+    }
+
     return (
       <ModalShell onBackdropClick={() => setModo('ver')}>
         <div className="p-5 space-y-4">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+          <div>
             <h3 className="font-semibold text-gray-900">Marcar como realizado</h3>
-            <p className="text-sm text-gray-500 mt-1">Podés agregar una nota de sesión (opcional)</p>
+            <p className="text-sm text-gray-500 mt-0.5">Podés agregar una nota de sesión (opcional)</p>
           </div>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
-          <textarea
-            value={notaSesion}
-            onChange={(e) => setNotaSesion(e.target.value)}
-            rows={4}
-            placeholder="Temas tratados, evolución, próximos pasos..."
-            className="input-field resize-none"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión (opcional)</label>
+            <textarea
+              value={notaSesion}
+              onChange={(e) => setNotaSesion(e.target.value)}
+              rows={5}
+              placeholder="¿Qué trabajaron en esta sesión?"
+              className="input-field resize-none"
+              autoFocus
+            />
+          </div>
           <div className="flex gap-3">
-            <button onClick={() => setModo('ver')} className="btn-secondary flex-1 py-3">Volver</button>
-            <button onClick={confirmarRealizado} disabled={loading}
-              className={cn('btn-primary flex-1 py-3', loading && 'opacity-70')}>
-              {loading ? 'Guardando...' : 'Confirmar'}
+            <button onClick={() => setModo('ver')} className="btn-secondary flex-1 py-3 text-sm">Volver</button>
+            <button onClick={() => confirmarRealizado(false)} disabled={loading}
+              className={cn('flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors', loading && 'opacity-50')}>
+              Guardar sin nota
+            </button>
+            <button onClick={() => confirmarRealizado(true)} disabled={loading || !notaSesion.trim()}
+              className={cn('flex-1 py-3 btn-primary text-sm', (loading || !notaSesion.trim()) && 'opacity-50')}>
+              Guardar con nota
             </button>
           </div>
         </div>
