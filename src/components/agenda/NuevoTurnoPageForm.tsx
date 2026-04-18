@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
 import type { Paciente, ModalidadTurno } from '@/types/database'
+import MontoInput from '@/components/ui/MontoInput'
 
 const DURACIONES = [30, 45, 50, 60, 90]
 const MODALIDADES: { value: ModalidadTurno; label: string }[] = [
@@ -131,9 +132,11 @@ export default function NuevoTurnoPageForm({ pacientes, terapeutaId }: NuevoTurn
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
           Honorarios (ARS) <span className="text-gray-400 font-normal">opcional</span>
         </label>
-        <input
-          type="number" name="monto" value={form.monto} onChange={handleChange}
-          placeholder="Ej: 15000" min="0" className="input-field"
+        <MontoInput
+          name="monto"
+          value={form.monto}
+          onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
+          className="input-field"
         />
       </div>
 

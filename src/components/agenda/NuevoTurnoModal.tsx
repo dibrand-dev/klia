@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
 import type { Paciente, Turno, ModalidadTurno } from '@/types/database'
+import MontoInput from '@/components/ui/MontoInput'
 
 interface NuevoTurnoModalProps {
   fechaInicial: Date
@@ -173,13 +174,10 @@ export default function NuevoTurnoModal({
               Honorarios (ARS)
               <span className="text-gray-400 font-normal ml-1">opcional</span>
             </label>
-            <input
-              type="number"
+            <MontoInput
               name="monto"
               value={form.monto}
-              onChange={handleChange}
-              placeholder="Ej: 15000"
-              min="0"
+              onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
               className="input-field"
             />
           </div>
