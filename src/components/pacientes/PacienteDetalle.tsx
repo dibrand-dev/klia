@@ -203,7 +203,7 @@ export default function PacienteDetalle({
             {paciente.notas}
           </p>
         ) : (
-          <p className="text-[13px] text-muted-2">Sin notas registradas. Usá "Editar" para agregar motivo de consulta u observaciones.</p>
+          <p className="text-[13px] text-muted-2">Sin notas registradas. Usá &quot;Editar&quot; para agregar motivo de consulta u observaciones.</p>
         )}
       </KlinCard>
     </div>
