@@ -2,21 +2,35 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
 import type { Paciente } from '@/types/database'
+import type { PacienteTabKey } from './PacienteTabs'
 
 const OBRAS_SOCIALES_COMUNES = [
   'OSDE', 'Swiss Medical', 'Galeno', 'IOMA', 'PAMI', 'OMINT',
   'Medicus', 'Sancor Salud', 'Accord Salud', 'Particular',
 ]
 
-export default function PacienteDetalle({ paciente }: { paciente: Paciente }) {
+function normalizePhone(t: string | null | undefined): string | null {
+  if (!t) return null
+  return t.replace(/[^\d+]/g, '')
+}
+
+export default function PacienteDetalle({
+  paciente,
+  initialEdit = false,
+  activeTab = 'datos',
+}: {
+  paciente: Paciente
+  initialEdit?: boolean
+  activeTab?: PacienteTabKey
+}) {
   const router = useRouter()
-  const [editando, setEditando] = useState(false)
+  const tabParam = activeTab
+  const [editando, setEditando] = useState(initialEdit)
   const [form, setForm] = useState({
     nombre: paciente.nombre,
     apellido: paciente.apellido,
@@ -76,235 +90,218 @@ export default function PacienteDetalle({ paciente }: { paciente: Paciente }) {
     router.refresh()
   }
 
-  const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
-  const edad = paciente.fecha_nacimiento
-    ? differenceInYears(new Date(), parseISO(paciente.fecha_nacimiento))
+  // If viewing a non-datos tab via ?tab=, show empty state
+  if (tabParam && tabParam !== 'datos' && !editando) {
+    return <TabEmptyState tab={tabParam} />
+  }
+
+  if (editando) {
+    return (
+      <form onSubmit={handleGuardar} className="mt-6 space-y-5">
+        {error && (
+          <div className="bg-danger-soft border border-danger/20 text-danger px-3 py-2 rounded-lg text-sm">{error}</div>
+        )}
+        <KlinCard title="Información personal">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Nombre *" name="nombre" value={form.nombre} onChange={handleChange} required />
+            <Field label="Apellido *" name="apellido" value={form.apellido} onChange={handleChange} required />
+            <Field label="DNI" name="dni" value={form.dni} onChange={handleChange} placeholder="12.345.678" />
+            <Field label="Fecha de nacimiento" name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} />
+          </div>
+        </KlinCard>
+        <KlinCard title="Contacto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Teléfono" name="telefono" type="tel" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" />
+            <Field label="Email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" />
+          </div>
+        </KlinCard>
+        <KlinCard title="Obra social">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[12px] font-medium text-ink-2 mb-1">Obra social / Prepaga</label>
+              <input
+                name="obra_social" type="text" value={form.obra_social} onChange={handleChange}
+                placeholder="OSDE, IOMA, Particular..." list="obras-sociales"
+                className="w-full px-3 py-2 border border-line rounded-klin-md text-[13.5px] focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+              />
+              <datalist id="obras-sociales">
+                {OBRAS_SOCIALES_COMUNES.map((os) => <option key={os} value={os} />)}
+              </datalist>
+            </div>
+            <Field label="N° de afiliado" name="numero_afiliado" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" />
+          </div>
+        </KlinCard>
+        <KlinCard title="Motivo de consulta / Notas">
+          <textarea
+            name="notas" value={form.notas} onChange={handleChange}
+            rows={4} placeholder="Motivo de consulta, derivación, observaciones..."
+            className="w-full px-3 py-2 border border-line rounded-klin-md text-[13.5px] resize-none focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+          />
+          <p className="text-[11.5px] text-muted-2 mt-1.5">La primera línea aparece como motivo de consulta en la ficha.</p>
+        </KlinCard>
+        <div className="flex gap-3 pt-1">
+          <button type="button" onClick={handleCancelar} className="klin-btn flex-1 justify-center py-2.5">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className={cn('klin-btn-primary flex-1 justify-center py-2.5', loading && 'opacity-70 cursor-not-allowed')}
+          >
+            {loading ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  const edad = paciente.fecha_nacimiento ? differenceInYears(new Date(), parseISO(paciente.fecha_nacimiento)) : null
+  const fechaNacimiento = paciente.fecha_nacimiento
+    ? format(parseISO(paciente.fecha_nacimiento), "d 'de' MMMM 'de' yyyy", { locale: es })
     : null
+  const telHref = normalizePhone(paciente.telefono)
 
-  const metaItems = [
-    edad ? `${edad} años` : null,
-    paciente.obra_social,
-    paciente.telefono,
-  ].filter(Boolean) as string[]
+  return (
+    <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <KlinCard title="Información personal" action={
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          className="text-[11.5px] font-medium text-accent hover:text-accent-ink transition-colors"
+        >
+          Editar
+        </button>
+      }>
+        <Kv rows={[
+          ['Nombre completo', formatNombreCompleto(paciente.nombre, paciente.apellido)],
+          ['DNI', paciente.dni],
+          ['Fecha de nacimiento', fechaNacimiento ? `${fechaNacimiento}${edad ? ` (${edad} años)` : ''}` : null],
+        ]} />
+      </KlinCard>
 
+      <KlinCard title="Contacto">
+        <Kv rows={[
+          ['Email', paciente.email],
+          ['Teléfono', telHref ? (
+            <a href={`tel:${telHref}`} className="text-accent hover:text-accent-ink no-underline border-b border-dashed border-accent/40 pb-px">
+              {paciente.telefono}
+            </a>
+          ) : null],
+        ]} />
+      </KlinCard>
+
+      <KlinCard title="Obra social">
+        <Kv rows={[
+          ['Obra social', paciente.obra_social],
+          ['Credencial', paciente.numero_afiliado],
+        ]} />
+      </KlinCard>
+
+      <KlinCard title="Notas">
+        {paciente.notas ? (
+          <p className="text-[14px] text-ink-2 leading-[1.6] whitespace-pre-wrap" style={{ textWrap: 'pretty' } as React.CSSProperties}>
+            {paciente.notas}
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted-2">Sin notas registradas. Usá "Editar" para agregar motivo de consulta u observaciones.</p>
+        )}
+      </KlinCard>
+    </div>
+  )
+}
+
+function KlinCard({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="bg-white border border-line rounded-klin-lg p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[11.5px] uppercase font-semibold text-muted-2 m-0" style={{ letterSpacing: '0.08em' }}>
+          {title}
+        </h3>
+        {action}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Kv({ rows }: { rows: [string, React.ReactNode][] }) {
+  const filtered = rows.filter(([, v]) => v !== null && v !== undefined && v !== '')
+  if (filtered.length === 0) {
+    return <p className="text-[13px] text-muted-2">Sin datos cargados.</p>
+  }
+  return (
+    <dl className="grid gap-y-2 gap-x-4 text-[13.5px]" style={{ gridTemplateColumns: '140px 1fr' }}>
+      {filtered.map(([k, v], i) => (
+        <div key={i} className="contents">
+          <dt className="text-muted font-normal" style={{ fontWeight: 450 }}>
+            {k}
+          </dt>
+          <dd className="text-ink-2 font-medium m-0">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  required,
+}: {
+  label: string
+  name: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  type?: string
+  placeholder?: string
+  required?: boolean
+}) {
   return (
     <div>
-      {/* Patient header */}
-      <div className="bg-white border border-[#E7E9EE] rounded-xl p-5 sm:p-6">
-        <div className="flex items-start gap-4">
-          {/* Gradient avatar */}
-          <div
-            className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 text-[22px] font-semibold select-none"
-            style={{ background: 'linear-gradient(135deg, #E3E9F6 0%, #C9D3E9 100%)', color: '#16389F' }}
-          >
-            {iniciales}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            {/* Status pill */}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
-                style={{ background: '#E7F5EE', color: '#0E8A5F' }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0E8A5F] flex-shrink-0" />
-                En tratamiento
-              </span>
-            </div>
-
-            {/* Name */}
-            <h1
-              className="text-2xl sm:text-[28px] font-semibold leading-tight text-[#0B1220]"
-              style={{ letterSpacing: '-0.02em' }}
-            >
-              {formatNombreCompleto(paciente.nombre, paciente.apellido)}
-            </h1>
-
-            {/* Meta row */}
-            {metaItems.length > 0 && (
-              <p className="mt-1.5 text-sm text-[#5B6472] flex flex-wrap items-center gap-x-0">
-                {metaItems.map((item, i) => (
-                  <span key={i} className="flex items-center">
-                    {i > 0 && <span className="mx-1.5 text-[#AEB5C0]">·</span>}
-                    <span>{item}</span>
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
-
-          {/* Edit button */}
-          {!editando && (
-            <button
-              onClick={() => setEditando(true)}
-              className="p-2 text-[#8A93A1] hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex-shrink-0"
-              title="Editar datos"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Summary strip */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 rounded-lg border border-[#E7E9EE] overflow-hidden">
-          <SummaryCell label="Obra social" value={paciente.obra_social} className="border-r border-b sm:border-b-0 border-[#E7E9EE]" />
-          <SummaryCell label="N° afiliado" value={paciente.numero_afiliado} className="border-b sm:border-b-0 sm:border-r border-[#E7E9EE]" />
-          <SummaryCell label="DNI" value={paciente.dni} className="border-r border-[#E7E9EE]" />
-          <SummaryCell label="Email" value={paciente.email} className="" />
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center mt-4 border-b border-[#E7E9EE]">
-        <button
-          onClick={() => setEditando(false)}
-          className="px-4 py-2.5 text-sm font-medium text-primary-600 border-b-2 border-primary-600 transition-colors"
-        >
-          Datos
-        </button>
-        <Link
-          href={`/pacientes/${paciente.id}/historial`}
-          className="px-4 py-2.5 text-sm font-medium text-[#5B6472] hover:text-[#1F2937] border-b-2 border-transparent transition-colors"
-        >
-          Historial clínico
-        </Link>
-        <div className="flex-1" />
-        <Link
-          href={`/pacientes/${paciente.id}/historial/nueva`}
-          className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 mb-px mr-0.5 rounded-lg border border-[#E7E9EE] text-[#1F2937] hover:bg-[#F6F7F9] transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          Nueva nota
-        </Link>
-      </div>
-
-      {/* Content */}
-      <div className="mt-4 space-y-3">
-        {!editando ? (
-          <>
-            <div className="card p-4 space-y-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Datos personales</p>
-              <InfoRow label="DNI" value={form.dni} />
-              <InfoRow
-                label="Fecha de nacimiento"
-                value={form.fecha_nacimiento
-                  ? format(parseISO(form.fecha_nacimiento), "d 'de' MMMM yyyy", { locale: es })
-                  : null}
-              />
-            </div>
-            <div className="card p-4 space-y-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Contacto</p>
-              <InfoRow label="Teléfono" value={form.telefono} />
-              <InfoRow label="Email" value={form.email} />
-            </div>
-            <div className="card p-4 space-y-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Cobertura médica</p>
-              <InfoRow label="Obra social / Prepaga" value={form.obra_social} />
-              <InfoRow label="N° de afiliado" value={form.numero_afiliado} />
-            </div>
-            {form.notas && (
-              <div className="card p-4 space-y-2">
-                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Notas internas</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{form.notas}</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <form onSubmit={handleGuardar} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
-            )}
-            <div className="card p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Datos personales</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                  <input name="nombre" type="text" value={form.nombre} onChange={handleChange} required className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Apellido *</label>
-                  <input name="apellido" type="text" value={form.apellido} onChange={handleChange} required className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">DNI</label>
-                  <input name="dni" type="text" value={form.dni} onChange={handleChange} placeholder="12.345.678" className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento</label>
-                  <input name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} className="input-field" />
-                </div>
-              </div>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Contacto</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                  <input name="telefono" type="tel" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" className="input-field" />
-                </div>
-              </div>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Cobertura médica</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Obra social / Prepaga</label>
-                  <input name="obra_social" type="text" value={form.obra_social} onChange={handleChange}
-                    placeholder="OSDE, IOMA, Particular..." list="obras-sociales" className="input-field" />
-                  <datalist id="obras-sociales">
-                    {OBRAS_SOCIALES_COMUNES.map((os) => <option key={os} value={os} />)}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">N° de afiliado</label>
-                  <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className="input-field" />
-                </div>
-              </div>
-            </div>
-            <div className="card p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Notas internas</p>
-              <textarea name="notas" value={form.notas} onChange={handleChange}
-                rows={3} placeholder="Motivo de consulta, derivación, observaciones..."
-                className="input-field resize-none" />
-              <p className="text-xs text-gray-400 mt-1">Solo visible para vos.</p>
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={handleCancelar} className="btn-secondary flex-1 py-3">Cancelar</button>
-              <button type="submit" disabled={loading} className={cn('btn-primary flex-1 py-3', loading && 'opacity-70')}>
-                {loading ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+      <label className="block text-[12px] font-medium text-ink-2 mb-1">{label}</label>
+      <input
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className="w-full px-3 py-2 border border-line rounded-klin-md text-[13.5px] focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+      />
     </div>
   )
 }
 
-function SummaryCell({ label, value, className }: { label: string; value: string | null | undefined; className: string }) {
+function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
+  const config: Record<PacienteTabKey, { title: string; body: string }> = {
+    resumen: {
+      title: 'Resumen del paciente',
+      body: 'Evolución del tratamiento, objetivos y diagnóstico. Próximamente.',
+    },
+    datos: { title: 'Datos personales', body: '' },
+    historial: { title: 'Historial clínico', body: '' },
+    turnos: {
+      title: 'Turnos',
+      body: 'Ver los turnos agendados para este paciente. Próximamente vas a ver la grilla completa.',
+    },
+    documentos: {
+      title: 'Documentos y adjuntos',
+      body: 'Consentimientos informados, estudios, informes. Próximamente.',
+    },
+    notas: {
+      title: 'Notas privadas',
+      body: 'Notas del terapeuta que no forman parte de la historia clínica. Próximamente.',
+    },
+  }
+  const c = config[tab]
   return (
-    <div className={cn('px-4 py-3 bg-[#F6F7F9]', className)}>
-      <p className="text-[11px] font-medium text-[#8A93A1] uppercase tracking-wide mb-0.5">{label}</p>
-      <p className="text-sm font-medium text-[#0B1220] truncate">{value || '—'}</p>
-    </div>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null
-  return (
-    <div className="flex justify-between items-start gap-4 text-sm">
-      <span className="text-gray-500 flex-shrink-0">{label}</span>
-      <span className="text-gray-900 text-right">{value}</span>
+    <div className="mt-6 border border-dashed border-line rounded-klin-lg bg-white p-10 text-center text-muted">
+      <h3 className="text-[22px] font-medium text-ink mb-1.5" style={{ letterSpacing: '-0.015em' }}>{c.title}</h3>
+      <p className="text-[13.5px] text-muted m-0">{c.body}</p>
     </div>
   )
 }

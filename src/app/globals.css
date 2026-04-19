@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   html {
@@ -10,8 +10,16 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-bgc text-ink antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    font-size: 14px;
+    line-height: 1.45;
+    text-rendering: optimizeLegibility;
   }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #E3E6EC; border-radius: 10px; border: 2px solid #FBFBFC; }
+  ::-webkit-scrollbar-thumb:hover { background: #C8CDD6; }
 }
 
 @layer components {
@@ -33,5 +41,34 @@
 
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200;
+  }
+
+  /* KLIN design components */
+  .klin-btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] border border-line bg-white text-ink-2 text-[13px] font-medium shadow-klin-sm hover:bg-surface-2 transition-colors whitespace-nowrap;
+  }
+  .klin-btn-primary {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] bg-ink text-white text-[13px] font-medium shadow-klin-sm hover:bg-black transition-colors whitespace-nowrap border border-ink;
+  }
+  .klin-btn-ghost {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] text-ink-2 text-[13px] font-medium hover:bg-surface-2 transition-colors whitespace-nowrap;
+  }
+  .klin-chip {
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-surface-3 text-muted border border-transparent;
+  }
+  .klin-chip-in-person {
+    @apply bg-accent-soft text-accent-ink;
+  }
+  .klin-chip-online {
+    @apply bg-violet-soft text-violet;
+  }
+  .klin-chip-ok {
+    @apply bg-ok-soft text-ok;
+  }
+  .klin-chip-warn {
+    @apply bg-warn-soft text-warn;
+  }
+  .klin-chip-danger {
+    @apply bg-danger-soft text-danger;
   }
 }
