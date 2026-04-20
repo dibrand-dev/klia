@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types/database'
+import GlobalFooter from './GlobalFooter'
 
 const NAV_ITEMS = [
   { href: '/agenda', label: 'Agenda', icon: 'calendar_today' },
@@ -174,11 +175,14 @@ export default function AppShell({
       <main
         id="main-content"
         className={cn(
-          'min-h-screen pt-20 pb-12 px-4 md:pt-8 md:px-8 transition-[margin] duration-200',
+          'min-h-screen flex flex-col pt-20 pb-0 px-4 md:pt-8 md:px-8 transition-[margin] duration-200',
           collapsed ? 'md:ml-[72px]' : 'md:ml-64',
         )}
       >
-        {children}
+        <div className="flex-1">
+          {children}
+        </div>
+        <GlobalFooter />
       </main>
 
       {/* Mobile FAB */}
