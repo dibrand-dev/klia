@@ -2,19 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
+import { usePathname } from 'next/navigation'
 import type { Profile } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
-
-const NAV_ITEMS = [
-  { href: '/agenda', label: 'Agenda', icon: 'calendar_today' },
-  { href: '/pacientes', label: 'Pacientes', icon: 'group' },
-  { href: '/facturacion', label: 'Facturación', icon: 'payments' },
-  { href: '/informes', label: 'Informes', icon: 'description' },
-  { href: '/ajustes', label: 'Ajustes', icon: 'settings' },
-]
+import NavigationDrawer from './NavigationDrawer'
 
 export default function AppShell({
   profile,
@@ -24,17 +15,7 @@ export default function AppShell({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    if (collapsed) {
-      document.body.classList.add('sidebar-collapsed')
-    } else {
-      document.body.classList.remove('sidebar-collapsed')
-    }
-  }, [collapsed])
 
   useEffect(() => {
     if (mobileOpen) {
@@ -48,17 +29,6 @@ export default function AppShell({
     setMobileOpen(false)
   }, [pathname])
 
-  async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
-
-  const initials = profile
-    ? `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
-    : 'U'
-
   return (
     <>
       {/* Mobile top header */}
@@ -70,8 +40,13 @@ export default function AppShell({
           <span className="material-symbols-outlined">menu</span>
         </button>
         <div className="ml-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-2xl font-bold">clinical_notes</span>
-          <span className="font-black text-xl text-primary tracking-tighter">KLIA</span>
+          <span
+            className="material-symbols-outlined text-primary text-2xl"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            medical_services
+          </span>
+          <span className="font-bold text-xl text-primary tracking-tighter">KLIA</span>
         </div>
       </div>
 
@@ -83,101 +58,13 @@ export default function AppShell({
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        id="sidebar"
-        className="fixed left-0 top-0 h-screen w-64 p-4 flex flex-col gap-2 bg-white border-r border-outline-variant/30 z-[100]"
-      >
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-3 py-3 border-b border-outline-variant/30">
-            <div className="flex items-center gap-2 flex-none px-1">
-              <span className="material-symbols-outlined text-primary text-2xl font-bold">clinical_notes</span>
-              <span className="sidebar-label font-black text-xl text-primary tracking-tighter">KLIA</span>
-            </div>
-            <button
-              className="ml-auto h-8 w-8 flex items-center justify-center hover:bg-slate-100 rounded-lg transition-colors flex-none"
-              onClick={() => {
-                if (window.innerWidth < 768) {
-                  setMobileOpen(false)
-                } else {
-                  setCollapsed((v) => !v)
-                }
-              }}
-              title="Colapsar / Expandir"
-            >
-              <span className="material-symbols-outlined text-slate-400 text-lg">menu_open</span>
-            </button>
-          </div>
-
-          {/* User profile */}
-          <div className="mt-4 px-1 sidebar-header-info">
-            <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-outline-variant/10">
-              <div className="h-9 w-9 rounded-full bg-primary-container text-white flex items-center justify-center text-xs font-bold border border-white shadow-sm flex-none">
-                {initials}
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-sm font-bold text-primary leading-tight truncate">
-                  {profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
-                </p>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  {profile?.especialidad || profile?.email || ''}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 w-full text-left',
-                  isActive
-                    ? 'text-primary bg-primary-fixed/30 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-100',
-                )}
-              >
-                <span className="material-symbols-outlined text-lg flex-none">
-                  {item.icon}
-                </span>
-                <span className="text-sm sidebar-label">{item.label}</span>
-              </Link>
-            )
-          })}
-          <button
-            onClick={handleLogout}
-            className="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 w-full text-left text-slate-600 hover:bg-slate-100 mt-2"
-          >
-            <span className="material-symbols-outlined text-lg flex-none">logout</span>
-            <span className="text-sm sidebar-label">Cerrar sesión</span>
-          </button>
-        </nav>
-
-        {/* Nueva Sesión CTA */}
-        <div className="mt-auto">
-          <Link
-            href="/turnos/nuevo"
-            className="w-full bg-primary hover:bg-primary-container text-white py-3 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 overflow-hidden"
-          >
-            <span className="material-symbols-outlined text-sm flex-none">add</span>
-            <span className="sidebar-label">Nueva Sesión</span>
-          </Link>
-        </div>
-      </aside>
+      {/* Navigation Drawer */}
+      <NavigationDrawer profile={profile} />
 
       {/* Main content */}
       <main
         id="main-content"
-        className={cn(
-          'min-h-screen flex flex-col pt-20 pb-0 px-4 md:pt-8 md:px-8 transition-[margin] duration-200',
-          collapsed ? 'md:ml-[72px]' : 'md:ml-64',
-        )}
+        className="min-h-screen flex flex-col pt-20 pb-0 px-4 md:pt-8 md:px-8 md:ml-[260px]"
       >
         <div className="flex-1">
           {children}
