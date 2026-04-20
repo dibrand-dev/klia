@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format, parseISO, isToday, isYesterday } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { formatNombreCompleto } from '@/lib/utils'
+import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Profile } from '@/types/database'
 
@@ -184,7 +184,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
       {/* Card header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-bold text-lg shrink-0">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${getAvatarClasses(paciente.genero)}`}>
             {iniciales}
           </div>
           <div>

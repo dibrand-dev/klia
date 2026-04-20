@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { parseISO, differenceInYears, format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { formatNombreCompleto } from '@/lib/utils'
+import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Turno } from '@/types/database'
 
@@ -113,8 +113,8 @@ export default function PacienteHeader({
 
         <div className="flex items-center gap-4 md:gap-6">
           {/* Avatar */}
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-primary-fixed border-4 border-white shadow-lg flex items-center justify-center flex-none select-none">
-            <span className="text-2xl md:text-3xl font-black text-primary">{iniciales}</span>
+          <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center flex-none select-none ${getAvatarClasses(paciente.genero)}`}>
+            <span className="text-2xl md:text-3xl font-black">{iniciales}</span>
           </div>
 
           <div>

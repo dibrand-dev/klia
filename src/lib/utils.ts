@@ -30,7 +30,15 @@ export const ESTADO_TURNO_DOT: Record<EstadoTurno, string> = {
   no_asistio: 'bg-gray-400',
 }
 
-export function formatNombreCompleto(nombre: string, apellido: string) {
+export function getAvatarClasses(genero: string | null | undefined): string {
+  switch (genero) {
+    case 'M':   return 'bg-sky-100 text-sky-700'
+    case 'F':   return 'bg-pink-100 text-pink-700'
+    case 'NB':  return 'bg-gray-200 text-gray-600'
+    case 'Otro': return 'bg-orange-100 text-orange-700'
+    default:    return 'bg-primary-fixed text-on-primary-fixed'
+  }
+}
   return `${nombre} ${apellido}`.trim()
 }
 
