@@ -166,7 +166,6 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
           dosis: m.dosis || null,
           frecuencia: m.frecuencia || null,
           prescriptor: m.prescriptor || null,
-          activa: true,
         }))
       )
     }

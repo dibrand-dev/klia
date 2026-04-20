@@ -209,7 +209,6 @@ export default function PacienteDetalle({
             dosis: m.dosis || null,
             frecuencia: m.frecuencia || null,
             prescriptor: m.prescriptor || null,
-            activa: true,
           }))
         )
         if (insError) {

@@ -40,7 +40,6 @@ export default async function PacienteDetallePage({
       .select('*')
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', user.id)
-      .eq('activa', true)
       .order('created_at'),
   ])
 
