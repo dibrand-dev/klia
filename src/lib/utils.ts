@@ -32,13 +32,15 @@ export const ESTADO_TURNO_DOT: Record<EstadoTurno, string> = {
 
 export function getAvatarClasses(genero: string | null | undefined): string {
   switch (genero) {
-    case 'M':   return 'bg-sky-100 text-sky-700'
-    case 'F':   return 'bg-pink-100 text-pink-700'
-    case 'NB':  return 'bg-gray-200 text-gray-600'
+    case 'M':    return 'bg-sky-100 text-sky-700'
+    case 'F':    return 'bg-pink-100 text-pink-700'
+    case 'NB':   return 'bg-gray-200 text-gray-600'
     case 'Otro': return 'bg-orange-100 text-orange-700'
-    default:    return 'bg-primary-fixed text-on-primary-fixed'
+    default:     return 'bg-primary-fixed text-on-primary-fixed'
   }
 }
+
+export function formatNombreCompleto(nombre: string, apellido: string) {
   return `${nombre} ${apellido}`.trim()
 }
 
