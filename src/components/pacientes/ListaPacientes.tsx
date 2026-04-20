@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { format, parseISO, isToday, isYesterday } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { formatNombreCompleto } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Profile } from '@/types/database'
 
 type PacienteListado = Paciente & { ultima_cita: string | null }
@@ -145,9 +147,34 @@ export default function ListaPacientes({
 }
 
 function PacienteCard({ paciente }: { paciente: PacienteListado }) {
+  const router = useRouter()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
-  const motivo = paciente.notas?.split('\n')[0]?.trim() || null
+  const motivo = paciente.motivo_consulta?.trim() || paciente.notas?.split('\n')[0]?.trim() || null
   const ultimaCitaStr = formatUltimaCita(paciente.ultima_cita)
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [menuOpen])
+
+  async function handleEliminar(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenuOpen(false)
+    if (!confirm(`¿Eliminar a ${formatNombreCompleto(paciente.nombre, paciente.apellido)}? Esta acción no se puede deshacer.`)) return
+    const supabase = createClient()
+    const { error } = await supabase.from('pacientes').delete().eq('id', paciente.id)
+    if (error) { alert('Error al eliminar: ' + error.message); return }
+    router.refresh()
+  }
 
   return (
     <Link
@@ -169,12 +196,34 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
             </p>
           </div>
         </div>
-        <button
-          className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-container-low p-1.5 rounded-full"
-          onClick={(e) => e.preventDefault()}
-        >
-          <span className="material-symbols-outlined text-[20px]">more_vert</span>
-        </button>
+
+        {/* 3-dot menu */}
+        <div ref={menuRef} className="relative">
+          <button
+            className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-container-low p-1.5 rounded-full"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen((v) => !v) }}
+          >
+            <span className="material-symbols-outlined text-[20px]">more_vert</span>
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-8 w-44 bg-white rounded-xl shadow-lg border border-outline-variant/20 overflow-hidden z-20">
+              <button
+                className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/pacientes/${paciente.id}?edit=1`) }}
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+                Editar
+              </button>
+              <button
+                className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left border-t border-outline-variant/10"
+                onClick={handleEliminar}
+              >
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+                Eliminar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Card info */}

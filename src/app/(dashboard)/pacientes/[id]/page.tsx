@@ -60,12 +60,12 @@ export default async function PacienteDetallePage({
   const turnosCount = turnos.filter((t) => t.estado !== 'cancelado').length
 
   const tab: PacienteTabKey =
-    searchParams.tab === 'resumen' ||
+    searchParams.tab === 'datos' ||
     searchParams.tab === 'informes' ||
     searchParams.tab === 'documentos' ||
     searchParams.tab === 'facturacion'
       ? searchParams.tab
-      : 'datos'
+      : 'resumen'
 
   const editMode = searchParams.edit === '1'
 
@@ -77,7 +77,12 @@ export default async function PacienteDetallePage({
         active={tab}
         historialCount={historialCount}
       />
-      <PacienteDetalle paciente={paciente} activeTab={tab} initialEdit={editMode} />
+      <PacienteDetalle
+        paciente={paciente}
+        activeTab={tab}
+        initialEdit={editMode}
+        key={editMode ? 'edit' : 'view'}
+      />
     </div>
   )
 }

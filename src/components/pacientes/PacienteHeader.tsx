@@ -51,7 +51,7 @@ export default function PacienteHeader({
     router.push('/pacientes')
   }
 
-  const motivo = paciente.notas?.split('\n')[0]?.trim() || null
+  const motivo = paciente.motivo_consulta?.trim() || paciente.notas?.split('\n')[0]?.trim() || null
 
   const proximaSesionLabel = (() => {
     if (!summary.proximaSesion) return null

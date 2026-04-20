@@ -34,9 +34,9 @@ export default function PacienteTabs({
       {tabs.map((tab) => {
         const isActive = tab.key === active
         const href =
-          tab.key === 'datos' ? `/pacientes/${pacienteId}`
+          tab.key === 'resumen' ? `/pacientes/${pacienteId}`
+          : tab.key === 'datos' ? `/pacientes/${pacienteId}?tab=datos`
           : tab.key === 'historial' ? `/pacientes/${pacienteId}/historial`
-          : tab.key === 'resumen' ? `/pacientes/${pacienteId}?tab=resumen`
           : tab.key === 'informes' ? `/pacientes/${pacienteId}?tab=informes`
           : tab.key === 'documentos' ? `/pacientes/${pacienteId}?tab=documentos`
           : `/pacientes/${pacienteId}?tab=facturacion`
