@@ -123,168 +123,161 @@ export default async function HistorialPage({ params }: { params: { id: string }
           </div>
           <h3 className="text-[15px] font-bold text-on-surface mb-1 tracking-tight">Todavía no hay notas para este paciente</h3>
           <p className="text-[13px] text-on-surface-variant mb-5">Las notas aparecen al marcar un turno como realizado o podés crearlas manualmente.</p>
-          <Link
-            href={`/pacientes/${params.id}/historial/nueva`}
-            className="btn-primary inline-flex"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+          <Link href={`/pacientes/${params.id}/historial/nueva`} className="btn-primary inline-flex">
+            <span className="material-symbols-outlined text-sm">add</span>
             Crear primera nota
           </Link>
         </div>
       ) : (
-        <div className="pt-5 flex flex-col gap-7">
+        <div className="space-y-12 pt-5">
           {sortedMonths.map((monthKey) => {
             const [year, mm] = monthKey.split('-')
             const monthLabel = `${MONTH_FULL[mm]} ${year}`
             const monthNotas = grouped[monthKey]
             return (
               <div key={monthKey}>
-                {/* Sticky month header */}
-                <div className="sticky top-0 z-[5] -mx-4 md:-mx-7 px-4 md:px-7 py-2 mb-3 flex items-center gap-3 bg-surface/90 backdrop-blur-sm border-b border-outline-variant/20">
-                  <span className="text-[11px] font-extrabold uppercase text-slate-400 tracking-widest">
-                    {monthLabel}
-                  </span>
-                  <span className="text-[11px] text-on-surface-variant">
-                    {monthNotas.length} {monthNotas.length === 1 ? 'sesión' : 'sesiones'}
-                  </span>
-                  <span className="flex-1 h-px bg-outline-variant/30" />
-                </div>
+                {/* Month header */}
+                <h2 className="text-[11px] font-extrabold text-slate-300 tracking-[0.2em] uppercase mb-6 flex items-center gap-4">
+                  {monthLabel}
+                  <span className="h-[1px] flex-1 bg-outline-variant/20" />
+                </h2>
 
-                <div className="flex flex-col gap-3">
-                  {monthNotas.map((nota) => {
-                    const fecha = parseISO(nota.fecha)
-                    const day = format(fecha, 'd')
-                    const monthShort = format(fecha, 'MMM', { locale: es }).replace('.', '')
-                    const dow = format(fecha, 'EEEE', { locale: es })
-                    const time = format(parseISO(nota.created_at), 'HH:mm')
-                    const title = primeraLinea(nota.contenido)
-                    const excerpt = previewContenido(nota.contenido)
-                    const tags = extraerTags(nota.contenido)
-                    const sessionNo = sessionNoMap.get(nota.id) ?? 0
+                {monthNotas.map((nota) => {
+                  const fecha = parseISO(nota.fecha)
+                  const day = format(fecha, 'd')
+                  const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
+                  const yearShort = format(fecha, 'yy')
+                  const time = format(parseISO(nota.created_at), 'HH:mm')
+                  const title = primeraLinea(nota.contenido)
+                  const excerpt = previewContenido(nota.contenido)
+                  const tags = extraerTags(nota.contenido)
+                  const sessionNo = sessionNoMap.get(nota.id) ?? 0
 
-                    const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
-                    const modalidad = turno?.modalidad
-                    const modalidadLabel =
-                      modalidad === 'videollamada' ? 'Virtual'
-                      : modalidad === 'telefonica' ? 'Telefónica'
-                      : modalidad === 'presencial' ? 'Presencial'
-                      : null
-                    const duracionLabel = turno?.duracion_min ? `${turno.duracion_min} min` : null
-                    const estadoLabel =
-                      turno?.estado === 'realizado' ? 'Realizada'
-                      : turno?.estado === 'cancelado' ? 'Cancelada'
-                      : turno?.estado === 'no_asistio' ? 'No asistió'
-                      : null
-                    const estadoColor =
-                      turno?.estado === 'realizado' ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant'
-                      : turno?.estado === 'cancelado' ? 'bg-error-container text-on-error-container'
-                      : turno?.estado === 'no_asistio' ? 'bg-surface-container text-on-surface-variant'
-                      : ''
+                  const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
+                  const modalidad = turno?.modalidad
+                  const modalidadLabel =
+                    modalidad === 'videollamada' ? 'Virtual'
+                    : modalidad === 'telefonica' ? 'Telefónica'
+                    : modalidad === 'presencial' ? 'Presencial'
+                    : null
+                  const duracionLabel = turno?.duracion_min ? `${turno.duracion_min} min` : null
+                  const isCompletada = turno?.estado === 'realizado'
+                  const isCancelada = turno?.estado === 'cancelado'
+                  const isNoAsistio = turno?.estado === 'no_asistio'
 
-                    return (
-                      <Link
-                        key={nota.id}
-                        href={`/pacientes/${params.id}/historial/${nota.id}`}
-                        className="block group"
-                      >
-                        <article className="bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/10 flex flex-col md:flex-row transition-all duration-150 group-hover:shadow-card group-hover:border-outline-variant/30">
-                          {/* Date column */}
-                          <div className="md:w-32 bg-surface-container-low/40 p-5 flex-none flex flex-row md:flex-col items-center md:items-center justify-start md:justify-center gap-3 md:gap-0 md:text-center border-b md:border-b-0 md:border-r border-outline-variant/10">
-                            <div className="md:mb-1">
-                              <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1 hidden md:block">{monthShort}</div>
-                              <div className="text-4xl font-extrabold text-primary leading-none">{day}</div>
-                              <div className="text-[10px] font-medium text-slate-400 capitalize mt-1 hidden md:block">{dow}</div>
-                            </div>
-                            <div className="md:mt-2">
-                              <span className="text-xs font-bold text-primary/60">{time}</span>
-                              <span className="md:hidden text-[10px] text-slate-400 ml-2 capitalize">{dow} {monthShort}</span>
-                            </div>
+                  return (
+                    <Link
+                      key={nota.id}
+                      href={`/pacientes/${params.id}/historial/${nota.id}`}
+                      className="block group mb-6"
+                    >
+                      <article className="bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/10 flex flex-col md:flex-row group-hover:shadow-md transition-shadow">
+
+                        {/* Date column */}
+                        <div className="md:w-32 bg-surface-container-low/30 p-6 flex md:flex-col items-center justify-between md:justify-center border-b md:border-b-0 md:border-r border-outline-variant/10">
+                          <div className="flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">{monthShort} / {yearShort}</span>
+                            <span className="text-4xl font-extrabold text-primary my-1">{day}</span>
                           </div>
+                          <span className="text-xs font-bold text-slate-500">{time} HS</span>
+                        </div>
 
-                          {/* Content */}
-                          <div className="flex-1 p-5 md:p-6 min-w-0">
-                            <div className="flex items-start gap-2 mb-2 flex-wrap">
-                              <span className="text-[15px] font-extrabold text-primary tracking-tight leading-snug flex-1 min-w-0">
-                                {title}
-                              </span>
+                        {/* Content */}
+                        <div className="flex-1 p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
+                                <h3 className="text-lg font-extrabold text-primary">
+                                  {sessionNo > 0 ? `Sesión Individual #${sessionNo}` : title}
+                                </h3>
+                                <div className="flex gap-2">
+                                  {modalidadLabel && (
+                                    <span className="px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded uppercase">
+                                      {modalidadLabel}
+                                    </span>
+                                  )}
+                                  {duracionLabel && (
+                                    <span className="px-2 py-0.5 bg-primary-fixed text-primary text-[10px] font-bold rounded uppercase">
+                                      {duracionLabel}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-1.5 mb-3">
-                              {sessionNo > 0 && (
-                                <span className="bg-primary-fixed text-primary text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                  Sesión #{String(sessionNo).padStart(3, '0')}
-                                </span>
-                              )}
-                              {modalidadLabel && (
-                                <span className="bg-secondary-container text-on-secondary-container text-[10px] px-2.5 py-0.5 rounded-full font-bold">
-                                  {modalidadLabel}
-                                </span>
-                              )}
-                              {duracionLabel && (
-                                <span className="bg-surface-container text-on-surface-variant text-[10px] px-2.5 py-0.5 rounded-full font-bold">
-                                  {duracionLabel}
-                                </span>
-                              )}
-                              {estadoLabel && (
-                                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${estadoColor}`}>
-                                  {estadoLabel}
-                                </span>
-                              )}
-                            </div>
-
-                            <p
-                              className="text-[13px] text-slate-500 leading-relaxed border-l-4 border-primary/20 pl-3 mb-3 overflow-hidden"
-                              style={{
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                textWrap: 'pretty',
-                              } as React.CSSProperties}
-                            >
-                              {excerpt}
-                            </p>
-
-                            {tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5">
-                                {tags.map((t) => (
-                                  <span
-                                    key={t}
-                                    className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-medium"
-                                  >
-                                    #{t}
-                                  </span>
-                                ))}
+                            {/* Estado badge (top right) */}
+                            {isCompletada && (
+                              <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
+                                <span className="material-symbols-outlined text-on-tertiary-container">check_circle</span>
+                                <span className="text-[10px] font-bold text-on-tertiary-container uppercase tracking-wider">Completada</span>
+                              </div>
+                            )}
+                            {isCancelada && (
+                              <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
+                                <span className="material-symbols-outlined text-error">cancel</span>
+                                <span className="text-[10px] font-bold text-error uppercase tracking-wider">Cancelada</span>
+                              </div>
+                            )}
+                            {isNoAsistio && (
+                              <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
+                                <span className="material-symbols-outlined text-on-surface-variant">person_off</span>
+                                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">No asistió</span>
                               </div>
                             )}
                           </div>
 
-                          {/* Right panel */}
-                          <div className="md:w-44 bg-surface-container-lowest/50 border-t md:border-t-0 md:border-l border-outline-variant/10 p-5 flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center gap-3 flex-none">
-                            <div className="hidden md:flex flex-col gap-1">
-                              {turno?.estado === 'realizado' && (
-                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-on-tertiary-container">
-                                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check_circle</span>
-                                  Sesión realizada
+                          {/* Excerpt */}
+                          <div className="bg-surface-container-low/40 p-4 rounded-xl border-l-4 border-primary/20 mb-4">
+                            <p
+                              className="text-sm text-on-surface-variant leading-relaxed overflow-hidden"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                              } as React.CSSProperties}
+                            >
+                              {excerpt}
+                            </p>
+                          </div>
+
+                          {/* Tags */}
+                          {tags.length > 0 && (
+                            <div className="flex gap-2 flex-wrap">
+                              {tags.map((t) => (
+                                <span key={t} className="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">
+                                  #{t}
                                 </span>
-                              )}
-                              {turno?.monto && (
-                                <span className="text-[11px] text-on-surface-variant font-medium">
-                                  {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(turno.monto)}
-                                </span>
-                              )}
+                              ))}
                             </div>
-                            <span className="text-[11px] font-bold text-primary bg-primary-fixed/30 hover:bg-primary-fixed rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap group-hover:bg-primary-fixed">
-                              Ver nota completa
+                          )}
+                        </div>
+
+                        {/* Right panel */}
+                        <div className="md:w-48 p-6 bg-surface-container-lowest flex flex-col justify-between border-t md:border-t-0 md:border-l border-outline-variant/10">
+                          <div className="hidden md:block text-right">
+                            <span className="text-primary hover:text-primary-container transition-colors cursor-pointer">
+                              <span className="material-symbols-outlined">more_vert</span>
                             </span>
                           </div>
-                        </article>
-                      </Link>
-                    )
-                  })}
-                </div>
+                          <span className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-primary-fixed/30 group-hover:bg-primary-fixed text-primary font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider">
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            Ver nota completa
+                          </span>
+                        </div>
+
+                      </article>
+                    </Link>
+                  )
+                })}
               </div>
             )
           })}
+
+          <div className="flex justify-center py-8">
+            <button className="px-6 py-2 border border-outline-variant text-slate-500 font-bold text-xs rounded-full hover:bg-white hover:text-primary transition-all">
+              Cargar más sesiones
+            </button>
+          </div>
         </div>
       )}
     </div>

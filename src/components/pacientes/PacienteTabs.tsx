@@ -34,7 +34,7 @@ export default function PacienteTabs({
   ]
 
   return (
-    <div className="flex items-center gap-0.5 border-b border-outline-variant/20 mb-8 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 flex-nowrap whitespace-nowrap">
+    <div className="flex items-center gap-6 md:gap-8 mb-8 border-b border-outline-variant/30 overflow-x-auto whitespace-nowrap">
       {tabs.map((tab) => {
         const isActive = tab.key === active
         const href =
@@ -50,10 +50,10 @@ export default function PacienteTabs({
             key={tab.key}
             href={href}
             className={cn(
-              'inline-flex items-center gap-[7px] px-3.5 py-2.5 text-[13px] font-bold border-b-2 -mb-px transition-colors select-none flex-shrink-0',
+              'pb-4 font-bold text-sm transition-colors flex items-center gap-2 flex-shrink-0',
               isActive
-                ? 'text-primary border-primary'
-                : 'text-slate-400 border-transparent hover:text-slate-600',
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-slate-400 hover:text-slate-600',
             )}
           >
             {tab.label}
