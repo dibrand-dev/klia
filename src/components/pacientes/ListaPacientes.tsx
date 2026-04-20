@@ -59,9 +59,6 @@ export default function ListaPacientes({
             <span className="material-symbols-outlined mr-2 text-[18px]">add</span>
             Nuevo Paciente
           </Link>
-          <div className="h-10 w-10 rounded-full bg-primary-container text-on-primary-fixed border border-surface-variant cursor-pointer hover:opacity-80 transition-opacity shadow-sm flex items-center justify-center font-bold text-sm shrink-0">
-            {initials}
-          </div>
         </div>
       </header>
 
