@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas'
 
 interface TabDef {
   key: PacienteTabKey
@@ -27,6 +27,7 @@ export default function PacienteTabs({
     { key: 'informes', label: 'Informes' },
     { key: 'documentos', label: 'Documentos' },
     { key: 'facturacion', label: 'Facturación' },
+    { key: 'interconsultas', label: 'Interconsultas' },
   ]
 
   return (
@@ -39,7 +40,8 @@ export default function PacienteTabs({
           : tab.key === 'historial' ? `/pacientes/${pacienteId}/historial`
           : tab.key === 'informes' ? `/pacientes/${pacienteId}?tab=informes`
           : tab.key === 'documentos' ? `/pacientes/${pacienteId}?tab=documentos`
-          : `/pacientes/${pacienteId}?tab=facturacion`
+          : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
+          : `/pacientes/${pacienteId}?tab=interconsultas`
 
         return (
           <Link

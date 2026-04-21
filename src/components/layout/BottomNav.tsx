@@ -30,6 +30,8 @@ const NAV_ITEMS = [
 export default function BottomNav() {
   const pathname = usePathname()
 
+  if (pathname.startsWith('/ops')) return null
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="flex">

@@ -6,7 +6,7 @@ import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
-import type { Paciente, MedicacionPaciente } from '@/types/database'
+import type { Paciente, MedicacionPaciente, Interconsulta } from '@/types/database'
 import type { PacienteTabKey } from './PacienteTabs'
 import { PAISES, OBRAS_SOCIALES_AR, PLANES_POR_OS } from '@/lib/data/salud-ar'
 
@@ -100,11 +100,13 @@ function toMedicacionEdit(m: MedicacionPaciente): MedicacionEdit {
 export default function PacienteDetalle({
   paciente,
   medicacionesIniciales = [],
+  interconsultas = [],
   initialEdit = false,
   activeTab = 'datos',
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
+  interconsultas?: Interconsulta[]
   initialEdit?: boolean
   activeTab?: PacienteTabKey
 }) {
@@ -476,6 +478,10 @@ export default function PacienteDetalle({
     return <ResumenTab paciente={paciente} medicaciones={medicacionesIniciales} />
   }
 
+  if (activeTab === 'interconsultas') {
+    return <InterconsultasTab paciente={paciente} interconsultas={interconsultas} />
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <TabEmptyState tab={activeTab} />
   }
@@ -641,6 +647,80 @@ function ResumenTab({ paciente, medicaciones }: { paciente: Paciente; medicacion
   )
 }
 
+function InterconsultasTab({ paciente, interconsultas }: { paciente: Paciente; interconsultas: Interconsulta[] }) {
+  if (!paciente.dni?.trim()) {
+    return (
+      <div className="mt-6 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest p-10 text-center">
+        <span className="material-symbols-outlined text-4xl mb-3 block text-on-surface-variant opacity-30">badge</span>
+        <h3 className="text-[17px] font-semibold text-on-surface mb-1.5">DNI requerido</h3>
+        <p className="text-[13.5px] text-on-surface-variant">
+          Para ver interconsultas el paciente debe tener DNI registrado.
+        </p>
+      </div>
+    )
+  }
+
+  if (interconsultas.length === 0) {
+    return (
+      <div className="mt-6 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest p-10 text-center">
+        <span className="material-symbols-outlined text-4xl mb-3 block text-on-surface-variant opacity-30">group</span>
+        <h3 className="text-[17px] font-semibold text-on-surface mb-1.5">Sin interconsultas</h3>
+        <p className="text-[13.5px] text-on-surface-variant">
+          Este paciente no tiene interconsultas registradas.
+        </p>
+        <p className="text-[12px] text-on-surface-variant mt-1 opacity-70">
+          Cuando otro profesional atienda a este paciente, aparecerá aquí automáticamente.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {interconsultas.map((colega, i) => (
+        <InterconsultaCard key={i} colega={colega} />
+      ))}
+    </div>
+  )
+}
+
+function InterconsultaCard({ colega }: { colega: Interconsulta }) {
+  return (
+    <div className="bg-white rounded-2xl border border-outline-variant/20 border-l-4 border-l-primary shadow-sm p-5">
+      <p className="font-medium text-gray-900 text-[15px]">
+        {colega.nombre} {colega.apellido}
+      </p>
+      {colega.especialidad && (
+        <p className="text-sm text-primary mt-0.5">{colega.especialidad}</p>
+      )}
+      <hr className="my-3 border-outline-variant/20" />
+      <div className="space-y-1.5">
+        {colega.telefono && (
+          <a
+            href={`tel:${colega.telefono.replace(/[^\d+]/g, '')}`}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">phone</span>
+            {colega.telefono}
+          </a>
+        )}
+        {colega.email && (
+          <a
+            href={`mailto:${colega.email}`}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px] text-on-surface-variant">mail</span>
+            {colega.email}
+          </a>
+        )}
+        {!colega.telefono && !colega.email && (
+          <p className="text-xs text-on-surface-variant">Sin datos de contacto.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function FormCard({
   title,
   icon,
@@ -702,6 +782,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
       title: 'Facturación',
       body: 'Historial de pagos y estado de cuenta. Próximamente.',
     },
+    interconsultas: { title: 'Interconsultas', body: '' },
   }
   const c = config[tab]
   return (

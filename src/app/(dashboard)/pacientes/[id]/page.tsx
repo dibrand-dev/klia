@@ -70,9 +70,17 @@ export default async function PacienteDetallePage({
     searchParams.tab === 'datos' ||
     searchParams.tab === 'informes' ||
     searchParams.tab === 'documentos' ||
-    searchParams.tab === 'facturacion'
+    searchParams.tab === 'facturacion' ||
+    searchParams.tab === 'interconsultas'
       ? searchParams.tab
       : 'resumen'
+
+  const interconsultasRes = tab === 'interconsultas'
+    ? await supabase.rpc('get_interconsultas', { p_paciente_id: params.id })
+    : { data: [] }
+  const interconsultas = (interconsultasRes.data ?? []) as Array<{
+    nombre: string; apellido: string; especialidad: string | null; telefono: string | null; email: string | null
+  }>
 
   const editMode = searchParams.edit === '1'
 
@@ -87,6 +95,7 @@ export default async function PacienteDetallePage({
       <PacienteDetalle
         paciente={paciente}
         medicacionesIniciales={medicaciones}
+        interconsultas={interconsultas}
         activeTab={tab}
         initialEdit={editMode}
         key={editMode ? 'edit' : 'view'}
