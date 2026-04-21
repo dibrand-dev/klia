@@ -344,6 +344,60 @@ export type Database = {
           },
         ]
       }
+      admin_users: {
+        Row: {
+          id: string
+          email: string
+          nombre: string
+          apellido: string
+          rol: 'total' | 'administrativo'
+          activo: boolean
+          created_at: string
+          last_sign_in: string | null
+        }
+        Insert: {
+          id?: string
+          email: string
+          nombre: string
+          apellido: string
+          rol: 'total' | 'administrativo'
+          activo?: boolean
+          created_at?: string
+          last_sign_in?: string | null
+        }
+        Update: {
+          id?: string
+          email?: string
+          nombre?: string
+          apellido?: string
+          rol?: 'total' | 'administrativo'
+          activo?: boolean
+          created_at?: string
+          last_sign_in?: string | null
+        }
+        Relationships: []
+      }
+      configuracion: {
+        Row: {
+          clave: string
+          valor: string
+          descripcion: string | null
+          updated_at: string
+        }
+        Insert: {
+          clave: string
+          valor: string
+          descripcion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clave?: string
+          valor?: string
+          descripcion?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -372,6 +426,8 @@ export type ModalidadTurno = Database['public']['Enums']['modalidad_turno']
 export type NotaClinica = Database['public']['Tables']['notas_clinicas']['Row']
 export type ObjetivoTerapeutico = Database['public']['Tables']['objetivos_terapeuticos']['Row']
 export type MedicacionPaciente = Database['public']['Tables']['medicacion_paciente']['Row']
+export type AdminUser = Database['public']['Tables']['admin_users']['Row']
+export type Configuracion = Database['public']['Tables']['configuracion']['Row']
 
 export interface Turno extends TurnoRow {
   paciente?: Paciente
