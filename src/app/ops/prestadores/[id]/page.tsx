@@ -21,6 +21,7 @@ export default async function PrestadorDetallePage({
     { count: pacientesCount },
     { data: lastSesion },
     { data: lastSignIn },
+    { data: planes },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', params.id).single(),
     supabase
@@ -42,6 +43,11 @@ export default async function PrestadorDetallePage({
       .limit(1)
       .maybeSingle(),
     supabase.rpc('admin_get_last_sign_in', { p_id: params.id }),
+    supabase
+      .from('planes')
+      .select('id, nombre')
+      .eq('activo', true)
+      .order('precio_mensual', { ascending: true }),
   ])
 
   if (!profile) notFound()
@@ -106,7 +112,11 @@ export default async function PrestadorDetallePage({
       </div>
 
       {/* Acciones */}
-      <PrestadorActions profileId={params.id} profileName={`${profile.nombre} ${profile.apellido}`} />
+      <PrestadorActions
+        profileId={params.id}
+        profileName={`${profile.nombre} ${profile.apellido}`}
+        planes={planes ?? []}
+      />
 
       {/* Últimos turnos */}
       <div className="mt-6 bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">

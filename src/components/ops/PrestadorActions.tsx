@@ -1,20 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-
-const PLANES = ['esencial', 'profesional', 'premium']
+import type { Plan } from '@/types/database'
 
 export default function PrestadorActions({
   profileId,
   profileName,
+  planes,
 }: {
   profileId: string
   profileName: string
+  planes: Pick<Plan, 'id' | 'nombre'>[]
 }) {
-  const router = useRouter()
   const [plan, setPlan] = useState('')
   const [diasPrueba, setDiasPrueba] = useState('')
   const [suspendConfirm, setSuspendConfirm] = useState(false)
@@ -29,7 +27,6 @@ export default function PrestadorActions({
   async function handleSuspender() {
     if (!suspendConfirm) { setSuspendConfirm(true); return }
     setLoading('suspend')
-    // Placeholder: suspension column doesn't exist yet
     feedback('ok', `Acción registrada para ${profileName}. (Integración pendiente)`)
     setSuspendConfirm(false)
     setLoading(null)
@@ -38,8 +35,8 @@ export default function PrestadorActions({
   async function handleCambiarPlan() {
     if (!plan) return
     setLoading('plan')
-    // Placeholder: plan column doesn't exist yet
-    feedback('ok', `Plan cambiado a "${plan}" para ${profileName}. (Integración pendiente)`)
+    const nombre = planes.find((p) => p.id === plan)?.nombre ?? plan
+    feedback('ok', `Plan cambiado a "${nombre}" para ${profileName}. (Integración pendiente)`)
     setPlan('')
     setLoading(null)
   }
@@ -47,7 +44,6 @@ export default function PrestadorActions({
   async function handleExtenderPrueba() {
     if (!diasPrueba || isNaN(Number(diasPrueba))) return
     setLoading('prueba')
-    // Placeholder: trial_until column doesn't exist yet
     feedback('ok', `Período de prueba extendido ${diasPrueba} días para ${profileName}. (Integración pendiente)`)
     setDiasPrueba('')
     setLoading(null)
@@ -73,11 +69,11 @@ export default function PrestadorActions({
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
-            className="input-field mb-3 capitalize"
+            className="input-field mb-3"
           >
             <option value="">Seleccionar plan...</option>
-            {PLANES.map((p) => (
-              <option key={p} value={p} className="capitalize">{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            {planes.map((p) => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
             ))}
           </select>
           <button
