@@ -411,6 +411,10 @@ export type Database = {
         Args: { p_search?: string | null }
         Returns: ProfileWithLastSignIn[]
       }
+      admin_get_last_sign_in: {
+        Args: { p_id: string }
+        Returns: string | null
+      }
     }
     Enums: {
       estado_turno: 'cancelado' | 'confirmado' | 'no_asistio' | 'pendiente' | 'realizado'
