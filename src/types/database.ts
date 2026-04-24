@@ -308,33 +308,30 @@ export type Database = {
           id: string
           terapeuta_id: string
           paciente_id: string
-          nombre: string
+          farmaco: string
           dosis: string | null
           frecuencia: string | null
-          prescriptor: string | null
-          activa: boolean
+          activo: boolean
           created_at: string
         }
         Insert: {
           id?: string
           terapeuta_id: string
           paciente_id: string
-          nombre: string
+          farmaco: string
           dosis?: string | null
           frecuencia?: string | null
-          prescriptor?: string | null
-          activa?: boolean
+          activo?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           terapeuta_id?: string
           paciente_id?: string
-          nombre?: string
+          farmaco?: string
           dosis?: string | null
           frecuencia?: string | null
-          prescriptor?: string | null
-          activa?: boolean
+          activo?: boolean
           created_at?: string
         }
         Relationships: [

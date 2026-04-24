@@ -90,11 +90,11 @@ function buildForm(p: Paciente) {
   }
 }
 
-type MedicacionEdit = { nombre: string; dosis: string; frecuencia: string; prescriptor: string }
-const EMPTY_MED: MedicacionEdit = { nombre: '', dosis: '', frecuencia: '', prescriptor: '' }
+type MedicacionEdit = { farmaco: string; dosis: string; frecuencia: string }
+const EMPTY_MED: MedicacionEdit = { farmaco: '', dosis: '', frecuencia: '' }
 
 function toMedicacionEdit(m: MedicacionPaciente): MedicacionEdit {
-  return { nombre: m.nombre, dosis: m.dosis ?? '', frecuencia: m.frecuencia ?? '', prescriptor: m.prescriptor ?? '' }
+  return { farmaco: m.farmaco, dosis: m.dosis ?? '', frecuencia: m.frecuencia ?? '' }
 }
 
 export default function PacienteDetalle({
@@ -201,16 +201,15 @@ export default function PacienteDetalle({
         return
       }
 
-      const medsFiltradas = medicaciones.filter((m) => m.nombre.trim())
+      const medsFiltradas = medicaciones.filter((m) => m.farmaco.trim())
       if (medsFiltradas.length > 0) {
         const { error: insError } = await supabase.from('medicacion_paciente').insert(
           medsFiltradas.map((m) => ({
             terapeuta_id: user.id,
             paciente_id: paciente.id,
-            nombre: m.nombre.trim(),
+            farmaco: m.farmaco.trim(),
             dosis: m.dosis || null,
             frecuencia: m.frecuencia || null,
-            prescriptor: m.prescriptor || null,
           }))
         )
         if (insError) {
@@ -436,20 +435,16 @@ export default function PacienteDetalle({
                     <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                   <div>
-                    <label className={labelCls}>Medicamento <span className="text-error">*</span></label>
-                    <input type="text" value={med.nombre} onChange={(e) => updateMedicacion(idx, 'nombre', e.target.value)} placeholder="Fluoxetina" className={inputCls} />
+                    <label className={labelCls}>Fármaco <span className="text-error">*</span></label>
+                    <input type="text" value={med.farmaco} onChange={(e) => updateMedicacion(idx, 'farmaco', e.target.value)} placeholder="Fluoxetina" className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Dosis</label>
                     <input type="text" value={med.dosis} onChange={(e) => updateMedicacion(idx, 'dosis', e.target.value)} placeholder="20mg" className={inputCls} />
                   </div>
-                  <div>
+                  <div className="pr-8">
                     <label className={labelCls}>Frecuencia</label>
                     <input type="text" value={med.frecuencia} onChange={(e) => updateMedicacion(idx, 'frecuencia', e.target.value)} placeholder="1 vez al día" className={inputCls} />
-                  </div>
-                  <div className="pr-8">
-                    <label className={labelCls}>Prescriptor</label>
-                    <input type="text" value={med.prescriptor} onChange={(e) => updateMedicacion(idx, 'prescriptor', e.target.value)} placeholder="Dr. García" className={inputCls} />
                   </div>
                 </div>
               ))}
@@ -629,11 +624,9 @@ function ResumenTab({ paciente, medicaciones }: { paciente: Paciente; medicacion
             <ul className="space-y-3">
               {medicaciones.map((m) => (
                 <li key={m.id} className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-on-surface">{m.nombre}{m.dosis ? ` — ${m.dosis}` : ''}</span>
-                  {(m.frecuencia || m.prescriptor) && (
-                    <span className="text-xs text-on-surface-variant">
-                      {[m.frecuencia, m.prescriptor ? `Prescriptor: ${m.prescriptor}` : ''].filter(Boolean).join(' · ')}
-                    </span>
+                  <span className="text-sm font-semibold text-on-surface">{m.farmaco}{m.dosis ? ` — ${m.dosis}` : ''}</span>
+                  {m.frecuencia && (
+                    <span className="text-xs text-on-surface-variant">{m.frecuencia}</span>
                   )}
                 </li>
               ))}
