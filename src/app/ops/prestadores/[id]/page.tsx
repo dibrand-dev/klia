@@ -19,6 +19,8 @@ export default async function PrestadorDetallePage({
     { data: profile },
     { data: turnos, count: turnosCount },
     { count: pacientesCount },
+    { data: lastSesion },
+    { data: lastSignIn },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', params.id).single(),
     supabase
@@ -31,9 +33,26 @@ export default async function PrestadorDetallePage({
       .from('pacientes')
       .select('*', { count: 'exact', head: true })
       .eq('terapeuta_id', params.id),
+    supabase
+      .from('turnos')
+      .select('fecha_hora')
+      .eq('terapeuta_id', params.id)
+      .eq('estado', 'realizado')
+      .order('fecha_hora', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.rpc('admin_get_last_sign_in', { p_id: params.id }),
   ])
 
   if (!profile) notFound()
+
+  const lastSesionLabel = lastSesion?.fecha_hora
+    ? format(parseISO(lastSesion.fecha_hora), "d MMM ''yy", { locale: es })
+    : '—'
+
+  const lastSignInLabel = lastSignIn
+    ? format(parseISO(lastSignIn as string), 'dd/MM/yy HH:mm', { locale: es })
+    : '—'
 
   return (
     <div className="px-6 md:px-8 pt-8 pb-20 max-w-[900px]">
@@ -62,6 +81,7 @@ export default async function PrestadorDetallePage({
             <dt>Matrícula</dt><dd>{profile.matricula ?? '—'}</dd>
             <dt>Teléfono</dt><dd>{profile.telefono ?? '—'}</dd>
             <dt>Registro</dt><dd>{format(parseISO(profile.created_at), "d 'de' MMMM yyyy", { locale: es })}</dd>
+            <dt>Último acceso</dt><dd>{lastSignInLabel}</dd>
           </dl>
         </div>
 
@@ -73,12 +93,12 @@ export default async function PrestadorDetallePage({
               { label: 'Pacientes', value: pacientesCount ?? 0, icon: 'group' },
               { label: 'Turnos totales', value: turnosCount ?? 0, icon: 'calendar_today' },
               { label: 'Plan actual', value: '—', icon: 'workspace_premium' },
-              { label: 'Última sesión', value: '—', icon: 'schedule' },
+              { label: 'Última sesión', value: lastSesionLabel, icon: 'schedule' },
             ].map((m) => (
               <div key={m.label} className="bg-surface-container-lowest rounded-xl p-4">
                 <span className="material-symbols-outlined text-primary text-xl block mb-1">{m.icon}</span>
-                <p className="text-xl font-bold text-on-surface">{m.value}</p>
-                <p className="text-xs text-on-surface-variant">{m.label}</p>
+                <p className="text-xl font-bold text-on-surface leading-tight">{m.value}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">{m.label}</p>
               </div>
             ))}
           </div>
