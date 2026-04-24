@@ -90,11 +90,11 @@ function buildForm(p: Paciente) {
   }
 }
 
-type MedicacionEdit = { farmaco: string; dosis: string; frecuencia: string }
-const EMPTY_MED: MedicacionEdit = { farmaco: '', dosis: '', frecuencia: '' }
+type MedicacionEdit = { farmaco: string; dosis: string; frecuencia: string; prescriptor: string }
+const EMPTY_MED: MedicacionEdit = { farmaco: '', dosis: '', frecuencia: '', prescriptor: '' }
 
 function toMedicacionEdit(m: MedicacionPaciente): MedicacionEdit {
-  return { farmaco: m.farmaco, dosis: m.dosis ?? '', frecuencia: m.frecuencia ?? '' }
+  return { farmaco: m.farmaco, dosis: m.dosis ?? '', frecuencia: m.frecuencia ?? '', prescriptor: m.prescriptor ?? '' }
 }
 
 export default function PacienteDetalle({
@@ -210,6 +210,7 @@ export default function PacienteDetalle({
             farmaco: m.farmaco.trim(),
             dosis: m.dosis || null,
             frecuencia: m.frecuencia || null,
+            prescriptor: m.prescriptor || null,
           }))
         )
         if (insError) {
@@ -442,9 +443,13 @@ export default function PacienteDetalle({
                     <label className={labelCls}>Dosis</label>
                     <input type="text" value={med.dosis} onChange={(e) => updateMedicacion(idx, 'dosis', e.target.value)} placeholder="20mg" className={inputCls} />
                   </div>
-                  <div className="pr-8">
+                  <div>
                     <label className={labelCls}>Frecuencia</label>
                     <input type="text" value={med.frecuencia} onChange={(e) => updateMedicacion(idx, 'frecuencia', e.target.value)} placeholder="1 vez al día" className={inputCls} />
+                  </div>
+                  <div className="pr-8">
+                    <label className={labelCls}>Médico prescriptor</label>
+                    <input type="text" value={med.prescriptor} onChange={(e) => updateMedicacion(idx, 'prescriptor', e.target.value)} placeholder="Dr. García" className={inputCls} />
                   </div>
                 </div>
               ))}
@@ -625,8 +630,10 @@ function ResumenTab({ paciente, medicaciones }: { paciente: Paciente; medicacion
               {medicaciones.map((m) => (
                 <li key={m.id} className="flex flex-col gap-0.5">
                   <span className="text-sm font-semibold text-on-surface">{m.farmaco}{m.dosis ? ` — ${m.dosis}` : ''}</span>
-                  {m.frecuencia && (
-                    <span className="text-xs text-on-surface-variant">{m.frecuencia}</span>
+                  {(m.frecuencia || m.prescriptor) && (
+                    <span className="text-xs text-on-surface-variant">
+                      {[m.frecuencia, m.prescriptor ? `Dr. ${m.prescriptor}` : ''].filter(Boolean).join(' · ')}
+                    </span>
                   )}
                 </li>
               ))}

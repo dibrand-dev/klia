@@ -311,6 +311,7 @@ export type Database = {
           farmaco: string
           dosis: string | null
           frecuencia: string | null
+          prescriptor: string | null
           activo: boolean
           created_at: string
         }
@@ -321,6 +322,7 @@ export type Database = {
           farmaco: string
           dosis?: string | null
           frecuencia?: string | null
+          prescriptor?: string | null
           activo?: boolean
           created_at?: string
         }
@@ -331,6 +333,7 @@ export type Database = {
           farmaco?: string
           dosis?: string | null
           frecuencia?: string | null
+          prescriptor?: string | null
           activo?: boolean
           created_at?: string
         }

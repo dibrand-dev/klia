@@ -78,8 +78,8 @@ function CurrencyInput({
   )
 }
 
-type MedicacionForm = { farmaco: string; dosis: string; frecuencia: string }
-const EMPTY_MED: MedicacionForm = { farmaco: '', dosis: '', frecuencia: '' }
+type MedicacionForm = { farmaco: string; dosis: string; frecuencia: string; prescriptor: string }
+const EMPTY_MED: MedicacionForm = { farmaco: '', dosis: '', frecuencia: '', prescriptor: '' }
 
 export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string }) {
   const router = useRouter()
@@ -165,6 +165,7 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
           farmaco: m.farmaco.trim(),
           dosis: m.dosis || null,
           frecuencia: m.frecuencia || null,
+          prescriptor: m.prescriptor || null,
         }))
       )
     }
