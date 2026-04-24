@@ -116,6 +116,9 @@ export default function PacienteDetalle({
   const [medicaciones, setMedicaciones] = useState<MedicacionEdit[]>(() =>
     medicacionesIniciales.map(toMedicacionEdit)
   )
+  const [activo, setActivo] = useState(paciente.activo)
+  const [seriesActivas, setSeriesActivas] = useState(0)
+  const [checkingSeriesActivas, setCheckingSeriesActivas] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,9 +142,28 @@ export default function PacienteDetalle({
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  async function handleToggleActivo(newValue: boolean) {
+    setActivo(newValue)
+    if (!newValue && paciente.activo) {
+      setCheckingSeriesActivas(true)
+      const supabase = createClient()
+      const { count } = await supabase
+        .from('turnos_recurrentes')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', paciente.id)
+        .eq('activo', true)
+      setSeriesActivas(count ?? 0)
+      setCheckingSeriesActivas(false)
+    } else {
+      setSeriesActivas(0)
+    }
+  }
+
   function handleCancelar() {
     setForm(buildForm(paciente))
     setMedicaciones(medicacionesIniciales.map(toMedicacionEdit))
+    setActivo(paciente.activo)
+    setSeriesActivas(0)
     setError(null)
     setEditando(false)
   }
@@ -178,12 +200,29 @@ export default function PacienteDetalle({
         notas: form.notas || null,
         codigo_diagnostico: form.codigo_diagnostico || null,
         gravedad_estimada: form.gravedad_estimada || null,
+        activo,
       })
       .eq('id', paciente.id)
     if (dbError) {
       setError('Error al guardar los cambios. Intentá de nuevo.')
       setLoading(false)
       return
+    }
+
+    // Si el paciente pasó de activo a inactivo, liberar series y turnos futuros
+    if (!activo && paciente.activo) {
+      await supabase
+        .from('turnos_recurrentes')
+        .update({ activo: false })
+        .eq('paciente_id', paciente.id)
+        .eq('activo', true)
+      await supabase
+        .from('turnos')
+        .delete()
+        .eq('paciente_id', paciente.id)
+        .not('serie_recurrente_id', 'is', null)
+        .in('estado', ['pendiente', 'confirmado'])
+        .gte('fecha_hora', new Date().toISOString())
     }
 
     // Sync medications: replace all existing ones
@@ -453,6 +492,48 @@ export default function PacienteDetalle({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </FormCard>
+
+        {/* Estado del paciente */}
+        <FormCard title="Estado del paciente" icon="person_check">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-on-surface">
+                {activo ? 'En tratamiento' : 'Inactivo'}
+              </p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                {activo ? 'Paciente activo, aparece en búsquedas y agenda' : 'Paciente dado de baja'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggleActivo(!activo)}
+              disabled={checkingSeriesActivas}
+              className={cn(
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out disabled:opacity-60',
+                activo ? 'bg-primary' : 'bg-gray-300'
+              )}
+            >
+              <span className={cn(
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out',
+                activo ? 'translate-x-5' : 'translate-x-0'
+              )} />
+            </button>
+          </div>
+
+          {!activo && paciente.activo && seriesActivas > 0 && (
+            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex gap-2">
+              <span className="text-amber-500 flex-shrink-0 text-base leading-snug">⚠️</span>
+              <div className="text-xs text-amber-800">
+                <p className="font-semibold">
+                  Este paciente tiene {seriesActivas} {seriesActivas === 1 ? 'serie' : 'series'} de turnos fijos {seriesActivas === 1 ? 'activa' : 'activas'}.
+                </p>
+                <p className="mt-0.5">
+                  Al desactivarlo se liberarán todos los turnos futuros del calendario.
+                </p>
+              </div>
             </div>
           )}
         </FormCard>
