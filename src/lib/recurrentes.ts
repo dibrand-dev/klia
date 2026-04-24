@@ -1,4 +1,11 @@
-import { addDays, addMinutes, getDay, startOfDay } from 'date-fns'
+import { addDays, addMinutes, format, getDay, startOfDay } from 'date-fns'
+
+export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+export type ConflictoDetallado = {
+  fecha: Date
+  horaConflicto: string // HH:mm del turno existente que choca
+}
 
 // Combina una fecha (sin hora) con un string "HH:MM"
 function combineDateAndTime(date: Date, hora: string): Date {
@@ -10,7 +17,6 @@ function combineDateAndTime(date: Date, hora: string): Date {
 
 /**
  * Genera todas las fechas de una serie recurrente semanal.
- * Devuelve cada ocurrencia del diaSemana dado entre fechaInicio y fechaFin (inclusive).
  * diaSemana: 0 = domingo … 6 = sábado (mismo criterio que Date.getDay())
  */
 export function generarFechasSerie(
@@ -19,26 +25,19 @@ export function generarFechasSerie(
   fechaFin: Date
 ): Date[] {
   const fechas: Date[] = []
-
-  // Avanzar hasta la primera ocurrencia del día pedido >= fechaInicio
   const inicio = startOfDay(new Date(fechaInicio))
   const fin = startOfDay(new Date(fechaFin))
   const diff = (diaSemana - getDay(inicio) + 7) % 7
   let current = addDays(inicio, diff)
-
   while (current <= fin) {
     fechas.push(new Date(current))
     current = addDays(current, 7)
   }
-
   return fechas
 }
 
 /**
- * Detecta qué fechas de la serie colisionan con turnos existentes del profesional.
- * Un conflicto existe cuando los rangos [propuesto_inicio, propuesto_fin) y
- * [existente_inicio, existente_fin) se superponen.
- * Solo considera turnos que NO están cancelados.
+ * Detecta conflictos (fechas, sin detalle). Para uso en creaciones nuevas.
  */
 export async function detectarConflictos(
   terapeutaId: string,
@@ -47,15 +46,29 @@ export async function detectarConflictos(
   duracion: number,
   supabase: any
 ): Promise<Date[]> {
+  const result = await detectarConflictosDetallados(terapeutaId, fechas, hora, duracion, supabase)
+  return result.map((c) => c.fecha)
+}
+
+/**
+ * Detecta conflictos con detalle del horario del turno existente.
+ * excludeSerieId: excluye turnos que pertenecen a esta serie (útil al editar).
+ */
+export async function detectarConflictosDetallados(
+  terapeutaId: string,
+  fechas: Date[],
+  hora: string,
+  duracion: number,
+  supabase: any,
+  excludeSerieId?: string
+): Promise<ConflictoDetallado[]> {
   if (fechas.length === 0) return []
 
   const sorted = [...fechas].sort((a, b) => a.getTime() - b.getTime())
-
-  // Rango mínimo necesario para la consulta
   const rangeDesde = combineDateAndTime(sorted[0], '00:00').toISOString()
   const rangeHasta = combineDateAndTime(sorted[sorted.length - 1], '23:59').toISOString()
 
-  const { data: existentes, error } = await supabase
+  let query = supabase
     .from('turnos')
     .select('fecha_hora, duracion_min')
     .eq('terapeuta_id', terapeutaId)
@@ -63,28 +76,75 @@ export async function detectarConflictos(
     .gte('fecha_hora', rangeDesde)
     .lte('fecha_hora', rangeHasta)
 
+  if (excludeSerieId) {
+    query = query.neq('serie_recurrente_id', excludeSerieId)
+  }
+
+  const { data: existentes, error } = await query
   if (error) throw new Error(error.message)
   if (!existentes || existentes.length === 0) return []
 
-  return fechas.filter((fecha) => {
+  const conflictos: ConflictoDetallado[] = []
+
+  for (const fecha of fechas) {
     const propInicio = combineDateAndTime(fecha, hora)
     const propFin = addMinutes(propInicio, duracion)
 
-    return existentes.some((t: { fecha_hora: string; duracion_min: number }) => {
+    for (const t of existentes as { fecha_hora: string; duracion_min: number }[]) {
       const exInicio = new Date(t.fecha_hora)
       const exFin = addMinutes(exInicio, t.duracion_min)
-      // Superposición: el existente empieza antes de que termine el propuesto
-      // Y el existente termina después de que empiece el propuesto
-      return exInicio < propFin && exFin > propInicio
+      if (exInicio < propFin && exFin > propInicio) {
+        conflictos.push({
+          fecha,
+          horaConflicto: format(exInicio, 'HH:mm'),
+        })
+        break
+      }
+    }
+  }
+
+  return conflictos
+}
+
+/**
+ * Crea el registro de la serie en turnos_recurrentes y devuelve su id.
+ */
+export async function crearRegistroSerie(
+  terapeutaId: string,
+  pacienteId: string,
+  diaSemana: number,
+  hora: string,
+  duracion: number,
+  modalidad: string,
+  monto: number | null,
+  fechaInicio: Date,
+  fechaFin: Date,
+  supabase: any
+): Promise<string> {
+  const { data, error } = await supabase
+    .from('turnos_recurrentes')
+    .insert({
+      terapeuta_id: terapeutaId,
+      paciente_id: pacienteId,
+      dia_semana: diaSemana,
+      hora,
+      duracion_min: duracion,
+      modalidad,
+      monto,
+      fecha_inicio: format(fechaInicio, 'yyyy-MM-dd'),
+      fecha_fin: format(fechaFin, 'yyyy-MM-dd'),
+      activo: true,
     })
-  })
+    .select('id')
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data.id
 }
 
 /**
  * Inserta en bulk todos los turnos de la serie.
- * Las fechas recibidas ya deben tener filtrados los conflictos si el usuario
- * eligió omitirlos (pasar solo las fechas que se quieren crear).
- * Lanza un Error si la inserción falla.
+ * Las fechas recibidas ya deben ser las que se quieren crear (sin conflictos).
  */
 export async function crearSerieTurnos(
   recurrenteId: string,

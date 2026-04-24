@@ -380,6 +380,51 @@ export type Database = {
         }
         Relationships: []
       }
+      turnos_recurrentes: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          paciente_id: string
+          dia_semana: number
+          hora: string
+          duracion_min: number
+          modalidad: string
+          monto: number | null
+          fecha_inicio: string
+          fecha_fin: string
+          activo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          dia_semana: number
+          hora: string
+          duracion_min?: number
+          modalidad?: string
+          monto?: number | null
+          fecha_inicio: string
+          fecha_fin: string
+          activo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          paciente_id?: string
+          dia_semana?: number
+          hora?: string
+          duracion_min?: number
+          modalidad?: string
+          monto?: number | null
+          fecha_inicio?: string
+          fecha_fin?: string
+          activo?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       configuracion: {
         Row: {
           clave: string
@@ -495,6 +540,7 @@ export type ObjetivoTerapeutico = Database['public']['Tables']['objetivos_terape
 export type MedicacionPaciente = Database['public']['Tables']['medicacion_paciente']['Row']
 export type AdminUser = Database['public']['Tables']['admin_users']['Row']
 export type Configuracion = Database['public']['Tables']['configuracion']['Row']
+export type TurnoRecurrente = Database['public']['Tables']['turnos_recurrentes']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
 export type PlanFuncionalidad = Database['public']['Tables']['plan_funcionalidades']['Row']
 

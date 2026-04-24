@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { parseISO, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
@@ -9,7 +10,8 @@ import {
   ESTADO_TURNO_LABELS, ESTADO_TURNO_DOT,
 } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import type { Turno, EstadoTurno } from '@/types/database'
+import type { Turno, EstadoTurno, TurnoRecurrente } from '@/types/database'
+import { DIAS_SEMANA } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
 
 interface TurnoDetalleModalProps {
@@ -47,6 +49,7 @@ function ModalShell({ children, onBackdropClick }: { children: React.ReactNode; 
 }
 
 export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, onEliminar }: TurnoDetalleModalProps) {
+  const router = useRouter()
   const paciente = turno.paciente
   const fecha = parseISO(turno.fecha_hora)
 
@@ -65,6 +68,69 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
   const [notaSesion, setNotaSesion] = useState('')
   const [realizandoExito, setRealizandoExito] = useState(false)
   const [notaFueGuardada, setNotaFueGuardada] = useState(false)
+
+  // Serie recurrente
+  const [serieData, setSerieData] = useState<TurnoRecurrente | null>(null)
+  const [editandoSerie, setEditandoSerie] = useState(false)
+  const [serieForm, setSerieForm] = useState({ diaSemana: 0, hora: '' })
+  const [loadingSerie, setLoadingSerie] = useState(false)
+  const [errorSerie, setErrorSerie] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!turno.serie_recurrente_id) return
+    const supabase = createClient()
+    supabase
+      .from('turnos_recurrentes')
+      .select('*')
+      .eq('id', turno.serie_recurrente_id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setSerieData(data as TurnoRecurrente)
+          setSerieForm({ diaSemana: data.dia_semana, hora: data.hora })
+        }
+      })
+  }, [turno.serie_recurrente_id])
+
+  async function confirmarCambioSerie() {
+    if (!serieData) return
+    setLoadingSerie(true)
+    setErrorSerie(null)
+    try {
+      const supabase = createClient()
+      const { crearSerieTurnos, generarFechasSerie } = await import('@/lib/recurrentes')
+
+      await supabase
+        .from('turnos_recurrentes')
+        .update({ dia_semana: serieForm.diaSemana, hora: serieForm.hora })
+        .eq('id', serieData.id)
+
+      await supabase
+        .from('turnos')
+        .delete()
+        .eq('serie_recurrente_id', serieData.id)
+        .in('estado', ['pendiente', 'confirmado'])
+        .gte('fecha_hora', new Date().toISOString())
+
+      const [yf, mf, df] = serieData.fecha_fin.split('-').map(Number)
+      const fechas = generarFechasSerie(serieForm.diaSemana, new Date(), new Date(yf, mf - 1, df))
+
+      if (fechas.length > 0) {
+        await crearSerieTurnos(
+          serieData.id, turno.terapeuta_id, turno.paciente_id,
+          fechas, serieForm.hora, turno.duracion_min, turno.monto, supabase
+        )
+      }
+
+      setSerieData({ ...serieData, dia_semana: serieForm.diaSemana, hora: serieForm.hora })
+      setEditandoSerie(false)
+      router.refresh()
+    } catch {
+      setErrorSerie('Error al actualizar la serie. Intentá de nuevo.')
+    } finally {
+      setLoadingSerie(false)
+    }
+  }
 
   async function guardarEdicion() {
     setLoading(true)
@@ -193,6 +259,11 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
               onChange={(e) => setEditForm((p) => ({ ...p, notas: e.target.value }))}
               rows={3} className="input-field resize-none" />
           </div>
+          {turno.serie_recurrente_id && (
+            <p className="text-xs text-gray-400">
+              Los cambios aplican solo a este turno. La serie continúa sin modificaciones.
+            </p>
+          )}
           <div className="flex gap-3 pt-1">
             <button onClick={() => setModo('ver')} className="btn-secondary flex-1 py-3">Cancelar</button>
             <button onClick={guardarEdicion} disabled={loading}
@@ -412,6 +483,79 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
           </div>
         )}
 
+        {/* Bloque turno fijo */}
+        {turno.serie_recurrente_id && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-primary">
+              <span className="text-base leading-none">↻</span>
+              <span>
+                Turno fijo — todos los{' '}
+                {serieData ? DIAS_SEMANA[serieData.dia_semana].toLowerCase() : '…'}
+                {serieData && (
+                  <> hasta el {format(new Date(serieData.fecha_fin + 'T12:00:00'), "d/MM/yyyy")}</>
+                )}
+              </span>
+            </div>
+
+            {!editandoSerie ? (
+              <button
+                type="button"
+                onClick={() => setEditandoSerie(true)}
+                className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+              >
+                Cambiar día y horario de la serie
+              </button>
+            ) : (
+              <div className="space-y-3 pt-1">
+                {errorSerie && (
+                  <p className="text-xs text-red-600">{errorSerie}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Día de semana</label>
+                    <select
+                      value={serieForm.diaSemana}
+                      onChange={(e) => setSerieForm((p) => ({ ...p, diaSemana: Number(e.target.value) }))}
+                      className="input-field text-sm"
+                    >
+                      {DIAS_SEMANA.map((d, i) => (
+                        <option key={i} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
+                    <input
+                      type="time"
+                      value={serieForm.hora}
+                      onChange={(e) => setSerieForm((p) => ({ ...p, hora: e.target.value }))}
+                      className="input-field text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEditandoSerie(false); setErrorSerie(null) }}
+                    disabled={loadingSerie}
+                    className="btn-secondary flex-1 py-2 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmarCambioSerie}
+                    disabled={loadingSerie}
+                    className={cn('btn-primary flex-1 py-2 text-xs', loadingSerie && 'opacity-70')}
+                  >
+                    {loadingSerie ? 'Actualizando...' : 'Confirmar cambio'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Toggle pagado */}
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
           <div>
@@ -452,6 +596,11 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
               </button>
             ))}
           </div>
+          {turno.serie_recurrente_id && (
+            <p className="text-xs text-gray-400 mt-2">
+              Los cambios aplican solo a este turno. La serie continúa sin modificaciones.
+            </p>
+          )}
         </div>
       </div>
 

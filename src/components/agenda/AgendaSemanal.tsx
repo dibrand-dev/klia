@@ -145,6 +145,9 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
                 <span className="truncate flex-1">
                   {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
                 </span>
+                {turno.serie_recurrente_id && (
+                  <span className="flex-shrink-0 text-[10px] opacity-60 leading-none" title="Turno fijo — serie recurrente">↻</span>
+                )}
                 {turno.pagado && (
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Pagado" />
                 )}
