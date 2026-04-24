@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { parseISO, format } from 'date-fns'
+import { parseISO, format, addMonths, addDays, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   cn, formatNombreCompleto, ESTADO_TURNO_COLORS,
@@ -12,7 +12,9 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import type { Turno, EstadoTurno, TurnoRecurrente } from '@/types/database'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
+import type { ConflictoDetallado } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
+import ConflictosPanel from './ConflictosPanel'
 
 interface TurnoDetalleModalProps {
   turno: Turno
@@ -76,6 +78,14 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
   const [loadingSerie, setLoadingSerie] = useState(false)
   const [errorSerie, setErrorSerie] = useState<string | null>(null)
 
+  // Renovación de serie
+  const [renovandoSerie, setRenovandoSerie] = useState(false)
+  const [renovacionExito, setRenovacionExito] = useState(false)
+  const [nuevaFechaFinStr, setNuevaFechaFinStr] = useState('')
+  const [conflictosRenovacion, setConflictosRenovacion] = useState<ConflictoDetallado[]>([])
+  const [fechasValidasRenovacion, setFechasValidasRenovacion] = useState<Date[]>([])
+  const [mostrandoConflictosRenovacion, setMostrandoConflictosRenovacion] = useState(false)
+
   useEffect(() => {
     if (!turno.serie_recurrente_id) return
     const supabase = createClient()
@@ -91,6 +101,61 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
         }
       })
   }, [turno.serie_recurrente_id])
+
+  async function doRenovarConFechas(fechas: Date[], finStr: string) {
+    if (!serieData) return
+    setRenovandoSerie(true)
+    try {
+      const { crearSerieTurnos } = await import('@/lib/recurrentes')
+      const supabase = createClient()
+      await supabase.from('turnos_recurrentes').update({ fecha_fin: finStr }).eq('id', serieData.id)
+      if (fechas.length > 0) {
+        await crearSerieTurnos(
+          serieData.id, turno.terapeuta_id, turno.paciente_id,
+          fechas, serieData.hora, turno.duracion_min, serieData.monto, supabase
+        )
+      }
+      setSerieData({ ...serieData, fecha_fin: finStr })
+      setNuevaFechaFinStr(finStr)
+      setMostrandoConflictosRenovacion(false)
+      setRenovacionExito(true)
+    } catch {
+      setErrorSerie('Error al renovar la serie. Intentá de nuevo.')
+    } finally {
+      setRenovandoSerie(false)
+    }
+  }
+
+  async function handleRenovarSerie() {
+    if (!serieData) return
+    setRenovandoSerie(true)
+    setErrorSerie(null)
+    try {
+      const { generarFechasSerie, detectarConflictosDetallados } = await import('@/lib/recurrentes')
+      const supabase = createClient()
+      const [yf, mf, df] = serieData.fecha_fin.split('-').map(Number)
+      const antiguaFin = new Date(yf, mf - 1, df)
+      const nuevaFin = addMonths(antiguaFin, 12)
+      const finStr = format(nuevaFin, 'yyyy-MM-dd')
+      const fechas = generarFechasSerie(serieData.dia_semana, addDays(antiguaFin, 1), nuevaFin)
+      const conf = await detectarConflictosDetallados(
+        turno.terapeuta_id, fechas, serieData.hora, turno.duracion_min, supabase, serieData.id
+      )
+      const validas = fechas.filter((f) => !conf.some((c) => c.fecha.getTime() === f.getTime()))
+      if (conf.length > 0) {
+        setConflictosRenovacion(conf)
+        setFechasValidasRenovacion(validas)
+        setNuevaFechaFinStr(finStr)
+        setMostrandoConflictosRenovacion(true)
+        setRenovandoSerie(false)
+        return
+      }
+      await doRenovarConFechas(fechas, finStr)
+    } catch {
+      setErrorSerie('Error al renovar la serie. Intentá de nuevo.')
+      setRenovandoSerie(false)
+    }
+  }
 
   async function confirmarCambioSerie() {
     if (!serieData) return
@@ -555,6 +620,43 @@ export default function TurnoDetalleModal({ turno, onClose, onTurnoActualizado, 
             )}
           </div>
         )}
+
+        {/* Aviso de renovación si vence en ≤30 días */}
+        {serieData && (() => {
+          const dias = differenceInDays(new Date(serieData.fecha_fin + 'T12:00:00'), new Date())
+          if (dias > 30 || dias < 0) return null
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+              {renovacionExito ? (
+                <p className="text-sm text-green-700 font-medium">
+                  ✓ Serie renovada hasta el {format(new Date(nuevaFechaFinStr + 'T12:00:00'), "d/MM/yyyy")}
+                </p>
+              ) : mostrandoConflictosRenovacion ? (
+                <ConflictosPanel
+                  conflictos={conflictosRenovacion}
+                  onOmitir={() => doRenovarConFechas(fechasValidasRenovacion, nuevaFechaFinStr)}
+                  onCancelar={() => setMostrandoConflictosRenovacion(false)}
+                  loading={renovandoSerie}
+                />
+              ) : (
+                <>
+                  <p className="text-xs font-semibold text-amber-800">
+                    ⚠️ Esta serie vence el {format(new Date(serieData.fecha_fin + 'T12:00:00'), "d/MM/yyyy")}.
+                  </p>
+                  {errorSerie && <p className="text-xs text-red-600">{errorSerie}</p>}
+                  <button
+                    type="button"
+                    onClick={handleRenovarSerie}
+                    disabled={renovandoSerie}
+                    className={cn('text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900 transition-colors', renovandoSerie && 'opacity-60')}
+                  >
+                    {renovandoSerie ? 'Renovando...' : 'Renovar por 12 meses más'}
+                  </button>
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Toggle pagado */}
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
