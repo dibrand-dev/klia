@@ -407,6 +407,10 @@ export type Database = {
         Args: { p_paciente_id: string }
         Returns: Interconsulta[]
       }
+      admin_get_profiles: {
+        Args: { p_search?: string | null }
+        Returns: ProfileWithLastSignIn[]
+      }
     }
     Enums: {
       estado_turno: 'cancelado' | 'confirmado' | 'no_asistio' | 'pendiente' | 'realizado'
@@ -439,4 +443,14 @@ export type Interconsulta = {
   especialidad: string | null
   telefono: string | null
   email: string | null
+}
+
+export type ProfileWithLastSignIn = {
+  id: string
+  nombre: string
+  apellido: string
+  email: string
+  especialidad: string | null
+  created_at: string
+  last_sign_in_at: string | null
 }

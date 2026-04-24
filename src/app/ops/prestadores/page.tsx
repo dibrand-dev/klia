@@ -14,18 +14,9 @@ export default async function PrestadoresPage({
   await requireAdminUser()
   const supabase = createClient()
 
-  let query = supabase
-    .from('profiles')
-    .select('id, nombre, apellido, email, especialidad, created_at')
-    .order('created_at', { ascending: false })
-
-  if (searchParams.q) {
-    query = query.or(
-      `nombre.ilike.%${searchParams.q}%,apellido.ilike.%${searchParams.q}%,email.ilike.%${searchParams.q}%`
-    )
-  }
-
-  const { data: prestadores } = await query
+  const { data: prestadores } = await supabase.rpc('admin_get_profiles', {
+    p_search: searchParams.q ?? null,
+  })
 
   return (
     <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1200px]">
@@ -81,6 +72,7 @@ export default async function PrestadoresPage({
                 <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Plan</th>
                 <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Estado</th>
                 <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Registro</th>
+                <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Último acceso</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -105,6 +97,11 @@ export default async function PrestadoresPage({
                   <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">
                     {format(parseISO(p.created_at), 'd MMM yyyy', { locale: es })}
                   </td>
+                  <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">
+                    {p.last_sign_in_at
+                      ? format(parseISO(p.last_sign_in_at), 'dd/MM/yy HH:mm:ss')
+                      : '—'}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/ops/prestadores/${p.id}`}
@@ -117,7 +114,7 @@ export default async function PrestadoresPage({
               ))}
               {(prestadores ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-16 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">search_off</span>
                     <p>No se encontraron prestadores.</p>
                   </td>
