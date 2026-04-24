@@ -158,6 +158,7 @@ export type Database = {
           pagado: boolean
           motivo_cancelacion: string | null
           recordatorio_enviado: boolean
+          serie_recurrente_id: string | null
           created_at: string
           updated_at: string
         }
@@ -174,6 +175,7 @@ export type Database = {
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
+          serie_recurrente_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -190,6 +192,7 @@ export type Database = {
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
+          serie_recurrente_id?: string | null
           created_at?: string
           updated_at?: string
         }
