@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { ProfileWithLastSignIn } from '@/types/database'
+import SlideOver from '@/components/ui/SlideOver'
 
 type Row = ProfileWithLastSignIn & { paused: boolean }
 
@@ -75,60 +76,52 @@ function RowMenu({
   )
 }
 
-function DeleteModal({
+function DeletePanel({
   prestador,
   loading,
   onCancel,
   onConfirm,
 }: {
-  prestador: Row
+  prestador: Row | null
   loading: boolean
   onCancel: () => void
   onConfirm: () => void
 }) {
-  useEffect(() => {
-    function handler(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [onCancel])
-
   return (
-    <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
+    <SlideOver
+      open={prestador !== null}
+      onClose={onCancel}
+      title="Eliminar prestador"
+      width="sm"
     >
-      <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-red-500 text-2xl leading-none">⚠️</span>
-          <h2 className="text-lg font-bold text-on-surface">Eliminar prestador</h2>
+      {prestador && (
+        <div className="space-y-4">
+          <p className="text-sm text-on-surface-variant">
+            Estás a punto de eliminar a{' '}
+            <span className="font-semibold text-on-surface">{prestador.nombre} {prestador.apellido}</span>{' '}
+            y TODA su información:
+          </p>
+          <ul className="text-sm text-on-surface-variant space-y-1">
+            {['Pacientes', 'Turnos', 'Historial clínico', 'Notas de sesión', 'Datos de facturación'].map((item) => (
+              <li key={item}>· {item}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-semibold text-red-600">Esta acción no se puede deshacer.</p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={onCancel} disabled={loading} className="btn-secondary flex-1 py-2.5">
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-70"
+            >
+              {loading ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
         </div>
-        <p className="text-sm text-on-surface-variant mb-3">
-          Estás a punto de eliminar a{' '}
-          <span className="font-semibold text-on-surface">{prestador.nombre} {prestador.apellido}</span>{' '}
-          y TODA su información:
-        </p>
-        <ul className="text-sm text-on-surface-variant mb-4 space-y-1">
-          {['Pacientes', 'Turnos', 'Historial clínico', 'Notas de sesión', 'Datos de facturación'].map((item) => (
-            <li key={item}>· {item}</li>
-          ))}
-        </ul>
-        <p className="text-sm font-semibold text-red-600 mb-6">Esta acción no se puede deshacer.</p>
-        <div className="flex justify-end gap-3">
-          <button onClick={onCancel} disabled={loading} className="btn-secondary px-4 py-2">
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-70"
-          >
-            {loading ? 'Eliminando...' : 'Eliminar'}
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </SlideOver>
   )
 }
 
@@ -190,14 +183,12 @@ export default function PrestadoresTable({ prestadores }: { prestadores: Profile
     <>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
-      {deleteTarget && (
-        <DeleteModal
-          prestador={deleteTarget}
-          loading={deleting}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={handleDelete}
-        />
-      )}
+      <DeletePanel
+        prestador={deleteTarget}
+        loading={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

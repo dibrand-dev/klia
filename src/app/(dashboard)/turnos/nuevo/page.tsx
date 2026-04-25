@@ -19,22 +19,26 @@ export default async function NuevoTurnoPage() {
     .order('apellido')
 
   return (
-    <div className="p-4 md:pt-8 max-w-lg mx-auto">
-      <div className="flex items-center gap-3 mb-5">
-        <Link href="/agenda" className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Nuevo turno</h1>
-          <p className="text-sm text-gray-500">Completá los datos del turno</p>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/agenda" className="p-2 -ml-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Nuevo turno</h1>
+            <p className="text-sm text-gray-500">Completá los datos del turno</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+          <Suspense>
+            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={user.id} />
+          </Suspense>
         </div>
       </div>
-
-      <Suspense>
-        <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={user.id} />
-      </Suspense>
     </div>
   )
 }
