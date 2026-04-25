@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback, Suspense } from 'react'
 import {
   startOfWeek, endOfWeek, eachDayOfInterval,
   addWeeks, subWeeks, addDays, subDays,
@@ -14,7 +13,8 @@ import {
   formatNombreCompleto,
 } from '@/lib/utils'
 import type { Turno, Paciente } from '@/types/database'
-import NuevoTurnoModal from './NuevoTurnoModal'
+import SlideOver from '@/components/ui/SlideOver'
+import NuevoTurnoPageForm from './NuevoTurnoPageForm'
 import TurnoDetalleModal from './TurnoDetalleModal'
 
 const HORA_INICIO = 7
@@ -37,18 +37,16 @@ function getHeight(min: number) {
 }
 
 export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId }: AgendaSemanalProps) {
-  const router = useRouter()
   const [semanaActual, setSemanaActual] = useState(new Date())
   const [diaActual, setDiaActual] = useState(new Date())
   const [turnos, setTurnos] = useState<Turno[]>(turnosIniciales)
-  const [modalNuevo, setModalNuevo] = useState<{ fecha: Date } | null>(null)
+  const [nuevoFecha, setNuevoFecha] = useState<Date>(new Date())
+  const [nuevoOpen, setNuevoOpen] = useState(false)
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null)
 
-  // Mobile: navega a la página de nuevo turno con la fecha/hora preseleccionada
-  function abrirNuevoTurnoMobile(fecha: Date) {
-    const fechaStr = format(fecha, 'yyyy-MM-dd')
-    const horaStr = format(fecha, 'HH:mm')
-    router.push(`/turnos/nuevo?fecha=${fechaStr}&hora=${horaStr}`)
+  function abrirNuevoTurno(fecha: Date) {
+    setNuevoFecha(fecha)
+    setNuevoOpen(true)
   }
 
   const inicioSemana = startOfWeek(semanaActual, { weekStartsOn: 1 })
@@ -201,7 +199,7 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
           </button>
 
           <button
-            onClick={() => abrirNuevoTurnoMobile(diaActual)}
+            onClick={() => abrirNuevoTurno(diaActual)}
             className="btn-primary flex items-center gap-1 px-3 py-2 text-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -243,7 +241,7 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
                 </div>
               ))}
             </div>
-            <ColumnaHoras dia={diaActual} onCeldaClick={abrirNuevoTurnoMobile} />
+            <ColumnaHoras dia={diaActual} onCeldaClick={abrirNuevoTurno} />
           </div>
         </div>
       </div>
@@ -277,7 +275,7 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
                 </svg>
               </button>
             </div>
-            <button onClick={() => setModalNuevo({ fecha: new Date() })} className="btn-primary flex items-center gap-2">
+            <button onClick={() => abrirNuevoTurno(new Date())} className="btn-primary flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -324,7 +322,7 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
                       {format(dia, 'd')}
                     </span>
                   </div>
-                  <ColumnaHoras dia={dia} onCeldaClick={(f) => setModalNuevo({ fecha: f })} />
+                  <ColumnaHoras dia={dia} onCeldaClick={abrirNuevoTurno} />
                 </div>
               )
             })}
@@ -332,16 +330,23 @@ export default function AgendaSemanal({ turnosIniciales, pacientes, terapeutaId 
         </div>
       </div>
 
-      {/* ══ Modales compartidos ══ */}
-      {modalNuevo && (
-        <NuevoTurnoModal
-          fechaInicial={modalNuevo.fecha}
-          pacientes={pacientes}
-          terapeutaId={terapeutaId}
-          onClose={() => setModalNuevo(null)}
-          onCreado={(t) => { setTurnos((prev) => [...prev, t]); setModalNuevo(null) }}
-        />
-      )}
+      {/* ══ Slide-overs compartidos ══ */}
+      <SlideOver
+        open={nuevoOpen}
+        onClose={() => setNuevoOpen(false)}
+        title="Nuevo turno"
+      >
+        <Suspense fallback={null}>
+          <NuevoTurnoPageForm
+            key={nuevoFecha.toISOString()}
+            pacientes={pacientes}
+            terapeutaId={terapeutaId}
+            fechaInicial={nuevoFecha}
+            onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
+            onClose={() => setNuevoOpen(false)}
+          />
+        </Suspense>
+      </SlideOver>
 
       {turnoSeleccionado && (
         <TurnoDetalleModal
