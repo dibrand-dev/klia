@@ -118,8 +118,9 @@ export default function NuevoTurnoPageForm({
         }
 
         await doCrearSerie(fechas)
-      } catch {
-        setError('Error al crear la serie. Intentá de nuevo.')
+      } catch (e) {
+        console.error('[crear serie]', e)
+        setError(e instanceof Error ? e.message : 'Error al crear la serie. Intentá de nuevo.')
         setLoading(false)
       }
       return
@@ -159,8 +160,9 @@ export default function NuevoTurnoPageForm({
     setLoading(true)
     try {
       await doCrearSerie(fechasValidas)
-    } catch {
-      setError('Error al crear la serie. Intentá de nuevo.')
+    } catch (e) {
+      console.error('[omitir conflictos]', e)
+      setError(e instanceof Error ? e.message : 'Error al crear la serie. Intentá de nuevo.')
       setLoading(false)
     }
   }

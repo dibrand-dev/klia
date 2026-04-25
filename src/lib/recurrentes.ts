@@ -138,7 +138,7 @@ export async function crearRegistroSerie(
     .select('id')
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(`[turnos_recurrentes] ${error.message} | code: ${error.code} | details: ${error.details} | hint: ${error.hint}`)
   return data.id
 }
 
