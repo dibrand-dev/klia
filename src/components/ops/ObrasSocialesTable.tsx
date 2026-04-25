@@ -5,11 +5,26 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraSocial } from '@/types/database'
 
-export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
+type Props = {
+  obras: ObraSocial[]
+  pendientes: ObraSocial[]
+  showPendientes?: boolean
+}
+
+export default function ObrasSocialesTable({ obras, pendientes, showPendientes = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
+
+  // — Activas: edición inline
+  const [editando, setEditando] = useState<string | null>(null)
+  const [editNombre, setEditNombre] = useState('')
+  const [editPlan, setEditPlan] = useState('')
+
+  // — Pendientes: normalización
   const [normalizando, setNormalizando] = useState<string | null>(null)
   const [nombreNorm, setNombreNorm] = useState('')
+
+  // ─── helpers ───────────────────────────────────────────────
 
   async function actualizarPacientes(nombreOriginal: string, nombreFinal: string) {
     const supabase = createClient()
@@ -18,6 +33,31 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
       p_nombre_final: nombreFinal,
     })
   }
+
+  // ─── Activas: guardar edición ───────────────────────────────
+
+  async function guardarEdicion(obra: ObraSocial) {
+    const nombre = editNombre.trim()
+    const plan = editPlan.trim() || null
+    if (!nombre) return
+    setLoading(obra.id)
+    const supabase = createClient()
+
+    await supabase
+      .from('obras_sociales')
+      .update({ nombre, plan })
+      .eq('id', obra.id)
+
+    if (nombre.toLowerCase() !== obra.nombre.toLowerCase()) {
+      await actualizarPacientes(obra.nombre, nombre)
+    }
+
+    setEditando(null)
+    router.refresh()
+    setLoading(null)
+  }
+
+  // ─── Pendientes: validar ────────────────────────────────────
 
   async function validar(obra: ObraSocial) {
     setLoading(obra.id)
@@ -69,14 +109,108 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
     setLoading(null)
   }
 
-  if (obras.length === 0) {
+  // ─── Activas ────────────────────────────────────────────────
+
+  if (!showPendientes) {
+    if (obras.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant">
+          <span className="material-symbols-outlined text-4xl mb-3 opacity-40">health_and_safety</span>
+          <p className="text-sm font-medium">No hay obras sociales activas todavía</p>
+        </div>
+      )
+    }
+
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
-        <span className="material-symbols-outlined text-4xl mb-3 opacity-40">check_circle</span>
-        <p className="text-sm font-medium">No hay obras sociales pendientes de validación</p>
-      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-outline-variant/20 bg-surface-container-lowest">
+            <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Nombre</th>
+            <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Plan</th>
+            <th className="text-left px-4 py-3 font-semibold text-on-surface-variant">Usos</th>
+            <th className="px-6 py-3 w-32" />
+          </tr>
+        </thead>
+        <tbody>
+          {obras.map((obra) => (
+            <tr key={obra.id} className="border-b border-outline-variant/10 last:border-0">
+              {editando === obra.id ? (
+                <>
+                  <td className="px-6 py-3">
+                    <input
+                      type="text"
+                      value={editNombre}
+                      onChange={(e) => setEditNombre(e.target.value)}
+                      className="input-field text-sm w-full"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') guardarEdicion(obra)
+                        if (e.key === 'Escape') setEditando(null)
+                      }}
+                    />
+                  </td>
+                  <td className="px-6 py-3">
+                    <input
+                      type="text"
+                      value={editPlan}
+                      onChange={(e) => setEditPlan(e.target.value)}
+                      placeholder="Ej: Plata, 310, Gold..."
+                      className="input-field text-sm w-full"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') guardarEdicion(obra)
+                        if (e.key === 'Escape') setEditando(null)
+                      }}
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-on-surface-variant">{obra.veces_ingresada}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        onClick={() => guardarEdicion(obra)}
+                        disabled={!editNombre.trim() || loading === obra.id}
+                        className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        onClick={() => setEditando(null)}
+                        className="btn-secondary text-xs px-3 py-1.5"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td className="px-6 py-4 font-medium text-on-surface">{obra.nombre}</td>
+                  <td className="px-6 py-4 text-on-surface-variant">{obra.plan || '—'}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{obra.veces_ingresada}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          setEditando(obra.id)
+                          setEditNombre(obra.nombre)
+                          setEditPlan(obra.plan ?? '')
+                        }}
+                        disabled={loading === obra.id}
+                        className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     )
   }
+
+  // ─── Pendientes ─────────────────────────────────────────────
 
   return (
     <table className="w-full text-sm">
@@ -89,7 +223,7 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
         </tr>
       </thead>
       <tbody>
-        {obras.map((obra) => (
+        {pendientes.map((obra) => (
           <tr key={obra.id} className="border-b border-outline-variant/10 last:border-0">
             <td className="px-6 py-4 font-medium text-on-surface">{obra.nombre}</td>
             <td className="px-6 py-4 text-on-surface-variant">{obra.plan || '—'}</td>
