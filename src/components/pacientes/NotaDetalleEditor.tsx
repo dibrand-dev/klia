@@ -17,7 +17,7 @@ function limpiarMarkdown(texto: string): string {
     .trim()
 }
 
-export default function NotaDetalleEditor({ nota, pacienteId }: { nota: NotaClinica; pacienteId: string }) {
+export default function NotaDetalleEditor({ nota, pacienteId, onSaved }: { nota: NotaClinica; pacienteId: string; onSaved?: () => void }) {
   const router = useRouter()
   const [editando, setEditando] = useState(false)
   const [contenido, setContenido] = useState(nota.contenido)
@@ -40,6 +40,7 @@ export default function NotaDetalleEditor({ nota, pacienteId }: { nota: NotaClin
     setEditando(false)
     setLoading(false)
     router.refresh()
+    onSaved?.()
   }
 
   return (
