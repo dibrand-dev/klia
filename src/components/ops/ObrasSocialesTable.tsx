@@ -11,10 +11,25 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
   const [normalizando, setNormalizando] = useState<string | null>(null)
   const [nombreNorm, setNombreNorm] = useState('')
 
+  async function actualizarPacientes(nombreOriginal: string, nombreFinal: string) {
+    const supabase = createClient()
+    await supabase
+      .from('pacientes')
+      .update({
+        obra_social: nombreFinal,
+        os_pendiente_validacion: false,
+        os_nombre_libre: null,
+        os_plan_libre: null,
+      })
+      .ilike('os_nombre_libre', nombreOriginal)
+      .eq('os_pendiente_validacion', true)
+  }
+
   async function validar(obra: ObraSocial) {
     setLoading(obra.id)
     const supabase = createClient()
     await supabase.from('obras_sociales').update({ validada: true }).eq('id', obra.id)
+    await actualizarPacientes(obra.nombre, obra.nombre)
     router.refresh()
     setLoading(null)
   }
@@ -25,7 +40,6 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
     setLoading(obra.id)
     const supabase = createClient()
 
-    // Check if a validated obra social with this name already exists
     const { data: existing } = await supabase
       .from('obras_sociales')
       .select('id, veces_ingresada')
@@ -34,20 +48,19 @@ export default function ObrasSocialesTable({ obras }: { obras: ObraSocial[] }) {
       .maybeSingle()
 
     if (existing) {
-      // Merge: add counts into existing, delete this one
       await supabase
         .from('obras_sociales')
         .update({ veces_ingresada: existing.veces_ingresada + obra.veces_ingresada })
         .eq('id', existing.id)
       await supabase.from('obras_sociales').delete().eq('id', obra.id)
     } else {
-      // Rename and validate
       await supabase
         .from('obras_sociales')
         .update({ nombre, validada: true })
         .eq('id', obra.id)
     }
 
+    await actualizarPacientes(obra.nombre, nombre)
     setNormalizando(null)
     setNombreNorm('')
     router.refresh()
