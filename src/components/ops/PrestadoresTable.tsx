@@ -219,9 +219,11 @@ export default function PrestadoresTable({ prestadores }: { prestadores: Profile
                   <span className="text-xs px-2.5 py-1 rounded-full bg-surface-container font-medium text-on-surface-variant">—</span>
                 </td>
                 <td className="px-6 py-4">
-                  {p.paused
-                    ? <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 font-semibold">Pausado</span>
-                    : <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 font-semibold">Activo</span>
+                  {!p.email_confirmed_at
+                    ? <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">Pendiente</span>
+                    : p.paused
+                      ? <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 font-semibold">Pausado</span>
+                      : <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 font-semibold">Activo</span>
                   }
                 </td>
                 <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">

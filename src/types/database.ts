@@ -607,4 +607,5 @@ export type ProfileWithLastSignIn = {
   especialidad: string | null
   created_at: string
   last_sign_in_at: string | null
+  email_confirmed_at: string | null
 }
