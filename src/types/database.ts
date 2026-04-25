@@ -67,6 +67,9 @@ export type Database = {
           codigo_diagnostico: string | null
           gravedad_estimada: string | null
           fecha_inicio_tratamiento: string | null
+          os_nombre_libre: string | null
+          os_plan_libre: string | null
+          os_pendiente_validacion: boolean
           created_at: string
           updated_at: string
         }
@@ -99,6 +102,9 @@ export type Database = {
           codigo_diagnostico?: string | null
           gravedad_estimada?: string | null
           fecha_inicio_tratamiento?: string | null
+          os_nombre_libre?: string | null
+          os_plan_libre?: string | null
+          os_pendiente_validacion?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -131,6 +137,9 @@ export type Database = {
           codigo_diagnostico?: string | null
           gravedad_estimada?: string | null
           fecha_inicio_tratamiento?: string | null
+          os_nombre_libre?: string | null
+          os_plan_libre?: string | null
+          os_pendiente_validacion?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -425,6 +434,35 @@ export type Database = {
         }
         Relationships: []
       }
+      obras_sociales: {
+        Row: {
+          id: string
+          nombre: string
+          plan: string | null
+          validada: boolean
+          veces_ingresada: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          plan?: string | null
+          validada?: boolean
+          veces_ingresada?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          plan?: string | null
+          validada?: boolean
+          veces_ingresada?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       configuracion: {
         Row: {
           clave: string
@@ -541,6 +579,7 @@ export type MedicacionPaciente = Database['public']['Tables']['medicacion_pacien
 export type AdminUser = Database['public']['Tables']['admin_users']['Row']
 export type Configuracion = Database['public']['Tables']['configuracion']['Row']
 export type TurnoRecurrente = Database['public']['Tables']['turnos_recurrentes']['Row']
+export type ObraSocial = Database['public']['Tables']['obras_sociales']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
 export type PlanFuncionalidad = Database['public']['Tables']['plan_funcionalidades']['Row']
 
@@ -568,4 +607,5 @@ export type ProfileWithLastSignIn = {
   especialidad: string | null
   created_at: string
   last_sign_in_at: string | null
+  email_confirmed_at: string | null
 }

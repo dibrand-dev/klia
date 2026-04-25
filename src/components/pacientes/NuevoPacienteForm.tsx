@@ -26,6 +26,8 @@ const EMPTY_FORM = {
   contacto_emergencia_telefono: '',
   obra_social: '',
   plan_obra_social: '',
+  os_nombre_libre: '',
+  os_plan_libre: '',
   numero_afiliado: '',
   numero_autorizacion: '',
   modalidad_tratamiento: '',
@@ -96,6 +98,16 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  function handleObraChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setForm((prev) => ({
+      ...prev,
+      obra_social: e.target.value,
+      plan_obra_social: '',
+      os_nombre_libre: '',
+      os_plan_libre: '',
+    }))
+  }
+
   function addMedicacion() {
     setMedicaciones((prev) => [...prev, { ...EMPTY_MED }])
   }
@@ -116,6 +128,7 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
     setLoading(true)
     setError(null)
     const supabase = createClient()
+    const esOtra = form.obra_social === 'Otra'
     const { data: newPaciente, error: dbError } = await supabase
       .from('pacientes')
       .insert({
@@ -133,8 +146,11 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
         ocupacion: form.ocupacion || null,
         contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
         contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-        obra_social: form.obra_social || null,
-        plan_obra_social: form.plan_obra_social || null,
+        obra_social: esOtra ? 'Otra' : (form.obra_social || null),
+        plan_obra_social: esOtra ? null : (form.plan_obra_social || null),
+        os_nombre_libre: esOtra ? (form.os_nombre_libre.trim() || null) : null,
+        os_plan_libre: esOtra ? (form.os_plan_libre.trim() || null) : null,
+        os_pendiente_validacion: esOtra,
         numero_afiliado: form.numero_afiliado || null,
         numero_autorizacion: form.numero_autorizacion || null,
         modalidad_tratamiento: form.modalidad_tratamiento || null,
@@ -155,6 +171,21 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
       setLoading(false)
       return
     }
+
+    if (esOtra && form.os_nombre_libre.trim()) {
+      const nombre = form.os_nombre_libre.trim()
+      const { data: existing } = await supabase
+        .from('obras_sociales')
+        .select('id, veces_ingresada')
+        .ilike('nombre', nombre)
+        .maybeSingle()
+      if (existing) {
+        await supabase.from('obras_sociales').update({ veces_ingresada: (existing.veces_ingresada ?? 1) + 1 }).eq('id', existing.id)
+      } else {
+        await supabase.from('obras_sociales').insert({ nombre, plan: form.os_plan_libre.trim() || null, validada: false, veces_ingresada: 1 })
+      }
+    }
+
 
     const medsFiltradas = medicaciones.filter((m) => m.farmaco.trim())
     if (medsFiltradas.length > 0) {
@@ -210,9 +241,6 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
       {/* Datalists */}
       <datalist id="npf-paises">
         {PAISES.map((p) => <option key={p} value={p} />)}
-      </datalist>
-      <datalist id="npf-obras-sociales">
-        {OBRAS_SOCIALES_AR.map((o) => <option key={o} value={o} />)}
       </datalist>
       <datalist id="npf-planes">
         {planesDisponibles.map((p) => <option key={p} value={p} />)}
@@ -340,30 +368,29 @@ export default function NuevoPacienteForm({ terapeutaId }: { terapeutaId: string
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className={labelCls}>Obra Social / Prepaga</label>
-              <input
-                name="obra_social"
-                type="text"
-                value={form.obra_social}
-                onChange={handleChange}
-                placeholder="OSDE, Swiss Medical..."
-                list="npf-obras-sociales"
-                className={inputCls}
-                autoComplete="off"
-              />
+              <select name="obra_social" value={form.obra_social} onChange={handleObraChange} className={inputCls}>
+                <option value="">Sin obra social</option>
+                {OBRAS_SOCIALES_AR.map((o) => <option key={o} value={o}>{o}</option>)}
+                <option value="Otra">Otra (no figura en la lista)</option>
+              </select>
             </div>
-            <div>
-              <label className={labelCls}>Plan</label>
-              <input
-                name="plan_obra_social"
-                type="text"
-                value={form.plan_obra_social}
-                onChange={handleChange}
-                placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'}
-                list="npf-planes"
-                className={inputCls}
-                autoComplete="off"
-              />
-            </div>
+            {form.obra_social === 'Otra' ? (
+              <>
+                <div>
+                  <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
+                  <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
+                  <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Ej: Plan 310, Básico..." className={inputCls} />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className={labelCls}>Plan</label>
+                <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="npf-planes" className={inputCls} autoComplete="off" />
+              </div>
+            )}
             <div>
               <label className={labelCls}>N° de Afiliado</label>
               <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className={inputCls} />

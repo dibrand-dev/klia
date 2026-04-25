@@ -78,6 +78,8 @@ function buildForm(p: Paciente) {
     contacto_emergencia_telefono: p.contacto_emergencia_telefono ?? '',
     obra_social: p.obra_social ?? '',
     plan_obra_social: p.plan_obra_social ?? '',
+    os_nombre_libre: p.os_nombre_libre ?? '',
+    os_plan_libre: p.os_plan_libre ?? '',
     numero_afiliado: p.numero_afiliado ?? '',
     numero_autorizacion: p.numero_autorizacion ?? '',
     modalidad_tratamiento: p.modalidad_tratamiento ?? '',
@@ -142,6 +144,17 @@ export default function PacienteDetalle({
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  function handleObraChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setForm((prev) => ({
+      ...prev,
+      obra_social: e.target.value,
+      plan_obra_social: '',
+      os_nombre_libre: '',
+      os_plan_libre: '',
+    }))
+  }
+
+
   async function handleToggleActivo(newValue: boolean) {
     setActivo(newValue)
     if (!newValue && paciente.activo) {
@@ -189,8 +202,11 @@ export default function PacienteDetalle({
         ocupacion: form.ocupacion || null,
         contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
         contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-        obra_social: form.obra_social || null,
-        plan_obra_social: form.plan_obra_social || null,
+        obra_social: form.obra_social === 'Otra' ? 'Otra' : (form.obra_social || null),
+        plan_obra_social: form.obra_social === 'Otra' ? null : (form.plan_obra_social || null),
+        os_nombre_libre: form.obra_social === 'Otra' ? (form.os_nombre_libre.trim() || null) : null,
+        os_plan_libre: form.obra_social === 'Otra' ? (form.os_plan_libre.trim() || null) : null,
+        os_pendiente_validacion: form.obra_social === 'Otra',
         numero_afiliado: form.numero_afiliado || null,
         numero_autorizacion: form.numero_autorizacion || null,
         modalidad_tratamiento: form.modalidad_tratamiento || null,
@@ -208,6 +224,21 @@ export default function PacienteDetalle({
       setLoading(false)
       return
     }
+
+    if (form.obra_social === 'Otra' && form.os_nombre_libre.trim()) {
+      const nombre = form.os_nombre_libre.trim()
+      const { data: existing } = await supabase
+        .from('obras_sociales')
+        .select('id, veces_ingresada')
+        .ilike('nombre', nombre)
+        .maybeSingle()
+      if (existing) {
+        await supabase.from('obras_sociales').update({ veces_ingresada: (existing.veces_ingresada ?? 1) + 1 }).eq('id', existing.id)
+      } else {
+        await supabase.from('obras_sociales').insert({ nombre, plan: form.os_plan_libre.trim() || null, validada: false, veces_ingresada: 1 })
+      }
+    }
+
 
     // Si el paciente pasó de activo a inactivo, liberar series y turnos futuros
     if (!activo && paciente.activo) {
@@ -271,9 +302,6 @@ export default function PacienteDetalle({
       <>
         <datalist id="pd-paises">
           {PAISES.map((p) => <option key={p} value={p} />)}
-        </datalist>
-        <datalist id="pd-obras-sociales">
-          {OBRAS_SOCIALES_AR.map((o) => <option key={o} value={o} />)}
         </datalist>
         <datalist id="pd-planes">
           {planesDisponibles.map((p) => <option key={p} value={p} />)}
@@ -372,12 +400,29 @@ export default function PacienteDetalle({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <div>
               <label className={labelCls}>Obra Social / Prepaga</label>
-              <input name="obra_social" type="text" value={form.obra_social} onChange={handleChange} placeholder="OSDE, Swiss Medical..." list="pd-obras-sociales" autoComplete="off" className={inputCls} />
+              <select name="obra_social" value={form.obra_social} onChange={handleObraChange} className={inputCls}>
+                <option value="">Sin obra social</option>
+                {OBRAS_SOCIALES_AR.map((o) => <option key={o} value={o}>{o}</option>)}
+                <option value="Otra">Otra (no figura en la lista)</option>
+              </select>
             </div>
-            <div>
-              <label className={labelCls}>Plan</label>
-              <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="pd-planes" autoComplete="off" className={inputCls} />
-            </div>
+            {form.obra_social === 'Otra' ? (
+              <>
+                <div>
+                  <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
+                  <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
+                  <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Ej: Plan 310, Básico..." className={inputCls} />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className={labelCls}>Plan</label>
+                <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="pd-planes" autoComplete="off" className={inputCls} />
+              </div>
+            )}
             <div>
               <label className={labelCls}>N° de Afiliado</label>
               <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className={inputCls} />
@@ -626,8 +671,10 @@ export default function PacienteDetalle({
       <KlinCard title="Obra social">
         <Kv
           rows={[
-            ['Obra social', paciente.obra_social || '—'],
-            ['Plan', paciente.plan_obra_social || '—'],
+            ['Obra social', paciente.os_pendiente_validacion && paciente.os_nombre_libre
+              ? <span className="flex items-center gap-1.5">{paciente.os_nombre_libre}<span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">⚠️ pendiente validación</span></span>
+              : (paciente.obra_social || '—')],
+            ['Plan', (paciente.os_pendiente_validacion ? paciente.os_plan_libre : paciente.plan_obra_social) || '—'],
             ['N° afiliado', paciente.numero_afiliado || '—'],
             ['Autorización', paciente.numero_autorizacion || '—'],
           ]}
