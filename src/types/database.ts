@@ -10,6 +10,14 @@ export type Database = {
           matricula: string | null
           especialidad: string | null
           telefono: string | null
+          plan: 'esencial' | 'profesional' | 'premium'
+          estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
+          trial_inicio: string
+          trial_fin: string
+          suscripcion_inicio: string | null
+          suscripcion_fin: string | null
+          mp_subscription_id: string | null
+          plan_elegido_registro: string | null
           created_at: string
           updated_at: string
         }
@@ -21,6 +29,14 @@ export type Database = {
           matricula?: string | null
           especialidad?: string | null
           telefono?: string | null
+          plan?: 'esencial' | 'profesional' | 'premium'
+          estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
+          trial_inicio?: string
+          trial_fin?: string
+          suscripcion_inicio?: string | null
+          suscripcion_fin?: string | null
+          mp_subscription_id?: string | null
+          plan_elegido_registro?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -32,6 +48,14 @@ export type Database = {
           matricula?: string | null
           especialidad?: string | null
           telefono?: string | null
+          plan?: 'esencial' | 'profesional' | 'premium'
+          estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
+          trial_inicio?: string
+          trial_fin?: string
+          suscripcion_inicio?: string | null
+          suscripcion_fin?: string | null
+          mp_subscription_id?: string | null
+          plan_elegido_registro?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -612,4 +636,8 @@ export type ProfileWithLastSignIn = {
   created_at: string
   last_sign_in_at: string | null
   email_confirmed_at: string | null
+  plan: 'esencial' | 'profesional' | 'premium'
+  estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
+  trial_fin: string
+  suscripcion_fin: string | null
 }
