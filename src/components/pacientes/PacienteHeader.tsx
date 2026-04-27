@@ -166,12 +166,12 @@ export default function PacienteHeader({
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Link
-            href="/turnos/nuevo"
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('openNuevoTurno', { detail: { pacienteId: paciente.id } }))}
             className="flex-1 md:flex-none px-5 py-2.5 bg-primary-fixed text-on-primary-fixed rounded-lg font-bold text-sm hover:bg-secondary-fixed transition-colors text-center"
           >
             Nueva sesión
-          </Link>
+          </button>
           <Link
             href={`/pacientes/${paciente.id}/historial/nueva`}
             className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary-container transition-colors text-center"

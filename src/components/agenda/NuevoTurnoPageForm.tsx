@@ -24,6 +24,7 @@ interface NuevoTurnoPageFormProps {
   pacientes: Paciente[]
   terapeutaId: string
   fechaInicial?: Date
+  pacienteIdInicial?: string
   onCreado?: (turno: Turno) => void
   onClose?: () => void
 }
@@ -34,7 +35,7 @@ function diaDeFecha(fechaStr: string): number {
 }
 
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, onCreado, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, onCreado, onClose,
 }: NuevoTurnoPageFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -47,7 +48,7 @@ export default function NuevoTurnoPageForm({
     : (searchParams.get('hora') ?? '09:00')
 
   const [form, setForm] = useState({
-    paciente_id: '',
+    paciente_id: pacienteIdInicial ?? '',
     fecha: fechaParam,
     hora: horaParam,
     duracion_min: 50,

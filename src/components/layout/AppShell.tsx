@@ -38,6 +38,7 @@ export default function AppShell({
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [nuevoTurnoOpen, setNuevoTurnoOpen] = useState(false)
+  const [nuevoPacienteId, setNuevoPacienteId] = useState<string | undefined>(undefined)
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [pacientesCargados, setPacientesCargados] = useState(false)
 
@@ -53,7 +54,7 @@ export default function AppShell({
     setMobileOpen(false)
   }, [pathname])
 
-  async function abrirNuevoTurno() {
+  async function abrirNuevoTurno(pacienteId?: string) {
     if (!pacientesCargados && profile) {
       const supabase = createClient()
       const { data } = await supabase
@@ -65,8 +66,19 @@ export default function AppShell({
       setPacientes(data ?? [])
       setPacientesCargados(true)
     }
+    setNuevoPacienteId(pacienteId)
     setNuevoTurnoOpen(true)
   }
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const pacienteId = (e as CustomEvent<{ pacienteId?: string }>).detail?.pacienteId
+      abrirNuevoTurno(pacienteId)
+    }
+    window.addEventListener('openNuevoTurno', handler)
+    return () => window.removeEventListener('openNuevoTurno', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pacientesCargados, profile])
 
   return (
     <>
@@ -116,7 +128,7 @@ export default function AppShell({
 
       {/* Mobile FAB */}
       <button
-        onClick={abrirNuevoTurno}
+        onClick={() => abrirNuevoTurno()}
         className="fixed bottom-8 right-8 h-14 w-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 md:hidden"
         aria-label="Nueva sesión"
       >
@@ -131,9 +143,10 @@ export default function AppShell({
       >
         <Suspense fallback={null}>
           <NuevoTurnoPageForm
-            key={nuevoTurnoOpen ? 'open' : 'closed'}
+            key={nuevoTurnoOpen ? `open-${nuevoPacienteId ?? ''}` : 'closed'}
             pacientes={pacientes}
             terapeutaId={profile?.id ?? ''}
+            pacienteIdInicial={nuevoPacienteId}
             onCreado={() => { setNuevoTurnoOpen(false); router.refresh() }}
             onClose={() => setNuevoTurnoOpen(false)}
           />
