@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types/database'
+import SidebarUserCard from '@/components/ui/SidebarUserCard'
 
 const NAV_ITEMS = [
   { href: '/agenda', label: 'Agenda', icon: 'calendar_today' },
@@ -48,19 +49,11 @@ export default function NavigationDrawer({ profile }: { profile: Profile | null 
       </div>
 
       {/* User Profile Card */}
-      <div className="bg-surface-container-low mb-6 p-4 rounded-xl flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-fixed flex items-center justify-center font-bold text-sm shrink-0">
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-primary truncate">
-            {profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
-          </p>
-          <p className="text-xs text-on-surface-variant truncate">
-            {profile?.especialidad || profile?.email || ''}
-          </p>
-        </div>
-      </div>
+      <SidebarUserCard
+        initials={initials}
+        name={profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
+        subtitle={profile?.especialidad || profile?.email || ''}
+      />
 
       {/* Navigation Menu */}
       <ul className="flex flex-col gap-2 flex-1">

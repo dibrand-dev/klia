@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { AdminUser } from '@/types/database'
+import SidebarUserCard from '@/components/ui/SidebarUserCard'
 
 const NAV_ITEMS = [
   { href: '/ops/dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -50,19 +51,11 @@ export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
       </div>
 
       {/* Admin card */}
-      <div className="bg-surface-container-low mb-6 p-4 rounded-xl flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
-          {adminUser.nombre[0]}{adminUser.apellido[0]}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-primary truncate">
-            {adminUser.nombre} {adminUser.apellido}
-          </p>
-          <p className="text-xs text-on-surface-variant truncate capitalize">
-            {adminUser.rol === 'total' ? 'Super Admin' : 'Administrativo'}
-          </p>
-        </div>
-      </div>
+      <SidebarUserCard
+        initials={`${adminUser.nombre[0]}${adminUser.apellido[0]}`}
+        name={`${adminUser.nombre} ${adminUser.apellido}`}
+        subtitle={adminUser.rol === 'total' ? 'Super Admin' : 'Administrativo'}
+      />
 
       {/* Navigation */}
       <ul className="flex flex-col gap-1 flex-1">
