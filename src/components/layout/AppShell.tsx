@@ -17,9 +17,9 @@ function TrialBanner({ trialFin }: { trialFin: string }) {
         ? '⚠️ Tu período de prueba vence hoy. Activá tu suscripción para no perder el acceso.'
         : `⏳ Período de prueba: ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}.`}
       {' '}
-      <a href="mailto:hola@klia.ar?subject=Quiero activar mi suscripción" className="underline font-semibold">
-        Activar suscripción
-      </a>
+      <Link href="/planes" className="underline font-semibold">
+        Contratar ahora
+      </Link>
     </div>
   )
 }

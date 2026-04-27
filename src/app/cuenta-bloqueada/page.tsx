@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import LogoutButton from './LogoutButton'
 
@@ -54,12 +55,12 @@ export default async function CuentaBloqueadaPage() {
               </li>
             ))}
           </ul>
-          <a
-            href="mailto:hola@klia.ar?subject=Quiero activar mi suscripción"
+          <Link
+            href="/planes"
             className="block w-full py-3 bg-primary text-white rounded-xl text-sm font-semibold text-center hover:bg-primary/90 transition-colors"
           >
-            Activar suscripción
-          </a>
+            Ver planes y contratar
+          </Link>
         </div>
 
         <LogoutButton />
