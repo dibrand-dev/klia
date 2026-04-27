@@ -9,6 +9,7 @@ import GlobalFooter from './GlobalFooter'
 import NavigationDrawer from './NavigationDrawer'
 import SlideOver from '@/components/ui/SlideOver'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
+import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
 
 function TrialBanner({ trialFin }: { trialFin: string }) {
   const dias = Math.max(0, Math.ceil((new Date(trialFin).getTime() - Date.now()) / 86400000))
@@ -41,6 +42,8 @@ export default function AppShell({
   const [nuevoPacienteId, setNuevoPacienteId] = useState<string | undefined>(undefined)
   const [pacientes, setPacientes] = useState<Paciente[]>([])
   const [pacientesCargados, setPacientesCargados] = useState(false)
+  const [nuevaNotaOpen, setNuevaNotaOpen] = useState(false)
+  const [notaPacienteId, setNotaPacienteId] = useState<string>('')
 
   useEffect(() => {
     if (mobileOpen) {
@@ -79,6 +82,15 @@ export default function AppShell({
     return () => window.removeEventListener('openNuevoTurno', handler)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pacientesCargados, profile])
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const pacienteId = (e as CustomEvent<{ pacienteId: string }>).detail?.pacienteId
+      if (pacienteId) { setNotaPacienteId(pacienteId); setNuevaNotaOpen(true) }
+    }
+    window.addEventListener('openNuevaNotaClinica', handler)
+    return () => window.removeEventListener('openNuevaNotaClinica', handler)
+  }, [])
 
   return (
     <>
@@ -134,6 +146,20 @@ export default function AppShell({
       >
         <span className="material-symbols-outlined">add</span>
       </button>
+
+      {/* SlideOver global de nueva nota clínica */}
+      <SlideOver
+        open={nuevaNotaOpen}
+        onClose={() => setNuevaNotaOpen(false)}
+        title="Nueva nota clínica"
+      >
+        <NuevaNotaForm
+          key={nuevaNotaOpen ? notaPacienteId : 'closed'}
+          pacienteId={notaPacienteId}
+          onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
+          onClose={() => setNuevaNotaOpen(false)}
+        />
+      </SlideOver>
 
       {/* SlideOver global de nuevo turno */}
       <SlideOver

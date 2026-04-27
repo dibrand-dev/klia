@@ -172,12 +172,12 @@ export default function PacienteHeader({
           >
             Nueva sesión
           </button>
-          <Link
-            href={`/pacientes/${paciente.id}/historial/nueva`}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId: paciente.id } }))}
             className="flex-1 md:flex-none px-5 py-2.5 bg-primary text-white rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary-container transition-colors text-center"
           >
             Nota clínica
-          </Link>
+          </button>
         </div>
       </div>
 
