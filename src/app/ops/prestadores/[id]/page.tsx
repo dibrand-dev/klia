@@ -71,8 +71,13 @@ export default async function PrestadorDetallePage({
           <h1 className="text-2xl font-bold text-on-surface">{profile.nombre} {profile.apellido}</h1>
           <p className="text-sm text-on-surface-variant mt-0.5">{profile.especialidad ?? '—'} · {profile.email}</p>
           <div className="flex gap-2 mt-2">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 font-semibold">Activo</span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-medium">Plan: —</span>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+              profile.estado_cuenta === 'activa' ? 'bg-green-50 text-green-700' :
+              profile.estado_cuenta === 'trial'  ? 'bg-amber-50 text-amber-700' :
+              profile.estado_cuenta === 'bloqueada' ? 'bg-red-50 text-red-700' :
+              'bg-gray-100 text-gray-500'
+            }`}>{profile.estado_cuenta}</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant font-medium capitalize">Plan: {profile.plan}</span>
           </div>
         </div>
       </div>
@@ -98,7 +103,7 @@ export default async function PrestadorDetallePage({
             {[
               { label: 'Pacientes', value: pacientesCount ?? 0, icon: 'group' },
               { label: 'Turnos totales', value: turnosCount ?? 0, icon: 'calendar_today' },
-              { label: 'Plan actual', value: '—', icon: 'workspace_premium' },
+              { label: 'Plan actual', value: profile.plan ?? '—', icon: 'workspace_premium' },
               { label: 'Última sesión', value: lastSesionLabel, icon: 'schedule' },
             ].map((m) => (
               <div key={m.label} className="bg-surface-container-lowest rounded-xl p-4">
@@ -115,6 +120,8 @@ export default async function PrestadorDetallePage({
       <PrestadorActions
         profileId={params.id}
         profileName={`${profile.nombre} ${profile.apellido}`}
+        estadoCuenta={profile.estado_cuenta}
+        trialFin={profile.trial_fin ?? null}
         planes={planes ?? []}
       />
 

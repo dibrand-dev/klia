@@ -1,18 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Plan } from '@/types/database'
 
 export default function PrestadorActions({
   profileId,
   profileName,
+  estadoCuenta,
+  trialFin,
   planes,
 }: {
   profileId: string
   profileName: string
+  estadoCuenta: string
+  trialFin: string | null
   planes: Pick<Plan, 'id' | 'nombre'>[]
 }) {
+  const router = useRouter()
   const [plan, setPlan] = useState('')
   const [diasPrueba, setDiasPrueba] = useState('')
   const [suspendConfirm, setSuspendConfirm] = useState(false)
@@ -27,26 +34,49 @@ export default function PrestadorActions({
   async function handleSuspender() {
     if (!suspendConfirm) { setSuspendConfirm(true); return }
     setLoading('suspend')
-    feedback('ok', `Acción registrada para ${profileName}. (Integración pendiente)`)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ estado_cuenta: 'bloqueada' })
+      .eq('id', profileId)
+    if (error) { feedback('err', error.message); setLoading(null); return }
     setSuspendConfirm(false)
     setLoading(null)
+    feedback('ok', `${profileName} suspendido correctamente`)
+    router.refresh()
   }
 
   async function handleCambiarPlan() {
     if (!plan) return
     setLoading('plan')
-    const nombre = planes.find((p) => p.id === plan)?.nombre ?? plan
-    feedback('ok', `Plan cambiado a "${nombre}" para ${profileName}. (Integración pendiente)`)
+    const supabase = createClient()
+    const planNombre = planes.find((p) => p.id === plan)?.nombre?.toLowerCase() ?? ''
+    const updates: Record<string, unknown> = { plan: planNombre }
+    if (estadoCuenta === 'trial') updates.estado_cuenta = 'activa'
+    const { error } = await supabase.from('profiles').update(updates).eq('id', profileId)
+    if (error) { feedback('err', error.message); setLoading(null); return }
     setPlan('')
     setLoading(null)
+    feedback('ok', `Plan cambiado a "${planNombre}"`)
+    router.refresh()
   }
 
   async function handleExtenderPrueba() {
-    if (!diasPrueba || isNaN(Number(diasPrueba))) return
+    const dias = Number(diasPrueba)
+    if (!dias || isNaN(dias)) return
     setLoading('prueba')
-    feedback('ok', `Período de prueba extendido ${diasPrueba} días para ${profileName}. (Integración pendiente)`)
+    const supabase = createClient()
+    const base = trialFin && new Date(trialFin) > new Date() ? new Date(trialFin) : new Date()
+    base.setDate(base.getDate() + dias)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ trial_fin: base.toISOString(), estado_cuenta: 'trial' })
+      .eq('id', profileId)
+    if (error) { feedback('err', error.message); setLoading(null); return }
     setDiasPrueba('')
     setLoading(null)
+    feedback('ok', `Período de prueba extendido ${dias} días`)
+    router.refresh()
   }
 
   return (
