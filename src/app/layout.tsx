@@ -15,8 +15,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es-AR" className={inter.className}>
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+    <html lang="es-AR">
       <head>
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
@@ -24,7 +23,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }
