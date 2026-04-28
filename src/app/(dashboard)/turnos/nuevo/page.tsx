@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import { Suspense } from 'react'
 
-export const metadata = { title: 'Nuevo turno — ConsultorioApp' }
+export const metadata = { title: 'Nuevo turno — KLIA' }
 
 export default async function NuevoTurnoPage() {
   const supabase = createClient()

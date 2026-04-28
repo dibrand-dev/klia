@@ -4,7 +4,7 @@ import PacienteDetalle from '@/components/pacientes/PacienteDetalle'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/PacienteTabs'
 
-export const metadata = { title: 'Paciente — ConsultorioApp' }
+export const metadata = { title: 'Paciente — KLIA' }
 
 export default async function PacienteDetallePage({
   params,

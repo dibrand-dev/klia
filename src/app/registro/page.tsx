@@ -1,6 +1,6 @@
 import RegisterForm from '@/components/auth/RegisterForm'
 
-export const metadata = { title: 'Crear cuenta — ConsultorioApp' }
+export const metadata = { title: 'Crear cuenta — KLIA' }
 
 export default function RegistroPage() {
   return (
@@ -14,8 +14,9 @@ export default function RegistroPage() {
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Crear cuenta</h1>
-            <p className="text-gray-500 text-sm mt-1">ConsultorioApp es gratuito para profesionales</p>
+            <h1 className="text-2xl font-bold text-gray-900">Crear tu cuenta en KLIA</h1>
+            <p className="text-gray-500 text-sm mt-1">Accedé a 21 días de prueba gratuita con todas las funcionalidades del Plan Premium.</p>
+            <p className="text-gray-400 text-xs mt-1">Sin compromiso. Sin tarjeta de crédito.</p>
           </div>
           <RegisterForm />
         </div>

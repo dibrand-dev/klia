@@ -1,6 +1,6 @@
 import LoginForm from '@/components/auth/LoginForm'
 
-export const metadata = { title: 'Iniciar sesión — ConsultorioApp' }
+export const metadata = { title: 'Iniciar sesión — KLIA' }
 
 export default function LoginPage() {
   return (
@@ -14,7 +14,7 @@ export default function LoginPage() {
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">ConsultorioApp</h1>
+            <h1 className="text-2xl font-bold text-gray-900">KLIA</h1>
             <p className="text-gray-500 text-sm mt-1">Gestión de turnos y pacientes</p>
           </div>
           <LoginForm />

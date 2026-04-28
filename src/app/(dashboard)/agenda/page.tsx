@@ -4,7 +4,7 @@ import AgendaSemanal from '@/components/agenda/AgendaSemanal'
 import { startOfWeek, endOfWeek } from 'date-fns'
 import type { Turno } from '@/types/database'
 
-export const metadata = { title: 'Agenda — ConsultorioApp' }
+export const metadata = { title: 'Agenda — KLIA' }
 
 export default async function AgendaPage() {
   const supabase = createClient()

@@ -196,6 +196,11 @@ export default function RegisterForm() {
         />
       </div>
 
+      <p className="text-xs text-gray-400 text-center">
+        Al registrarte aceptás los Términos y Condiciones de KLIA.
+        Transcurrido el período de prueba, podrás elegir el plan que mejor se adapte a tu consultorio.
+      </p>
+
       <button
         type="submit"
         disabled={loading}

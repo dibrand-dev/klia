@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import NotaDetalleEditor from '@/components/pacientes/NotaDetalleEditor'
 
-export const metadata = { title: 'Nota de sesión — ConsultorioApp' }
+export const metadata = { title: 'Nota de sesión — KLIA' }
 
 export default async function NotaDetallePage({ params }: { params: { id: string; notaId: string } }) {
   const supabase = createClient()

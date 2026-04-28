@@ -5,7 +5,7 @@ import PacienteHeader, { type SummaryData } from '@/components/pacientes/Pacient
 import PacienteTabs from '@/components/pacientes/PacienteTabs'
 import HistorialList from '@/components/pacientes/HistorialList'
 
-export const metadata = { title: 'Historial clínico — ConsultorioApp' }
+export const metadata = { title: 'Historial clínico — KLIA' }
 
 export default async function HistorialPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
