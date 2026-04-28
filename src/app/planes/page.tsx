@@ -2,9 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { MP_PUBLIC_KEY } from '@/lib/mercadopago-client'
+
+const CheckoutBrick = dynamic(() => import('@/components/suscripcion/CheckoutBrick'), { ssr: false })
 
 type Periodo = 'mensual' | 'anual'
+
+type SelectedPlan = {
+  id: string
+  nombre: string
+  preferenceId: string
+  monto: number
+  modalidad: Periodo
+}
 
 const PLANES = [
   {
@@ -87,12 +98,12 @@ function Spinner() {
 }
 
 export default function PlanesPage() {
-  const router = useRouter()
   const [periodo, setPeriodo] = useState<Periodo>('mensual')
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<SelectedPlan | null>(null)
 
-  async function handleElegir(planId: string) {
+  async function handleElegir(planId: string, planNombre: string) {
     setLoading(planId)
     setError(null)
     try {
@@ -102,12 +113,66 @@ export default function PlanesPage() {
         body: JSON.stringify({ plan: planId, modalidad: periodo }),
       })
       const data = await res.json()
-      if (!res.ok || !data.init_point) throw new Error(data.error ?? 'Error')
-      window.location.href = data.init_point
+      if (!res.ok || !data.preference_id) throw new Error(data.error ?? 'Error')
+      setSelected({
+        id: planId,
+        nombre: planNombre,
+        preferenceId: data.preference_id,
+        monto: data.monto,
+        modalidad: periodo,
+      })
     } catch {
       setError('No pudimos conectar con Mercado Pago. Intentá nuevamente.')
+    } finally {
       setLoading(null)
     }
+  }
+
+  if (selected) {
+    return (
+      <div className="min-h-screen bg-surface-container-lowest">
+        <div className="bg-white border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2 text-primary">
+            <span
+              className="material-symbols-outlined text-2xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              medical_services
+            </span>
+            <span className="font-bold text-xl tracking-tighter">KLIA</span>
+          </Link>
+        </div>
+
+        <div className="max-w-xl mx-auto px-4 py-10 space-y-6">
+          <button
+            onClick={() => setSelected(null)}
+            className="flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">arrow_back</span>
+            Cambiar plan
+          </button>
+
+          <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-5 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-on-surface">Plan {selected.nombre}</p>
+              <p className="text-sm text-on-surface-variant capitalize">{selected.modalidad}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-on-surface">{formatPrecio(selected.monto)}</p>
+              <p className="text-xs text-on-surface-variant">/mes</p>
+            </div>
+          </div>
+
+          <CheckoutBrick
+            preferenceId={selected.preferenceId}
+            monto={selected.monto}
+            plan={selected.id}
+            modalidad={selected.modalidad}
+            publicKey={MP_PUBLIC_KEY}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -226,7 +291,7 @@ export default function PlanesPage() {
 
                 <div className="px-6 pb-6">
                   <button
-                    onClick={() => handleElegir(plan.id)}
+                    onClick={() => handleElegir(plan.id, plan.nombre)}
                     disabled={loading !== null}
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors ${plan.btnCls} disabled:opacity-70`}
                   >
