@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { preApproval, PLANES_KLIA, getMonto, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
-import type { Database } from '@/types/database'
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+import { Preference } from 'mercadopago'
+import { mpClient, PLANES_KLIA, getMonto, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -17,10 +9,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
-  const { plan, modalidad } = body as {
-    plan: PlanKlia
-    modalidad: Modalidad
-  }
+  const { plan, modalidad } = body as { plan: PlanKlia; modalidad: Modalidad }
 
   if (!PLANES_KLIA[plan]) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
@@ -28,40 +17,41 @@ export async function POST(req: NextRequest) {
 
   const monto = getMonto(plan, modalidad)
   const planInfo = PLANES_KLIA[plan]
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 
-  const result = await preApproval.create({
+  const preference = new Preference(mpClient)
+  const result = await preference.create({
     body: {
-      reason: `${planInfo.nombre} - ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
-      auto_recurring: {
-        frequency: 1,
-        frequency_type: 'months',
-        transaction_amount: monto,
-        currency_id: 'ARS',
+      items: [
+        {
+          id: plan,
+          title: `${planInfo.nombre} — ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
+          quantity: 1,
+          unit_price: monto,
+          currency_id: 'ARS',
+        },
+      ],
+      back_urls: {
+        success: `${appUrl}/suscripcion/resultado`,
+        failure: `${appUrl}/suscripcion/resultado`,
+        pending: `${appUrl}/suscripcion/resultado`,
       },
-      back_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'}/suscripcion/resultado`,
-      payer_email: user.email!,
-      status: 'pending',
+      auto_return: 'approved',
+      payment_methods: {
+        excluded_payment_types: [{ id: 'ticket' }],
+      },
+      metadata: {
+        terapeuta_id: user.id,
+        plan,
+        modalidad,
+        monto,
+      },
     },
   })
 
-  if (!result.id || !result.init_point) {
-    return NextResponse.json({ error: 'Error al crear suscripción en Mercado Pago' }, { status: 500 })
+  if (!result.id) {
+    return NextResponse.json({ error: 'Error al crear preferencia en Mercado Pago' }, { status: 500 })
   }
 
-  const { error: dbError } = await serviceClient()
-    .from('suscripciones')
-    .insert({
-      terapeuta_id: user.id,
-      plan,
-      modalidad,
-      mp_preapproval_id: result.id,
-      estado: 'pending',
-      monto,
-    })
-
-  if (dbError) {
-    return NextResponse.json({ error: dbError.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ init_point: result.init_point })
+  return NextResponse.json({ preference_id: result.id, monto })
 }
