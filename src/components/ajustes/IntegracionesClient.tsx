@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export default function IntegracionesClient({
   conectado,
@@ -22,6 +23,7 @@ export default function IntegracionesClient({
     }
   }, [])
   const [desconectando, setDesconectando] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [error, setError] = useState<string | null>(
     googleParam === 'error' ? 'No se pudo conectar con Google Calendar. Intentá de nuevo.' : null
   )
@@ -38,7 +40,6 @@ export default function IntegracionesClient({
   }
 
   async function desconectar() {
-    if (!confirm('¿Desconectar Google Calendar? Los turnos ya creados en Google no se eliminarán.')) return
     setDesconectando(true)
     setError(null)
     try {
@@ -117,7 +118,7 @@ export default function IntegracionesClient({
             </div>
 
             <button
-              onClick={desconectar}
+              onClick={() => setConfirmOpen(true)}
               disabled={desconectando}
               className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors disabled:opacity-60"
             >
@@ -140,6 +141,16 @@ export default function IntegracionesClient({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Desconectar Google Calendar"
+        message="Los turnos ya creados en Google no se eliminarán. ¿Querés continuar?"
+        confirmLabel="Desconectar"
+        variant="danger"
+        onConfirm={() => { setConfirmOpen(false); desconectar() }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

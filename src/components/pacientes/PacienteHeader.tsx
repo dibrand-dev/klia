@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale'
 import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Turno } from '@/types/database'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 export interface SummaryData {
   sesionesRealizadas: number
@@ -26,6 +27,7 @@ export default function PacienteHeader({
 }) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,7 +46,6 @@ export default function PacienteHeader({
     : null
 
   async function handleEliminar() {
-    if (!confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')) return
     const supabase = createClient()
     const { error } = await supabase.from('pacientes').delete().eq('id', paciente.id)
     if (error) { alert('Error al eliminar: ' + error.message); return }
@@ -102,7 +103,7 @@ export default function PacienteHeader({
               </button>
               <button
                 className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-error hover:bg-error-container/20 transition-colors text-left border-t border-outline-variant/10"
-                onClick={() => { setMenuOpen(false); handleEliminar() }}
+                onClick={() => { setMenuOpen(false); setConfirmOpen(true) }}
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
                 Eliminar
@@ -207,6 +208,16 @@ export default function PacienteHeader({
           className={summary.impagos === 0 ? 'text-primary' : 'text-error'}
         />
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Eliminar paciente"
+        message="Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="danger"
+        onConfirm={() => { setConfirmOpen(false); handleEliminar() }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </>
   )
 }

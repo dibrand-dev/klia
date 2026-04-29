@@ -8,6 +8,7 @@ import { es } from 'date-fns/locale'
 import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Profile } from '@/types/database'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 type PacienteListado = Paciente & { ultima_cita: string | null }
 
@@ -149,6 +150,7 @@ export default function ListaPacientes({
 function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
@@ -165,11 +167,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [menuOpen])
 
-  async function handleEliminar(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setMenuOpen(false)
-    if (!confirm(`¿Eliminar a ${formatNombreCompleto(paciente.nombre, paciente.apellido)}? Esta acción no se puede deshacer.`)) return
+  async function doEliminar() {
     const supabase = createClient()
     const { error } = await supabase.from('pacientes').delete().eq('id', paciente.id)
     if (error) { alert('Error al eliminar: ' + error.message); return }
@@ -177,6 +175,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   }
 
   return (
+    <>
     <Link
       href={`/pacientes/${paciente.id}`}
       className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_rgba(0,26,72,0.06)] hover:shadow-[0_12px_32px_rgba(0,26,72,0.08)] transition-all cursor-pointer border border-outline-variant/10 relative group block"
@@ -216,7 +215,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
               </button>
               <button
                 className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left border-t border-outline-variant/10"
-                onClick={handleEliminar}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); setConfirmOpen(true) }}
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
                 Eliminar
@@ -256,5 +255,16 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
         </span>
       </div>
     </Link>
+
+    <ConfirmDialog
+      open={confirmOpen}
+      title={`Eliminar a ${formatNombreCompleto(paciente.nombre, paciente.apellido)}`}
+      message="Esta acción no se puede deshacer."
+      confirmLabel="Eliminar"
+      variant="danger"
+      onConfirm={() => { setConfirmOpen(false); doEliminar() }}
+      onCancel={() => setConfirmOpen(false)}
+    />
+  </>
   )
 }
