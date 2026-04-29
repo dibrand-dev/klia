@@ -35,6 +35,17 @@ function diaDeFecha(fechaStr: string): number {
   return new Date(y, m - 1, d).getDay()
 }
 
+// Retorna en qué N-ésima semana del mes cae la fecha (1-4)
+function nesimaOcurrencia(fechaStr: string): number {
+  return Math.min(4, Math.ceil(new Date(fechaStr + 'T12:00:00').getDate() / 7))
+}
+
+// Para quincenal: si la fecha cae en semana 1 ó 3 → devuelve 1; si 2 ó 4 → devuelve 2
+function quinSemana(fechaStr: string): 1 | 2 {
+  const n = nesimaOcurrencia(fechaStr)
+  return (n === 1 || n === 3) ? 1 : 2
+}
+
 export default function NuevoTurnoPageForm({
   pacientes, terapeutaId, fechaInicial, pacienteIdInicial, onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
@@ -71,7 +82,9 @@ export default function NuevoTurnoPageForm({
     notas: '',
   })
   const [esFijo, setEsFijo] = useState(false)
+  const [frecuencia, setFrecuencia] = useState<'semanal' | 'quincenal' | 'mensual'>('semanal')
   const [diaSemana, setDiaSemana] = useState(diaDeFecha(fechaParam))
+  const [semanaDelMes, setSemanaDelMes] = useState<number>(nesimaOcurrencia(fechaParam))
   const [fechaFin, setFechaFin] = useState(format(addMonths(new Date(), 12), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +97,10 @@ export default function NuevoTurnoPageForm({
   ) {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
-    if (name === 'fecha') setDiaSemana(diaDeFecha(value))
+    if (name === 'fecha') {
+      setDiaSemana(diaDeFecha(value))
+      setSemanaDelMes(nesimaOcurrencia(value))
+    }
   }
 
   async function doCrearSerie(fechas: Date[]) {
@@ -92,10 +108,11 @@ export default function NuevoTurnoPageForm({
     const { crearRegistroSerie, crearSerieTurnos } = await import('@/lib/recurrentes')
     const [y, m, d] = form.fecha.split('-').map(Number)
     const [yf, mf, df] = fechaFin.split('-').map(Number)
+    const semana = frecuencia !== 'semanal' ? semanaDelMes : undefined
     const serieId = await crearRegistroSerie(
       terapeutaId, form.paciente_id, diaSemana, form.hora,
       Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null,
-      new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase
+      new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase, frecuencia, semana
     )
     await crearSerieTurnos(serieId, terapeutaId, form.paciente_id, fechas,
       form.hora, Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null, supabase)
@@ -182,7 +199,8 @@ export default function NuevoTurnoPageForm({
         const [y, m, d] = form.fecha.split('-').map(Number)
         const [yf, mf, df] = fechaFin.split('-').map(Number)
         const supabase = createClient()
-        const fechas = generarFechasSerie(diaSemana, new Date(y, m - 1, d), new Date(yf, mf - 1, df))
+        const semana = frecuencia !== 'semanal' ? semanaDelMes : undefined
+        const fechas = generarFechasSerie(diaSemana, new Date(y, m - 1, d), new Date(yf, mf - 1, df), frecuencia, semana)
         const conf = await detectarConflictosDetallados(terapeutaId, fechas, form.hora, Number(form.duracion_min), supabase)
         const validas = fechas.filter((f) => !conf.some((c) => c.fecha.getTime() === f.getTime()))
 
@@ -469,10 +487,39 @@ export default function NuevoTurnoPageForm({
             </div>
 
             {esFijo && (
-              <div className="mt-3 bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+              <div className="mt-3 bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-4">
+                {/* Frecuencia */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Frecuencia</label>
+                  <div className="flex gap-2">
+                    {(['semanal', 'quincenal', 'mensual'] as const).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => {
+                          setFrecuencia(f)
+                          if (f === 'quincenal') setSemanaDelMes(quinSemana(form.fecha))
+                          if (f === 'mensual') setSemanaDelMes(nesimaOcurrencia(form.fecha))
+                        }}
+                        className={cn(
+                          'flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors',
+                          frecuencia === f
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary/50'
+                        )}
+                      >
+                        {f === 'semanal' ? 'Semanal' : f === 'quincenal' ? 'Quincenal' : 'Mensual'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Día y fecha fin */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Repetir todos los</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      {frecuencia === 'semanal' ? 'Repetir todos los' : 'Día de la semana'}
+                    </label>
                     <select
                       value={diaSemana}
                       onChange={(e) => setDiaSemana(Number(e.target.value))}
@@ -492,9 +539,60 @@ export default function NuevoTurnoPageForm({
                     />
                   </div>
                 </div>
+
+                {/* Quincenal: qué semanas */}
+                {frecuencia === 'quincenal' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">¿Qué semanas del mes?</label>
+                    <div className="flex gap-2">
+                      {([1, 2] as const).map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setSemanaDelMes(n)}
+                          className={cn(
+                            'flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors',
+                            semanaDelMes === n
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-600 border-gray-300 hover:border-primary/50'
+                          )}
+                        >
+                          {n === 1 ? '1ra y 3ra' : '2da y 4ta'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mensual: qué semana */}
+                {frecuencia === 'mensual' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">¿Qué semana del mes?</label>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[1, 2, 3, 4].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setSemanaDelMes(n)}
+                          className={cn(
+                            'py-1.5 text-xs font-medium rounded-lg border transition-colors',
+                            semanaDelMes === n
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-gray-600 border-gray-300 hover:border-primary/50'
+                          )}
+                        >
+                          {n === 1 ? '1ra' : n === 2 ? '2da' : n === 3 ? '3ra' : '4ta'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview */}
                 <p className="text-xs text-primary/80">
-                  Todos los {DIAS_SEMANA[diaSemana].toLowerCase()} hasta el{' '}
-                  {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.
+                  {frecuencia === 'semanal' && <>Todos los {DIAS_SEMANA[diaSemana].toLowerCase()} hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                  {frecuencia === 'quincenal' && <>Cada {semanaDelMes === 1 ? '1er y 3er' : '2do y 4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                  {frecuencia === 'mensual' && <>Cada {semanaDelMes === 1 ? '1er' : semanaDelMes === 2 ? '2do' : semanaDelMes === 3 ? '3er' : '4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
                 </p>
               </div>
             )}

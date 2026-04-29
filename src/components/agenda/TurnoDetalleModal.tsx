@@ -147,7 +147,9 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       const antiguaFin = new Date(yf, mf - 1, df)
       const nuevaFin = addMonths(antiguaFin, 12)
       const finStr = format(nuevaFin, 'yyyy-MM-dd')
-      const fechas = generarFechasSerie(serieData.dia_semana, addDays(antiguaFin, 1), nuevaFin)
+      const frecSerie = serieData.frecuencia ?? 'semanal'
+      const semSerie = serieData.semana_del_mes ?? undefined
+      const fechas = generarFechasSerie(serieData.dia_semana, addDays(antiguaFin, 1), nuevaFin, frecSerie, semSerie)
       const conf = await detectarConflictosDetallados(
         turno.terapeuta_id, fechas, serieData.hora, turno.duracion_min, supabase, serieData.id
       )
@@ -212,7 +214,9 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       const { generarFechasSerie, detectarConflictosDetallados } = await import('@/lib/recurrentes')
       const supabase = createClient()
       const [yf, mf, df] = serieData.fecha_fin.split('-').map(Number)
-      const fechas = generarFechasSerie(serieForm.diaSemana, new Date(), new Date(yf, mf - 1, df))
+      const frecSerie = serieData.frecuencia ?? 'semanal'
+      const semSerie = serieData.semana_del_mes ?? undefined
+      const fechas = generarFechasSerie(serieForm.diaSemana, new Date(), new Date(yf, mf - 1, df), frecSerie, semSerie)
       const conf = await detectarConflictosDetallados(
         turno.terapeuta_id, fechas, serieForm.hora, turno.duracion_min, supabase, serieData.id
       )
@@ -593,11 +597,17 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             <div className="flex items-center gap-1.5 text-sm font-medium text-primary">
               <span className="text-base leading-none">↻</span>
               <span>
-                Turno fijo — todos los{' '}
-                {serieData ? DIAS_SEMANA[serieData.dia_semana].toLowerCase() : '…'}
-                {serieData && (
-                  <> hasta el {format(new Date(serieData.fecha_fin + 'T12:00:00'), "d/MM/yyyy")}</>
-                )}
+                {serieData ? (() => {
+                  const dia = DIAS_SEMANA[serieData.dia_semana].toLowerCase()
+                  const hasta = format(new Date(serieData.fecha_fin + 'T12:00:00'), "d/MM/yyyy")
+                  const f = serieData.frecuencia ?? 'semanal'
+                  const n = serieData.semana_del_mes
+                  if (f === 'quincenal' && n != null)
+                    return `Turno fijo — cada ${n === 1 ? '1er y 3er' : '2do y 4to'} ${dia} del mes hasta el ${hasta}`
+                  if (f === 'mensual' && n != null)
+                    return `Turno fijo — cada ${n === 1 ? '1er' : n === 2 ? '2do' : n === 3 ? '3er' : '4to'} ${dia} del mes hasta el ${hasta}`
+                  return `Turno fijo — todos los ${dia} hasta el ${hasta}`
+                })() : '…'}
               </span>
             </div>
 

@@ -438,6 +438,8 @@ export type Database = {
           fecha_inicio: string
           fecha_fin: string
           activo: boolean
+          frecuencia: 'semanal' | 'quincenal' | 'mensual'
+          semana_del_mes: number | null
           created_at: string
         }
         Insert: {
@@ -452,6 +454,8 @@ export type Database = {
           fecha_inicio: string
           fecha_fin: string
           activo?: boolean
+          frecuencia?: 'semanal' | 'quincenal' | 'mensual'
+          semana_del_mes?: number | null
           created_at?: string
         }
         Update: {
@@ -466,6 +470,8 @@ export type Database = {
           fecha_inicio?: string
           fecha_fin?: string
           activo?: boolean
+          frecuencia?: 'semanal' | 'quincenal' | 'mensual'
+          semana_del_mes?: number | null
           created_at?: string
         }
         Relationships: []

@@ -1,5 +1,13 @@
 import { addDays, addMinutes, format, getDay, startOfDay } from 'date-fns'
 
+// Devuelve el N-ésimo día de la semana dentro de un mes (1-indexed)
+function getNesimosDiaDelMes(año: number, mes: number, diaSemana: number, n: number): Date {
+  const primerDia = new Date(año, mes, 1)
+  const diasHastaTarget = (diaSemana - primerDia.getDay() + 7) % 7
+  const primerOcurrencia = new Date(año, mes, 1 + diasHastaTarget)
+  return new Date(año, mes, primerOcurrencia.getDate() + (n - 1) * 7)
+}
+
 export const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 export type ConflictoDetallado = {
@@ -16,24 +24,52 @@ function combineDateAndTime(date: Date, hora: string): Date {
 }
 
 /**
- * Genera todas las fechas de una serie recurrente semanal.
- * diaSemana: 0 = domingo … 6 = sábado (mismo criterio que Date.getDay())
+ * Genera todas las fechas de una serie recurrente.
+ * diaSemana: 0=domingo … 6=sábado (mismo criterio que Date.getDay())
+ * frecuencia: 'semanal' | 'quincenal' | 'mensual'
+ * semanaDelMes: para quincenal (1→1ra+3ra, 2→2da+4ta) y mensual (N-ésima semana)
  */
 export function generarFechasSerie(
   diaSemana: number,
   fechaInicio: Date,
-  fechaFin: Date
+  fechaFin: Date,
+  frecuencia: 'semanal' | 'quincenal' | 'mensual' = 'semanal',
+  semanaDelMes?: number
 ): Date[] {
   const fechas: Date[] = []
   const inicio = startOfDay(new Date(fechaInicio))
   const fin = startOfDay(new Date(fechaFin))
-  const diff = (diaSemana - getDay(inicio) + 7) % 7
-  let current = addDays(inicio, diff)
-  while (current <= fin) {
-    fechas.push(new Date(current))
-    current = addDays(current, 7)
+
+  if (frecuencia === 'semanal') {
+    const diff = (diaSemana - getDay(inicio) + 7) % 7
+    let current = addDays(inicio, diff)
+    while (current <= fin) {
+      fechas.push(new Date(current))
+      current = addDays(current, 7)
+    }
+    return fechas
   }
-  return fechas
+
+  const n1 = semanaDelMes ?? 1
+  let año = inicio.getFullYear()
+  let mes = inicio.getMonth()
+
+  while (año < fin.getFullYear() || (año === fin.getFullYear() && mes <= fin.getMonth())) {
+    const ns = frecuencia === 'quincenal' ? [n1, n1 + 2] : [n1]
+
+    for (const n of ns) {
+      const fecha = getNesimosDiaDelMes(año, mes, diaSemana, n)
+      const d = startOfDay(fecha)
+      if (d.getMonth() === mes && d >= inicio && d <= fin) {
+        fechas.push(d)
+      }
+    }
+
+    mes++
+    if (mes > 11) { mes = 0; año++ }
+  }
+
+  return fechas.sort((a, b) => a.getTime() - b.getTime())
 }
 
 /**
@@ -119,7 +155,9 @@ export async function crearRegistroSerie(
   monto: number | null,
   fechaInicio: Date,
   fechaFin: Date,
-  supabase: any
+  supabase: any,
+  frecuencia: 'semanal' | 'quincenal' | 'mensual' = 'semanal',
+  semanaDelMes?: number
 ): Promise<string> {
   const { data, error } = await supabase
     .from('turnos_recurrentes')
@@ -134,6 +172,8 @@ export async function crearRegistroSerie(
       fecha_inicio: format(fechaInicio, 'yyyy-MM-dd'),
       fecha_fin: format(fechaFin, 'yyyy-MM-dd'),
       activo: true,
+      frecuencia,
+      semana_del_mes: semanaDelMes ?? null,
     })
     .select('id')
     .single()
