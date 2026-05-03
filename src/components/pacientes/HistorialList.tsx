@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import type { NotaClinica, TurnoRow } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 import NotaDetalleEditor from './NotaDetalleEditor'
@@ -41,29 +42,53 @@ type Props = {
 }
 
 export default function HistorialList({ notas, turnos, pacienteId }: Props) {
+  const router = useRouter()
+  const [localNotas, setLocalNotas] = useState<NotaClinica[]>(notas)
   const [selectedNota, setSelectedNota] = useState<NotaClinica | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Sync selectedNota when notas prop updates after router.refresh().
+  useEffect(() => {
+    setLocalNotas(notas)
+  }, [notas])
+
+  // Sync selectedNota when localNotas updates after router.refresh().
   // selectedNota omitted intentionally — adding it would cause an infinite loop.
   useEffect(() => {
     if (selectedNota) {
-      const updated = notas.find((n) => n.id === selectedNota.id)
+      const updated = localNotas.find((n) => n.id === selectedNota.id)
       if (updated) setSelectedNota(updated)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notas])
+  }, [localNotas])
+
+  async function handleDelete(notaId: string) {
+    setDeletingId(notaId)
+    const supabase = createClient()
+    const { error } = await supabase.from('notas_clinicas').delete().eq('id', notaId)
+    if (error) {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+      return
+    }
+    setLocalNotas((prev) => prev.filter((n) => n.id !== notaId))
+    if (selectedNota?.id === notaId) setSelectedNota(null)
+    setConfirmDeleteId(null)
+    setDeletingId(null)
+    router.refresh()
+  }
 
   const turnosById = new Map<string, TurnoRow>()
   for (const t of turnos) turnosById.set(t.id, t)
 
-  const chronological = [...notas].sort((a, b) =>
+  const chronological = [...localNotas].sort((a, b) =>
     (a.fecha + a.created_at).localeCompare(b.fecha + b.created_at)
   )
   const sessionNoMap = new Map<string, number>()
   chronological.forEach((n, idx) => sessionNoMap.set(n.id, idx + 1))
 
   const grouped: Record<string, NotaClinica[]> = {}
-  for (const nota of notas) {
+  for (const nota of localNotas) {
     const key = format(parseISO(nota.fecha), 'yyyy-MM')
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(nota)
@@ -114,14 +139,14 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
                 const isNoAsistio = turno?.estado === 'no_asistio'
 
                 return (
-                  <button
+                  <div
                     key={nota.id}
-                    type="button"
-                    onClick={() => setSelectedNota(nota)}
-                    className="block group mb-6 w-full text-left"
+                    className="block group mb-6 w-full"
                   >
-                    <article className="bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/10 flex flex-col md:flex-row group-hover:shadow-md transition-shadow">
-
+                    <article
+                      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/10 flex flex-col md:flex-row group-hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setSelectedNota(nota)}
+                    >
                       {/* Date column */}
                       <div className="md:w-32 bg-surface-container-low/30 p-6 flex md:flex-col items-center justify-between md:justify-center border-b md:border-b-0 md:border-r border-outline-variant/10">
                         <div className="flex flex-col items-center">
@@ -198,16 +223,48 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
                         )}
                       </div>
 
-                      {/* Right panel */}
-                      <div className="md:w-48 p-6 bg-surface-container-lowest flex flex-col justify-end border-t md:border-t-0 md:border-l border-outline-variant/10">
+                      {/* Right panel — stopPropagation so clicks here don't open the SlideOver */}
+                      <div
+                        className="md:w-48 p-6 bg-surface-container-lowest flex flex-col justify-end gap-2 border-t md:border-t-0 md:border-l border-outline-variant/10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <span className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-primary-fixed/30 group-hover:bg-primary-fixed text-primary font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider">
                           <span className="material-symbols-outlined text-sm">visibility</span>
                           Ver nota completa
                         </span>
+
+                        {confirmDeleteId === nota.id ? (
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(nota.id)}
+                              disabled={deletingId === nota.id}
+                              className="flex-1 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition-colors uppercase disabled:opacity-50"
+                            >
+                              {deletingId === nota.id ? '...' : 'Confirmar'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[11px] rounded-lg transition-colors uppercase"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(nota.id)}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-red-50 hover:bg-red-100 text-red-500 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                            Eliminar
+                          </button>
+                        )}
                       </div>
 
                     </article>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -236,6 +293,11 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
             nota={selectedNota}
             pacienteId={pacienteId}
             onSaved={() => setSelectedNota(null)}
+            onDeleted={() => {
+              setLocalNotas((prev) => prev.filter((n) => n.id !== selectedNota.id))
+              setSelectedNota(null)
+              router.refresh()
+            }}
           />
         )}
       </SlideOver>
