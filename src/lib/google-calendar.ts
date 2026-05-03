@@ -51,7 +51,7 @@ export async function crearEventoCalendario(
   },
   calendarId = 'primary',
 ): Promise<string> {
-  const inicio = new Date(`${turno.fecha}T${turno.hora}`)
+  const inicio = new Date(`${turno.fecha}T${turno.hora}:00Z`)
   const fin = new Date(inicio.getTime() + turno.duracion * 60000)
   const tipoLabel = turno.tipo ?? 'Sesión'
 

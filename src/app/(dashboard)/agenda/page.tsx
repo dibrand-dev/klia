@@ -75,7 +75,7 @@ export default async function AgendaPage() {
   }
 
   return (
-    <div className="pt-4 md:pt-8">
+    <div className="h-[calc(100vh-4rem)] md:h-screen overflow-hidden">
       <AgendaSemanal
         turnosIniciales={(turnos ?? []) as unknown as Turno[]}
         pacientes={pacientes ?? []}

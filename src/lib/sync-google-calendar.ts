@@ -127,13 +127,18 @@ export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeut
 
   const calendarClient = await getAuthenticatedClient(tokens)
 
+  // hora is stored as Argentina local time (UTC-3); convert to UTC for crearEventoCalendario
+  const argDateTime = new Date(`${entrevista.fecha}T${entrevista.hora.slice(0, 5)}:00-03:00`)
+  const fechaUTC = argDateTime.toISOString().slice(0, 10)
+  const horaUTC = argDateTime.toISOString().slice(11, 16)
+
   const eventId = await crearEventoCalendario(
     calendarClient,
     {
       paciente_nombre: entrevista.nombre,
       paciente_apellido: entrevista.apellido,
-      fecha: entrevista.fecha,
-      hora: entrevista.hora,
+      fecha: fechaUTC,
+      hora: horaUTC,
       duracion: entrevista.duracion,
       modalidad: 'presencial',
       tipo: 'Entrevista',

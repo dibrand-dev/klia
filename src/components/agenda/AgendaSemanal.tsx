@@ -310,7 +310,7 @@ export default function AgendaSemanal({
         })}
         {/* Entrevistas */}
         {entrevistasDia.map((entrevista) => {
-          const fechaHora = `${entrevista.fecha}T${entrevista.hora}:00`
+          const fechaHora = `${entrevista.fecha}T${entrevista.hora.slice(0, 5)}:00`
           const top = getTopOffset(fechaHora, hi)
           const height = Math.max(getHeight(entrevista.duracion), 28)
           return (
@@ -326,7 +326,7 @@ export default function AgendaSemanal({
               </div>
               {height > 40 && (
                 <div className="opacity-80 truncate mt-0.5">
-                  {entrevista.hora} · {entrevista.duracion} min
+                  {entrevista.hora.slice(0, 5)} · {entrevista.duracion} min
                 </div>
               )}
             </div>

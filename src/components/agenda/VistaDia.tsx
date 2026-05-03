@@ -8,7 +8,7 @@ import { cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT, formatNombreCompleto } from 
 type GoogleEventSerialized = { id: string; titulo: string; inicio: string; fin: string }
 
 function getTopOffset(hora: string, fecha: string, horaInicio: number) {
-  const d = parseISO(`${fecha}T${hora}:00`)
+  const d = parseISO(`${fecha}T${hora.slice(0, 5)}:00`)
   return ((d.getHours() - horaInicio) * 60 + d.getMinutes()) * (64 / 60)
 }
 
@@ -174,7 +174,7 @@ export default function VistaDia({
                     <span className="truncate flex-1">{entrevista.apellido}, {entrevista.nombre}</span>
                   </div>
                   {height > 40 && (
-                    <div className="opacity-80 truncate mt-0.5">{entrevista.hora} · {entrevista.duracion} min</div>
+                    <div className="opacity-80 truncate mt-0.5">{entrevista.hora.slice(0, 5)} · {entrevista.duracion} min</div>
                   )}
                 </div>
               )
