@@ -88,6 +88,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   const [eliminando, setEliminando] = useState<'este' | 'futuros' | null>(null)
   const [loadingEliminar, setLoadingEliminar] = useState(false)
 
+  // Honorario serie
+  const [editandoHonorarioSerie, setEditandoHonorarioSerie] = useState(false)
+  const [nuevoHonorarioSerie, setNuevoHonorarioSerie] = useState('')
+  const [loadingHonorario, setLoadingHonorario] = useState(false)
+  const [honorarioExito, setHonorarioExito] = useState(false)
+
   // Renovación de serie
   const [renovandoSerie, setRenovandoSerie] = useState(false)
   const [renovacionExito, setRenovacionExito] = useState(false)
@@ -233,6 +239,24 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       setErrorSerie('Error al actualizar la serie. Intentá de nuevo.')
       setLoadingSerie(false)
     }
+  }
+
+  async function handleActualizarHonorarioSerie() {
+    if (!serieData) return
+    const monto = nuevoHonorarioSerie ? Number(nuevoHonorarioSerie) : null
+    setLoadingHonorario(true)
+    const supabase = createClient()
+    await supabase.from('turnos_recurrentes').update({ monto }).eq('id', serieData.id)
+    await supabase
+      .from('turnos')
+      .update({ monto })
+      .eq('serie_recurrente_id', serieData.id)
+      .in('estado', ['pendiente', 'confirmado'])
+    setLoadingHonorario(false)
+    setEditandoHonorarioSerie(false)
+    setHonorarioExito(true)
+    setSerieData({ ...serieData, monto })
+    setTimeout(() => setHonorarioExito(false), 3000)
   }
 
   async function guardarEdicion() {
@@ -612,68 +636,122 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             </div>
 
             {!editandoSerie ? (
-              <button
-                type="button"
-                onClick={() => setEditandoSerie(true)}
-                className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
-              >
-                Cambiar día y horario de la serie
-              </button>
-            ) : mostrandoConflictosSerie ? (
-              <ConflictosPanel
-                conflictos={conflictosSerie}
-                onOmitir={() => doAplicarCambioSerie(fechasValidasSerie)}
-                onCancelar={() => setMostrandoConflictosSerie(false)}
-                loading={loadingSerie}
-                sinFechasValidas={fechasValidasSerie.length === 0}
-              />
-            ) : (
-              <div className="space-y-3 pt-1">
-                {errorSerie && (
-                  <p className="text-xs text-red-600">{errorSerie}</p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditandoSerie(true)}
+                  className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+                >
+                  Cambiar día y horario de la serie
+                </button>
+                {!editandoHonorarioSerie && !honorarioExito && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNuevoHonorarioSerie(serieData?.monto != null ? String(serieData.monto) : '')
+                      setEditandoHonorarioSerie(true)
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+                  >
+                    Actualizar honorario de la serie
+                  </button>
                 )}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Día de semana</label>
-                    <select
-                      value={serieForm.diaSemana}
-                      onChange={(e) => setSerieForm((p) => ({ ...p, diaSemana: Number(e.target.value) }))}
-                      className="input-field text-sm"
-                    >
-                      {DIAS_SEMANA.map((d, i) => (
-                        <option key={i} value={i}>{d}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
-                    <input
-                      type="time"
-                      value={serieForm.hora}
-                      onChange={(e) => setSerieForm((p) => ({ ...p, hora: e.target.value }))}
-                      className="input-field text-sm"
-                    />
-                  </div>
-                </div>
+                {honorarioExito && (
+                  <span className="text-xs text-green-600 font-medium">✓ Honorario actualizado</span>
+                )}
+              </div>
+            ) : null}
+            {editandoHonorarioSerie && (
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-medium text-gray-600">Nuevo honorario (ARS)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={nuevoHonorarioSerie}
+                  onChange={(e) => setNuevoHonorarioSerie(e.target.value)}
+                  className="input-field text-sm"
+                  placeholder="0"
+                />
+                <p className="text-[11px] text-gray-500">
+                  Se actualizará en los turnos futuros pendientes y confirmados.
+                </p>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setEditandoSerie(false); setErrorSerie(null) }}
-                    disabled={loadingSerie}
+                    onClick={() => setEditandoHonorarioSerie(false)}
                     className="btn-secondary flex-1 py-2 text-xs"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
-                    onClick={confirmarCambioSerie}
-                    disabled={loadingSerie}
-                    className={cn('btn-primary flex-1 py-2 text-xs', loadingSerie && 'opacity-70')}
+                    onClick={handleActualizarHonorarioSerie}
+                    disabled={loadingHonorario}
+                    className={cn('btn-primary flex-1 py-2 text-xs', loadingHonorario && 'opacity-70')}
                   >
-                    {loadingSerie ? 'Verificando...' : 'Confirmar cambio'}
+                    {loadingHonorario ? 'Actualizando...' : 'Confirmar'}
                   </button>
                 </div>
               </div>
+            )}
+            {editandoSerie && (
+              mostrandoConflictosSerie ? (
+                <ConflictosPanel
+                  conflictos={conflictosSerie}
+                  onOmitir={() => doAplicarCambioSerie(fechasValidasSerie)}
+                  onCancelar={() => setMostrandoConflictosSerie(false)}
+                  loading={loadingSerie}
+                  sinFechasValidas={fechasValidasSerie.length === 0}
+                />
+              ) : (
+                <div className="space-y-3 pt-1">
+                  {errorSerie && (
+                    <p className="text-xs text-red-600">{errorSerie}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Día de semana</label>
+                      <select
+                        value={serieForm.diaSemana}
+                        onChange={(e) => setSerieForm((p) => ({ ...p, diaSemana: Number(e.target.value) }))}
+                        className="input-field text-sm"
+                      >
+                        {DIAS_SEMANA.map((d, i) => (
+                          <option key={i} value={i}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
+                      <input
+                        type="time"
+                        value={serieForm.hora}
+                        onChange={(e) => setSerieForm((p) => ({ ...p, hora: e.target.value }))}
+                        className="input-field text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEditandoSerie(false); setErrorSerie(null) }}
+                      disabled={loadingSerie}
+                      className="btn-secondary flex-1 py-2 text-xs"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmarCambioSerie}
+                      disabled={loadingSerie}
+                      className={cn('btn-primary flex-1 py-2 text-xs', loadingSerie && 'opacity-70')}
+                    >
+                      {loadingSerie ? 'Verificando...' : 'Confirmar cambio'}
+                    </button>
+                  </div>
+                </div>
+              )
             )}
           </div>
         )}

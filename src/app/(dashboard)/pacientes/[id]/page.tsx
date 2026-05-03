@@ -79,6 +79,7 @@ export default async function PacienteDetallePage({
 
   const tab: PacienteTabKey =
     searchParams.tab === 'datos' ||
+    searchParams.tab === 'historial' ||
     searchParams.tab === 'informes' ||
     searchParams.tab === 'documentos' ||
     searchParams.tab === 'facturacion' ||
@@ -113,6 +114,7 @@ export default async function PacienteDetallePage({
         initialEdit={editMode}
         obrasSociales={obrasSociales}
         profObrasSociales={profObrasSociales}
+        turnos={turnos}
         key={editMode ? 'edit' : 'view'}
       />
     </div>

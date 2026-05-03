@@ -5,20 +5,16 @@ import { es } from 'date-fns/locale'
 import type { Turno, Entrevista } from '@/types/database'
 import { cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT, formatNombreCompleto } from '@/lib/utils'
 
-const HORA_INICIO = 7
-const HORA_FIN = 21
-const HORAS = Array.from({ length: HORA_FIN - HORA_INICIO }, (_, i) => HORA_INICIO + i)
-
 type GoogleEventSerialized = { id: string; titulo: string; inicio: string; fin: string }
 
-function getTopOffset(hora: string, fecha: string) {
+function getTopOffset(hora: string, fecha: string, horaInicio: number) {
   const d = parseISO(`${fecha}T${hora}:00`)
-  return ((d.getHours() - HORA_INICIO) * 60 + d.getMinutes()) * (64 / 60)
+  return ((d.getHours() - horaInicio) * 60 + d.getMinutes()) * (64 / 60)
 }
 
-function getTopOffsetISO(fechaHora: string) {
+function getTopOffsetISO(fechaHora: string, horaInicio: number) {
   const d = parseISO(fechaHora)
-  return ((d.getHours() - HORA_INICIO) * 60 + d.getMinutes()) * (64 / 60)
+  return ((d.getHours() - horaInicio) * 60 + d.getMinutes()) * (64 / 60)
 }
 
 function getHeight(min: number) {
@@ -35,12 +31,18 @@ interface VistaDiaProps {
   onTurnoClick: (turno: Turno) => void
   onEntrevistaClick: (entrevista: Entrevista) => void
   vistaSelector: React.ReactNode
+  horaInicio?: number
+  horaFin?: number
 }
 
 export default function VistaDia({
   dia, turnos, entrevistas, googleEvents,
   onDiaChange, onNuevoTurno, onTurnoClick, onEntrevistaClick, vistaSelector,
+  horaInicio: horaInicioP, horaFin: horaFinP,
 }: VistaDiaProps) {
+  const hi = horaInicioP ?? 7
+  const hf = horaFinP ?? 21
+  const HORAS = Array.from({ length: hf - hi }, (_, i) => hi + i)
   const turnosDia = turnos
     .filter((t) => isSameDay(parseISO(t.fecha_hora), dia))
     .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
@@ -134,7 +136,7 @@ export default function VistaDia({
             {gEventsDia.map((ev) => {
               const inicio = new Date(ev.inicio)
               const fin = new Date(ev.fin)
-              const top = ((inicio.getHours() - HORA_INICIO) * 60 + inicio.getMinutes()) * (64 / 60)
+              const top = ((inicio.getHours() - hi) * 60 + inicio.getMinutes()) * (64 / 60)
               const durMin = (fin.getTime() - inicio.getTime()) / 60000
               const height = Math.max(durMin * (64 / 60), 20)
               return (
@@ -150,7 +152,7 @@ export default function VistaDia({
 
             {/* Entrevistas */}
             {entrevistasDia.map((entrevista) => {
-              const top = getTopOffset(entrevista.hora, entrevista.fecha)
+              const top = getTopOffset(entrevista.hora, entrevista.fecha, hi)
               const height = Math.max(getHeight(entrevista.duracion), 28)
               return (
                 <div
@@ -172,7 +174,7 @@ export default function VistaDia({
 
             {/* Turnos */}
             {turnosDia.map((turno) => {
-              const top = getTopOffsetISO(turno.fecha_hora)
+              const top = getTopOffsetISO(turno.fecha_hora, hi)
               const height = Math.max(getHeight(turno.duracion_min), 28)
               const p = turno.paciente
               return (

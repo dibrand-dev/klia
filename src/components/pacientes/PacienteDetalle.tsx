@@ -6,7 +6,7 @@ import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
-import type { Paciente, MedicacionPaciente, Interconsulta, ProfesionalObraSocial } from '@/types/database'
+import type { Paciente, MedicacionPaciente, Interconsulta, ProfesionalObraSocial, TurnoRow } from '@/types/database'
 import type { PacienteTabKey } from './PacienteTabs'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
@@ -111,6 +111,7 @@ export default function PacienteDetalle({
   activeTab = 'datos',
   obrasSociales = [],
   profObrasSociales = [],
+  turnos = [],
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
@@ -119,6 +120,7 @@ export default function PacienteDetalle({
   activeTab?: PacienteTabKey
   obrasSociales?: string[]
   profObrasSociales?: ProfesionalObraSocial[]
+  turnos?: TurnoRow[]
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
@@ -677,6 +679,10 @@ export default function PacienteDetalle({
     return <InterconsultasTab paciente={paciente} interconsultas={interconsultas} />
   }
 
+  if (activeTab === 'facturacion') {
+    return <AsistenciaTab paciente={paciente} turnos={turnos} />
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <TabEmptyState tab={activeTab} />
   }
@@ -986,6 +992,190 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
     <div className="mt-6 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest p-10 text-center">
       <h3 className="text-[22px] font-bold text-on-surface mb-1.5 tracking-tight">{c.title}</h3>
       <p className="text-[13.5px] text-on-surface-variant m-0">{c.body}</p>
+    </div>
+  )
+}
+
+const MESES_NOMBRES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+function AsistenciaTab({ paciente, turnos }: { paciente: Paciente; turnos: TurnoRow[] }) {
+  const router = useRouter()
+  const now = new Date()
+  const [mes, setMes] = useState(now.getMonth())
+  const [anio, setAnio] = useState(now.getFullYear())
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [pagando, setPagando] = useState(false)
+  const [mesPagado, setMesPagado] = useState(false)
+
+  const turnosMes = turnos.filter((t) => {
+    const d = new Date(t.fecha_hora)
+    return d.getMonth() === mes && d.getFullYear() === anio
+  })
+
+  const asistio = turnosMes.filter((t) => t.estado === 'realizado')
+  const noAsistio = turnosMes.filter((t) => t.estado === 'no_asistio')
+  const cancelado = turnosMes.filter((t) => t.estado === 'cancelado')
+  const totalCobrable = asistio.length + noAsistio.length
+  const cobrablesPendientes = [...asistio, ...noAsistio].filter((t) => !t.pagado)
+  const todosPagados = totalCobrable > 0 && cobrablesPendientes.length === 0
+
+  function formatDias(ts: TurnoRow[]) {
+    return ts
+      .map((t) => format(parseISO(t.fecha_hora), 'd'))
+      .join(', ')
+  }
+
+  async function handleMarcarPagado() {
+    setPagando(true)
+    const supabase = createClient()
+    const inicioMes = new Date(anio, mes, 1).toISOString()
+    const finMes = new Date(anio, mes + 1, 0, 23, 59, 59).toISOString()
+    await supabase
+      .from('turnos')
+      .update({ pagado: true })
+      .eq('paciente_id', paciente.id)
+      .in('estado', ['realizado', 'no_asistio'])
+      .gte('fecha_hora', inicioMes)
+      .lte('fecha_hora', finMes)
+    setPagando(false)
+    setShowConfirm(false)
+    setMesPagado(true)
+    router.refresh()
+  }
+
+  const anioActual = now.getFullYear()
+  const anios = [anioActual - 1, anioActual, anioActual + 1]
+  const mesNombre = MESES_NOMBRES[mes]
+
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Selector de período */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">Mes</label>
+          <select
+            value={mes}
+            onChange={(e) => { setMes(Number(e.target.value)); setMesPagado(false) }}
+            className="input-field text-sm py-2"
+          >
+            {MESES_NOMBRES.map((m, i) => <option key={i} value={i}>{m}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">Año</label>
+          <select
+            value={anio}
+            onChange={(e) => { setAnio(Number(e.target.value)); setMesPagado(false) }}
+            className="input-field text-sm py-2"
+          >
+            {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Resumen */}
+      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
+        <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-5">
+          Sesiones de {mesNombre} {anio}
+        </h3>
+
+        {turnosMes.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">Sin turnos registrados en este período.</p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 text-sm">
+              <span className="text-base leading-none mt-0.5">✅</span>
+              <div className="flex-1">
+                <span className="font-semibold text-on-surface">{asistio.length} sesión{asistio.length !== 1 ? 'es' : ''}</span>
+                <span className="text-on-surface-variant"> — Asistió</span>
+                {asistio.length > 0 && (
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Días: {formatDias(asistio)} de {mesNombre.toLowerCase()}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-start gap-3 text-sm">
+              <span className="text-base leading-none mt-0.5">❌</span>
+              <div className="flex-1">
+                <span className="font-semibold text-on-surface">{noAsistio.length} sesión{noAsistio.length !== 1 ? 'es' : ''}</span>
+                <span className="text-on-surface-variant"> — No asistió</span>
+                {noAsistio.length > 0 && (
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Días: {formatDias(noAsistio)} de {mesNombre.toLowerCase()} (cobrable)
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-start gap-3 text-sm">
+              <span className="text-base leading-none mt-0.5">🚫</span>
+              <div className="flex-1">
+                <span className="font-semibold text-on-surface">{cancelado.length} sesión{cancelado.length !== 1 ? 'es' : ''}</span>
+                <span className="text-on-surface-variant"> — Cancelada{cancelado.length !== 1 ? 's' : ''}</span>
+                {cancelado.length > 0 && (
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Días: {formatDias(cancelado)} de {mesNombre.toLowerCase()} (no cobrable)
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="pt-3 border-t border-outline-variant/10">
+              <p className="text-sm font-semibold text-on-surface">
+                Total cobrable: {totalCobrable} sesión{totalCobrable !== 1 ? 'es' : ''}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Marcar mes como pagado */}
+      {totalCobrable > 0 && (
+        <div>
+          {(mesPagado || todosPagados) ? (
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-200 text-sm font-medium">
+              ✅ Mes pagado
+            </div>
+          ) : showConfirm ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-on-surface">
+                ¿Marcar todas las sesiones de {mesNombre} {anio} como pagadas?
+              </p>
+              <p className="text-xs text-on-surface-variant">
+                Se marcarán como pagadas {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} (realizadas y no asistidas).
+                Las canceladas no se incluyen.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="btn-secondary flex-1 py-2 text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMarcarPagado}
+                  disabled={pagando}
+                  className={cn('btn-primary flex-1 py-2 text-sm', pagando && 'opacity-70')}
+                >
+                  {pagando ? 'Procesando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowConfirm(true)}
+              className="btn-primary px-5 py-2.5 text-sm"
+            >
+              Marcar mes como pagado
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

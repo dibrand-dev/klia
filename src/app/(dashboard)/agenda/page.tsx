@@ -21,7 +21,8 @@ export default async function AgendaPage() {
   const inicioStr = format(inicioSemana, 'yyyy-MM-dd')
   const finStr = format(finSemana, 'yyyy-MM-dd')
 
-  const [{ data: turnos }, { data: pacientes }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
+  const [{ data: profile }, { data: turnos }, { data: pacientes }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
+    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin').eq('id', user.id).single(),
     supabase
       .from('turnos')
       .select('*, paciente:pacientes(*)')
@@ -80,6 +81,8 @@ export default async function AgendaPage() {
         googleConnected={!!googleTokens}
         googleEventsIniciales={googleEventsIniciales}
         entrevistasIniciales={(entrevistas ?? []) as Entrevista[]}
+        horaInicio={profile?.agenda_hora_inicio ?? 7}
+        horaFin={profile?.agenda_hora_fin ?? 21}
       />
     </div>
   )

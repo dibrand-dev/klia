@@ -21,9 +21,8 @@ import EntrevistaDetalleModal from './EntrevistaDetalleModal'
 import VistaDia from './VistaDia'
 import VistaMes from './VistaMes'
 
-const HORA_INICIO = 7
-const HORA_FIN = 21
-const HORAS = Array.from({ length: HORA_FIN - HORA_INICIO }, (_, i) => HORA_INICIO + i)
+const DEFAULT_HORA_INICIO = 7
+const DEFAULT_HORA_FIN = 21
 
 type GoogleEventSerialized = {
   id: string
@@ -39,11 +38,13 @@ interface AgendaSemanalProps {
   googleConnected?: boolean
   googleEventsIniciales?: GoogleEventSerialized[]
   entrevistasIniciales?: Entrevista[]
+  horaInicio?: number
+  horaFin?: number
 }
 
-function getTopOffset(fechaHora: string) {
+function getTopOffset(fechaHora: string, horaInicio: number) {
   const d = parseISO(fechaHora)
-  return ((d.getHours() - HORA_INICIO) * 60 + d.getMinutes()) * (64 / 60)
+  return ((d.getHours() - horaInicio) * 60 + d.getMinutes()) * (64 / 60)
 }
 
 function getHeight(min: number) {
@@ -52,7 +53,11 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], entrevistasIniciales = [],
+  horaInicio: horaInicioP, horaFin: horaFinP,
 }: AgendaSemanalProps) {
+  const hi = horaInicioP ?? DEFAULT_HORA_INICIO
+  const hf = horaFinP ?? DEFAULT_HORA_FIN
+  const HORAS = Array.from({ length: hf - hi }, (_, i) => hi + i)
   const [vista, setVista] = useState<'dia' | 'semana' | 'mes'>('semana')
   const [semanaActual, setSemanaActual] = useState(new Date())
   const [diaActual, setDiaActual] = useState(new Date())
@@ -265,7 +270,7 @@ export default function AgendaSemanal({
         {gEventsDia.map((ev) => {
           const inicio = new Date(ev.inicio)
           const fin = new Date(ev.fin)
-          const top = ((inicio.getHours() - HORA_INICIO) * 60 + inicio.getMinutes()) * (64 / 60)
+          const top = ((inicio.getHours() - hi) * 60 + inicio.getMinutes()) * (64 / 60)
           const durMin = (fin.getTime() - inicio.getTime()) / 60000
           const height = Math.max(durMin * (64 / 60), 20)
           return (
@@ -282,7 +287,7 @@ export default function AgendaSemanal({
         {/* Entrevistas */}
         {entrevistasDia.map((entrevista) => {
           const fechaHora = `${entrevista.fecha}T${entrevista.hora}:00`
-          const top = getTopOffset(fechaHora)
+          const top = getTopOffset(fechaHora, hi)
           const height = Math.max(getHeight(entrevista.duracion), 28)
           return (
             <div
@@ -304,7 +309,7 @@ export default function AgendaSemanal({
           )
         })}
         {lista.map((turno) => {
-          const top = getTopOffset(turno.fecha_hora)
+          const top = getTopOffset(turno.fecha_hora, hi)
           const height = Math.max(getHeight(turno.duracion_min), 28)
           const p = turno.paciente
           return (
@@ -381,6 +386,8 @@ export default function AgendaSemanal({
           onTurnoClick={setTurnoSeleccionado}
           onEntrevistaClick={setEntrevistaSeleccionada}
           vistaSelector={<ViewSelector />}
+          horaInicio={hi}
+          horaFin={hf}
         />
       )}
 

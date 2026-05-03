@@ -70,7 +70,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
           .from('turnos')
           .select('paciente_id')
           .in('paciente_id', pacienteIds)
-          .eq('estado', 'realizado')
+          .in('estado', ['realizado', 'no_asistio'])
           .gte('fecha_hora', inicio)
           .lte('fecha_hora', fin)
 
@@ -245,7 +245,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
                         {res.pacientes} paciente{res.pacientes !== 1 ? 's' : ''} · {res.sesiones} sesiones · {formatARS(res.importe)}
                       </p>
                     ) : (
-                      <p className="text-sm text-on-surface-variant">Sin turnos realizados en este período</p>
+                      <p className="text-sm text-on-surface-variant">Sin turnos cobrables en este período</p>
                     )
                   ) : (
                     <p className="text-sm text-on-surface-variant opacity-60">Presioná Calcular para ver los datos</p>

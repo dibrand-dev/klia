@@ -18,6 +18,8 @@ export type Database = {
           suscripcion_fin: string | null
           mp_subscription_id: string | null
           plan_elegido_registro: string | null
+          agenda_hora_inicio: number
+          agenda_hora_fin: number
           created_at: string
           updated_at: string
         }
@@ -37,6 +39,8 @@ export type Database = {
           suscripcion_fin?: string | null
           mp_subscription_id?: string | null
           plan_elegido_registro?: string | null
+          agenda_hora_inicio?: number
+          agenda_hora_fin?: number
           created_at?: string
           updated_at?: string
         }
@@ -56,6 +60,8 @@ export type Database = {
           suscripcion_fin?: string | null
           mp_subscription_id?: string | null
           plan_elegido_registro?: string | null
+          agenda_hora_inicio?: number
+          agenda_hora_fin?: number
           created_at?: string
           updated_at?: string
         }

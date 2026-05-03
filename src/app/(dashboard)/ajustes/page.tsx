@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import PerfilProfesional from '@/components/ajustes/PerfilProfesional'
+import HorarioAgendaConfig from '@/components/ajustes/HorarioAgendaConfig'
 
 export const metadata = { title: 'Ajustes — KLIA' }
 
@@ -58,6 +59,8 @@ export default async function AjustesPage() {
           <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
         </Link>
       </div>
+
+      <HorarioAgendaConfig profile={profile} />
 
       <PerfilProfesional profile={profile} />
     </div>
