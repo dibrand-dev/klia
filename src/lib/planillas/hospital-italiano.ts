@@ -159,12 +159,11 @@ function drawRow(
 }
 
 function drawLogoPlaceholder(doc: InstanceType<typeof PDFDocument>) {
-  doc.fillColor('#2d6a4f').font('Helvetica-Bold').fontSize(10)
-  doc.text('[+] HOSPITAL ITALIANO', L, 40, { lineBreak: false })
-  doc.font('Helvetica').fontSize(8).fillColor('#2d6a4f')
-  doc.text('de Buenos Aires', L, 54, { lineBreak: false })
-  doc.font('Helvetica-Bold').fontSize(8)
-  doc.text('PLAN DE SALUD', L, 64, { lineBreak: false })
+  doc.fontSize(9).fillColor('#2d6a4f').font('Helvetica-Bold')
+  doc.text('HOSPITAL ITALIANO', L, 40, { lineBreak: false })
+  doc.fontSize(7).font('Helvetica')
+  doc.text('de Buenos Aires', L, 52, { lineBreak: false })
+  doc.text('PLAN DE SALUD', L, 62, { lineBreak: false })
 }
 
 function renderFirstPage(

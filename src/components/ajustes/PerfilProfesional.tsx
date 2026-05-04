@@ -48,6 +48,7 @@ export default function PerfilProfesional({ profile }: { profile: Profile | null
     especialidad: profile?.especialidad ?? '',
     matricula: profile?.matricula ?? '',
     telefono: profile?.telefono ?? '',
+    domicilio: profile?.domicilio ?? '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +71,7 @@ export default function PerfilProfesional({ profile }: { profile: Profile | null
         especialidad: form.especialidad || null,
         matricula: form.matricula || null,
         telefono: form.telefono || null,
+        domicilio: form.domicilio || null,
       })
       .eq('id', profile?.id ?? '')
 
@@ -159,6 +161,22 @@ export default function PerfilProfesional({ profile }: { profile: Profile | null
               Visible para otros profesionales en interconsultas.
             </p>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="domicilio" className={labelCls}>Domicilio donde realiza la prestación</label>
+          <input
+            id="domicilio"
+            name="domicilio"
+            type="text"
+            value={form.domicilio}
+            onChange={handleChange}
+            placeholder="Av. Corrientes 1234, CABA"
+            className={inputCls}
+          />
+          <p className="text-[11px] text-on-surface-variant mt-1.5">
+            Se usa en las planillas de asistencia para obras sociales.
+          </p>
         </div>
 
         <div className="flex justify-end pt-2">

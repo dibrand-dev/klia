@@ -10,6 +10,7 @@ export type Database = {
           matricula: string | null
           especialidad: string | null
           telefono: string | null
+          domicilio: string | null
           plan: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio: string
