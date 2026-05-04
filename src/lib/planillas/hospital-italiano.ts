@@ -19,6 +19,7 @@ export interface DatosPlanilla {
   mes: string          // "DICIEMBRE"
   numeroAutorizacion: string
   sesiones: SesionPlanilla[]
+  logoUrl?: string     // URL del logo de la OS en Supabase Storage
 }
 
 async function fetchImg(url: string): Promise<Buffer | null> {
@@ -157,18 +158,33 @@ function drawRow(
   }
 }
 
+function drawLogoPlaceholder(doc: InstanceType<typeof PDFDocument>) {
+  doc.fillColor('#2d6a4f').font('Helvetica-Bold').fontSize(10)
+  doc.text('[+] HOSPITAL ITALIANO', L, 40, { lineBreak: false })
+  doc.font('Helvetica').fontSize(8).fillColor('#2d6a4f')
+  doc.text('de Buenos Aires', L, 54, { lineBreak: false })
+  doc.font('Helvetica-Bold').fontSize(8)
+  doc.text('PLAN DE SALUD', L, 64, { lineBreak: false })
+}
+
 function renderFirstPage(
   doc: InstanceType<typeof PDFDocument>,
   datos: DatosPlanilla,
   imgCache: Record<string, Buffer | null>,
 ) {
-  // ── Logo placeholder ──────────────────────────────────────────────────
-  doc.fillColor('#2d6a4f').font('Helvetica-Bold').fontSize(10)
-  doc.text('╋ HOSPITAL ITALIANO', L, 40, { lineBreak: false })
-  doc.font('Helvetica').fontSize(8).fillColor('#2d6a4f')
-  doc.text('de Buenos Aires', L, 54, { lineBreak: false })
-  doc.font('Helvetica-Bold').fontSize(8)
-  doc.text('PLAN DE SALUD', L, 64, { lineBreak: false })
+  // ── Logo / placeholder ────────────────────────────────────────────────
+  const logoUrl = datos.logoUrl
+  const logoBuf = logoUrl ? imgCache[logoUrl] : null
+
+  if (logoBuf) {
+    try {
+      doc.image(logoBuf, L, 36, { fit: [120, 50] })
+    } catch {
+      drawLogoPlaceholder(doc)
+    }
+  } else {
+    drawLogoPlaceholder(doc)
+  }
 
   // ── Título ────────────────────────────────────────────────────────────
   doc.fillColor('#000000').font('Helvetica-Bold').fontSize(12)
@@ -228,6 +244,8 @@ function renderFirstPage(
   const tableY = FY + FH * 5 + 8
   drawTableHeader(doc, tableY)
 
+  const p1Rows = Math.min(datos.sesiones.length, 12)
+  console.log(`[planilla] página 1: ${p1Rows} sesiones en ${12} filas`)
   let rowY = tableY + HDR_H
   for (let i = 0; i < 12; i++) {
     drawRow(doc, rowY, datos.sesiones[i] ?? null, imgCache)
@@ -252,14 +270,20 @@ function renderContinuationPage(
 // ── main export ─────────────────────────────────────────────────────────────
 
 export async function generarPlanillaHospitalItaliano(datos: DatosPlanilla): Promise<Buffer> {
+  console.log(`[planilla] sesiones recibidas: ${datos.sesiones.length}`)
+
   // Collect unique image URLs and pre-fetch
   const allUrls: string[] = []
+  if (datos.logoUrl) allUrls.push(datos.logoUrl)
   for (const s of datos.sesiones) {
     if (s.firmaProfesionalUrl && !allUrls.includes(s.firmaProfesionalUrl)) allUrls.push(s.firmaProfesionalUrl)
     if (s.firmaPacienteUrl && !allUrls.includes(s.firmaPacienteUrl)) allUrls.push(s.firmaPacienteUrl)
   }
   const imgCache: Record<string, Buffer | null> = {}
   await Promise.all(allUrls.map(async (url) => { imgCache[url] = await fetchImg(url) }))
+  if (datos.logoUrl) {
+    console.log(`[planilla] logo fetch result: ${imgCache[datos.logoUrl] ? 'ok' : 'failed/null'}`)
+  }
 
   return new Promise<Buffer>((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 40, autoFirstPage: true })
