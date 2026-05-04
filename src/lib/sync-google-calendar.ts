@@ -4,6 +4,7 @@ import {
   getAuthenticatedClient,
   crearEventoCalendario,
   eliminarEventoCalendario,
+  actualizarEventoCalendario,
 } from './google-calendar'
 import type { Database } from '@/types/database'
 
@@ -171,6 +172,71 @@ export async function sincronizarEntrevistaCancelada(entrevistaId: string, terap
   const calendarClient = await getAuthenticatedClient(tokens)
   await eliminarEventoCalendario(calendarClient, entrevista.google_event_id, tokens.calendar_id || 'primary')
   await supabase.from('entrevistas').update({ google_event_id: null }).eq('id', entrevistaId)
+}
+
+export async function sincronizarTurnoActualizado(turnoId: string, terapeutaId: string) {
+  const supabase = db()
+
+  const { data: tokens } = await supabase
+    .from('google_calendar_tokens')
+    .select('*')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('sync_enabled', true)
+    .single()
+  if (!tokens) return
+
+  const { data: turno } = await supabase
+    .from('turnos')
+    .select('*, paciente:pacientes(nombre, apellido)')
+    .eq('id', turnoId)
+    .single()
+  if (!turno?.google_event_id) return
+
+  const paciente = turno.paciente as { nombre: string; apellido: string } | null
+  if (!paciente) return
+
+  const calendarClient = await getAuthenticatedClient(tokens)
+  const fecha = format(parseISO(turno.fecha_hora), 'yyyy-MM-dd')
+  const hora = format(parseISO(turno.fecha_hora), 'HH:mm')
+  await actualizarEventoCalendario(calendarClient, turno.google_event_id, {
+    paciente_nombre: paciente.nombre,
+    paciente_apellido: paciente.apellido,
+    fecha,
+    hora,
+    duracion: turno.duracion_min,
+  }, tokens.calendar_id || 'primary')
+}
+
+export async function sincronizarEntrevistaActualizada(entrevistaId: string, terapeutaId: string) {
+  const supabase = db()
+
+  const { data: tokens } = await supabase
+    .from('google_calendar_tokens')
+    .select('*')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('sync_enabled', true)
+    .single()
+  if (!tokens) return
+
+  const { data: entrevista } = await supabase
+    .from('entrevistas')
+    .select('*')
+    .eq('id', entrevistaId)
+    .single()
+  if (!entrevista?.google_event_id) return
+
+  const calendarClient = await getAuthenticatedClient(tokens)
+  const argDateTime = new Date(`${entrevista.fecha}T${entrevista.hora.slice(0, 5)}:00-03:00`)
+  const fechaUTC = argDateTime.toISOString().slice(0, 10)
+  const horaUTC = argDateTime.toISOString().slice(11, 16)
+  await actualizarEventoCalendario(calendarClient, entrevista.google_event_id, {
+    paciente_nombre: entrevista.nombre,
+    paciente_apellido: entrevista.apellido,
+    fecha: fechaUTC,
+    hora: horaUTC,
+    duracion: entrevista.duracion,
+    tipo: 'Entrevista',
+  }, tokens.calendar_id || 'primary')
 }
 
 export async function sincronizarSerieCancelada(

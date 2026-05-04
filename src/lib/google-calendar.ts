@@ -86,6 +86,37 @@ export async function eliminarEventoCalendario(
   }
 }
 
+export async function actualizarEventoCalendario(
+  calendarClient: calendar_v3.Calendar,
+  eventId: string,
+  turno: {
+    paciente_nombre: string
+    paciente_apellido: string
+    fecha: string
+    hora: string
+    duracion: number
+    tipo?: string
+  },
+  calendarId = 'primary',
+): Promise<void> {
+  const inicio = new Date(`${turno.fecha}T${turno.hora}:00Z`)
+  const fin = new Date(inicio.getTime() + turno.duracion * 60000)
+  const tipoLabel = turno.tipo ?? 'Sesión'
+  try {
+    await calendarClient.events.patch({
+      calendarId,
+      eventId,
+      requestBody: {
+        summary: `${turno.paciente_apellido}, ${turno.paciente_nombre} | ${tipoLabel}`,
+        start: { dateTime: inicio.toISOString(), timeZone: 'America/Argentina/Buenos_Aires' },
+        end: { dateTime: fin.toISOString(), timeZone: 'America/Argentina/Buenos_Aires' },
+      },
+    })
+  } catch {
+    // Ignorar si el evento ya no existe en Google
+  }
+}
+
 export type GoogleEventItem = {
   id: string
   titulo: string

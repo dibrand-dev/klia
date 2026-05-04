@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import SlideOver from '@/components/ui/SlideOver'
 import type { Entrevista } from '@/types/database'
 
@@ -21,6 +23,7 @@ const ESTADO_LABELS: Record<string, string> = {
   cancelada: 'Cancelada',
   convertida: 'Convertida',
 }
+const DURACIONES = [30, 45, 50, 60, 90]
 
 export default function EntrevistaDetalleModal({
   entrevista,
@@ -34,11 +37,57 @@ export default function EntrevistaDetalleModal({
   const [confirmConvertir, setConfirmConvertir] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [editando, setEditando] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editForm, setEditForm] = useState({
+    nombre: entrevista.nombre,
+    apellido: entrevista.apellido,
+    telefono: entrevista.telefono ?? '',
+    email: entrevista.email ?? '',
+    fecha: entrevista.fecha,
+    hora: entrevista.hora.slice(0, 5),
+    duracion: entrevista.duracion,
+    costo: entrevista.costo != null ? String(entrevista.costo) : '',
+    notas: entrevista.notas ?? '',
+  })
+
   const titulo = `${entrevista.apellido}, ${entrevista.nombre} | Entrevista`
   const fechaLabel = (() => {
     const d = parseISO(entrevista.fecha + 'T12:00:00')
     return format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
   })()
+
+  async function guardarEdicion() {
+    setSaving(true)
+    setError(null)
+    const supabase = createClient()
+    const updates = {
+      nombre: editForm.nombre.trim(),
+      apellido: editForm.apellido.trim(),
+      telefono: editForm.telefono.trim() || null,
+      email: editForm.email.trim() || null,
+      fecha: editForm.fecha,
+      hora: editForm.hora,
+      duracion: Number(editForm.duracion),
+      costo: editForm.costo ? Number(editForm.costo) : null,
+      notas: editForm.notas.trim() || null,
+    }
+    const { error: dbError } = await supabase
+      .from('entrevistas')
+      .update(updates)
+      .eq('id', entrevista.id)
+    if (dbError) { setError('Error al guardar cambios.'); setSaving(false); return }
+    if (entrevista.google_event_id) {
+      fetch('/api/google-calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entrevista_id: entrevista.id, action: 'update' }),
+      }).catch(() => {})
+    }
+    onEntrevistaActualizada({ ...entrevista, ...updates })
+    setEditando(false)
+    setSaving(false)
+  }
 
   async function handleEstadoChange(nuevoEstado: string) {
     setCambiandoEstado(true)
@@ -86,9 +135,117 @@ export default function EntrevistaDetalleModal({
 
   const yaConvertida = estado === 'convertida'
 
+  // ─── Modo editar ────────────────────────────────────────────────
+  if (editando) {
+    return (
+      <SlideOver open onClose={onClose} title={titulo}>
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-900">Editar entrevista</h3>
+          <button onClick={() => setEditando(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+              <input type="text" value={editForm.nombre}
+                onChange={(e) => setEditForm((p) => ({ ...p, nombre: e.target.value }))}
+                className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Apellido *</label>
+              <input type="text" value={editForm.apellido}
+                onChange={(e) => setEditForm((p) => ({ ...p, apellido: e.target.value }))}
+                className="input-field" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+              <input type="tel" value={editForm.telefono}
+                onChange={(e) => setEditForm((p) => ({ ...p, telefono: e.target.value }))}
+                className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" value={editForm.email}
+                onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                className="input-field" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+              <input type="date" value={editForm.fecha}
+                onChange={(e) => setEditForm((p) => ({ ...p, fecha: e.target.value }))}
+                className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hora *</label>
+              <input type="time" value={editForm.hora}
+                onChange={(e) => setEditForm((p) => ({ ...p, hora: e.target.value }))}
+                className="input-field" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
+              <select value={editForm.duracion}
+                onChange={(e) => setEditForm((p) => ({ ...p, duracion: Number(e.target.value) }))}
+                className="input-field">
+                {DURACIONES.map((d) => <option key={d} value={d}>{d} min</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Costo (ARS)</label>
+              <input type="number" min="0" step="100" value={editForm.costo}
+                onChange={(e) => setEditForm((p) => ({ ...p, costo: e.target.value }))}
+                className="input-field" placeholder="0" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <textarea value={editForm.notas}
+              onChange={(e) => setEditForm((p) => ({ ...p, notas: e.target.value }))}
+              rows={3} className="input-field resize-none" />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button onClick={() => setEditando(false)} className="btn-secondary flex-1 py-3">Cancelar</button>
+            <button
+              onClick={guardarEdicion}
+              disabled={saving || !editForm.nombre.trim() || !editForm.apellido.trim() || !editForm.fecha || !editForm.hora}
+              className={cn('btn-primary flex-1 py-3', saving && 'opacity-70')}
+            >
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </SlideOver>
+    )
+  }
+
+  // ─── Vista normal ────────────────────────────────────────────────
   return (
     <SlideOver open onClose={onClose} title={titulo}>
-      <div className="p-5 space-y-5">
+      {/* Sub-header con botón editar */}
+      <div className="flex items-center justify-end px-5 pt-3 pb-1">
+        <button
+          onClick={() => setEditando(true)}
+          className="p-2 text-gray-400 hover:text-primary hover:bg-primary-fixed/20 rounded-lg transition-colors"
+          title="Editar"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="px-5 pb-5 space-y-5">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
         )}
@@ -107,7 +264,7 @@ export default function EntrevistaDetalleModal({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{entrevista.hora} hs · {entrevista.duracion} min</span>
+            <span>{entrevista.hora.slice(0, 5)} hs · {entrevista.duracion} min</span>
           </div>
         </div>
 
@@ -121,8 +278,7 @@ export default function EntrevistaDetalleModal({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                <a href={`tel:${entrevista.telefono.replace(/[^\d+]/g, '')}`}
-                  className="text-primary hover:underline">
+                <a href={`tel:${entrevista.telefono.replace(/[^\d+]/g, '')}`} className="text-primary hover:underline">
                   {entrevista.telefono}
                 </a>
               </div>

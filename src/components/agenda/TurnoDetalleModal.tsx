@@ -66,6 +66,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     fecha: format(fecha, 'yyyy-MM-dd'),
     hora: format(fecha, 'HH:mm'),
     duracion_min: turno.duracion_min,
+    modalidad: turno.modalidad,
     monto: turno.monto != null ? String(turno.monto) : '',
     notas: turno.notas ?? '',
   })
@@ -263,21 +264,28 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const fechaHora = new Date(`${editForm.fecha}T${editForm.hora}:00`)
+    const fechaHora = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
     const { error: dbError } = await supabase
       .from('turnos')
       .update({
         fecha_hora: fechaHora.toISOString(),
         duracion_min: Number(editForm.duracion_min),
+        modalidad: editForm.modalidad,
         monto: editForm.monto ? Number(editForm.monto) : null,
         notas: editForm.notas || null,
       })
       .eq('id', turno.id)
     if (dbError) { setError('Error al guardar cambios.'); setLoading(false); return }
+    fetch('/api/google-calendar/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno_id: turno.id, action: 'update' }),
+    }).catch(() => {})
     onTurnoActualizado({
       ...turno,
       fecha_hora: fechaHora.toISOString(),
       duracion_min: Number(editForm.duracion_min),
+      modalidad: editForm.modalidad,
       monto: editForm.monto ? Number(editForm.monto) : null,
       notas: editForm.notas || null,
     })
@@ -371,13 +379,25 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
                 className="input-field" />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
-            <select value={editForm.duracion_min}
-              onChange={(e) => setEditForm((p) => ({ ...p, duracion_min: Number(e.target.value) }))}
-              className="input-field">
-              {DURACIONES.map((d) => <option key={d} value={d}>{d} min</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
+              <select value={editForm.duracion_min}
+                onChange={(e) => setEditForm((p) => ({ ...p, duracion_min: Number(e.target.value) }))}
+                className="input-field">
+                {DURACIONES.map((d) => <option key={d} value={d}>{d} min</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modalidad</label>
+              <select value={editForm.modalidad}
+                onChange={(e) => setEditForm((p) => ({ ...p, modalidad: e.target.value as 'presencial' | 'videollamada' | 'telefonica' }))}
+                className="input-field">
+                <option value="presencial">Presencial</option>
+                <option value="videollamada">Online</option>
+                <option value="telefonica">Telefónica</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Honorarios (ARS)</label>
