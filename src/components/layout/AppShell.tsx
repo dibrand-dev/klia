@@ -102,7 +102,7 @@ export default function AppShell({
         >
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <div className="ml-4 flex items-center gap-2">
+        <Link href="/dashboard" className="ml-4 flex items-center gap-2">
           <span
             className="material-symbols-outlined text-primary text-2xl"
             style={{ fontVariationSettings: "'FILL' 1" }}
@@ -110,7 +110,7 @@ export default function AppShell({
             medical_services
           </span>
           <span className="font-bold text-xl text-primary tracking-tighter">KLIA</span>
-        </div>
+        </Link>
       </div>
 
       {/* Mobile sidebar overlay */}

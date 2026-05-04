@@ -7,6 +7,7 @@ import type { Profile } from '@/types/database'
 import SidebarUserCard from '@/components/ui/SidebarUserCard'
 
 const NAV_ITEMS = [
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/agenda', label: 'Agenda', icon: 'calendar_today' },
   { href: '/pacientes', label: 'Pacientes', icon: 'groups' },
   {
@@ -38,7 +39,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
       className="flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl"
     >
       {/* Logo */}
-      <div className="mb-8 flex items-center gap-2">
+      <Link href="/dashboard" className="mb-8 flex items-center gap-2">
         <span
           className="material-symbols-outlined text-primary text-3xl"
           style={{ fontVariationSettings: "'FILL' 1" }}
@@ -46,7 +47,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
           medical_services
         </span>
         <span className="text-primary font-bold text-xl tracking-tighter">KLIA</span>
-      </div>
+      </Link>
 
       {/* User Profile Card */}
       <SidebarUserCard
