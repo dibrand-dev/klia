@@ -95,13 +95,25 @@ export async function POST(req: NextRequest) {
   })
 
   // 7. Fetch OS logo from storage
+  // Logos are stored by obras_sociales.id (global table), not profesional_obras_sociales.id.
+  // Resolve via name match.
   let logoUrl: string | undefined
-  {
-    const { data: logoFiles } = await svc.storage.from('obras-sociales').list('logos', { search: os_config_id })
-    const logoFile = (logoFiles ?? []).find((f) => f.name.startsWith(os_config_id))
-    if (logoFile) {
-      const { data } = svc.storage.from('obras-sociales').getPublicUrl(`logos/${logoFile.name}`)
-      logoUrl = data.publicUrl
+  if (osConfig) {
+    const { data: osBase } = await svc
+      .from('obras_sociales')
+      .select('id')
+      .ilike('nombre', osConfig.nombre)
+      .eq('validada', true)
+      .limit(1)
+      .maybeSingle()
+    const logoOsId = osBase?.id
+    if (logoOsId) {
+      const { data: logoFiles } = await svc.storage.from('obras-sociales').list('logos', { search: logoOsId })
+      const logoFile = (logoFiles ?? []).find((f) => f.name.startsWith(logoOsId))
+      if (logoFile) {
+        const { data } = svc.storage.from('obras-sociales').getPublicUrl(`logos/${logoFile.name}`)
+        logoUrl = data.publicUrl
+      }
     }
   }
 
