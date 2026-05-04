@@ -77,22 +77,7 @@ export default function AgendaSemanal({
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null)
   const [entrevistaSeleccionada, setEntrevistaSeleccionada] = useState<Entrevista | null>(null)
-  const [googleConflicto, setGoogleConflicto] = useState(false)
-
   function abrirNuevoTurno(fecha: Date) {
-    if (googleConnected) {
-      const fin = new Date(fecha.getTime() + 50 * 60000)
-      const hayConflicto = googleEvents.some((e) => {
-        const eI = new Date(e.inicio)
-        const eF = new Date(e.fin)
-        return eI < fin && eF > fecha
-      })
-      if (hayConflicto) {
-        setGoogleConflicto(true)
-        setTimeout(() => setGoogleConflicto(false), 3000)
-        return
-      }
-    }
     setNuevoFecha(fecha)
     setNuevoOpen(true)
   }
@@ -392,12 +377,6 @@ export default function AgendaSemanal({
 
   return (
     <div className="flex flex-col h-full">
-      {googleConflicto && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-gray-800 text-white text-sm px-5 py-3 rounded-xl shadow-lg">
-          Horario ocupado en Google Calendar
-        </div>
-      )}
-
       {/* ══ Vista Día ══ */}
       {vista === 'dia' && (
         <VistaDia
