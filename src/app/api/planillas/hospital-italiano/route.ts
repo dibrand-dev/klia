@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
   try {
     pdfBuffer = await generarPlanillaHospitalItaliano({
       anio: anio.toString(),
-      prestador: `${profile.apellido} ${profile.nombre}`.toUpperCase(),
+      prestador: `${profile.apellido}, ${profile.nombre}`.toUpperCase(),
       domicilio: osConfig?.domicilio_os ?? '',
       afiliado: `${paciente.apellido} ${paciente.nombre}`.toUpperCase(),
       numeroSocio: paciente.numero_afiliado ?? '',
