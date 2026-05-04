@@ -290,7 +290,7 @@ function renderFirstPage(
     cx4 += s.font.widthOfTextAtSize(s.text, FS)
   }
 
-  drawLabeledLine(page, fonts, L, FY + FH * 4, W, 'N° de autorizacion:', datos.numeroAutorizacion)
+  drawLabeledLine(page, fonts, L, FY + FH * 4, W, 'N° de autorizacion:', datos.numeroAutorizacion, true)
 
   // Table
   const tableY = FY + FH * 5 + 8
