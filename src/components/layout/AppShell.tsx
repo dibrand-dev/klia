@@ -12,9 +12,14 @@ import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
 
 function TrialBanner({ trialFin }: { trialFin: string }) {
-  const dias = Math.max(0, Math.ceil((new Date(trialFin).getTime() - Date.now()) / 86400000))
-  const urgente = dias <= 5
+  const [dias, setDias] = useState<number | null>(null)
+  useEffect(() => {
+    setDias(Math.max(0, Math.ceil((new Date(trialFin).getTime() - Date.now()) / 86400000)))
+  }, [trialFin])
 
+  if (dias === null) return null
+
+  const urgente = dias <= 5
   return (
     <div className={`w-full text-center text-xs py-2 px-4 font-medium ${urgente ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
       {dias === 0
