@@ -60,17 +60,23 @@ export default function VistaDia({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header — mismo layout que vista semana */}
-      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2 md:gap-4">
-          <p className="text-lg md:text-xl font-semibold text-gray-900 capitalize">
-            {format(dia, "EEEE d 'de' MMMM yyyy", { locale: es })}
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-semibold text-gray-900 capitalize truncate">
+            <span className="hidden sm:inline text-xl">
+              {format(dia, "EEEE d 'de' MMMM yyyy", { locale: es })}
+            </span>
+            <span className="sm:hidden text-base">
+              {format(dia, "EEE d 'de' MMM", { locale: es })}
+              {isToday(dia) && <span className="ml-1.5 text-xs text-primary font-medium">Hoy</span>}
+            </span>
           </p>
           {isToday(dia) && (
             <span className="text-xs text-primary font-medium hidden sm:inline">Hoy</span>
           )}
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
             <button onClick={() => onDiaChange(subDays(dia, 1))} className="px-2 md:px-3 py-2 hover:bg-gray-50 text-gray-600">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -86,7 +92,7 @@ export default function VistaDia({
               </svg>
             </button>
           </div>
-          <button onClick={() => onNuevoTurno(dia)} className="btn-primary flex items-center gap-1 md:gap-2 px-3 py-2 text-sm">
+          <button onClick={() => onNuevoTurno(dia)} className="btn-primary flex items-center gap-1 px-3 py-2 text-sm">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -96,21 +102,21 @@ export default function VistaDia({
       </div>
 
       {/* Segunda fila: selector + stats */}
-      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-4 text-xs text-gray-500">
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
         {vistaSelector}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span>
             <strong className="text-gray-700">{turnosDia.length}</strong>{' '}
-            turno{turnosDia.length !== 1 ? 's' : ''}
+            <span className="hidden sm:inline">turno{turnosDia.length !== 1 ? 's' : ''}</span>
           </span>
           {entrevistasDia.length > 0 && (
             <span className="text-amber-600">
               <strong>{entrevistasDia.length}</strong>{' '}
-              entrevista{entrevistasDia.length !== 1 ? 's' : ''}
+              <span className="hidden sm:inline">entrevista{entrevistasDia.length !== 1 ? 's' : ''}</span>
             </span>
           )}
           {turnosDia.length === 0 && entrevistasDia.length === 0 && (
-            <span className="text-gray-400">Sin turnos este día</span>
+            <span className="text-gray-400 hidden sm:inline">Sin turnos este día</span>
           )}
         </div>
       </div>
