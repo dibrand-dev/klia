@@ -270,8 +270,8 @@ function renderFirstPage(
   let cx3 = L
   const seg3 = [
     { text: 'Dejo constancia que el afiliado', font: fonts.reg, color: C_DARK },
-    { text: '  ' + datos.afiliado + ' ',       font: fonts.bold, color: C_BLACK },
-    { text: 'n° socio',                         font: fonts.reg, color: C_DARK },
+    { text: '  ' + datos.afiliado,             font: fonts.bold, color: C_BLACK },
+    { text: '  n° socio',                       font: fonts.reg, color: C_DARK },
     { text: '  ' + datos.numeroSocio,           font: fonts.bold, color: C_BLACK },
   ]
   for (const s of seg3) {
@@ -284,9 +284,9 @@ function renderFirstPage(
   const yT4 = yb(y4, FS)
   let cx4 = L
   const seg4 = [
-    { text: 'Ha concurrido a tratamiento de',    font: fonts.reg, color: C_DARK },
-    { text: '  ' + datos.tratamiento + ' ',      font: fonts.bold, color: C_BLACK },
-    { text: 'durante el mes de',                 font: fonts.reg, color: C_DARK },
+    { text: 'Ha concurrido a tratamiento de',      font: fonts.reg, color: C_DARK },
+    { text: '  ' + datos.tratamiento,              font: fonts.bold, color: C_BLACK },
+    { text: '  durante el mes de',                 font: fonts.reg, color: C_DARK },
     { text: '  ' + datos.mes + '  ' + datos.anio, font: fonts.bold, color: C_BLACK },
   ]
   for (const s of seg4) {
