@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import Logo from '@/components/ui/Logo'
 
 const CheckoutBrick = dynamic(() => import('@/components/suscripcion/CheckoutBrick'), { ssr: false })
 
@@ -131,14 +132,8 @@ export default function PlanesClient({ mpPublicKey }: { mpPublicKey: string }) {
     return (
       <div className="min-h-screen bg-surface-container-lowest">
         <div className="bg-white border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 text-primary">
-            <span
-              className="material-symbols-outlined text-2xl"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              medical_services
-            </span>
-            <span className="font-bold text-xl tracking-tighter">KLIA</span>
+          <Link href="/">
+            <Logo className="h-8 w-auto" />
           </Link>
         </div>
 

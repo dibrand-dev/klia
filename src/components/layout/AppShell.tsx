@@ -8,6 +8,7 @@ import type { Profile, Paciente } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
 import NavigationDrawer from './NavigationDrawer'
 import SlideOver from '@/components/ui/SlideOver'
+import Logo from '@/components/ui/Logo'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
 
@@ -107,14 +108,8 @@ export default function AppShell({
         >
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <Link href="/dashboard" className="ml-4 flex items-center gap-2">
-          <span
-            className="material-symbols-outlined text-primary text-2xl"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            medical_services
-          </span>
-          <span className="font-bold text-xl text-primary tracking-tighter">KLIA</span>
+        <Link href="/dashboard" className="ml-4">
+          <Logo className="h-7 w-auto" />
         </Link>
       </div>
 

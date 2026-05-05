@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Logo from '@/components/ui/Logo'
 
 export const metadata = {
   title: 'Política de Privacidad — KLIA',
@@ -10,8 +11,8 @@ export default function PrivacidadPage() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="border-b border-gray-200 px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 text-primary w-fit">
-          <span className="font-bold text-xl tracking-tighter">KLIA</span>
+        <Link href="/" className="w-fit">
+          <Logo className="h-7 w-auto" />
         </Link>
       </div>
 
