@@ -40,7 +40,7 @@ export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
     <nav className="flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl">
       {/* Logo */}
       <div className="mb-8">
-        <Logo className="h-9 w-auto" />
+        <Logo className="h-14 w-auto" />
         <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mt-1 pl-0.5">Ops</span>
       </div>
 

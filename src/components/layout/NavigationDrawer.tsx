@@ -41,7 +41,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
     >
       {/* Logo */}
       <Link href="/dashboard" className="mb-8 block">
-        <Logo className="h-9 w-auto" />
+        <Logo className="h-14 w-auto" />
       </Link>
 
       {/* User Profile Card */}

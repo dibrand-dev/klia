@@ -109,7 +109,7 @@ export default function AppShell({
           <span className="material-symbols-outlined">menu</span>
         </button>
         <Link href="/dashboard" className="ml-4">
-          <Logo className="h-7 w-auto" />
+          <Logo className="h-9 w-auto" />
         </Link>
       </div>
 

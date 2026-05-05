@@ -9,7 +9,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="card p-8 shadow-lg">
           <div className="text-center mb-8">
-            <Logo className="h-12 w-auto mx-auto mb-4" />
+            <Logo className="h-16 w-auto mx-auto mb-4" />
             <p className="text-gray-500 text-sm mt-1">Gestión de turnos y pacientes</p>
           </div>
           <LoginForm />
