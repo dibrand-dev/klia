@@ -6,9 +6,11 @@ import type { ProfesionalObraSocial } from '@/types/database'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 import SlideOver from '@/components/ui/SlideOver'
 
+type Template = { id: string; nombre_os: string; slug: string }
+
 type FormOS = {
-  nombre: string      // valor del select (o '__otra__')
-  nombreLibre: string // texto libre cuando nombre === '__otra__'
+  nombre: string
+  nombreLibre: string
   razon_social: string
   cuit_os: string
   domicilio_os: string
@@ -17,6 +19,7 @@ type FormOS = {
   codigo_practica: string
   descripcion_practica: string
   honorario_por_sesion: string
+  planilla_template_id: string
 }
 
 const BLANK: FormOS = {
@@ -30,6 +33,14 @@ const BLANK: FormOS = {
   codigo_practica: '',
   descripcion_practica: '',
   honorario_por_sesion: '',
+  planilla_template_id: '',
+}
+
+const MATCH_OS_TEMPLATE: Record<string, string> = {
+  'Hospital Italiano': 'hospital-italiano',
+  'Obra Social de Choferes de Camiones': 'choferes-camiones',
+  'OSPETELCO': 'ospetelco',
+  'OMINT': 'omint',
 }
 
 const inputCls = 'w-full bg-surface-container-high border border-outline-variant/20 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors'
@@ -77,6 +88,16 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
   const [form, setForm] = useState<FormOS>(BLANK)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<Template[]>([])
+
+  useEffect(() => {
+    createClient()
+      .from('planilla_templates')
+      .select('id, nombre_os, slug')
+      .eq('activa', true)
+      .order('nombre_os')
+      .then(({ data }) => setTemplates(data ?? []))
+  }, [])
 
   useEffect(() => {
     if (editing) {
@@ -92,6 +113,7 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
         codigo_practica: editing.codigo_practica ?? '',
         descripcion_practica: editing.descripcion_practica ?? '',
         honorario_por_sesion: editing.honorario_por_sesion?.toString() ?? '',
+        planilla_template_id: editing.planilla_template_id ?? '',
       })
     } else {
       setForm(BLANK)
@@ -99,7 +121,16 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
   }, [editing])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'nombre' && value !== '__otra__' && !editing?.planilla_template_id) {
+        const slug = MATCH_OS_TEMPLATE[value]
+        const matched = slug ? templates.find(t => t.slug === slug) : null
+        next.planilla_template_id = matched?.id ?? prev.planilla_template_id
+      }
+      return next
+    })
   }
 
   function openNueva() { setEditing(null); setError(null); setSlideOpen(true) }
@@ -124,6 +155,7 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
       codigo_practica: form.codigo_practica.trim() || null,
       descripcion_practica: form.descripcion_practica.trim() || null,
       honorario_por_sesion: honorario,
+      planilla_template_id: form.planilla_template_id || null,
     }
 
     if (editing) {
@@ -165,6 +197,8 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
     await supabase.from('profesional_obras_sociales').update({ activa: !os.activa }).eq('id', os.id)
     setList(prev => prev.map(o => o.id === os.id ? { ...o, activa: !o.activa } : o))
   }
+
+  const templateById = Object.fromEntries(templates.map(t => [t.id, t]))
 
   return (
     <>
@@ -264,6 +298,26 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
             </div>
           </div>
 
+          <div className="border-t border-outline-variant/20 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">Planilla de asistencia</p>
+            <label className={labelCls}>Plantilla de planilla</label>
+            <select name="planilla_template_id" value={form.planilla_template_id} onChange={handleChange} className={inputCls}>
+              <option value="">Sin plantilla configurada</option>
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>{t.nombre_os}</option>
+              ))}
+            </select>
+            {form.planilla_template_id ? (
+              <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                <span>✅</span> Planilla configurada · al generar usará esta plantilla automáticamente
+              </p>
+            ) : (
+              <p className="text-xs text-on-surface-variant/60 mt-1.5">
+                Sin plantilla, no se podrá generar planilla de asistencia para esta OS.
+              </p>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-2">
             <button onClick={() => setSlideOpen(false)} disabled={saving} className="btn-secondary flex-1 py-2.5">Cancelar</button>
             <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 py-2.5 disabled:opacity-70">
@@ -281,28 +335,35 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
             <p className="text-xs mt-1 opacity-60">Agregá la primera para comenzar a liquidar.</p>
           </div>
         ) : (
-          list.map(os => (
-            <div key={os.id} className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm px-6 py-4 flex items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm text-on-surface">{os.nombre}</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${os.activa ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                    {os.activa ? 'Activa' : 'Inactiva'}
-                  </span>
+          list.map(os => {
+            const tmpl = os.planilla_template_id ? templateById[os.planilla_template_id] : null
+            return (
+              <div key={os.id} className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm px-6 py-4 flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm text-on-surface">{os.nombre}</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${os.activa ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                      {os.activa ? 'Activa' : 'Inactiva'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Código: {os.codigo_practica || '—'} · {formatPrecio(os.honorario_por_sesion)}/sesión
+                    {tmpl
+                      ? <span className="text-emerald-600"> · 📄 Planilla: {tmpl.nombre_os}</span>
+                      : <span className="text-amber-600"> · ⚠️ Sin plantilla de planilla</span>
+                    }
+                  </p>
                 </div>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Código: {os.codigo_practica || '—'} · {formatPrecio(os.honorario_por_sesion)}/sesión
-                </p>
+                <button
+                  onClick={() => openEditar(os)}
+                  className="text-xs text-primary hover:underline font-medium px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  Editar
+                </button>
+                <OSRowMenu onEdit={() => openEditar(os)} onToggle={() => handleToggle(os)} activa={os.activa} />
               </div>
-              <button
-                onClick={() => openEditar(os)}
-                className="text-xs text-primary hover:underline font-medium px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
-              >
-                Editar
-              </button>
-              <OSRowMenu onEdit={() => openEditar(os)} onToggle={() => handleToggle(os)} activa={os.activa} />
-            </div>
-          ))
+            )
+          })
         )}
 
         <button
