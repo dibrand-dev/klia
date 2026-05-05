@@ -19,7 +19,12 @@ const NAV_ITEMS = [
   { href: '/ajustes', label: 'Ajustes', icon: 'settings' },
 ]
 
-export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: Profile | null; onNuevaSesion: () => void }) {
+export default function NavigationDrawer({ profile, onNuevaSesion, mobileOpen = false, onClose }: {
+  profile: Profile | null
+  onNuevaSesion: () => void
+  mobileOpen?: boolean
+  onClose?: () => void
+}) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -37,10 +42,10 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
   return (
     <nav
       id="sidebar"
-      className="flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl"
+      className={`flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl transition-transform duration-300 md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
     >
       {/* Logo */}
-      <Link href="/dashboard" className="mb-8 block">
+      <Link href="/dashboard" className="mb-8 block" onClick={onClose}>
         <Logo className="h-14 w-auto" />
       </Link>
 
@@ -60,6 +65,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
               <Link
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
+                onClick={onClose}
                 className={
                   isActive
                     ? 'flex items-center gap-3 bg-surface-container-lowest text-primary font-bold rounded-lg px-4 py-3 shadow-sm hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98]'
@@ -100,7 +106,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion }: { profile: 
       {/* Action Button */}
       <div className="mt-8 mb-6">
         <button
-          onClick={onNuevaSesion}
+          onClick={() => { onClose?.(); onNuevaSesion() }}
           className="w-full bg-primary text-on-primary font-medium text-sm px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-colors duration-200 shadow-sm active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-xl">add</span>
