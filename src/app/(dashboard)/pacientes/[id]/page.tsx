@@ -17,12 +17,17 @@ export default async function PacienteDetallePage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: paciente }, turnosRes, notasRes, medicacionesRes, obrasSocialesRes, profOSRes] = await Promise.all([
+  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, obrasSocialesRes, profOSRes] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
       .eq('id', params.id)
       .eq('terapeuta_id', user.id)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('cobrar_inasistencias')
+      .eq('id', user.id)
       .single(),
     supabase
       .from('turnos')
@@ -115,6 +120,7 @@ export default async function PacienteDetallePage({
         obrasSociales={obrasSociales}
         profObrasSociales={profObrasSociales}
         turnos={turnos}
+        profesionalCobrarInasistencias={profile?.cobrar_inasistencias ?? false}
         key={editMode ? 'edit' : 'view'}
       />
     </div>

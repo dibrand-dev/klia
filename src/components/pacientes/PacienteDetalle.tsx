@@ -14,6 +14,7 @@ import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import { type Moneda, formatearMonto } from '@/lib/monedas'
+import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -94,6 +95,7 @@ function buildForm(p: Paciente) {
     frecuencia_sesiones: p.frecuencia_sesiones ?? '',
     honorarios: p.honorarios != null ? String(p.honorarios) : '',
     moneda_preferida: (p.moneda_preferida ?? 'ARS') as Moneda,
+    cobrar_inasistencias: p.cobrar_inasistencias ?? null,
     motivo_consulta: p.motivo_consulta ?? '',
     notas: p.notas ?? '',
     codigo_diagnostico: p.codigo_diagnostico ?? '',
@@ -117,6 +119,7 @@ export default function PacienteDetalle({
   obrasSociales = [],
   profObrasSociales = [],
   turnos = [],
+  profesionalCobrarInasistencias = false,
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
@@ -126,6 +129,7 @@ export default function PacienteDetalle({
   obrasSociales?: string[]
   profObrasSociales?: ProfesionalObraSocial[]
   turnos?: TurnoRow[]
+  profesionalCobrarInasistencias?: boolean
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
@@ -231,6 +235,7 @@ export default function PacienteDetalle({
         frecuencia_sesiones: form.frecuencia_sesiones || null,
         honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
         moneda_preferida: form.moneda_preferida || 'ARS',
+        cobrar_inasistencias: form.cobrar_inasistencias,
         motivo_consulta: form.motivo_consulta || null,
         notas: form.notas || null,
         codigo_diagnostico: form.codigo_diagnostico || null,
@@ -542,6 +547,40 @@ export default function PacienteDetalle({
                 />
               </div>
             </div>
+            <div>
+              <label className={labelCls}>Política de inasistencias</label>
+              <div className="space-y-2">
+                {[
+                  { value: 'null', label: 'Usar configuración global', desc: 'Aplica la política general de tu cuenta' },
+                  { value: 'true', label: 'Cobrar inasistencias', desc: 'Las sesiones no asistidas generan deuda' },
+                  { value: 'false', label: 'No cobrar inasistencias', desc: 'Las sesiones no asistidas no generan deuda' },
+                ].map((opt) => {
+                  const current = form.cobrar_inasistencias === null ? 'null' : String(form.cobrar_inasistencias)
+                  const active = current === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm((prev) => ({
+                        ...prev,
+                        cobrar_inasistencias: opt.value === 'null' ? null : opt.value === 'true',
+                      }))}
+                      className={cn(
+                        'w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-colors',
+                        active
+                          ? 'border-primary bg-primary/5 text-primary'
+                          : 'border-outline-variant/20 bg-surface-container-high text-on-surface hover:border-primary/40'
+                      )}
+                    >
+                      <span className="font-medium">{opt.label}</span>
+                      <span className={cn('block text-xs mt-0.5', active ? 'text-primary/70' : 'text-on-surface-variant')}>
+                        {opt.desc}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </FormCard>
 
@@ -690,7 +729,7 @@ export default function PacienteDetalle({
   }
 
   if (activeTab === 'facturacion') {
-    return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} />
+    return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} />
   }
 
   if (activeTab && activeTab !== 'datos') {
@@ -1042,7 +1081,7 @@ const MESES_NOMBRES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
-function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente: Paciente; turnos: TurnoRow[]; profObrasSociales?: ProfesionalObraSocial[] }) {
+function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCobrarInasistencias = false }: { paciente: Paciente; turnos: TurnoRow[]; profObrasSociales?: ProfesionalObraSocial[]; profesionalCobrarInasistencias?: boolean }) {
   const router = useRouter()
   const now = new Date()
   const [mes, setMes] = useState(now.getMonth())
@@ -1057,6 +1096,11 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
   const osConfig = profObrasSociales.find((o) => o.id === paciente.os_config_id)
   const tienePlanilla = !!paciente.os_config_id && !!osConfig
 
+  const cobrarInasistencia = resolverPoliticaInasistencia(
+    paciente.cobrar_inasistencias,
+    profesionalCobrarInasistencias
+  )
+
   const turnosMes = turnos.filter((t) => {
     const d = new Date(t.fecha_hora)
     return d.getMonth() === mes && d.getFullYear() === anio
@@ -1065,9 +1109,17 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
   const asistio = turnosMes.filter((t) => t.estado === 'realizado')
   const noAsistio = turnosMes.filter((t) => t.estado === 'no_asistio')
   const cancelado = turnosMes.filter((t) => t.estado === 'cancelado')
-  const totalCobrable = asistio.length + noAsistio.length
-  const cobrablesPendientes = [...asistio, ...noAsistio].filter((t) => !t.pagado)
-  const todosPagados = totalCobrable > 0 && cobrablesPendientes.length === 0
+
+  const deuda = calcularDeudaMes(turnosMes, cobrarInasistencia)
+  const { sesionesCobrables, montoTotal, montoCobrado, montoPendiente } = deuda
+
+  const cobrablesPendientes = turnosMes.filter((t) => {
+    if (t.pagado) return false
+    if (t.estado === 'realizado') return true
+    if (t.estado === 'no_asistio') return cobrarInasistencia
+    return false
+  })
+  const todosPagados = sesionesCobrables > 0 && cobrablesPendientes.length === 0
 
   function formatDias(ts: TurnoRow[]) {
     return ts
@@ -1080,11 +1132,12 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
     const supabase = createClient()
     const inicioMes = new Date(anio, mes, 1).toISOString()
     const finMes = new Date(anio, mes + 1, 0, 23, 59, 59).toISOString()
+    const estadosAMarcar = cobrarInasistencia ? ['realizado', 'no_asistio'] : ['realizado']
     await supabase
       .from('turnos')
       .update({ pagado: true })
       .eq('paciente_id', paciente.id)
-      .in('estado', ['realizado', 'no_asistio'])
+      .in('estado', estadosAMarcar)
       .gte('fecha_hora', inicioMes)
       .lte('fecha_hora', finMes)
     setPagando(false)
@@ -1179,6 +1232,7 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
           <p className="text-sm text-on-surface-variant">Sin turnos registrados en este período.</p>
         ) : (
           <div className="space-y-3">
+            {/* Realizadas */}
             <div className="flex items-start gap-3 text-sm">
               <span className="text-base leading-none mt-0.5">✅</span>
               <div className="flex-1">
@@ -1187,10 +1241,22 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
                 {asistio.length > 0 && (
                   <p className="text-xs text-on-surface-variant mt-0.5">
                     Días: {formatDias(asistio)} de {mesNombre.toLowerCase()}
+                    {Object.entries(montoTotal).length > 0 && asistio.some(t => t.monto) && (
+                      <span className="ml-2 font-medium text-primary">
+                        {Object.entries(
+                          asistio.reduce((acc, t) => {
+                            if (t.monto) { const m = t.moneda || 'ARS'; acc[m] = (acc[m] ?? 0) + t.monto }
+                            return acc
+                          }, {} as Record<string, number>)
+                        ).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
             </div>
+
+            {/* No asistió */}
             <div className="flex items-start gap-3 text-sm">
               <span className="text-base leading-none mt-0.5">❌</span>
               <div className="flex-1">
@@ -1198,11 +1264,18 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
                 <span className="text-on-surface-variant"> — No asistió</span>
                 {noAsistio.length > 0 && (
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Días: {formatDias(noAsistio)} de {mesNombre.toLowerCase()} (cobrable)
+                    Días: {formatDias(noAsistio)} de {mesNombre.toLowerCase()}
+                    {cobrarInasistencia ? (
+                      <span className="ml-2 text-amber-600 font-medium">cobrable según tu política</span>
+                    ) : (
+                      <span className="ml-2 text-on-surface-variant">no cobrable (política: no se cobra)</span>
+                    )}
                   </p>
                 )}
               </div>
             </div>
+
+            {/* Canceladas */}
             <div className="flex items-start gap-3 text-sm">
               <span className="text-base leading-none mt-0.5">🚫</span>
               <div className="flex-1">
@@ -1210,43 +1283,45 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
                 <span className="text-on-surface-variant"> — Cancelada{cancelado.length !== 1 ? 's' : ''}</span>
                 {cancelado.length > 0 && (
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Días: {formatDias(cancelado)} de {mesNombre.toLowerCase()} (no cobrable)
+                    Días: {formatDias(cancelado)} de {mesNombre.toLowerCase()} — no cobrable
                   </p>
                 )}
               </div>
             </div>
-            <div className="pt-3 border-t border-outline-variant/10 space-y-1">
-              <p className="text-sm font-semibold text-on-surface">
-                Total cobrable: {totalCobrable} sesión{totalCobrable !== 1 ? 'es' : ''}
-              </p>
-              {(() => {
-                const cobrables = [...asistio, ...noAsistio]
-                const porMoneda: Record<string, number> = {}
-                for (const t of cobrables) {
-                  if (t.monto != null) {
-                    const m = t.moneda || 'ARS'
-                    porMoneda[m] = (porMoneda[m] ?? 0) + t.monto
-                  }
-                }
-                const entradas = Object.entries(porMoneda)
-                if (entradas.length === 0) return null
-                return (
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {entradas.map(([moneda, total]) => (
-                      <span key={moneda} className="text-sm font-semibold text-primary">
-                        {formatearMonto(total, moneda as Moneda)}
-                      </span>
-                    ))}
-                  </div>
-                )
-              })()}
+
+            {/* Totales */}
+            <div className="pt-3 border-t border-outline-variant/10 space-y-1.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-semibold text-on-surface">
+                  Total cobrable: {sesionesCobrables} sesión{sesionesCobrables !== 1 ? 'es' : ''}
+                </span>
+                {Object.entries(montoTotal).map(([m, v]) => (
+                  <span key={m} className="text-sm font-bold text-primary">{formatearMonto(v, m as Moneda)}</span>
+                ))}
+              </div>
+              {Object.keys(montoCobrado).length > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-green-700">Cobrado:</span>
+                  {Object.entries(montoCobrado).map(([m, v]) => (
+                    <span key={m} className="text-xs font-semibold text-green-700">{formatearMonto(v, m as Moneda)} ✅</span>
+                  ))}
+                </div>
+              )}
+              {Object.keys(montoPendiente).length > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-amber-600">Pendiente:</span>
+                  {Object.entries(montoPendiente).map(([m, v]) => (
+                    <span key={m} className="text-xs font-semibold text-amber-600">{formatearMonto(v, m as Moneda)} ⏳</span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
       {/* Marcar mes como pagado */}
-      {totalCobrable > 0 && (
+      {sesionesCobrables > 0 && (
         <div>
           {(mesPagado || todosPagados) ? (
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-200 text-sm font-medium">

@@ -23,6 +23,7 @@ export type Database = {
           plan_elegido_registro: string | null
           agenda_hora_inicio: number
           agenda_hora_fin: number
+          cobrar_inasistencias: boolean
           created_at: string
           updated_at: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           plan_elegido_registro?: string | null
           agenda_hora_inicio?: number
           agenda_hora_fin?: number
+          cobrar_inasistencias?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -65,6 +67,7 @@ export type Database = {
           plan_elegido_registro?: string | null
           agenda_hora_inicio?: number
           agenda_hora_fin?: number
+          cobrar_inasistencias?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -108,6 +111,7 @@ export type Database = {
           autorizacion_vigencia_hasta: string | null
           firma_paciente_url: string | null
           moneda_preferida: string
+          cobrar_inasistencias: boolean | null
           created_at: string
           updated_at: string
         }
@@ -147,6 +151,7 @@ export type Database = {
           autorizacion_vigencia_desde?: string | null
           autorizacion_vigencia_hasta?: string | null
           moneda_preferida?: string
+          cobrar_inasistencias?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -186,6 +191,7 @@ export type Database = {
           autorizacion_vigencia_desde?: string | null
           autorizacion_vigencia_hasta?: string | null
           moneda_preferida?: string
+          cobrar_inasistencias?: boolean | null
           created_at?: string
           updated_at?: string
         }

@@ -67,6 +67,9 @@ export default function LiquidacionView({ osList, terapeutaId }: {
         }
 
         const pacienteIds = pacs.map(p => p.id)
+        // Las obras sociales SIEMPRE cuentan 'no_asistio' como cobrable,
+        // independientemente de la política de inasistencias del profesional.
+        // La política configurable aplica sólo a la facturación directa con el paciente.
         const { data: turnos } = await supabase
           .from('turnos')
           .select('paciente_id, moneda')
