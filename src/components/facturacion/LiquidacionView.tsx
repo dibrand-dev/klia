@@ -44,6 +44,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
   const [cargando, setCargando] = useState(false)
   const [detalle, setDetalle] = useState<ResumenOS | null>(null)
   const [generando, setGenerando] = useState<string | null>(null)
+  const [turnosNoARS, setTurnosNoARS] = useState(0)
 
   const calcular = useCallback(async () => {
     setCargando(true)
@@ -68,7 +69,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
         const pacienteIds = pacs.map(p => p.id)
         const { data: turnos } = await supabase
           .from('turnos')
-          .select('paciente_id')
+          .select('paciente_id, moneda')
           .in('paciente_id', pacienteIds)
           .in('estado', ['realizado', 'no_asistio'])
           .gte('fecha_hora', inicio)
@@ -100,6 +101,18 @@ export default function LiquidacionView({ osList, terapeutaId }: {
     )
 
     setResumenes(nuevos)
+
+    // Check for non-ARS turnos in this period for this therapist
+    const { count: noARSCount } = await supabase
+      .from('turnos')
+      .select('id', { count: 'exact', head: true })
+      .eq('terapeuta_id', terapeutaId)
+      .in('estado', ['realizado', 'no_asistio'])
+      .gte('fecha_hora', inicio)
+      .lte('fecha_hora', fin)
+      .neq('moneda', 'ARS')
+
+    setTurnosNoARS(noARSCount ?? 0)
     setCargando(false)
   }, [mes, anio, osList, terapeutaId])
 
@@ -217,6 +230,17 @@ export default function LiquidacionView({ osList, terapeutaId }: {
           {cargando ? 'Calculando...' : 'Calcular'}
         </button>
       </div>
+
+      {/* Aviso turno no-ARS */}
+      {turnosNoARS > 0 && (
+        <div className="mb-5 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <span className="text-amber-500 text-lg leading-none mt-0.5">⚠️</span>
+          <p className="text-sm text-amber-800">
+            Hay {turnosNoARS} turno{turnosNoARS !== 1 ? 's' : ''} en moneda extranjera (USD o EUR) en este período.
+            La liquidación de obras sociales sólo contempla importes en pesos (ARS).
+          </p>
+        </div>
+      )}
 
       {/* Lista de OS */}
       {osList.length === 0 ? (

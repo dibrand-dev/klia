@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 import type { ProfesionalObraSocial } from '@/types/database'
+import MonedaSelector from '@/components/ui/MonedaSelector'
+import type { Moneda } from '@/lib/monedas'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -91,6 +93,7 @@ const EMPTY_MED: MedicacionForm = { farmaco: '', dosis: '', frecuencia: '', pres
 export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], profObrasSociales = [] }: { terapeutaId: string; obrasSociales?: string[]; profObrasSociales?: ProfesionalObraSocial[] }) {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY_FORM)
+  const [monedaPreferida, setMonedaPreferida] = useState<Moneda>('ARS')
   const [medicaciones, setMedicaciones] = useState<MedicacionForm[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -164,6 +167,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
         modalidad_tratamiento: form.modalidad_tratamiento || null,
         frecuencia_sesiones: form.frecuencia_sesiones || null,
         honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+        moneda_preferida: monedaPreferida,
         motivo_consulta: form.motivo_consulta || null,
         notas: form.notas || null,
         codigo_diagnostico: form.codigo_diagnostico || null,
@@ -486,16 +490,15 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
             </div>
             <div>
               <label className={labelCls}>Honorarios por sesión</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium pointer-events-none">
-                  ARS
-                </span>
-                <CurrencyInput
-                  value={form.honorarios}
-                  onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
-                  className={`${inputCls} pl-12`}
-                />
-              </div>
+              <CurrencyInput
+                value={form.honorarios}
+                onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Moneda de cobro preferida</label>
+              <MonedaSelector value={monedaPreferida} onChange={setMonedaPreferida} className="w-full" />
             </div>
           </div>
         </div>

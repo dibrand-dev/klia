@@ -107,6 +107,7 @@ export type Database = {
           autorizacion_vigencia_desde: string | null
           autorizacion_vigencia_hasta: string | null
           firma_paciente_url: string | null
+          moneda_preferida: string
           created_at: string
           updated_at: string
         }
@@ -145,6 +146,7 @@ export type Database = {
           os_config_id?: string | null
           autorizacion_vigencia_desde?: string | null
           autorizacion_vigencia_hasta?: string | null
+          moneda_preferida?: string
           created_at?: string
           updated_at?: string
         }
@@ -183,6 +185,7 @@ export type Database = {
           os_config_id?: string | null
           autorizacion_vigencia_desde?: string | null
           autorizacion_vigencia_hasta?: string | null
+          moneda_preferida?: string
           created_at?: string
           updated_at?: string
         }
@@ -206,6 +209,7 @@ export type Database = {
           modalidad: 'presencial' | 'videollamada' | 'telefonica'
           estado: 'pendiente' | 'confirmado' | 'cancelado' | 'realizado' | 'no_asistio'
           monto: number | null
+          moneda: string
           notas: string | null
           pagado: boolean
           motivo_cancelacion: string | null
@@ -224,6 +228,7 @@ export type Database = {
           modalidad?: 'presencial' | 'videollamada' | 'telefonica'
           estado?: 'pendiente' | 'confirmado' | 'cancelado' | 'realizado' | 'no_asistio'
           monto?: number | null
+          moneda?: string
           notas?: string | null
           pagado?: boolean
           motivo_cancelacion?: string | null
@@ -242,6 +247,7 @@ export type Database = {
           modalidad?: 'presencial' | 'videollamada' | 'telefonica'
           estado?: 'pendiente' | 'confirmado' | 'cancelado' | 'realizado' | 'no_asistio'
           monto?: number | null
+          moneda?: string
           notas?: string | null
           pagado?: boolean
           motivo_cancelacion?: string | null
@@ -788,6 +794,7 @@ export type Database = {
           hora: string
           duracion: number
           costo: number | null
+          moneda: string
           notas: string | null
           estado: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id: string | null
@@ -806,6 +813,7 @@ export type Database = {
           hora: string
           duracion?: number
           costo?: number | null
+          moneda?: string
           notas?: string | null
           estado?: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id?: string | null
@@ -822,6 +830,7 @@ export type Database = {
           hora?: string
           duracion?: number
           costo?: number | null
+          moneda?: string
           notas?: string | null
           estado?: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id?: string | null

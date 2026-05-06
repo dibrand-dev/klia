@@ -66,7 +66,7 @@ export default async function DashboardPage() {
 
     supabase
       .from('turnos')
-      .select('id, estado, monto, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
+      .select('id, estado, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
       .eq('terapeuta_id', user.id)
       .gte('fecha_hora', inicioMesUTC.toISOString())
       .lt('fecha_hora', finMesUTC.toISOString()),
@@ -152,6 +152,7 @@ export default async function DashboardPage() {
   for (const os of obrasSociales ?? []) osMap[os.id] = os.nombre
 
   const ingresosPorOrigenMap: Record<string, number> = {}
+  const ingresosMesPorMonedaMap: Record<string, number> = {}
   for (const t of turnosMes ?? []) {
     if (!t.pagado || !t.monto) continue
     const paciente = t.paciente as unknown as { os_config_id: string | null } | null
@@ -159,12 +160,18 @@ export default async function DashboardPage() {
       ? osMap[paciente.os_config_id]
       : 'Particular'
     ingresosPorOrigenMap[clave] = (ingresosPorOrigenMap[clave] ?? 0) + t.monto
+    const moneda = (t as unknown as { moneda?: string }).moneda || 'ARS'
+    ingresosMesPorMonedaMap[moneda] = (ingresosMesPorMonedaMap[moneda] ?? 0) + t.monto
   }
 
-  // Pending income this month
-  const ingresosPendientes = (turnosMes ?? [])
-    .filter((t) => !t.pagado && t.monto && t.estado !== 'cancelado')
-    .reduce((acc, t) => acc + (t.monto ?? 0), 0)
+  // Pending income this month (by currency)
+  const ingresosPendientesPorMonedaMap: Record<string, number> = {}
+  for (const t of turnosMes ?? []) {
+    if (t.pagado || !t.monto || t.estado === 'cancelado') continue
+    const moneda = (t as unknown as { moneda?: string }).moneda || 'ARS'
+    ingresosPendientesPorMonedaMap[moneda] = (ingresosPendientesPorMonedaMap[moneda] ?? 0) + t.monto
+  }
+  const ingresosPendientes = Object.values(ingresosPendientesPorMonedaMap).reduce((a, b) => a + b, 0)
 
   // Check if previous month has unpaid OS sessions
   const tieneSesionesAnteriorSinLiquidar = (turnosMesAnteriorSinPagar ?? []).some((t) => {
@@ -193,7 +200,9 @@ export default async function DashboardPage() {
     sesionesRealizadasMes: (turnosMes ?? []).filter((t) => t.estado === 'realizado').length,
     sesionesPendientesMes: (turnosMes ?? []).filter((t) => t.estado === 'pendiente' || t.estado === 'confirmado').length,
     ingresosMes: Object.values(ingresosPorOrigenMap).reduce((a, b) => a + b, 0),
+    ingresosMesPorMoneda: ingresosMesPorMonedaMap,
     ingresosPendientes,
+    ingresosPendientesPorMoneda: ingresosPendientesPorMonedaMap,
     ingresosPorOrigen: Object.entries(ingresosPorOrigenMap).map(([nombre, monto]) => ({ nombre, monto })),
     seriesVencen: (seriesVencen ?? []).map((s) => ({
       id: s.id,

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { type Moneda, formatearMonto } from '@/lib/monedas'
 
 const PALETTE = [
   '#3b82f6', // blue-500
@@ -58,7 +59,9 @@ interface Props {
   sesionesRealizadasMes: number
   sesionesPendientesMes: number
   ingresosMes: number
+  ingresosMesPorMoneda?: Record<string, number>
   ingresosPendientes: number
+  ingresosPendientesPorMoneda?: Record<string, number>
   ingresosPorOrigen: IngresoOrigen[]
   seriesVencen: SerieVence[]
   tieneSesionesAnteriorSinLiquidar: boolean
@@ -102,7 +105,9 @@ export default function DashboardClient({
   sesionesRealizadasMes,
   sesionesPendientesMes,
   ingresosMes,
+  ingresosMesPorMoneda,
   ingresosPendientes,
+  ingresosPendientesPorMoneda,
   ingresosPorOrigen,
   seriesVencen,
   tieneSesionesAnteriorSinLiquidar,
@@ -164,11 +169,26 @@ export default function DashboardClient({
 
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ingresos del mes</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{formatARS(ingresosMes)}</p>
-            {ingresosPendientes > 0 && (
-              <p className="text-xs text-amber-600 mt-1">{formatARS(ingresosPendientes)} pendientes</p>
+            {ingresosMesPorMoneda && Object.keys(ingresosMesPorMoneda).length > 0 ? (
+              <div className="mt-1 space-y-0.5">
+                {Object.entries(ingresosMesPorMoneda).map(([moneda, total]) => (
+                  <p key={moneda} className="text-2xl font-bold text-gray-900 leading-tight">
+                    {formatearMonto(total, moneda as Moneda)}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-gray-900 mt-1">{formatARS(ingresosMes)}</p>
             )}
-            {ingresosPendientes === 0 && (
+            {ingresosPendientesPorMoneda && Object.keys(ingresosPendientesPorMoneda).length > 0 ? (
+              <div className="mt-1 space-y-0.5">
+                {Object.entries(ingresosPendientesPorMoneda).map(([moneda, total]) => (
+                  <p key={moneda} className="text-xs text-amber-600">
+                    {formatearMonto(total, moneda as Moneda)} pendientes
+                  </p>
+                ))}
+              </div>
+            ) : (
               <p className="text-xs text-gray-500 mt-1">Todo cobrado</p>
             )}
           </div>

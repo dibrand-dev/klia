@@ -195,7 +195,8 @@ export async function crearSerieTurnos(
   duracion: number,
   modalidad: string,
   monto: number | null,
-  supabase: any
+  supabase: any,
+  moneda = 'ARS'
 ): Promise<void> {
   if (fechas.length === 0) return
 
@@ -207,6 +208,7 @@ export async function crearSerieTurnos(
     duracion_min: duracion,
     modalidad,
     monto,
+    moneda,
     estado: 'pendiente' as const,
     pagado: false,
     recordatorio_enviado: false,

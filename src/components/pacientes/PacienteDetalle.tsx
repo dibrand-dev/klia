@@ -12,6 +12,8 @@ import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
+import MonedaSelector from '@/components/ui/MonedaSelector'
+import { type Moneda, formatearMonto } from '@/lib/monedas'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -91,6 +93,7 @@ function buildForm(p: Paciente) {
     modalidad_tratamiento: p.modalidad_tratamiento ?? '',
     frecuencia_sesiones: p.frecuencia_sesiones ?? '',
     honorarios: p.honorarios != null ? String(p.honorarios) : '',
+    moneda_preferida: (p.moneda_preferida ?? 'ARS') as Moneda,
     motivo_consulta: p.motivo_consulta ?? '',
     notas: p.notas ?? '',
     codigo_diagnostico: p.codigo_diagnostico ?? '',
@@ -227,6 +230,7 @@ export default function PacienteDetalle({
         modalidad_tratamiento: form.modalidad_tratamiento || null,
         frecuencia_sesiones: form.frecuencia_sesiones || null,
         honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+        moneda_preferida: form.moneda_preferida || 'ARS',
         motivo_consulta: form.motivo_consulta || null,
         notas: form.notas || null,
         codigo_diagnostico: form.codigo_diagnostico || null,
@@ -525,12 +529,16 @@ export default function PacienteDetalle({
             </div>
             <div>
               <label className={labelCls}>Honorarios por sesión</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium pointer-events-none">ARS</span>
+              <div className="flex gap-2">
+                <MonedaSelector
+                  value={form.moneda_preferida as Moneda}
+                  onChange={(m) => setForm((prev) => ({ ...prev, moneda_preferida: m }))}
+                  className="shrink-0"
+                />
                 <CurrencyInput
                   value={form.honorarios}
                   onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
-                  className={cn(inputCls, 'pl-12')}
+                  className={inputCls}
                 />
               </div>
             </div>
@@ -765,7 +773,9 @@ export default function PacienteDetalle({
             ['Frecuencia', paciente.frecuencia_sesiones || '—'],
             [
               'Honorario',
-              paciente.honorarios != null ? `ARS ${paciente.honorarios.toLocaleString('es-AR')}` : '—',
+              paciente.honorarios != null
+                ? formatearMonto(paciente.honorarios, (paciente.moneda_preferida as Moneda) ?? 'ARS')
+                : '—',
             ],
             ['Diagnóstico', paciente.codigo_diagnostico || '—'],
             ['Gravedad', paciente.gravedad_estimada || '—'],
@@ -1205,10 +1215,31 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [] }: { paciente:
                 )}
               </div>
             </div>
-            <div className="pt-3 border-t border-outline-variant/10">
+            <div className="pt-3 border-t border-outline-variant/10 space-y-1">
               <p className="text-sm font-semibold text-on-surface">
                 Total cobrable: {totalCobrable} sesión{totalCobrable !== 1 ? 'es' : ''}
               </p>
+              {(() => {
+                const cobrables = [...asistio, ...noAsistio]
+                const porMoneda: Record<string, number> = {}
+                for (const t of cobrables) {
+                  if (t.monto != null) {
+                    const m = t.moneda || 'ARS'
+                    porMoneda[m] = (porMoneda[m] ?? 0) + t.monto
+                  }
+                }
+                const entradas = Object.entries(porMoneda)
+                if (entradas.length === 0) return null
+                return (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {entradas.map(([moneda, total]) => (
+                      <span key={moneda} className="text-sm font-semibold text-primary">
+                        {formatearMonto(total, moneda as Moneda)}
+                      </span>
+                    ))}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}

@@ -10,8 +10,10 @@ import type { Paciente, Turno, ModalidadTurno, Entrevista } from '@/types/databa
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
+import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
+import type { Moneda } from '@/lib/monedas'
 
 const DURACIONES = [30, 45, 50, 60, 90]
 const MODALIDADES: { value: ModalidadTurno; label: string }[] = [
@@ -81,6 +83,7 @@ export default function NuevoTurnoPageForm({
     monto: '',
     notas: '',
   })
+  const [moneda, setMoneda] = useState<Moneda>('ARS')
   const [esFijo, setEsFijo] = useState(false)
   const [frecuencia, setFrecuencia] = useState<'semanal' | 'quincenal' | 'mensual'>('semanal')
   const [diaSemana, setDiaSemana] = useState(diaDeFecha(fechaParam))
@@ -115,7 +118,7 @@ export default function NuevoTurnoPageForm({
       new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase, frecuencia, semana
     )
     await crearSerieTurnos(serieId, terapeutaId, form.paciente_id, fechas,
-      form.hora, Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null, supabase)
+      form.hora, Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null, supabase, moneda)
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -232,6 +235,7 @@ export default function NuevoTurnoPageForm({
         modalidad: form.modalidad,
         estado: 'pendiente',
         monto: form.monto ? Number(form.monto) : null,
+        moneda,
         notas: form.notas || null,
       })
       .select('*, paciente:pacientes(*)')
@@ -411,7 +415,11 @@ export default function NuevoTurnoPageForm({
             <PacienteSearchInput
               pacientes={pacientesActivos}
               value={form.paciente_id}
-              onChange={(id) => setForm((prev) => ({ ...prev, paciente_id: id }))}
+              onChange={(id) => {
+                setForm((prev) => ({ ...prev, paciente_id: id }))
+                const p = pacientes.find((p) => p.id === id)
+                if (p?.moneda_preferida) setMoneda(p.moneda_preferida as Moneda)
+              }}
               className="input-field"
             />
           </div>
@@ -441,14 +449,18 @@ export default function NuevoTurnoPageForm({
 
           <div className="card p-4">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Honorarios (ARS) <span className="text-gray-400 font-normal">opcional</span>
+              Honorarios <span className="text-gray-400 font-normal">opcional</span>
             </label>
-            <MontoInput
-              name="monto"
-              value={form.monto}
-              onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
-              className="input-field"
-            />
+            <div className="flex gap-2">
+              <MonedaSelector value={moneda} onChange={setMoneda} className="w-40 shrink-0" />
+              <MontoInput
+                name="monto"
+                value={form.monto}
+                onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
+                placeholder={moneda === 'ARS' ? 'Ej: 15000' : moneda === 'USD' ? 'Ej: 150.00' : 'Ej: 130.00'}
+                className="input-field flex-1"
+              />
+            </div>
           </div>
 
           <div className="card p-4">
