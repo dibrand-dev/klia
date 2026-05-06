@@ -1367,25 +1367,33 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
       )}
 
       {/* Planilla de asistencia */}
-      {tienePlanilla && (
+      {paciente.os_config_id && osConfig && (
         <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-1">
                 Planilla de asistencia
               </h3>
               <p className="text-sm text-on-surface-variant">
-                {osConfig?.nombre} — genera el PDF para adjuntar a la factura
+                {osConfig.nombre} — genera el PDF para adjuntar a la factura
               </p>
+              {!osConfig.planilla_template_id && (
+                <p className="mt-2 text-sm text-amber-700 flex items-start gap-1.5">
+                  <span className="shrink-0 mt-0.5">⚠️</span>
+                  La obra social de este paciente no tiene plantilla de planilla configurada. Contactá al soporte de KLIA para agregarla.
+                </p>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => setPlanillaOpen(true)}
-              className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-              Generar planilla
-            </button>
+            {osConfig.planilla_template_id && (
+              <button
+                type="button"
+                onClick={() => setPlanillaOpen(true)}
+                className="btn-secondary px-4 py-2 text-sm flex items-center gap-2 shrink-0"
+              >
+                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                Generar planilla
+              </button>
+            )}
           </div>
         </div>
       )}

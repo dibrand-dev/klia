@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import PacienteDetalle from '@/components/pacientes/PacienteDetalle'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/PacienteTabs'
+import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 
 export const metadata = { title: 'Paciente — KLIA' }
 
@@ -17,7 +18,7 @@ export default async function PacienteDetallePage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, obrasSocialesRes, profOSRes] = await Promise.all([
+  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
@@ -46,11 +47,6 @@ export default async function PacienteDetallePage({
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', user.id)
       .order('created_at'),
-    supabase
-      .from('obras_sociales')
-      .select('nombre')
-      .eq('validada', true)
-      .order('nombre'),
     supabase
       .from('profesional_obras_sociales')
       .select('*')
@@ -100,8 +96,11 @@ export default async function PacienteDetallePage({
   }>
 
   const editMode = searchParams.edit === '1'
-  const obrasSociales = (obrasSocialesRes.data ?? []).map((o) => o.nombre)
   const profObrasSociales = profOSRes.data ?? []
+
+  // Lista maestra estática + nombres de OS del profesional que no estén ya incluidas
+  const profNombres = profObrasSociales.map((o) => o.nombre)
+  const obrasSociales = Array.from(new Set([...OBRAS_SOCIALES, ...profNombres])).sort()
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
