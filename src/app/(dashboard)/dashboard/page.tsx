@@ -112,7 +112,7 @@ export default async function DashboardPage() {
       .eq('pagado', false)
       .gte('fecha_hora', inicioMesAnteriorUTC.toISOString())
       .lt('fecha_hora', inicioMesUTC.toISOString())
-      .neq('estado', 'cancelado'),
+      .in('estado', ['realizado', 'no_asistio']),
   ])
 
   // Compute patients absent > 2 weeks
@@ -164,10 +164,11 @@ export default async function DashboardPage() {
     ingresosMesPorMonedaMap[moneda] = (ingresosMesPorMonedaMap[moneda] ?? 0) + t.monto
   }
 
-  // Pending income this month (by currency)
+  // Pending income this month — only realizado/no_asistio unpaid (future turnos don't generate debt yet)
   const ingresosPendientesPorMonedaMap: Record<string, number> = {}
   for (const t of turnosMes ?? []) {
-    if (t.pagado || !t.monto || t.estado === 'cancelado') continue
+    if (t.pagado || !t.monto) continue
+    if (!['realizado', 'no_asistio'].includes(t.estado)) continue
     const moneda = (t as unknown as { moneda?: string }).moneda || 'ARS'
     ingresosPendientesPorMonedaMap[moneda] = (ingresosPendientesPorMonedaMap[moneda] ?? 0) + t.monto
   }
