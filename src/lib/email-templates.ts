@@ -2,22 +2,20 @@ function baseTemplate(contenido: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 0;">
+<body style="margin:0;padding:0;background:#F9FAFB;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;padding:40px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <tr><td style="background:#1a2f5a;padding:32px 40px;text-align:center;">
-          <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;letter-spacing:-0.5px;">KLIA</h1>
-          <p style="color:#93c5fd;margin:4px 0 0;font-size:13px;">Gestión inteligente de consultorios</p>
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #E5E7EB;">
+        <tr><td style="background:#ffffff;padding:32px 40px;text-align:center;border-bottom:1px solid #E5E7EB;">
+          <img src="https://app.klia.com.ar/logo.svg" alt="KLIA" width="100" style="display:block;margin:0 auto;" />
         </td></tr>
         <tr><td style="padding:40px;">
           ${contenido}
         </td></tr>
-        <tr><td style="background:#f8f9fa;padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-          <p style="color:#9ca3af;font-size:12px;margin:0;">KLIA — Gestión de consultorios para profesionales de la salud</p>
-          <p style="color:#9ca3af;font-size:12px;margin:4px 0 0;">
-            <a href="https://app.klia.com.ar" style="color:#1a2f5a;text-decoration:none;">app.klia.com.ar</a> ·
-            <a href="mailto:hola@klia.com.ar" style="color:#1a2f5a;text-decoration:none;">hola@klia.com.ar</a>
+        <tr><td style="padding:24px 40px;text-align:center;border-top:1px solid #E5E7EB;">
+          <p style="color:#9ca3af;font-size:12px;margin:0;">
+            <a href="https://app.klia.com.ar" style="color:#2563EB;text-decoration:none;">app.klia.com.ar</a> ·
+            <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;">hola@klia.com.ar</a>
           </p>
         </td></tr>
       </table>
@@ -29,7 +27,7 @@ function baseTemplate(contenido: string): string {
 
 export function emailConfirmacionCuenta(nombre: string, urlConfirmacion: string): string {
   return baseTemplate(`
-    <h2 style="color:#1a2f5a;font-size:22px;font-weight:700;margin:0 0 16px;">Confirmá tu cuenta</h2>
+    <h2 style="color:#1F2937;font-size:22px;font-weight:700;margin:0 0 16px;">Confirmá tu cuenta</h2>
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 24px;">
       Hola <strong>${nombre}</strong>, gracias por registrarte en KLIA.
       Para activar tu cuenta hacé clic en el botón de abajo.
@@ -37,7 +35,7 @@ export function emailConfirmacionCuenta(nombre: string, urlConfirmacion: string)
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
       <tr><td align="center">
         <a href="${urlConfirmacion}"
-           style="display:inline-block;background:#1a2f5a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+           style="display:inline-block;background:#2563EB;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
           Confirmar mi cuenta
         </a>
       </td></tr>
@@ -45,8 +43,8 @@ export function emailConfirmacionCuenta(nombre: string, urlConfirmacion: string)
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 8px;">
       Si el botón no funciona, copiá y pegá este enlace en tu navegador:
     </p>
-    <p style="color:#3b82f6;font-size:13px;word-break:break-all;margin:0 0 24px;">
-      <a href="${urlConfirmacion}" style="color:#3b82f6;">${urlConfirmacion}</a>
+    <p style="color:#2563EB;font-size:13px;word-break:break-all;margin:0 0 24px;">
+      <a href="${urlConfirmacion}" style="color:#2563EB;">${urlConfirmacion}</a>
     </p>
     <p style="color:#9ca3af;font-size:12px;margin:0;">
       Este enlace expira en 24 horas. Si no creaste esta cuenta, podés ignorar este email.
@@ -56,14 +54,14 @@ export function emailConfirmacionCuenta(nombre: string, urlConfirmacion: string)
 
 export function emailBienvenida(nombre: string, diasPrueba: number): string {
   return baseTemplate(`
-    <h2 style="color:#1a2f5a;font-size:22px;font-weight:700;margin:0 0 16px;">¡Bienvenido/a a KLIA, ${nombre}!</h2>
+    <h2 style="color:#1F2937;font-size:22px;font-weight:700;margin:0 0 16px;">¡Bienvenido/a a KLIA, ${nombre}!</h2>
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px;">
       Tu cuenta está activa y podés empezar a usar KLIA ahora mismo.
       Tenés <strong>${diasPrueba} días de prueba gratuita</strong> con acceso completo a todas las funcionalidades.
     </p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border-radius:8px;padding:20px;margin:0 0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFF6FF;border-radius:8px;padding:20px;margin:0 0 28px;">
       <tr><td>
-        <p style="color:#1a2f5a;font-size:14px;font-weight:600;margin:0 0 12px;">¿Qué podés hacer en KLIA?</p>
+        <p style="color:#1F2937;font-size:14px;font-weight:600;margin:0 0 12px;">¿Qué podés hacer en KLIA?</p>
         <ul style="color:#374151;font-size:14px;line-height:1.8;margin:0;padding-left:20px;">
           <li>Gestionar tu agenda y turnos online</li>
           <li>Llevar fichas clínicas de cada paciente</li>
@@ -76,20 +74,20 @@ export function emailBienvenida(nombre: string, diasPrueba: number): string {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr><td align="center">
         <a href="https://app.klia.com.ar/dashboard"
-           style="display:inline-block;background:#1a2f5a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+           style="display:inline-block;background:#2563EB;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
           Ir a mi consultorio
         </a>
       </td></tr>
     </table>
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">
-      Si tenés dudas escribinos a <a href="mailto:hola@klia.com.ar" style="color:#3b82f6;">hola@klia.com.ar</a>.
+      Si tenés dudas escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;">hola@klia.com.ar</a>.
     </p>
   `)
 }
 
 export function emailTrialPorVencer(nombre: string, diasRestantes: number): string {
   return baseTemplate(`
-    <h2 style="color:#1a2f5a;font-size:22px;font-weight:700;margin:0 0 16px;">Tu período de prueba está por vencer</h2>
+    <h2 style="color:#1F2937;font-size:22px;font-weight:700;margin:0 0 16px;">Tu período de prueba está por vencer</h2>
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px;">
       Hola <strong>${nombre}</strong>, te avisamos que tu prueba gratuita de KLIA vence en
       <strong style="color:#f59e0b;">${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}</strong>.
@@ -105,13 +103,13 @@ export function emailTrialPorVencer(nombre: string, diasRestantes: number): stri
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr><td align="center">
         <a href="https://app.klia.com.ar/ajustes/suscripcion"
-           style="display:inline-block;background:#1a2f5a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+           style="display:inline-block;background:#2563EB;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
           Ver planes y suscribirme
         </a>
       </td></tr>
     </table>
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">
-      ¿Tenés preguntas sobre los planes? Escribinos a <a href="mailto:hola@klia.com.ar" style="color:#3b82f6;">hola@klia.com.ar</a>.
+      ¿Tenés preguntas sobre los planes? Escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;">hola@klia.com.ar</a>.
     </p>
   `)
 }
@@ -138,7 +136,7 @@ export function emailCuentaBloqueada(nombre: string): string {
       </td></tr>
     </table>
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">
-      ¿Necesitás ayuda? Contactanos en <a href="mailto:hola@klia.com.ar" style="color:#3b82f6;">hola@klia.com.ar</a>.
+      ¿Necesitás ayuda? Contactanos en <a href="mailto:hola@klia.com.ar" style="color:#2563EB;">hola@klia.com.ar</a>.
     </p>
   `)
 }
@@ -161,19 +159,19 @@ export function emailPagoExitoso(
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td style="color:#6b7280;font-size:14px;padding:6px 0;">Plan</td>
-            <td style="color:#1a2f5a;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${plan}</td>
+            <td style="color:#1F2937;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${plan}</td>
           </tr>
           <tr>
             <td style="color:#6b7280;font-size:14px;padding:6px 0;">Modalidad</td>
-            <td style="color:#1a2f5a;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${modalidad}</td>
+            <td style="color:#1F2937;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${modalidad}</td>
           </tr>
           <tr>
             <td style="color:#6b7280;font-size:14px;padding:6px 0;">Importe</td>
-            <td style="color:#1a2f5a;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${montoFormateado}</td>
+            <td style="color:#1F2937;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${montoFormateado}</td>
           </tr>
           <tr>
             <td style="color:#6b7280;font-size:14px;padding:6px 0;">Próximo cobro</td>
-            <td style="color:#1a2f5a;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${proximoCobro}</td>
+            <td style="color:#1F2937;font-size:14px;font-weight:600;text-align:right;padding:6px 0;">${proximoCobro}</td>
           </tr>
         </table>
       </td></tr>
@@ -181,13 +179,13 @@ export function emailPagoExitoso(
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
       <tr><td align="center">
         <a href="https://app.klia.com.ar/dashboard"
-           style="display:inline-block;background:#1a2f5a;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
+           style="display:inline-block;background:#2563EB;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;">
           Ir a mi consultorio
         </a>
       </td></tr>
     </table>
     <p style="color:#6b7280;font-size:13px;margin:0;">
-      Podés gestionar tu suscripción en <a href="https://app.klia.com.ar/ajustes/suscripcion" style="color:#3b82f6;">Ajustes → Suscripción</a>.
+      Podés gestionar tu suscripción en <a href="https://app.klia.com.ar/ajustes/suscripcion" style="color:#2563EB;">Ajustes → Suscripción</a>.
     </p>
   `)
 }
@@ -217,18 +215,18 @@ export function emailPagoFallido(nombre: string, plan: string): string {
       </td></tr>
     </table>
     <p style="color:#6b7280;font-size:13px;margin:0;">
-      ¿Necesitás ayuda? Escribinos a <a href="mailto:hola@klia.com.ar" style="color:#3b82f6;">hola@klia.com.ar</a>.
+      ¿Necesitás ayuda? Escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;">hola@klia.com.ar</a>.
     </p>
   `)
 }
 
 export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): string {
   return baseTemplate(`
-    <h2 style="color:#1a2f5a;font-size:22px;font-weight:700;margin:0 0 16px;">Tu suscripción fue cancelada</h2>
+    <h2 style="color:#1F2937;font-size:22px;font-weight:700;margin:0 0 16px;">Tu suscripción fue cancelada</h2>
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px;">
       Hola <strong>${nombre}</strong>, confirmamos la cancelación de tu suscripción a KLIA.
     </p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;border-radius:8px;padding:20px;margin:0 0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:20px;margin:0 0 28px;">
       <tr><td>
         <p style="color:#374151;font-size:14px;margin:0;">
           Vas a poder seguir usando KLIA hasta el <strong>${fechaAcceso}</strong>.
@@ -241,7 +239,7 @@ export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): 
       Lamentamos verte partir — si querés contarnos el motivo de la cancelación, escribinos.
     </p>
     <p style="color:#6b7280;font-size:13px;margin:0;">
-      <a href="mailto:hola@klia.com.ar" style="color:#3b82f6;">hola@klia.com.ar</a>
+      <a href="mailto:hola@klia.com.ar" style="color:#2563EB;">hola@klia.com.ar</a>
     </p>
   `)
 }
