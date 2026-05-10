@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { preApproval } from '@/lib/mercadopago'
 import type { Database } from '@/types/database'
+import { enviarEmail } from '@/lib/brevo'
+import { emailSuscripcionCancelada } from '@/lib/email-templates'
 
 function serviceClient() {
   return createServiceClient<Database>(
@@ -51,6 +53,25 @@ export async function PATCH() {
     .from('profiles')
     .update({ estado_cuenta: 'cancelada' })
     .eq('id', user.id)
+
+  // Email de cancelación via Brevo
+  const { data: profile } = await db
+    .from('profiles')
+    .select('nombre, email')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.email) {
+    const fechaAcceso = sub.suscripcion_fin
+      ? new Date(sub.suscripcion_fin).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'inmediatamente'
+    enviarEmail({
+      destinatario: profile.email,
+      nombreDestinatario: profile.nombre ?? profile.email,
+      asunto: 'Tu suscripción a KLIA fue cancelada',
+      htmlContent: emailSuscripcionCancelada(profile.nombre ?? profile.email, fechaAcceso),
+    }).catch(() => {})
+  }
 
   return NextResponse.json({ ok: true, acceso_hasta: sub.suscripcion_fin })
 }

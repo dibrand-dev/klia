@@ -3,6 +3,8 @@ import { createHmac } from 'crypto'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { preApproval } from '@/lib/mercadopago'
 import type { Database } from '@/types/database'
+import { enviarEmail } from '@/lib/brevo'
+import { emailPagoExitoso, emailPagoFallido, emailSuscripcionCancelada } from '@/lib/email-templates'
 
 function serviceClient() {
   return createServiceClient<Database>(
@@ -32,6 +34,15 @@ function verificarFirmaMP(req: NextRequest, dataId: string): boolean {
   const expected = createHmac('sha256', secret).update(manifest).digest('hex')
 
   return expected === v1
+}
+
+async function obtenerProfile(db: ReturnType<typeof serviceClient>, terapeutaId: string) {
+  const { data } = await db
+    .from('profiles')
+    .select('nombre, email')
+    .eq('id', terapeutaId)
+    .single()
+  return data
 }
 
 export async function POST(req: NextRequest) {
@@ -69,7 +80,7 @@ export async function POST(req: NextRequest) {
 
       const { data: sub } = await db
         .from('suscripciones')
-        .select('terapeuta_id, plan')
+        .select('terapeuta_id, plan, modalidad, monto')
         .eq('mp_preapproval_id', preapprovalId)
         .single()
 
@@ -84,6 +95,25 @@ export async function POST(req: NextRequest) {
             mp_subscription_id: preapprovalId,
           })
           .eq('id', sub.terapeuta_id)
+
+        const profile = await obtenerProfile(db, sub.terapeuta_id)
+        if (profile?.email) {
+          const proximoCobro = detail.next_payment_date
+            ? new Date(detail.next_payment_date).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+            : 'a confirmar'
+          enviarEmail({
+            destinatario: profile.email,
+            nombreDestinatario: profile.nombre ?? profile.email,
+            asunto: '¡Pago recibido! Tu suscripción a KLIA está activa',
+            htmlContent: emailPagoExitoso(
+              profile.nombre ?? profile.email,
+              sub.plan ?? 'Premium',
+              sub.modalidad ?? 'Mensual',
+              sub.monto ?? 0,
+              proximoCobro,
+            ),
+          }).catch(() => {})
+        }
       }
     } else if (status === 'paused') {
       await db
@@ -93,7 +123,7 @@ export async function POST(req: NextRequest) {
 
       const { data: sub } = await db
         .from('suscripciones')
-        .select('terapeuta_id')
+        .select('terapeuta_id, plan')
         .eq('mp_preapproval_id', preapprovalId)
         .single()
 
@@ -102,6 +132,16 @@ export async function POST(req: NextRequest) {
           .from('profiles')
           .update({ estado_cuenta: 'bloqueada' })
           .eq('id', sub.terapeuta_id)
+
+        const profile = await obtenerProfile(db, sub.terapeuta_id)
+        if (profile?.email) {
+          enviarEmail({
+            destinatario: profile.email,
+            nombreDestinatario: profile.nombre ?? profile.email,
+            asunto: 'Problema con tu pago en KLIA',
+            htmlContent: emailPagoFallido(profile.nombre ?? profile.email, sub.plan ?? 'Premium'),
+          }).catch(() => {})
+        }
       }
     } else if (status === 'cancelled') {
       await db
@@ -111,7 +151,7 @@ export async function POST(req: NextRequest) {
 
       const { data: sub } = await db
         .from('suscripciones')
-        .select('terapeuta_id')
+        .select('terapeuta_id, suscripcion_fin')
         .eq('mp_preapproval_id', preapprovalId)
         .single()
 
@@ -120,6 +160,19 @@ export async function POST(req: NextRequest) {
           .from('profiles')
           .update({ estado_cuenta: 'cancelada' })
           .eq('id', sub.terapeuta_id)
+
+        const profile = await obtenerProfile(db, sub.terapeuta_id)
+        if (profile?.email) {
+          const fechaAcceso = sub.suscripcion_fin
+            ? new Date(sub.suscripcion_fin).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+            : 'inmediatamente'
+          enviarEmail({
+            destinatario: profile.email,
+            nombreDestinatario: profile.nombre ?? profile.email,
+            asunto: 'Tu suscripción a KLIA fue cancelada',
+            htmlContent: emailSuscripcionCancelada(profile.nombre ?? profile.email, fechaAcceso),
+          }).catch(() => {})
+        }
       }
     }
 

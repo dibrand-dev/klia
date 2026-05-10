@@ -24,6 +24,7 @@ export type Database = {
           agenda_hora_inicio: number
           agenda_hora_fin: number
           cobrar_inasistencias: boolean
+          email_bloqueada_enviado: boolean
           created_at: string
           updated_at: string
         }
@@ -46,6 +47,7 @@ export type Database = {
           agenda_hora_inicio?: number
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
+          email_bloqueada_enviado?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -68,6 +70,7 @@ export type Database = {
           agenda_hora_inicio?: number
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
+          email_bloqueada_enviado?: boolean
           created_at?: string
           updated_at?: string
         }

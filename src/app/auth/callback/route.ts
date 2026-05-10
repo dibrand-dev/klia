@@ -27,6 +27,13 @@ export async function GET(request: Request) {
           trial_inicio: now.toISOString(),
           trial_fin: trialFin.toISOString(),
         }).eq('id', user.id)
+
+        // Email de bienvenida via Brevo (solo al confirmar la cuenta por primera vez)
+        fetch(`${origin}/api/emails/bienvenida`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        }).catch(() => {})
       }
 
       return NextResponse.redirect(`${origin}${next}`)
