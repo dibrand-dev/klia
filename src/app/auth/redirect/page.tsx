@@ -14,5 +14,5 @@ export default async function AuthRedirectPage() {
     .maybeSingle()
 
   if (adminUser) redirect('/ops/dashboard')
-  redirect('/agenda')
+  redirect('/dashboard')
 }
