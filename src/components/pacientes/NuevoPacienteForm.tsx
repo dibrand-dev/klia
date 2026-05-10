@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
-import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 import type { ProfesionalObraSocial } from '@/types/database'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import type { Moneda } from '@/lib/monedas'
@@ -107,12 +106,15 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
   }
 
   function handleObraChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const nombre = e.target.value
+    const matchedOS = profObrasSociales.find(o => o.nombre === nombre)
     setForm((prev) => ({
       ...prev,
-      obra_social: e.target.value,
+      obra_social: nombre,
       plan_obra_social: '',
       os_nombre_libre: '',
       os_plan_libre: '',
+      os_config_id: matchedOS?.id ?? '',
     }))
   }
 
@@ -378,97 +380,49 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
             Obra Social y Tratamiento
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profObrasSociales.length > 0 ? (
-              <>
-                <div className="md:col-span-2 lg:col-span-3">
-                  <label className={labelCls}>Obra Social configurada</label>
-                  <select
-                    name="os_config_id"
-                    value={form.os_config_id}
-                    onChange={(e) => {
-                      const id = e.target.value
-                      const os = profObrasSociales.find(o => o.id === id)
-                      setForm(prev => ({ ...prev, os_config_id: id, obra_social: os?.nombre ?? '', os_nombre_libre: '', os_plan_libre: '', plan_obra_social: '' }))
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">Sin obra social / Particular</option>
-                    {profObrasSociales.map(os => (
-                      <option key={os.id} value={os.id}>{os.nombre}</option>
-                    ))}
-                    <option value="otra">Otra (no figura en la lista)</option>
-                  </select>
-                </div>
-                {form.os_config_id === 'otra' && (
-                  <>
-                    <div>
-                      <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
-                      <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
-                      <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Plan 310, Básico..." className={inputCls} />
-                    </div>
-                  </>
-                )}
-                {form.os_config_id && form.os_config_id !== 'otra' && (
-                  <>
-                    <div>
-                      <label className={labelCls}>N° de Afiliado</label>
-                      <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>N° de Autorización</label>
-                      <input name="numero_autorizacion" type="text" value={form.numero_autorizacion} onChange={handleChange} placeholder="5917639" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Vigencia desde</label>
-                      <input name="autorizacion_vigencia_desde" type="date" value={form.autorizacion_vigencia_desde} onChange={handleChange} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Vigencia hasta</label>
-                      <input name="autorizacion_vigencia_hasta" type="date" value={form.autorizacion_vigencia_hasta} onChange={handleChange} className={inputCls} />
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
+            <div className="md:col-span-2 lg:col-span-3">
+              <label className={labelCls}>Obra Social / Prepaga</label>
+              <select name="obra_social" value={form.obra_social} onChange={handleObraChange} className={inputCls}>
+                <option value="">Sin obra social / Particular</option>
+                {obrasSociales.map((o) => <option key={o} value={o}>{o}</option>)}
+                <option value="Otra">Otra (no figura en la lista)</option>
+              </select>
+            </div>
+            {form.obra_social === 'Otra' ? (
               <>
                 <div>
-                  <label className={labelCls}>Obra Social / Prepaga</label>
-                  <select name="obra_social" value={form.obra_social} onChange={handleObraChange} className={inputCls}>
-                    <option value="">Sin obra social</option>
-                    {Array.from(new Set([...OBRAS_SOCIALES, ...obrasSociales])).sort().map((o) => <option key={o} value={o}>{o}</option>)}
-                    <option value="Otra">Otra (no figura en la lista)</option>
-                  </select>
+                  <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
+                  <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
                 </div>
-                {form.obra_social === 'Otra' ? (
-                  <>
-                    <div>
-                      <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
-                      <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
-                      <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Plan 310, Básico..." className={inputCls} />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className={labelCls}>Plan</label>
-                    <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="npf-planes" className={inputCls} autoComplete="off" />
-                  </div>
-                )}
+                <div>
+                  <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
+                  <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Plan 310, Básico..." className={inputCls} />
+                </div>
+              </>
+            ) : form.obra_social ? (
+              <>
+                <div>
+                  <label className={labelCls}>Plan</label>
+                  <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="npf-planes" className={inputCls} autoComplete="off" />
+                </div>
                 <div>
                   <label className={labelCls}>N° de Afiliado</label>
                   <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Número de Autorización</label>
-                  <input name="numero_autorizacion" type="text" value={form.numero_autorizacion} onChange={handleChange} placeholder="AUT-001234" className={inputCls} />
+                  <label className={labelCls}>N° de Autorización</label>
+                  <input name="numero_autorizacion" type="text" value={form.numero_autorizacion} onChange={handleChange} placeholder="5917639" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Vigencia desde</label>
+                  <input name="autorizacion_vigencia_desde" type="date" value={form.autorizacion_vigencia_desde} onChange={handleChange} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Vigencia hasta</label>
+                  <input name="autorizacion_vigencia_hasta" type="date" value={form.autorizacion_vigencia_hasta} onChange={handleChange} className={inputCls} />
                 </div>
               </>
-            )}
+            ) : null}
             <div>
               <label className={labelCls}>Modalidad</label>
               <select name="modalidad_tratamiento" value={form.modalidad_tratamiento} onChange={handleChange} className={inputCls}>
