@@ -7,7 +7,7 @@ function baseTemplate(contenido: string): string {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #E5E7EB;">
         <tr><td style="background:#ffffff;padding:32px 40px;text-align:center;border-bottom:1px solid #E5E7EB;">
-          <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="120" height="36" style="display:block;margin:0 auto;" />
+          <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="200" height="99" style="display:block;margin:0 auto;" />
         </td></tr>
         <tr><td style="padding:40px;">
           ${contenido}
