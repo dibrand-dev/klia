@@ -11,13 +11,13 @@ function baseTemplate(contenido: string, titulo?: string): string {
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-      <!-- LOGO HEADER -->
-      <tr><td style="text-align:center;padding-bottom:32px;">
-        <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="120" height="60" style="display:block;margin:0 auto;border:0;" />
+      <!-- LOGO HEADER — fondo blanco -->
+      <tr><td style="text-align:center;padding:32px 0 24px;background-color:#ffffff;border-radius:16px 16px 0 0;">
+        <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="120" height="36" style="display:block;margin:0 auto;border:0;" />
       </td></tr>
 
-      <!-- MAIN CARD -->
-      <tr><td style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,26,72,0.06);">
+      <!-- MAIN CARD — continua del header blanco -->
+      <tr><td style="background-color:#ffffff;border-radius:0 0 16px 16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,26,72,0.06);">
 
         <!-- Accent top bar -->
         <div style="height:4px;background:linear-gradient(135deg,#001a48,#002d72);"></div>
