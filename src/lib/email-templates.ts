@@ -13,7 +13,7 @@ function baseTemplate(contenido: string, titulo?: string): string {
 
       <!-- LOGO HEADER — fondo blanco -->
       <tr><td style="text-align:center;padding:32px 0 24px;background-color:#ffffff;border-radius:16px 16px 0 0;">
-        <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="120" height="36" style="display:block;margin:0 auto;border:0;" />
+        <img src="https://app.klia.com.ar/logo-email.png" alt="KLIA" width="180" height="90" style="display:block;margin:0 auto;border:0;" />
       </td></tr>
 
       <!-- MAIN CARD — continua del header blanco -->
