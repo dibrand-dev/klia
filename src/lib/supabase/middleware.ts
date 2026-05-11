@@ -28,6 +28,11 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // /auth/* routes handle their own authentication internally
+  if (request.nextUrl.pathname.startsWith('/auth/')) {
+    return supabaseResponse
+  }
+
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/registro')
 
