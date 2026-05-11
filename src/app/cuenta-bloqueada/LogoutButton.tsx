@@ -6,7 +6,7 @@ export default function LogoutButton() {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = 'https://klia.com.ar/login'
+    window.location.href = 'https://app.klia.com.ar/login'
   }
 
   return (

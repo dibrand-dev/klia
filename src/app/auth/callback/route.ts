@@ -11,6 +11,18 @@ export async function GET(request: Request) {
     const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && user) {
+      // Verificar si es Super Admin
+      const { data: adminUser } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', user.email ?? '')
+        .eq('activo', true)
+        .maybeSingle()
+
+      if (adminUser) {
+        return NextResponse.redirect(new URL('/ops/dashboard', origin))
+      }
+
       // Setear campos de trial si aún no fueron inicializados
       const { data: profile } = await supabase
         .from('profiles')
@@ -36,7 +48,7 @@ export async function GET(request: Request) {
         }).catch(() => {})
       }
 
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(new URL('/dashboard', origin))
     }
   }
 
