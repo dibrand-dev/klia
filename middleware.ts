@@ -7,6 +7,15 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Ejecutar middleware SOLO en rutas que necesitan auth.
+     * Excluir explícitamente:
+     * - _next/static (archivos estáticos)
+     * - _next/image (optimización de imágenes)
+     * - favicon.ico
+     * - Archivos con extensión (png, jpg, svg, css, js, etc.)
+     * - Rutas públicas conocidas
+     */
+    '/((?!_next/static|_next/image|favicon.ico|logo.*|.*\\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff|woff2|ttf|map)|api/cron|api/suscripcion/webhook).*)',
   ],
 }
