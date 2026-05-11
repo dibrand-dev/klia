@@ -7,6 +7,10 @@ const inter = Inter({ subsets: ['latin'], display: 'swap' })
 export const metadata: Metadata = {
   title: 'KLIA',
   description: 'Gestión de turnos y pacientes para psicólogos y terapeutas',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
 }
 
 export const viewport: Viewport = {
