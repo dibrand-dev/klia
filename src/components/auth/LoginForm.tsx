@@ -23,6 +23,8 @@ export default function LoginForm() {
       setError(
         error.message === 'Invalid login credentials'
           ? 'Email o contraseña incorrectos'
+          : error.status === 429
+          ? 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.'
           : 'Ocurrió un error. Intentá de nuevo.'
       )
       setLoading(false)
