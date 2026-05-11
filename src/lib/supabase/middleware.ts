@@ -2,7 +2,25 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
+const PUBLIC_ROUTES = [
+  '/login',
+  '/registro',
+  '/auth/callback',
+  '/auth/redirect',
+  '/planes',
+  '/cuenta-bloqueada',
+  '/terminos',
+  '/privacidad',
+]
+
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Si es ruta pública → pasar directamente sin llamar a Supabase
+  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(
@@ -29,12 +47,12 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // /auth/* routes handle their own authentication internally
-  if (request.nextUrl.pathname.startsWith('/auth/')) {
+  if (pathname.startsWith('/auth/')) {
     return supabaseResponse
   }
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/registro')
+  const isAuthRoute = pathname.startsWith('/login') ||
+    pathname.startsWith('/registro')
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
