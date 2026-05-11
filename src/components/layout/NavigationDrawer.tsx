@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types/database'
 import SidebarUserCard from '@/components/ui/SidebarUserCard'
@@ -26,13 +26,11 @@ export default function NavigationDrawer({ profile, onNuevaSesion, mobileOpen = 
   onClose?: () => void
 }) {
   const pathname = usePathname()
-  const router = useRouter()
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    window.location.href = 'https://klia.com.ar/login'
   }
 
   const initials = profile

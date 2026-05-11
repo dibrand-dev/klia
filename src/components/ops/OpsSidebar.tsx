@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { AdminUser } from '@/types/database'
@@ -23,13 +23,11 @@ const NAV_ITEMS_TOTAL = [
 
 export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
   const pathname = usePathname()
-  const router = useRouter()
 
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    window.location.href = 'https://klia.com.ar/login'
   }
 
   const allItems = adminUser.rol === 'total'
