@@ -52,6 +52,7 @@ export default function NavigationDrawer({ profile, onNuevaSesion, mobileOpen = 
         initials={initials}
         name={profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
         subtitle={profile?.especialidad || profile?.email || ''}
+        avatarUrl={profile?.avatar_url}
       />
 
       {/* Navigation Menu */}

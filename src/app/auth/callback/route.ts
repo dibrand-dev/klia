@@ -33,11 +33,19 @@ export async function GET(request: Request) {
       if (!profile?.trial_fin) {
         const now = new Date()
         const trialFin = new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000)
+        const meta = user.user_metadata ?? {}
+        const googleFullName: string = meta.full_name || meta.name || ''
+        const googleGivenName: string = meta.given_name || googleFullName.split(' ')[0] || ''
+        const googleFamilyName: string = meta.family_name || googleFullName.split(' ').slice(1).join(' ') || ''
+        const googleAvatar: string | null = meta.avatar_url || meta.picture || null
         await supabase.from('profiles').update({
           plan: 'premium',
           estado_cuenta: 'trial',
           trial_inicio: now.toISOString(),
           trial_fin: trialFin.toISOString(),
+          ...(googleGivenName && { nombre: googleGivenName }),
+          ...(googleFamilyName && { apellido: googleFamilyName }),
+          ...(googleAvatar && { avatar_url: googleAvatar }),
         }).eq('id', user.id)
 
         // Email de bienvenida via Brevo (solo al confirmar la cuenta por primera vez)

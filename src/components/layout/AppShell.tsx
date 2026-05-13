@@ -132,6 +132,15 @@ export default function AppShell({
         {profile?.estado_cuenta === 'trial' && profile.trial_fin
           ? <TrialBanner trialFin={profile.trial_fin} />
           : null}
+        {profile && !profile.especialidad && (
+          <div className="w-full text-center text-xs py-2 px-4 font-medium bg-blue-50 text-blue-800">
+            Tu perfil está incompleto.{' '}
+            <Link href="/ajustes" className="underline font-semibold">
+              Agregá tu especialidad
+            </Link>{' '}
+            para personalizar tu experiencia.
+          </div>
+        )}
         <div className="flex-1">
           {children}
         </div>
