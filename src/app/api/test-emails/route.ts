@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
-
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+import { NextResponse } from 'next/server'
 import { enviarEmail } from '@/lib/brevo'
 import {
   emailConfirmacionCuenta,
@@ -19,7 +19,7 @@ export async function GET() {
   const nombre = 'Norberto'
   const email = 'norberto@dibrand.co'
 
-  const emails = [
+  const templates = [
     { asunto: '[TEST 1/9] Confirmá tu cuenta en KLIA', html: emailConfirmacionCuenta(nombre, 'https://app.klia.com.ar') },
     { asunto: '[TEST 2/9] Bienvenido a KLIA', html: emailBienvenida(nombre, 21) },
     { asunto: '[TEST 3/9] Llevás una semana en KLIA', html: emailTrialDia7(nombre) },
@@ -32,15 +32,21 @@ export async function GET() {
   ]
 
   const results = []
-  for (const e of emails) {
-    await enviarEmail({
-      destinatario: email,
-      nombreDestinatario: nombre,
-      asunto: e.asunto,
-      htmlContent: e.html,
-    })
-    results.push({ asunto: e.asunto, enviado: true })
+  for (const t of templates) {
+    try {
+      await enviarEmail({
+        destinatario: email,
+        nombreDestinatario: nombre,
+        asunto: t.asunto,
+        htmlContent: t.html,
+      })
+      results.push({ asunto: t.asunto, ok: true })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      results.push({ asunto: t.asunto, ok: false, error: msg })
+    }
   }
 
-  return NextResponse.json({ success: true, enviados: results })
+  const anyFailed = results.some(r => !r.ok)
+  return NextResponse.json({ success: !anyFailed, enviados: results }, { status: anyFailed ? 500 : 200 })
 }
