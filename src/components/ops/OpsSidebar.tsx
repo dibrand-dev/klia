@@ -27,7 +27,7 @@ export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = 'https://app.klia.com.ar/login'
+    window.location.href = 'https://app.klia.com.ar/ops/login'
   }
 
   const allItems = adminUser.rol === 'total'
