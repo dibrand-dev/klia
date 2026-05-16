@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { enviarEmail } from '@/lib/brevo'
 import {
   emailConfirmacionCuenta,
   emailBienvenida,
@@ -15,9 +14,34 @@ import {
   emailPagoFallido,
 } from '@/lib/email-templates'
 
+async function sendViaBrevoAPI(asunto: string, html: string, to: string, toName: string) {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) throw new Error('BREVO_API_KEY no está configurada')
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: 'KLIA', email: 'hola@klia.com.ar' },
+      to: [{ email: to, name: toName }],
+      subject: asunto,
+      htmlContent: html,
+    }),
+  })
+
+  const body = await res.json().catch(() => ({ raw: res.statusText }))
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${JSON.stringify(body)}`)
+  return body
+}
+
 export async function GET() {
   const nombre = 'Norberto'
   const email = 'norberto@dibrand.co'
+  const apiKeyPresente = !!process.env.BREVO_API_KEY
 
   const templates = [
     { asunto: '[TEST 1/9] Confirmá tu cuenta en KLIA', html: emailConfirmacionCuenta(nombre, 'https://app.klia.com.ar') },
@@ -34,19 +58,15 @@ export async function GET() {
   const results = []
   for (const t of templates) {
     try {
-      await enviarEmail({
-        destinatario: email,
-        nombreDestinatario: nombre,
-        asunto: t.asunto,
-        htmlContent: t.html,
-      })
-      results.push({ asunto: t.asunto, ok: true })
+      const resp = await sendViaBrevoAPI(t.asunto, t.html, email, nombre)
+      results.push({ asunto: t.asunto, ok: true, messageId: resp.messageId })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      results.push({ asunto: t.asunto, ok: false, error: msg })
+      results.push({ asunto: t.asunto, ok: false, error: err instanceof Error ? err.message : String(err) })
     }
   }
 
-  const anyFailed = results.some(r => !r.ok)
-  return NextResponse.json({ success: !anyFailed, enviados: results }, { status: anyFailed ? 500 : 200 })
+  return NextResponse.json({
+    apiKeyPresente,
+    results,
+  })
 }
