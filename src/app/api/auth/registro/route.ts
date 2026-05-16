@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
-    const origin = req.headers.get('origin') ?? 'https://app.klia.com.ar'
+    const origin = 'https://app.klia.com.ar'
 
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'signup',
@@ -51,12 +51,18 @@ export async function POST(req: NextRequest) {
 
     const confirmationUrl = data.properties.action_link
 
-    await enviarEmail({
-      destinatario: email,
-      nombreDestinatario: nombre,
-      asunto: 'Confirmá tu cuenta en KLIA',
-      htmlContent: emailConfirmacionCuenta(nombre, confirmationUrl),
-    })
+    try {
+      await enviarEmail({
+        destinatario: email,
+        nombreDestinatario: nombre,
+        asunto: 'Confirmá tu cuenta en KLIA',
+        htmlContent: emailConfirmacionCuenta(nombre, confirmationUrl),
+      })
+      console.log('Email enviado correctamente a:', email)
+    } catch (emailError) {
+      console.error('Error enviando email de confirmacion:', emailError)
+      // Don't fail the registration if email fails
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
