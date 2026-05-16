@@ -5,39 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Profile } from '@/types/database'
-
-const ESPECIALIDADES = [
-  'Acompañamiento Terapéutico',
-  'Administración de Salud',
-  'Cardiología',
-  'Clínica Médica',
-  'Cosmetología',
-  'Dermatología',
-  'Endocrinología',
-  'Esteticista',
-  'Estimulación Temprana',
-  'Fisiatría',
-  'Fonoaudiología',
-  'Gastroenterología',
-  'Ginecología y Obstetricia',
-  'Kinesiología',
-  'Medicina de Familia',
-  'Musicoterapia',
-  'Neurología',
-  'Neuropsicología',
-  'Nutrición',
-  'Oftalmología',
-  'Pediatría',
-  'Psicología',
-  'Psicopedagogía',
-  'Psiquiatría',
-  'Psiquiatría Infanto-Juvenil',
-  'Secretariado Médico',
-  'Terapia Ocupacional',
-  'Traumatología',
-  'Urología',
-  'Otro / No listado',
-]
+import { ESPECIALIDADES } from '@/lib/especialidades'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'

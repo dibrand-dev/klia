@@ -3,39 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-
-const ESPECIALIDADES = [
-  'Acompañamiento Terapéutico',
-  'Administración de Salud',
-  'Cardiología',
-  'Clínica Médica',
-  'Cosmetología',
-  'Dermatología',
-  'Endocrinología',
-  'Esteticista',
-  'Estimulación Temprana',
-  'Fisiatría',
-  'Fonoaudiología',
-  'Gastroenterología',
-  'Ginecología y Obstetricia',
-  'Kinesiología',
-  'Medicina de Familia',
-  'Musicoterapia',
-  'Neurología',
-  'Neuropsicología',
-  'Nutrición',
-  'Oftalmología',
-  'Pediatría',
-  'Psicología',
-  'Psicopedagogía',
-  'Psiquiatría',
-  'Psiquiatría Infanto-Juvenil',
-  'Secretariado Médico',
-  'Terapia Ocupacional',
-  'Traumatología',
-  'Urología',
-  'Otro / No listado',
-]
+import { ESPECIALIDADES } from '@/lib/especialidades'
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
