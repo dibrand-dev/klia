@@ -6,8 +6,8 @@ function baseTemplate(contenido: string, titulo?: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${titulo || 'KLIA'}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f7f9fb;">
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f7f9fb;">
+<body style="margin:0;padding:0;background-color:#ffffff;">
+<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#ffffff;">
   <tr><td align="center" style="padding:32px 16px 48px 16px;">
 
     <!-- Logo above card -->
