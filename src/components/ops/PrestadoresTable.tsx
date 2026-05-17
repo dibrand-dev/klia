@@ -145,6 +145,10 @@ function SuscripcionPanel({ prestador, onClose, onSaved }: {
       trial_fin: trialFin ? new Date(trialFin).toISOString() : null,
       suscripcion_fin: suscripcionFin ? new Date(suscripcionFin).toISOString() : null,
     }
+    if (plan === 'bonificado') {
+      updates.trial_inicio = null
+      updates.trial_fin = null
+    }
     await supabase.from('profiles').update(updates).eq('id', prestador.id)
     onSaved({
       plan,
@@ -187,7 +191,11 @@ function SuscripcionPanel({ prestador, onClose, onSaved }: {
               onChange={(e) => {
                 const p = e.target.value as Plan
                 setPlan(p)
-                if (p === 'bonificado' && estado === 'trial') setEstado('activa')
+                if (p === 'bonificado') {
+                  setEstado('activa')
+                  setTrialFin('')
+                  setSuscripcionFin('')
+                }
               }}
               className={selectCls}
             >
