@@ -62,5 +62,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  return NextResponse.redirect('https://www.klia.com.ar/login?error=auth_callback_error')
 }
