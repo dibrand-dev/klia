@@ -10,16 +10,21 @@ export const runtime = 'nodejs'
 // y lo envía via Brevo en lugar del sistema nativo de Supabase.
 // Requiere que los templates de Supabase estén vaciados en el dashboard.
 export async function POST(req: NextRequest) {
+  console.log('🔵 REGISTRO: endpoint llamado')
   try {
-    const { email, password, nombre, apellido, especialidad } = await req.json() as {
+    const body = await req.json() as {
       email?: string
       password?: string
       nombre?: string
       apellido?: string
       especialidad?: string
     }
+    console.log('🔵 REGISTRO: datos recibidos:', { email: body.email, nombre: body.nombre })
+
+    const { email, password, nombre, apellido, especialidad } = body
 
     if (!email || !password || !nombre || !apellido) {
+      console.log('🔵 REGISTRO: faltan campos requeridos')
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
 
@@ -30,6 +35,7 @@ export async function POST(req: NextRequest) {
 
     const origin = 'https://app.klia.com.ar'
 
+    console.log('🔵 REGISTRO: llamando a generateLink para:', email)
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'signup',
       email,
@@ -41,6 +47,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (error) {
+      console.log('🔵 REGISTRO: error en generateLink:', error.message)
       const yaRegistrado = error.message.toLowerCase().includes('already registered')
         || error.message.toLowerCase().includes('already been registered')
       return NextResponse.json(
@@ -50,6 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     const confirmationUrl = data.properties.action_link
+    console.log('🔵 REGISTRO: link generado, enviando email a:', email)
 
     try {
       await enviarEmail({
@@ -58,15 +66,15 @@ export async function POST(req: NextRequest) {
         asunto: 'Confirmá tu cuenta en KLIA',
         htmlContent: emailConfirmacionCuenta(nombre, confirmationUrl),
       })
-      console.log('Email enviado correctamente a:', email)
+      console.log('🔵 REGISTRO: email enviado correctamente')
     } catch (emailError) {
-      console.error('Error enviando email de confirmacion:', emailError)
+      console.error('🔵 REGISTRO: error enviando email:', emailError)
       // Don't fail the registration if email fails
     }
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('Error en registro:', err)
+    console.error('🔵 REGISTRO: excepcion no capturada:', err)
     return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.' }, { status: 500 })
   }
 }
