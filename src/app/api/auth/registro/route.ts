@@ -5,6 +5,16 @@ import { emailConfirmacionCuenta } from '@/lib/email-templates'
 
 export const runtime = 'nodejs'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://www.klia.com.ar',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+}
+
 // Reemplaza el email de confirmación de Supabase.
 // Usa admin.generateLink para obtener el action_link (no disponible en el SDK cliente)
 // y lo envía via Brevo en lugar del sistema nativo de Supabase.
@@ -25,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password || !nombre || !apellido) {
       console.log('🔵 REGISTRO: faltan campos requeridos')
-      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400, headers: CORS_HEADERS })
     }
 
     const supabase = createClient(
@@ -52,7 +62,7 @@ export async function POST(req: NextRequest) {
         || error.message.toLowerCase().includes('already been registered')
       return NextResponse.json(
         { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.' },
-        { status: yaRegistrado ? 409 : 500 }
+        { status: yaRegistrado ? 409 : 500, headers: CORS_HEADERS }
       )
     }
 
@@ -72,9 +82,9 @@ export async function POST(req: NextRequest) {
       // Don't fail the registration if email fails
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true }, { headers: CORS_HEADERS })
   } catch (err) {
     console.error('🔵 REGISTRO: excepcion no capturada:', err)
-    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.' }, { status: 500, headers: CORS_HEADERS })
   }
 }
