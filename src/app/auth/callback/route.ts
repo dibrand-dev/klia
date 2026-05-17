@@ -54,6 +54,8 @@ export async function GET(request: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id }),
         }).catch(() => {})
+
+        return NextResponse.redirect(new URL('/bienvenida', origin))
       }
 
       return NextResponse.redirect(new URL('/dashboard', origin))
