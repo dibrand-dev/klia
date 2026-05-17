@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
     }
 
     const confirmationUrl = data.properties.action_link
+    console.log('🔵 REGISTRO: action_link generado:', confirmationUrl)
+    console.log('🔵 REGISTRO: properties completas:', JSON.stringify(data.properties))
     console.log('🔵 REGISTRO: link generado, enviando email a:', email)
 
     try {
