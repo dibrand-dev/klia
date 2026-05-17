@@ -43,8 +43,6 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
-    const origin = 'https://app.klia.com.ar'
-
     console.log('🔵 REGISTRO: llamando a generateLink para:', email)
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'signup',
@@ -52,7 +50,7 @@ export async function POST(req: NextRequest) {
       password,
       options: {
         data: { nombre, apellido, especialidad: especialidad ?? null },
-        redirectTo: `${origin}/auth/callback`,
+        redirectTo: 'https://app.klia.com.ar/auth/callback',
       },
     })
 
