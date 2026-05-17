@@ -8,7 +8,6 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/auth/redirect',
   '/ops/login',
-  '/api/test-emails',
   '/planes',
   '/cuenta-bloqueada',
   '/terminos',
