@@ -7,6 +7,7 @@ const PUBLIC_ROUTES = [
   '/registro',
   '/auth/callback',
   '/auth/redirect',
+  '/bienvenida',
   '/ops/login',
   '/planes',
   '/cuenta-bloqueada',
