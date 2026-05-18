@@ -36,19 +36,19 @@ function parseSections(md: string) {
 
 const MD_COMPONENTS = {
   ul: ({ children }: { children: ReactNode }) => (
-    <ul className="space-y-2 mt-2">{children}</ul>
+    <ul className="space-y-1 mb-3 mt-1">{children}</ul>
   ),
   li: ({ children }: { children: ReactNode }) => (
-    <li className="flex items-start gap-2 text-sm text-gray-700">
-      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-      <span>{children}</span>
+    <li className="flex items-start gap-2 text-sm text-gray-700 py-1">
+      <span className="mt-2 w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+      <span className="flex-1">{children}</span>
     </li>
   ),
   strong: ({ children }: { children: ReactNode }) => (
     <strong className="font-semibold text-gray-900">{children}</strong>
   ),
   p: ({ children }: { children: ReactNode }) => (
-    <p className="text-sm text-gray-700">{children}</p>
+    <p className="text-sm text-gray-700 mb-1 leading-relaxed">{children}</p>
   ),
   h3: () => null,
 }

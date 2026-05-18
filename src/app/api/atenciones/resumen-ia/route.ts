@@ -92,6 +92,11 @@ Adaptá el lenguaje, terminología y enfoque clínico al contexto de ${especiali
 RESTRICCIONES ESTRICTAS DE SALIDA:
 - Prohibido usar saludos introductorios o conclusiones.
 - El output debe ser directamente código Markdown limpio.
+- Cada punto de información debe ser un ítem de lista Markdown separado (usar "-" al inicio de cada línea).
+- Prohibido escribir múltiples puntos en el mismo párrafo separados por punto seguido.
+- Cada ítem de lista debe ocupar su propia línea con su propio "-".
+- Máximo 2 líneas por ítem de lista.
+- Entre cada sección "###" dejar una línea en blanco.
 - Estructurar exclusivamente bajo estas tres secciones:
 ### 📌 Último Estado Clínico
 Breve síntesis del estado anterior del paciente y pendientes relevantes para ${especialidad}.
