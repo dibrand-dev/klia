@@ -209,13 +209,6 @@ export default function ResumenIA({
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700 font-medium">
                 <span className="material-symbols-outlined text-[14px]">check_circle</span>
                 {cached ? 'Resumen guardado · Costo $0' : 'Resumen generado · Gemini Fast'}
-                <button
-                  onClick={generarResumen}
-                  className="ml-auto text-green-600 hover:text-green-800 flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[13px]">refresh</span>
-                  Regenerar
-                </button>
               </div>
 
               {/* Section cards */}
