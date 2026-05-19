@@ -343,6 +343,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     await supabase.from('turnos').update({ estado: nuevoEstado }).eq('id', turno.id)
     onTurnoActualizado({ ...turno, estado: nuevoEstado })
     setLoading(false)
+    router.refresh()
   }
 
   async function togglePagado() {
@@ -350,6 +351,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     const supabase = createClient()
     await supabase.from('turnos').update({ pagado: nuevoPagado }).eq('id', turno.id)
     onTurnoActualizado({ ...turno, pagado: nuevoPagado })
+    router.refresh()
   }
 
   // ─── Modo editar ───────────────────────────────────────────────

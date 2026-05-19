@@ -7,11 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const ESTADO_TURNO_LABELS: Record<EstadoTurno, string> = {
-  pendiente: 'Pendiente',
+  pendiente: 'En Espera',
   confirmado: 'Confirmado',
   cancelado: 'Cancelado',
-  realizado: 'Realizado',
-  no_asistio: 'No asistió',
+  realizado: 'Atendido',
+  no_asistio: 'Ausente',
 }
 
 export const ESTADO_TURNO_COLORS: Record<EstadoTurno, string> = {
