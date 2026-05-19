@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PLANES_KLIA } from '@/lib/mercadopago'
 
 function fmt(n: number) {
@@ -14,14 +14,46 @@ const CHECK = (
   </svg>
 )
 
+function Spinner() {
+  return (
+    <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', verticalAlign: 'middle', marginRight: 6 }} />
+  )
+}
+
 export default function PlanesSection() {
+  const router = useRouter()
   const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual')
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const p = (plan: keyof typeof PLANES_KLIA) =>
     ciclo === 'mensual' ? PLANES_KLIA[plan].precio_mensual : PLANES_KLIA[plan].precio_anual_mensual
 
+  async function handleElegirPlan(plan: string) {
+    setLoadingPlan(plan)
+    setError(null)
+    try {
+      const res = await fetch('/api/suscripcion/crear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, modalidad: ciclo }),
+      })
+      const data = await res.json() as { preference_id?: string; monto?: number; error?: string }
+      if (!res.ok || !data.preference_id) throw new Error(data.error ?? 'Error al conectar con Mercado Pago')
+      router.push(`/checkout?preference_id=${data.preference_id}&plan=${plan}&monto=${data.monto}&modalidad=${ciclo}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos conectar con Mercado Pago. Intentá nuevamente.')
+      setLoadingPlan(null)
+    }
+  }
+
   return (
     <>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 900px) { .plans-grid { grid-template-columns: 1fr !important; max-width: 480px !important; } }
+      `}</style>
+
       {/* Billing toggle */}
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16 }}>
@@ -30,42 +62,31 @@ export default function PlanesSection() {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: 4, borderRadius: 100, background: '#fff', border: '1px solid #E7E9EE', boxShadow: '0 1px 2px rgba(16,24,40,.04)' }}>
           <button
             onClick={() => setCiclo('mensual')}
-            style={{
-              padding: '9px 20px', borderRadius: 100, border: 'none', cursor: 'pointer',
-              fontSize: 13.5, fontWeight: 500,
-              background: ciclo === 'mensual' ? '#0B1220' : 'transparent',
-              color: ciclo === 'mensual' ? 'white' : '#5B6472',
-              transition: 'all .2s',
-            }}
+            style={{ padding: '9px 20px', borderRadius: 100, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, background: ciclo === 'mensual' ? '#0B1220' : 'transparent', color: ciclo === 'mensual' ? 'white' : '#5B6472', transition: 'all .2s' }}
           >
             Mensual
           </button>
           <button
             onClick={() => setCiclo('anual')}
-            style={{
-              padding: '9px 20px', borderRadius: 100, border: 'none', cursor: 'pointer',
-              fontSize: 13.5, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: ciclo === 'anual' ? '#0B1220' : 'transparent',
-              color: ciclo === 'anual' ? 'white' : '#5B6472',
-              transition: 'all .2s',
-            }}
+            style={{ padding: '9px 20px', borderRadius: 100, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6, background: ciclo === 'anual' ? '#0B1220' : 'transparent', color: ciclo === 'anual' ? 'white' : '#5B6472', transition: 'all .2s' }}
           >
             Anual
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', padding: '2px 7px', borderRadius: 100,
-              background: ciclo === 'anual' ? 'rgba(255,255,255,0.18)' : '#E7F5EE',
-              color: ciclo === 'anual' ? 'white' : '#0E8A5F',
-              fontSize: 10.5, fontWeight: 700,
-            }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 7px', borderRadius: 100, background: ciclo === 'anual' ? 'rgba(255,255,255,0.18)' : '#E7F5EE', color: ciclo === 'anual' ? 'white' : '#0E8A5F', fontSize: 10.5, fontWeight: 700 }}>
               2 meses gratis
             </span>
           </button>
         </div>
       </div>
 
+      {error && (
+        <div style={{ maxWidth: 560, margin: '0 auto 20px', padding: '10px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, fontSize: 13, color: '#BE3144', textAlign: 'center' }}>
+          {error}
+        </div>
+      )}
+
       {/* Plan cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, maxWidth: 1080, margin: '0 auto' }}
-        className="plans-grid">
+      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, maxWidth: 1080, margin: '0 auto' }}>
+
         {/* ESENCIAL */}
         <article style={{ background: '#fff', border: '1px solid #E7E9EE', borderRadius: 18, padding: '24px 22px 22px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#AEB5C0', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Para empezar</div>
@@ -77,21 +98,19 @@ export default function PlanesSection() {
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
-            {ciclo === 'anual' ? <><b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b></> : 'Facturación mensual'}
+            {ciclo === 'anual' ? <b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b> : 'Facturación mensual'}
           </div>
           <div style={{ marginBottom: 22 }}>
-            <Link href="/planes" style={{ display: 'block', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid #E7E9EE', background: '#fff', color: '#1F2937', textAlign: 'center', textDecoration: 'none' }}>
-              Elegir Esencial
-            </Link>
+            <button
+              onClick={() => handleElegirPlan('esencial')}
+              disabled={loadingPlan !== null}
+              style={{ display: 'block', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loadingPlan ? 'not-allowed' : 'pointer', border: '1px solid #E7E9EE', background: '#fff', color: '#1F2937', textAlign: 'center', opacity: loadingPlan && loadingPlan !== 'esencial' ? 0.5 : 1 }}
+            >
+              {loadingPlan === 'esencial' ? <><Spinner />Procesando…</> : 'Elegir Esencial'}
+            </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {[
-              <><b>Hasta 30 pacientes</b> activos</>,
-              'Agenda + recordatorios por email',
-              'Historia clínica básica',
-              'Facturación manual',
-              'Soporte por email',
-            ].map((feat, i) => (
+            {['Hasta 30 pacientes activos', 'Agenda + recordatorios por email', 'Historia clínica básica', 'Facturación manual', 'Soporte por email'].map((feat, i) => (
               <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
                 <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
                 <span>{feat}</span>
@@ -114,24 +133,26 @@ export default function PlanesSection() {
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
-            {ciclo === 'anual' ? <><b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b></> : 'Facturación mensual'}
+            {ciclo === 'anual' ? <b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b> : 'Facturación mensual'}
           </div>
           <div style={{ marginBottom: 22 }}>
-            <Link href="/planes" style={{ display: 'flex', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)', color: 'white', textAlign: 'center', textDecoration: 'none', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 12px 28px rgba(79,70,229,.18)' }}>
-              Elegir Profesional
-              <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" strokeWidth="2" fill="none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </Link>
+            <button
+              onClick={() => handleElegirPlan('profesional')}
+              disabled={loadingPlan !== null}
+              style={{ display: 'flex', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loadingPlan ? 'not-allowed' : 'pointer', border: 'none', background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)', color: 'white', textAlign: 'center', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 12px 28px rgba(79,70,229,.18)', opacity: loadingPlan && loadingPlan !== 'profesional' ? 0.5 : 1 }}
+            >
+              {loadingPlan === 'profesional' ? (
+                <><Spinner />Procesando…</>
+              ) : (
+                <>
+                  Elegir Profesional
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" strokeWidth="2" fill="none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </>
+              )}
+            </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {[
-              <><b>Hasta 150 pacientes</b> activos</>,
-              'Agenda + WhatsApp + email',
-              'Historia clínica completa',
-              <><b>Resumen IA</b> por sesión (Gemini)</>,
-              'Facturación AFIP integrada',
-              'Informes clínicos exportables',
-              'Soporte prioritario',
-            ].map((feat, i) => (
+            {['Hasta 150 pacientes activos', 'Agenda + WhatsApp + email', 'Historia clínica completa', 'Resumen IA por sesión (Gemini)', 'Facturación AFIP integrada', 'Informes clínicos exportables', 'Soporte prioritario'].map((feat, i) => (
               <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
                 <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
                 <span>{feat}</span>
@@ -151,23 +172,19 @@ export default function PlanesSection() {
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
-            {ciclo === 'anual' ? <><b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b></> : 'Facturación mensual'}
+            {ciclo === 'anual' ? <b style={{ color: '#0E8A5F' }}>Ahorrás 2 meses</b> : 'Facturación mensual'}
           </div>
           <div style={{ marginBottom: 22 }}>
-            <Link href="/planes" style={{ display: 'block', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: '1px solid #E7E9EE', background: '#fff', color: '#1F2937', textAlign: 'center', textDecoration: 'none' }}>
-              Elegir Premium
-            </Link>
+            <button
+              onClick={() => handleElegirPlan('premium')}
+              disabled={loadingPlan !== null}
+              style={{ display: 'block', width: '100%', padding: '12px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: loadingPlan ? 'not-allowed' : 'pointer', border: '1px solid #E7E9EE', background: '#fff', color: '#1F2937', textAlign: 'center', opacity: loadingPlan && loadingPlan !== 'premium' ? 0.5 : 1 }}
+            >
+              {loadingPlan === 'premium' ? <><Spinner />Procesando…</> : 'Elegir Premium'}
+            </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {[
-              <><b>Pacientes ilimitados</b></>,
-              <><b>Multi-profesional</b> (5 cuentas)</>,
-              'Todo lo del plan Profesional',
-              <><b>IA avanzada</b> + interconsultas</>,
-              'API y integraciones',
-              'Backup en la nube cifrado',
-              'Soporte 24/7 + onboarding',
-            ].map((feat, i) => (
+            {['Pacientes ilimitados', 'Multi-profesional (5 cuentas)', 'Todo lo del plan Profesional', 'IA avanzada + interconsultas', 'API y integraciones', 'Backup en la nube cifrado', 'Soporte 24/7 + onboarding'].map((feat, i) => (
               <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
                 <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
                 <span>{feat}</span>
@@ -175,13 +192,8 @@ export default function PlanesSection() {
             ))}
           </ul>
         </article>
-      </div>
 
-      <style>{`
-        @media (max-width: 900px) {
-          .plans-grid { grid-template-columns: 1fr !important; max-width: 480px !important; }
-        }
-      `}</style>
+      </div>
     </>
   )
 }

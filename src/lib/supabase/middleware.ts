@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   '/ops/login',
   '/planes',
   '/cuenta-bloqueada',
+  '/checkout',
   '/terminos',
   '/privacidad',
 ]
