@@ -52,6 +52,7 @@ export default function AppShell({
   const [pacientesCargados, setPacientesCargados] = useState(false)
   const [nuevaNotaOpen, setNuevaNotaOpen] = useState(false)
   const [notaPacienteId, setNotaPacienteId] = useState<string>('')
+  const [notaTurnoId, setNotaTurnoId] = useState<string | null>(null)
 
   useEffect(() => {
     if (mobileOpen) {
@@ -93,8 +94,12 @@ export default function AppShell({
 
   useEffect(() => {
     function handler(e: Event) {
-      const pacienteId = (e as CustomEvent<{ pacienteId: string }>).detail?.pacienteId
-      if (pacienteId) { setNotaPacienteId(pacienteId); setNuevaNotaOpen(true) }
+      const detail = (e as CustomEvent<{ pacienteId: string; turnoId?: string }>).detail
+      if (detail?.pacienteId) {
+        setNotaPacienteId(detail.pacienteId)
+        setNotaTurnoId(detail.turnoId ?? null)
+        setNuevaNotaOpen(true)
+      }
     }
     window.addEventListener('openNuevaNotaClinica', handler)
     return () => window.removeEventListener('openNuevaNotaClinica', handler)
@@ -165,8 +170,9 @@ export default function AppShell({
         title="Nueva nota clínica"
       >
         <NuevaNotaForm
-          key={nuevaNotaOpen ? notaPacienteId : 'closed'}
+          key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}` : 'closed'}
           pacienteId={notaPacienteId}
+          turnoId={notaTurnoId ?? undefined}
           onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
           onClose={() => setNuevaNotaOpen(false)}
         />

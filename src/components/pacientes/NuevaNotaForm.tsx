@@ -12,11 +12,12 @@ function isHtmlEmpty(html: string): boolean {
 
 interface Props {
   pacienteId: string
+  turnoId?: string
   onCreada?: () => void
   onClose?: () => void
 }
 
-export default function NuevaNotaForm({ pacienteId, onCreada, onClose }: Props) {
+export default function NuevaNotaForm({ pacienteId, turnoId, onCreada, onClose }: Props) {
   const [contenido, setContenido] = useState('')
   const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
@@ -33,7 +34,7 @@ export default function NuevaNotaForm({ pacienteId, onCreada, onClose }: Props) 
     const { error: dbError } = await supabase.from('notas_clinicas').insert({
       terapeuta_id: user.id,
       paciente_id: pacienteId,
-      turno_id: null,
+      turno_id: turnoId ?? null,
       fecha,
       contenido,
     })

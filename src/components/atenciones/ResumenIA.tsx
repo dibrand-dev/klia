@@ -5,6 +5,10 @@ import type { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
+function abrirNuevaNota(pacienteId: string, turnoId: string) {
+  window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId, turnoId } }))
+}
+
 const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false })
 
 type Props = {
@@ -248,14 +252,14 @@ export default function ResumenIA({
             <span className="material-symbols-outlined text-[16px]">person</span>
             Ver Ficha Completa
           </Link>
-          <Link
-            href={`/pacientes/${pacienteId}/historial/nueva?turno_id=${turnoId}`}
+          <button
+            onClick={() => { onClose(); abrirNuevaNota(pacienteId, turnoId) }}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
             style={{ background: 'linear-gradient(135deg,#001a48 0%,#1F4FD9 100%)' }}
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            Iniciar Evolución de Hoy
-          </Link>
+            Tomar nota de hoy
+          </button>
         </div>
       </aside>
     </>
