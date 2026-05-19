@@ -235,7 +235,7 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
                           onClick={() => setSelectedNota(nota)}
                           className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-primary-fixed/30 group-hover:bg-primary-fixed text-primary font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider"
                         >
-                          <span className="material-symbols-outlined text-sm">visibility</span>
+                          <span className="material-symbols-outlined text-[14px] leading-none flex-none">visibility</span>
                           Ver nota completa
                         </button>
 
@@ -263,7 +263,7 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
                             onClick={() => setConfirmDeleteId(nota.id)}
                             className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-red-50 hover:bg-red-100 text-red-500 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider"
                           >
-                            <span className="material-symbols-outlined text-sm">delete</span>
+                            <span className="material-symbols-outlined text-[14px] leading-none flex-none">delete</span>
                             Eliminar
                           </button>
                         )}
