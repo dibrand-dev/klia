@@ -87,6 +87,7 @@ function getMesBoundaries(year: number, month: number) {
 }
 
 const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 
 const TH: React.CSSProperties = {
   textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#8A93A1',
@@ -156,6 +157,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   const [detalleSlide, setDetalleSlide] = useState<{ paciente_id: string; nombre: string; apellido: string; os_nombre: string | null } | null>(null)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -191,8 +193,12 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
       const dt = new Date(t.fecha_hora)
       if (dt < dateBoundaries.inicio || dt >= dateBoundaries.fin) return false
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      if (!`${t.paciente_nombre} ${t.paciente_apellido}`.toLowerCase().includes(q)) return false
+    }
     return true
-  }), [turnos, tabFilter, statusFilter, dateBoundaries])
+  }), [turnos, tabFilter, statusFilter, dateBoundaries, searchQuery])
 
   const countAll = useMemo(() => turnos.filter(t => statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countPartic = useMemo(() => turnos.filter(t => !t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
@@ -220,14 +226,84 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
     setDetalleSlide({ paciente_id: t.paciente_id, nombre: t.paciente_nombre, apellido: t.paciente_apellido, os_nombre: t.os_nombre })
   }
 
+  function handleExportar() {
+    const sym = getCurrencySymbol(moneda)
+    const rows = [
+      ['Paciente', 'Sesión', 'Cobertura', 'Monto', 'Cobrado', 'Saldo', 'Estado'],
+      ...filtered.map(t => {
+        const dt = new Date(new Date(t.fecha_hora).getTime() - 3 * 60 * 60 * 1000)
+        const fecha = dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
+        return [
+          `${t.paciente_nombre} ${t.paciente_apellido}`,
+          fecha,
+          t.os_nombre ?? 'Particular',
+          `${sym}${fmtNum(t.monto)}`,
+          t.monto_pagado > 0 ? `${sym}${fmtNum(t.monto_pagado)}` : '—',
+          saldo > 0 ? `${sym}${fmtNum(saldo)}` : '—',
+          t.estado_pago,
+        ]
+      }),
+    ]
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `cobros-${MESES_CORTO[mesArg]}-${anioArg}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
+    <>
+      {/* Sticky top bar — desktop only */}
+      <div className="hidden md:flex" style={{ position: 'sticky', top: 0, zIndex: 40, background: '#FFFFFF', borderBottom: '1px solid #E7E9EE', alignItems: 'center', gap: '16px', padding: '0 32px', height: '56px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', flexShrink: 0 }}>
+          <span style={{ color: '#8A93A1', fontWeight: 500 }}>KLIA</span>
+          <span style={{ color: '#AEB5C0', margin: '0 2px' }}>/</span>
+          <span style={{ color: '#8A93A1', fontWeight: 500 }}>Cobros</span>
+          <span style={{ color: '#AEB5C0', margin: '0 2px' }}>/</span>
+          <span style={{ color: '#0B1220', fontWeight: 600 }}>{MESES_LARGO[mesArg]} {anioArg}</span>
+        </div>
+        <div style={{ flex: 1, position: 'relative', maxWidth: '380px', margin: '0 auto' }}>
+          <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A1" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          <input
+            type="text"
+            placeholder="Buscar paciente, sesión..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ width: '100%', paddingLeft: '32px', paddingRight: '48px', paddingTop: '7px', paddingBottom: '7px', borderRadius: '8px', background: '#F6F7F9', border: '1px solid #E7E9EE', fontSize: '13px', color: '#0B1220', outline: 'none' }}
+          />
+          <kbd style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10.5px', padding: '1px 5px', borderRadius: '4px', background: '#FFFFFF', border: '1px solid #E7E9EE', color: '#8A93A1', fontFamily: 'inherit' }}>⌘K</kbd>
+        </div>
+        <button style={{ width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+      </div>
+
     <div style={{ maxWidth: '1320px', width: '100%', margin: '0 auto', padding: '0 32px 80px' }}>
 
       {/* Page header */}
-      <header style={{ padding: '22px 0 6px', display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
+      <header style={{ padding: '22px 0 6px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: '#0B1220' }}>Cobros</h1>
           <p style={{ color: '#5B6472', fontSize: '14px', margin: '4px 0 0' }}>Gestioná pagos pendientes de particulares y obras sociales.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <button
+            onClick={handleExportar}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #E7E9EE', background: '#FFFFFF', fontSize: '13px', fontWeight: 500, color: '#1F2937', cursor: 'pointer' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar
+          </button>
+          <button
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#0B1220', fontSize: '13px', fontWeight: 600, color: '#FFFFFF', cursor: 'pointer' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            Registrar cobro
+          </button>
         </div>
       </header>
 
@@ -517,5 +593,6 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
         onCancel={() => setConfirmDelete(null)}
       />
     </div>
+    </>
   )
 }
