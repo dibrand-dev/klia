@@ -318,8 +318,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
             </span>
             Particulares y co-pagos
           </div>
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, #001a48, var(--accent))', borderRadius: '2px', margin: '10px 0 12px' }} />
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5" style={{ marginTop: '12px' }}>
             <SumCard type="histo" label="Adeudado histórico" value={summary.particAdeudado} moneda={moneda} meta={`${summary.particAdeudadoCount} sesión${summary.particAdeudadoCount !== 1 ? 'es' : ''} pendiente${summary.particAdeudadoCount !== 1 ? 's' : ''}`} />
             <SumCard type="month" label="Mes en curso" value={summary.particMesActual} moneda={moneda} meta="" />
           </div>
@@ -332,8 +331,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
             </span>
             Obras sociales
           </div>
-          <div style={{ height: '3px', background: 'linear-gradient(90deg, #001a48, var(--accent))', borderRadius: '2px', margin: '10px 0 12px' }} />
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5" style={{ marginTop: '12px' }}>
             <SumCard type="histo" label="Adeudado histórico" value={summary.osAdeudado} moneda={moneda} meta={`${summary.osAdeudadoCount} sesión${summary.osAdeudadoCount !== 1 ? 'es' : ''}`} />
             <SumCard type="month" label="Mes en curso" value={summary.osMesActual} moneda={moneda} meta="" />
           </div>
