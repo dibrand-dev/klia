@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import RegistrarPagoSlide from './RegistrarPagoSlide'
 import DetallePacienteSlide from './DetallePacienteSlide'
 
@@ -50,39 +51,96 @@ interface CobrosClientProps {
 type TabFilter = 'all' | 'partic' | 'os'
 type DateFilter = 'mes_actual' | 'mes_anterior' | 'semestre' | 'anio' | 'historico'
 
-const AVATAR_COLORS = ['#001a48', '#2563EB', '#7c3aed', '#059669', '#d97706', '#dc2626']
+const AVATAR_VARIANTS = [
+  { bg: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)', color: '#16389F' },
+  { bg: 'linear-gradient(145deg, #F4E4E0, #E5C9C0)', color: '#8A3520' },
+  { bg: 'linear-gradient(145deg, #E4F0E4, #C0DBC0)', color: '#205A2E' },
+  { bg: 'linear-gradient(145deg, #F2E8F4, #DCC0E0)', color: '#5B3DC9' },
+  { bg: 'linear-gradient(145deg, #F4EEDC, #E0D2A6)', color: '#7A5A0F' },
+]
 
-const ESTADO_LABELS: Record<string, string> = {
-  pendiente: 'Pendiente',
-  pago_parcial: 'Pago parcial',
-  bonificado: 'Bonificado',
-}
-
-const ESTADO_CHIP_CLASS: Record<string, string> = {
-  pendiente: 'bg-red-100 text-red-700',
-  pago_parcial: 'bg-amber-100 text-amber-700',
-  bonificado: 'bg-gray-100 text-gray-500',
-}
-
-function getAvatarColor(name: string): string {
+function getAvatarStyle(name: string) {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+  return AVATAR_VARIANTS[hash % AVATAR_VARIANTS.length]
 }
 
-function fmtMoney(n: number, moneda = 'ARS') {
-  return `${moneda} ${new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)}`
+function fmtNum(n: number) {
+  return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+}
+
+function getCurrencySymbol(moneda: string) {
+  if (moneda === 'USD') return 'US$'
+  if (moneda === 'EUR') return '€'
+  return '$'
 }
 
 function getArgNow() {
-  const now = new Date()
-  return new Date(now.getTime() - 3 * 60 * 60 * 1000)
+  return new Date(new Date().getTime() - 3 * 60 * 60 * 1000)
 }
 
 function getMesBoundaries(year: number, month: number) {
-  const inicio = new Date(Date.UTC(year, month, 1, 3, 0, 0))
-  const fin = new Date(Date.UTC(year, month + 1, 1, 3, 0, 0))
-  return { inicio, fin }
+  return {
+    inicio: new Date(Date.UTC(year, month, 1, 3, 0, 0)),
+    fin: new Date(Date.UTC(year, month + 1, 1, 3, 0, 0)),
+  }
+}
+
+const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+const TH: React.CSSProperties = {
+  textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#8A93A1',
+  textTransform: 'uppercase', letterSpacing: '0.06em', padding: '12px 16px',
+  borderBottom: '1px solid #E7E9EE', background: '#F6F7F9', whiteSpace: 'nowrap',
+}
+const TD: React.CSSProperties = { padding: '14px 16px', fontSize: '13.5px', verticalAlign: 'middle' }
+
+function SumCard({ type, label, value, moneda, meta }: { type: 'histo' | 'month'; label: string; value: number; moneda: string; meta: string }) {
+  const sym = getCurrencySymbol(moneda)
+  return (
+    <div style={{ background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '12px', padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: type === 'histo' ? 'linear-gradient(90deg, #001a48, #2563EB)' : 'linear-gradient(90deg, #f59e0b, #FB923C)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+        {label}
+      </div>
+      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0B1220', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+        <span style={{ fontSize: '13px', color: '#5B6472', fontWeight: 500, marginRight: '4px' }}>{sym}</span>
+        {fmtNum(value)}
+      </div>
+      {meta && <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#5B6472' }}>{meta}</div>}
+    </div>
+  )
+}
+
+function StatusChip({ estado }: { estado: string }) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    pendiente:   { bg: '#FEE2E2', color: '#DC2626', label: 'Pendiente' },
+    pago_parcial:{ bg: '#FEF3C7', color: '#B45309', label: 'Pago parcial' },
+    bonificado:  { bg: '#F3F4F6', color: '#6b7280', label: 'Bonificado' },
+    pagado:      { bg: '#DCFCE7', color: '#047857', label: 'Pagado' },
+  }
+  const s = map[estado] ?? map.pendiente
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 9px', borderRadius: '100px', fontSize: '11.5px', fontWeight: 600, whiteSpace: 'nowrap', background: s.bg, color: s.color }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+      {s.label}
+    </span>
+  )
+}
+
+function MenuBtn({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ display: 'flex', alignItems: 'center', gap: '9px', width: '100%', padding: '7px 9px', border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', textAlign: 'left', color: danger ? '#DC2626' : '#1F2937', background: hov ? (danger ? '#FEE2E2' : '#F6F7F9') : 'transparent' }}
+    >
+      {children}
+    </button>
+  )
 }
 
 export default function CobrosClient({ turnos, top3, summary, terapeutaId, moneda }: CobrosClientProps) {
@@ -95,284 +153,233 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   const [dateFilter, setDateFilter] = useState<DateFilter>('mes_actual')
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set(['pendiente', 'pago_parcial']))
   const [pagoSlide, setPagoSlide] = useState<{ turno: TurnoDeuda } | null>(null)
-  const [detalleSlide, setDetalleSlide] = useState<{
-    paciente_id: string
-    nombre: string
-    apellido: string
-    os_nombre: string | null
-  } | null>(null)
+  const [detalleSlide, setDetalleSlide] = useState<{ paciente_id: string; nombre: string; apellido: string; os_nombre: string | null } | null>(null)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenu(null)
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenu(null)
     }
     if (openMenu) document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [openMenu])
 
-  // Compute date boundaries based on filter
   const dateBoundaries = useMemo(() => {
     const hoy = getArgNow()
     const m = hoy.getUTCMonth()
     const y = hoy.getUTCFullYear()
-    if (dateFilter === 'mes_actual') {
-      return getMesBoundaries(y, m)
-    } else if (dateFilter === 'mes_anterior') {
-      const prevM = m === 0 ? 11 : m - 1
-      const prevY = m === 0 ? y - 1 : y
-      return getMesBoundaries(prevY, prevM)
-    } else if (dateFilter === 'semestre') {
-      const inicio6 = new Date(Date.UTC(m >= 6 ? y : y - 1, m >= 6 ? m - 6 : m + 6, 1, 3, 0, 0))
-      return { inicio: inicio6, fin: new Date(Date.UTC(y, m + 1, 1, 3, 0, 0)) }
-    } else if (dateFilter === 'anio') {
-      return { inicio: new Date(Date.UTC(y, 0, 1, 3, 0, 0)), fin: new Date(Date.UTC(y + 1, 0, 1, 3, 0, 0)) }
+    if (dateFilter === 'mes_actual') return getMesBoundaries(y, m)
+    if (dateFilter === 'mes_anterior') {
+      const pm = m === 0 ? 11 : m - 1; const py = m === 0 ? y - 1 : y
+      return getMesBoundaries(py, pm)
     }
-    return null // historico
+    if (dateFilter === 'semestre') {
+      const i6 = new Date(Date.UTC(m >= 6 ? y : y - 1, m >= 6 ? m - 6 : m + 6, 1, 3, 0, 0))
+      return { inicio: i6, fin: new Date(Date.UTC(y, m + 1, 1, 3, 0, 0)) }
+    }
+    if (dateFilter === 'anio') return { inicio: new Date(Date.UTC(y, 0, 1, 3, 0, 0)), fin: new Date(Date.UTC(y + 1, 0, 1, 3, 0, 0)) }
+    return null
   }, [dateFilter])
 
-  // Filter turnos
-  const filtered = useMemo(() => {
-    return turnos.filter(t => {
-      // Tab
-      if (tabFilter === 'partic' && t.os_config_id) return false
-      if (tabFilter === 'os' && !t.os_config_id) return false
-      // Status
-      if (!statusFilter.has(t.estado_pago)) return false
-      // Date
-      if (dateBoundaries) {
-        const dt = new Date(t.fecha_hora)
-        if (dt < dateBoundaries.inicio || dt >= dateBoundaries.fin) return false
-      }
-      return true
-    })
-  }, [turnos, tabFilter, statusFilter, dateBoundaries])
+  const filtered = useMemo(() => turnos.filter(t => {
+    if (tabFilter === 'partic' && t.os_config_id) return false
+    if (tabFilter === 'os' && !t.os_config_id) return false
+    if (!statusFilter.has(t.estado_pago)) return false
+    if (dateBoundaries) {
+      const dt = new Date(t.fecha_hora)
+      if (dt < dateBoundaries.inicio || dt >= dateBoundaries.fin) return false
+    }
+    return true
+  }), [turnos, tabFilter, statusFilter, dateBoundaries])
 
-  // Counts for tabs
   const countAll = useMemo(() => turnos.filter(t => statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countPartic = useMemo(() => turnos.filter(t => !t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countOS = useMemo(() => turnos.filter(t => !!t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
 
   function toggleStatus(s: string) {
-    setStatusFilter(prev => {
-      const next = new Set(prev)
-      if (next.has(s)) next.delete(s)
-      else next.add(s)
-      return next
-    })
+    setStatusFilter(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n })
   }
 
   async function handleBonificar(turnoId: string) {
     setOpenMenu(null)
-    const res = await fetch('/api/cobros/bonificar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turno_id: turnoId }),
-    })
+    const res = await fetch('/api/cobros/bonificar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: turnoId }) })
     if (res.ok) router.refresh()
-    else {
-      const data = await res.json()
-      alert(data.error || 'Error al bonificar')
-    }
+    else alert((await res.json()).error || 'Error al bonificar')
   }
 
   async function handleEliminar(turnoId: string) {
-    setConfirmDelete(null)
-    const res = await fetch('/api/cobros/eliminar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turno_id: turnoId }),
-    })
+    const res = await fetch('/api/cobros/eliminar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: turnoId }) })
     if (res.ok) router.refresh()
-    else {
-      const data = await res.json()
-      alert(data.error || 'Error al eliminar')
-    }
+    else alert((await res.json()).error || 'Error al eliminar')
+    setConfirmDelete(null)
   }
 
   function openDetalle(t: TurnoDeuda) {
-    setDetalleSlide({
-      paciente_id: t.paciente_id,
-      nombre: t.paciente_nombre,
-      apellido: t.paciente_apellido,
-      os_nombre: t.os_nombre,
-    })
+    setDetalleSlide({ paciente_id: t.paciente_id, nombre: t.paciente_nombre, apellido: t.paciente_apellido, os_nombre: t.os_nombre })
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900" style={{ color: '#001a48' }}>Cobros</h1>
-        <p className="text-sm text-gray-500 mt-1">Gestioná los cobros y pagos de tus sesiones</p>
-      </div>
+    <div style={{ maxWidth: '1320px', width: '100%', margin: '0 auto', padding: '0 0 80px' }}>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Page header */}
+      <header style={{ padding: '22px 0 6px', display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: '#0B1220' }}>Cobros</h1>
+          <p style={{ color: '#5B6472', fontSize: '14px', margin: '4px 0 0' }}>Gestioná pagos pendientes de particulares y obras sociales.</p>
+        </div>
+      </header>
+
+      {/* Summary groups */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" style={{ marginTop: '22px' }}>
         {/* Particulares */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-50">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Particulares</p>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#EFF4FF', color: '#2563EB', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            </span>
+            Particulares y co-pagos
           </div>
-          <div className="grid grid-cols-2 divide-x divide-gray-100">
-            <div className="px-5 py-4">
-              <p className="text-xs text-gray-500 mb-1">Adeudado histórico</p>
-              <p className="text-lg font-bold tabular-nums" style={{ color: '#dc2626' }}>
-                {fmtMoney(summary.particAdeudado, moneda)}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{summary.particAdeudadoCount} sesión{summary.particAdeudadoCount !== 1 ? 'es' : ''}</p>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-xs text-gray-500 mb-1">Mes en curso</p>
-              <p className="text-lg font-bold tabular-nums" style={{ color: '#dc2626' }}>
-                {fmtMoney(summary.particMesActual, moneda)}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <SumCard type="histo" label="Adeudado histórico" value={summary.particAdeudado} moneda={moneda} meta={`${summary.particAdeudadoCount} sesión${summary.particAdeudadoCount !== 1 ? 'es' : ''} pendiente${summary.particAdeudadoCount !== 1 ? 's' : ''}`} />
+            <SumCard type="month" label="Mes en curso" value={summary.particMesActual} moneda={moneda} meta="" />
           </div>
         </div>
         {/* Obras Sociales */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-50">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Obras Sociales</p>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#ECF0FF', color: '#002d72', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6l8-4z"/></svg>
+            </span>
+            Obras sociales
           </div>
-          <div className="grid grid-cols-2 divide-x divide-gray-100">
-            <div className="px-5 py-4">
-              <p className="text-xs text-gray-500 mb-1">Adeudado histórico</p>
-              <p className="text-lg font-bold tabular-nums" style={{ color: '#dc2626' }}>
-                {fmtMoney(summary.osAdeudado, moneda)}
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{summary.osAdeudadoCount} sesión{summary.osAdeudadoCount !== 1 ? 'es' : ''}</p>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-xs text-gray-500 mb-1">Mes en curso</p>
-              <p className="text-lg font-bold tabular-nums" style={{ color: '#dc2626' }}>
-                {fmtMoney(summary.osMesActual, moneda)}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <SumCard type="histo" label="Adeudado histórico" value={summary.osAdeudado} moneda={moneda} meta={`${summary.osAdeudadoCount} sesión${summary.osAdeudadoCount !== 1 ? 'es' : ''}`} />
+            <SumCard type="month" label="Mes en curso" value={summary.osMesActual} moneda={moneda} meta="" />
           </div>
         </div>
       </div>
 
-      {/* Top debtors */}
+      {/* Top 3 deudores */}
       {top3.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Mayores deudores</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {top3.map((d, i) => (
-              <button
-                key={d.paciente_id}
-                onClick={() => setDetalleSlide({ paciente_id: d.paciente_id, nombre: d.nombre, apellido: d.apellido, os_nombre: d.os_nombre })}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 hover:shadow-md hover:border-gray-200 transition-all text-left w-full"
-              >
-                <span className="text-lg font-bold text-gray-300 w-5 flex-shrink-0">#{i + 1}</span>
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: getAvatarColor(`${d.nombre}${d.apellido}`) }}
+        <div style={{ marginTop: '22px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#FEE2E2', color: '#DC2626', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>
+            </span>
+            Top 3 deudores
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            {top3.map((d, i) => {
+              const av = getAvatarStyle(`${d.nombre}${d.apellido}`)
+              const sym = getCurrencySymbol(d.moneda)
+              return (
+                <button
+                  key={d.paciente_id}
+                  onClick={() => setDetalleSlide({ paciente_id: d.paciente_id, nombre: d.nombre, apellido: d.apellido, os_nombre: d.os_nombre })}
+                  style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color .12s ease, box-shadow .12s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#D6DAE1'; e.currentTarget.style.boxShadow = '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#E7E9EE'; e.currentTarget.style.boxShadow = 'none' }}
                 >
-                  {d.nombre[0]}{d.apellido[0]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{d.nombre} {d.apellido}</p>
-                  {d.os_nombre && (
-                    <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                      {d.os_nombre}
+                  <div style={{ width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0, display: 'grid', placeItems: 'center', fontSize: '11px', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", background: i === 0 ? 'linear-gradient(135deg, #FEF3C7, #FCD34D)' : '#F6F7F9', color: i === 0 ? '#92400E' : '#8A93A1' }}>
+                    #{i + 1}
+                  </div>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0, background: av.bg, color: av.color, display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '13px', letterSpacing: '-0.02em' }}>
+                    {d.nombre[0]}{d.apellido[0]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#0B1220', letterSpacing: '-0.005em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.nombre} {d.apellido}
+                    </div>
+                    <span style={{ display: 'inline-flex', fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '100px', marginTop: '2px', background: d.os_nombre ? '#ECF0FF' : '#EFF4FF', color: d.os_nombre ? '#002d72' : '#2563EB' }}>
+                      {d.os_nombre ?? 'Particular'}
                     </span>
-                  )}
-                </div>
-                <p className="text-sm font-bold tabular-nums flex-shrink-0" style={{ color: '#dc2626' }}>
-                  {fmtMoney(d.saldo, d.moneda)}
-                </p>
-              </button>
-            ))}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '16px', color: '#DC2626', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{ fontSize: '11.5px', color: '#5B6472', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                    {fmtNum(d.saldo)}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
       {/* Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      <div style={{ marginTop: '26px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #E7E9EE', borderBottom: '1px solid #E7E9EE' }}>
         {/* Tab pills */}
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <div style={{ display: 'inline-flex', padding: '3px', gap: '2px', background: '#F6F7F9', border: '1px solid #E7E9EE', borderRadius: '8px' }}>
           {([
-            { key: 'all', label: 'Todos', count: countAll },
-            { key: 'partic', label: 'Particulares', count: countPartic },
-            { key: 'os', label: 'OS', count: countOS },
-          ] as const).map(tab => (
+            { key: 'all' as const, label: 'Todos', count: countAll },
+            { key: 'partic' as const, label: 'Particulares', count: countPartic },
+            { key: 'os' as const, label: 'Obras sociales', count: countOS },
+          ]).map(tab => (
             <button
               key={tab.key}
               onClick={() => setTabFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                tabFilter === tab.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              style={{ border: 'none', padding: '5px 12px', fontSize: '12.5px', fontWeight: 500, borderRadius: '5px', cursor: 'pointer', background: tabFilter === tab.key ? '#FFFFFF' : 'transparent', color: tabFilter === tab.key ? '#0B1220' : '#5B6472', boxShadow: tabFilter === tab.key ? '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)' : 'none' }}
             >
               {tab.label}
-              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                tabFilter === tab.key ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'
-              }`}>{tab.count}</span>
+              <span style={{ marginLeft: '4px', fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: tabFilter === tab.key ? '#2563EB' : '#8A93A1', fontWeight: tabFilter === tab.key ? 600 : 400 }}>
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Date filter */}
+        {/* Date range */}
         <select
           value={dateFilter}
           onChange={e => setDateFilter(e.target.value as DateFilter)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #E7E9EE', fontSize: '13px', color: '#1F2937', cursor: 'pointer', outline: 'none' }}
         >
-          <option value="mes_actual">Mes actual</option>
+          <option value="mes_actual">Mes actual · {MESES_CORTO[mesArg]} {anioArg}</option>
           <option value="mes_anterior">Mes anterior</option>
-          <option value="semestre">Semestre</option>
-          <option value="anio">Año</option>
+          <option value="semestre">Últimos 6 meses</option>
+          <option value="anio">Año {anioArg}</option>
           <option value="historico">Histórico</option>
         </select>
 
         {/* Status chips */}
-        <div className="flex gap-2">
+        <div style={{ display: 'inline-flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
           {([
-            { key: 'pendiente', label: 'Pendiente', active: 'bg-red-500 text-white', inactive: 'bg-gray-100 text-gray-600' },
-            { key: 'pago_parcial', label: 'Pago parcial', active: 'bg-amber-500 text-white', inactive: 'bg-gray-100 text-gray-600' },
-            { key: 'bonificado', label: 'Bonificado', active: 'bg-gray-400 text-white', inactive: 'bg-gray-100 text-gray-600' },
-          ]).map(chip => (
-            <button
-              key={chip.key}
-              onClick={() => toggleStatus(chip.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                statusFilter.has(chip.key) ? chip.active : chip.inactive
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
+            { key: 'pendiente', label: 'Pendiente', dot: '#DC2626' },
+            { key: 'pago_parcial', label: 'Pago parcial', dot: '#f59e0b' },
+            { key: 'bonificado', label: 'Bonificado', dot: '#6b7280' },
+          ]).map(chip => {
+            const active = statusFilter.has(chip.key)
+            return (
+              <button key={chip.key} onClick={() => toggleStatus(chip.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '100px', border: active ? '1px solid #0B1220' : '1px solid #E7E9EE', background: active ? '#F6F7F9' : '#FFFFFF', fontSize: '12px', color: active ? '#0B1220' : '#5B6472', fontWeight: active ? 600 : 500, cursor: 'pointer' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: chip.dot, flexShrink: 0 }} />
+                {chip.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div style={{ background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '12px', overflow: 'hidden', marginTop: '14px' }}>
         {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <span className="material-symbols-outlined text-4xl mb-3 block">account_balance_wallet</span>
-            <p className="text-sm">No hay sesiones con los filtros seleccionados</p>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#5B6472', fontSize: '13px' }}>
+            No hay sesiones con los filtros seleccionados
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paciente</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sesión</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Duración</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cobertura</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Cobrado</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Saldo</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                <tr>
+                  <th style={TH}>Paciente</th>
+                  <th style={TH}>Sesión</th>
+                  <th style={TH} className="hidden lg:table-cell">Duración</th>
+                  <th style={TH} className="hidden md:table-cell">Cobertura</th>
+                  <th style={{ ...TH, textAlign: 'right' }} className="hidden md:table-cell">Monto</th>
+                  <th style={{ ...TH, textAlign: 'right' }} className="hidden lg:table-cell">Cobrado</th>
+                  <th style={{ ...TH, textAlign: 'right' }}>Saldo</th>
+                  <th style={TH}>Estado</th>
+                  <th style={{ ...TH, textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -383,123 +390,103 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                   const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
                   const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
                   const isBonificado = t.estado_pago === 'bonificado'
-                  const isConfirmingDelete = confirmDelete === t.id
+                  const av = getAvatarStyle(`${t.paciente_nombre}${t.paciente_apellido}`)
+                  const sym = getCurrencySymbol(t.moneda)
+                  const isMenuOpen = openMenu === t.id
 
                   return (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      {/* Patient */}
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => openDetalle(t)}
-                          className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
-                        >
-                          <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ backgroundColor: getAvatarColor(`${t.paciente_nombre}${t.paciente_apellido}`) }}
-                          >
+                    <tr key={t.id} style={{ borderBottom: '1px solid #E7E9EE', transition: 'background .12s ease' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F6F7F9')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={TD}>
+                        <button onClick={() => openDetalle(t)} style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                          <div style={{ width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0, background: av.bg, color: av.color, display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '12.5px', letterSpacing: '-0.02em' }}>
                             {t.paciente_nombre[0]}{t.paciente_apellido[0]}
                           </div>
-                          <span className="font-medium text-gray-900 text-sm">{t.paciente_nombre} {t.paciente_apellido}</span>
+                          <span style={{ fontWeight: 600, color: '#0B1220', fontSize: '13.5px', letterSpacing: '-0.005em', whiteSpace: 'nowrap' }}>
+                            {t.paciente_nombre} {t.paciente_apellido}
+                          </span>
                         </button>
                       </td>
-                      {/* Session */}
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                        <span>{fechaStr}</span>
-                        <span className="text-gray-400 mx-1">·</span>
-                        <span>{horaStr}</span>
+                      <td style={TD}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12.5px', color: '#1F2937', fontVariantNumeric: 'tabular-nums' }}>
+                          {fechaStr}<span style={{ color: '#8A93A1', fontSize: '11.5px', marginLeft: '4px' }}>{horaStr}</span>
+                        </div>
                       </td>
-                      {/* Duration */}
-                      <td className="px-4 py-3 text-gray-500 text-sm hidden md:table-cell">{t.duracion_min} min</td>
-                      {/* Coverage */}
-                      <td className="px-4 py-3">
-                        {t.os_config_id ? (
-                          <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                            {t.os_nombre ?? 'OS'}
-                          </span>
-                        ) : (
-                          <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-700">
-                            Particular
-                          </span>
-                        )}
+                      <td style={{ ...TD, color: '#5B6472', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
+                        {t.duracion_min} min
                       </td>
-                      {/* Monto */}
-                      <td className="px-4 py-3 text-right tabular-nums text-gray-700 text-sm font-medium">
-                        {fmtMoney(t.monto, t.moneda)}
-                      </td>
-                      {/* Cobrado */}
-                      <td className="px-4 py-3 text-right tabular-nums text-green-700 text-sm hidden md:table-cell">
-                        {fmtMoney(t.monto_pagado, t.moneda)}
-                      </td>
-                      {/* Saldo */}
-                      <td className="px-4 py-3 text-right tabular-nums text-sm font-semibold" style={{ color: saldo > 0 ? '#dc2626' : '#374151' }}>
-                        {fmtMoney(saldo, t.moneda)}
-                      </td>
-                      {/* Estado */}
-                      <td className="px-4 py-3 text-center">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${ESTADO_CHIP_CLASS[t.estado_pago] ?? 'bg-gray-100 text-gray-500'}`}>
-                          {ESTADO_LABELS[t.estado_pago] ?? t.estado_pago}
+                      <td style={TD} className="hidden md:table-cell">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: t.os_config_id ? '#ECF0FF' : '#EFF4FF', color: t.os_config_id ? '#002d72' : '#2563EB' }}>
+                          {t.os_nombre ?? 'Particular'}
                         </span>
                       </td>
-                      {/* Actions */}
-                      <td className="px-4 py-3 text-right">
-                        {isConfirmingDelete ? (
-                          <div className="flex items-center gap-2 justify-end">
-                            <span className="text-xs text-gray-600">¿Eliminar?</span>
+                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden md:table-cell">
+                        <span style={{ fontWeight: 600, color: '#1F2937' }}>
+                          <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                          {fmtNum(t.monto)}
+                        </span>
+                      </td>
+                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
+                        {t.monto_pagado > 0 ? (
+                          <span style={{ fontWeight: 600, color: '#10b981' }}>
+                            <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                            {fmtNum(t.monto_pagado)}
+                          </span>
+                        ) : <span style={{ color: '#AEB5C0' }}>—</span>}
+                      </td>
+                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {saldo > 0 ? (
+                          <span style={{ fontWeight: 700, color: '#DC2626' }}>
+                            <span style={{ fontSize: '11px', color: '#DC2626', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                            {fmtNum(saldo)}
+                          </span>
+                        ) : <span style={{ fontWeight: 500, color: '#AEB5C0' }}>—</span>}
+                      </td>
+                      <td style={TD}><StatusChip estado={t.estado_pago} /></td>
+                      <td style={{ ...TD, textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            onClick={() => !isBonificado && setPagoSlide({ turno: t })}
+                            disabled={isBonificado}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 11px', borderRadius: '7px', background: isBonificado ? '#F1F3F6' : '#0B1220', color: isBonificado ? '#AEB5C0' : 'white', border: 'none', fontSize: '12.5px', fontWeight: 600, cursor: isBonificado ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                            <span className="hidden sm:inline">Registrar cobro</span>
+                          </button>
+                          <div style={{ position: 'relative' }} ref={isMenuOpen ? menuRef : undefined}>
                             <button
-                              onClick={() => handleEliminar(t.id)}
-                              className="text-xs px-2.5 py-1 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
-                            >Sí</button>
-                            <button
-                              onClick={() => setConfirmDelete(null)}
-                              className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
-                            >No</button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 justify-end">
-                            <button
-                              onClick={() => !isBonificado && setPagoSlide({ turno: t })}
-                              disabled={isBonificado}
-                              className="text-xs px-3 py-1.5 rounded-lg font-medium border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                              style={!isBonificado ? { borderColor: '#001a48', color: '#001a48' } : { borderColor: '#d1d5db', color: '#9ca3af' }}
+                              onClick={() => setOpenMenu(prev => prev === t.id ? null : t.id)}
+                              style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
                             >
-                              Registrar cobro
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#5B6472">
+                                <circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>
+                              </svg>
                             </button>
-                            {/* Dropdown */}
-                            <div className="relative" ref={openMenu === t.id ? menuRef : undefined}>
-                              <button
-                                onClick={() => setOpenMenu(prev => prev === t.id ? null : t.id)}
-                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 2a2 2 0 100 4 2 2 0 000-4zm0 6a2 2 0 110 4 2 2 0 010-4z" />
-                                </svg>
-                              </button>
-                              {openMenu === t.id && (
-                                <div className="absolute right-0 top-8 z-50 w-44 bg-white border border-gray-100 rounded-xl shadow-lg py-1 text-sm">
-                                  <button
-                                    onClick={() => handleBonificar(t.id)}
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors"
-                                  >
-                                    Bonificar
-                                  </button>
-                                  <button
-                                    onClick={() => { setOpenMenu(null); openDetalle(t) }}
-                                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700 transition-colors"
-                                  >
-                                    Ver detalle
-                                  </button>
-                                  <hr className="my-1 border-gray-100" />
-                                  <button
-                                    onClick={() => { setOpenMenu(null); setConfirmDelete(t.id) }}
-                                    className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 transition-colors"
-                                  >
-                                    Eliminar
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            {isMenuOpen && (
+                              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, minWidth: '200px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '10px', boxShadow: '0 8px 24px rgba(16,24,40,.08)', padding: '6px', zIndex: 25 }}>
+                                <MenuBtn onClick={() => handleBonificar(t.id)}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg>
+                                  Bonificar
+                                </MenuBtn>
+                                <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+                                  Enviar resumen
+                                </MenuBtn>
+                                <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                                  Ver detalle
+                                </MenuBtn>
+                                <div style={{ height: '1px', background: '#E7E9EE', margin: '4px 2px' }} />
+                                <MenuBtn danger onClick={() => { setOpenMenu(null); setConfirmDelete(t.id) }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                                  Eliminar
+                                </MenuBtn>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -510,23 +497,24 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
         )}
       </div>
 
-      {/* Registrar Pago Slide */}
-      <RegistrarPagoSlide
-        open={!!pagoSlide}
-        onClose={() => setPagoSlide(null)}
-        turno={pagoSlide?.turno ?? null}
-        onSuccess={() => router.refresh()}
-      />
+      {/* Footer note */}
+      <p style={{ marginTop: '14px', fontSize: '12px', color: '#8A93A1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        Las bonificaciones no impactan en el adeudado histórico. Los importes en USD/EUR muestran su símbolo correspondiente.
+      </p>
 
-      {/* Detalle Paciente Slide */}
-      <DetallePacienteSlide
-        open={!!detalleSlide}
-        onClose={() => setDetalleSlide(null)}
-        pacienteId={detalleSlide?.paciente_id ?? null}
-        pacienteNombre={detalleSlide?.nombre ?? ''}
-        pacienteApellido={detalleSlide?.apellido ?? ''}
-        osNombre={detalleSlide?.os_nombre ?? null}
-        terapeutaId={terapeutaId}
+      <RegistrarPagoSlide open={!!pagoSlide} onClose={() => setPagoSlide(null)} turno={pagoSlide?.turno ?? null} onSuccess={() => router.refresh()} />
+      <DetallePacienteSlide open={!!detalleSlide} onClose={() => setDetalleSlide(null)} pacienteId={detalleSlide?.paciente_id ?? null} pacienteNombre={detalleSlide?.nombre ?? ''} pacienteApellido={detalleSlide?.apellido ?? ''} osNombre={detalleSlide?.os_nombre ?? null} terapeutaId={terapeutaId} />
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Eliminar cobro"
+        message="¿Estás seguro de que querés eliminar este registro? Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        onConfirm={() => confirmDelete && handleEliminar(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
       />
     </div>
   )

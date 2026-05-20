@@ -10,6 +10,9 @@ interface SlideOverProps {
   subtitle?: string
   children: React.ReactNode
   width?: 'sm' | 'md' | 'lg'
+  header?: React.ReactNode
+  footer?: React.ReactNode
+  noPadding?: boolean
 }
 
 const WIDTH_MAP = {
@@ -19,7 +22,7 @@ const WIDTH_MAP = {
 }
 
 export default function SlideOver({
-  open, onClose, title, subtitle, children, width = 'md',
+  open, onClose, title, subtitle, children, width = 'md', header, footer, noPadding,
 }: SlideOverProps) {
   useEffect(() => {
     if (!open) return
@@ -47,26 +50,32 @@ export default function SlideOver({
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <div className="flex items-start justify-between px-6 py-5 border-b border-gray-200 flex-shrink-0">
-          <div className="min-w-0 pr-4">
-            <h2 className="text-lg font-semibold text-gray-900 truncate">{title}</h2>
-            {subtitle && (
-              <p className="text-sm text-gray-500 mt-0.5 truncate capitalize">{subtitle}</p>
-            )}
+        {header ?? (
+          <div className="flex items-start justify-between px-6 py-5 border-b border-gray-200 flex-shrink-0">
+            <div className="min-w-0 pr-4">
+              <h2 className="text-lg font-semibold text-gray-900 truncate">{title}</h2>
+              {subtitle && (
+                <p className="text-sm text-gray-500 mt-0.5 truncate capitalize">{subtitle}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        )}
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className={cn('flex-1 overflow-y-auto', noPadding ? '' : 'p-6')}>
           {children}
         </div>
+
+        {footer && (
+          <div className="flex-shrink-0">{footer}</div>
+        )}
       </div>
     </>
   )

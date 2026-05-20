@@ -250,70 +250,73 @@ export function emailResumenCobros(params: {
   moneda: string
 }): string {
   const fmt = (n: number) => new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+  const sym = params.moneda === 'USD' ? 'US$' : params.moneda === 'EUR' ? '€' : '$'
+  const fmtAmt = (n: number) => `<span style="font-size:11px;color:#8A93A1;font-weight:500;margin-right:2px;">${sym}</span>${fmt(n)}&nbsp;${params.moneda}`
+
   const sesionesRows = params.sesiones.map(s => {
-    let tag = ''
-    if (s.estado_pago === 'bonificado') tag = '&nbsp;<span style="font-size:10px;background:#e5e7eb;color:#6b7280;padding:2px 6px;border-radius:4px;">Bonif.</span>'
-    const montoStr = s.monto != null ? `${params.moneda}&nbsp;${fmt(s.monto)}${tag}` : `—${tag}`
+    const isBonif = s.estado_pago === 'bonificado'
+    const sSym = s.moneda === 'USD' ? 'US$' : s.moneda === 'EUR' ? '€' : '$'
+    const montoCell = s.monto != null
+      ? `<span style="${isBonif ? 'color:#AEB5C0;text-decoration:line-through;' : ''}">${sSym}&nbsp;${fmt(s.monto)}&nbsp;${s.moneda}</span>${isBonif ? '&nbsp;<span style="display:inline-block;padding:1px 6px;border-radius:100px;background:#F3F4F6;color:#6b7280;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Bonificada</span>' : ''}`
+      : '—'
     return `<tr>
-      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">${s.fecha}</td>
-      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center;">${s.duracion_min}&nbsp;min</td>
-      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:right;">${montoStr}</td>
+      <td style="padding:11px 4px;border-bottom:1px solid #F1F3F6;font-family:'Courier New',Courier,monospace;font-size:12.5px;color:#1F2937;">${s.fecha}</td>
+      <td style="padding:11px 4px;border-bottom:1px solid #F1F3F6;font-size:14px;color:#5B6472;">${s.duracion_min}&nbsp;min</td>
+      <td style="padding:11px 4px;border-bottom:1px solid #F1F3F6;text-align:right;font-size:14px;font-weight:600;color:#1F2937;">${montoCell}</td>
     </tr>`
   }).join('')
 
   const contenido = `
-    <h1 style="margin:0 0 4px;padding:0;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:#001a48;letter-spacing:-0.3px;">Resumen de sesiones</h1>
-    <p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;">${params.mes}</p>
-
-    <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#444651;">
-      Hola <strong style="color:#2b2f38;">${params.pacienteNombre}</strong>, te enviamos el resumen de tus sesiones del mes de <strong style="color:#2b2f38;">${params.mes}</strong>.
+    <p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;color:#0B1220;">Estimado/a ${params.pacienteNombre.split(' ')[0]},</p>
+    <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.6;color:#1F2937;">
+      A continuación encontrará el detalle de sus sesiones del mes de <strong style="font-weight:600;color:#0B1220;">${params.mes}</strong>.
     </p>
 
-    <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#001a48;letter-spacing:0.5px;text-transform:uppercase;">Detalle de sesiones</p>
+    <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#5B6472;letter-spacing:0.1em;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid #E7E9EE;">Detalle de sesiones</p>
 
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-bottom:24px;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px;">
       <thead>
-        <tr style="background-color:#f9fafb;">
-          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:left;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Fecha</th>
-          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:center;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Duración</th>
-          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:right;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Monto</th>
+        <tr>
+          <th style="font-size:10.5px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.08em;text-align:left;padding:8px 4px;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;">Fecha</th>
+          <th style="font-size:10.5px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.08em;text-align:left;padding:8px 4px;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;">Duración</th>
+          <th style="font-size:10.5px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.08em;text-align:right;padding:8px 4px;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;">Monto</th>
         </tr>
       </thead>
       <tbody>
-        ${sesionesRows || '<tr><td colspan="3" style="padding:16px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#9ca3af;">Sin sesiones</td></tr>'}
+        ${sesionesRows || '<tr><td colspan="3" style="padding:16px 4px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Sin sesiones</td></tr>'}
       </tbody>
     </table>
 
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f7f9fb;border-radius:10px;margin-bottom:28px;">
-      <tr><td style="padding:20px 24px;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#F6F7F9;border:1px solid #E7E9EE;border-radius:10px;margin-bottom:20px;">
+      <tr><td style="padding:16px 18px;">
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
           <tr>
-            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#7a7f8a;border-bottom:1px solid #e0e3e5;">Total del mes</td>
-            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#001a48;text-align:right;border-bottom:1px solid #e0e3e5;">${params.moneda}&nbsp;${fmt(params.totalMes)}</td>
+            <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1F2937;">Total del mes</td>
+            <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;color:#1F2937;text-align:right;">${fmtAmt(params.totalMes)}</td>
           </tr>
           <tr>
-            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#7a7f8a;border-bottom:1px solid #e0e3e5;">Ya abonado</td>
-            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#10b981;text-align:right;border-bottom:1px solid #e0e3e5;">${params.moneda}&nbsp;${fmt(params.yaAbonado)}</td>
+            <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1F2937;">Ya abonado</td>
+            <td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;color:#10b981;text-align:right;">${fmtAmt(params.yaAbonado)}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#001a48;">Saldo pendiente</td>
-            <td style="padding:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:${params.saldoPendiente > 0 ? '#dc2626' : '#001a48'};text-align:right;">${params.moneda}&nbsp;${fmt(params.saldoPendiente)}</td>
+            <td style="padding:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:#0B1220;border-top:1px dashed #E7E9EE;margin-top:4px;">Saldo pendiente</td>
+            <td style="padding:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:700;color:${params.saldoPendiente > 0 ? '#DC2626' : '#0B1220'};text-align:right;border-top:1px dashed #E7E9EE;">${fmtAmt(params.saldoPendiente)}</td>
           </tr>
         </table>
       </td></tr>
     </table>
 
-    ${cta('Ver detalle online &rarr;', 'https://app.klia.com.ar/cobros')}
+    ${cta('Ver detalle online', 'https://app.klia.com.ar/cobros')}
 
-    <p style="margin:32px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#6b7280;text-align:center;">
-      Ante cualquier consulta podés comunicarte directamente con tu profesional.
+    <p style="margin:24px 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1F2937;">
+      Ante cualquier consulta no dude en comunicarse.
     </p>
 
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;padding-top:24px;border-top:1px solid #e8eaf0;">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;padding-top:20px;border-top:1px solid #E7E9EE;">
       <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:#374151;">
-        <strong style="color:#001a48;">${params.profesionalNombre}</strong><br>
-        ${params.profesionalEspecialidad ? `<span style="color:#6b7280;">${params.profesionalEspecialidad}</span><br>` : ''}
-        <a href="mailto:${params.profesionalEmail}" style="color:#2563EB;text-decoration:none;">${params.profesionalEmail}</a>
+        <strong style="font-size:15px;font-weight:700;color:#0B1220;">${params.profesionalNombre}</strong><br>
+        ${params.profesionalEspecialidad ? `<span style="font-size:13px;color:#5B6472;">${params.profesionalEspecialidad}</span><br>` : ''}
+        <a href="mailto:${params.profesionalEmail}" style="font-size:12.5px;color:#2563EB;text-decoration:none;">${params.profesionalEmail}</a>
       </td></tr>
     </table>
   `
