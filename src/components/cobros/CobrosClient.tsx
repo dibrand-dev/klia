@@ -221,7 +221,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   }
 
   return (
-    <div style={{ maxWidth: '1320px', width: '100%', margin: '0 auto', padding: '0 0 80px' }}>
+    <div style={{ maxWidth: '1320px', width: '100%', margin: '0 auto', padding: '0 32px 80px' }}>
 
       {/* Page header */}
       <header style={{ padding: '22px 0 6px', display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
