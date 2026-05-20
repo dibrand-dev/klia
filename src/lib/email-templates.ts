@@ -237,6 +237,89 @@ export function emailPagoFallido(nombre: string, plan: string): string {
   `, 'No pudimos procesar tu pago — KLIA')
 }
 
+export function emailResumenCobros(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  profesionalEspecialidad: string | null
+  profesionalEmail: string
+  mes: string
+  sesiones: Array<{ fecha: string; duracion_min: number; monto: number | null; moneda: string; estado_pago: string }>
+  totalMes: number
+  yaAbonado: number
+  saldoPendiente: number
+  moneda: string
+}): string {
+  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+  const sesionesRows = params.sesiones.map(s => {
+    let tag = ''
+    if (s.estado_pago === 'bonificado') tag = '&nbsp;<span style="font-size:10px;background:#e5e7eb;color:#6b7280;padding:2px 6px;border-radius:4px;">Bonif.</span>'
+    const montoStr = s.monto != null ? `${params.moneda}&nbsp;${fmt(s.monto)}${tag}` : `—${tag}`
+    return `<tr>
+      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">${s.fecha}</td>
+      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:center;">${s.duracion_min}&nbsp;min</td>
+      <td style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;text-align:right;">${montoStr}</td>
+    </tr>`
+  }).join('')
+
+  const contenido = `
+    <h1 style="margin:0 0 4px;padding:0;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:700;color:#001a48;letter-spacing:-0.3px;">Resumen de sesiones</h1>
+    <p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7280;">${params.mes}</p>
+
+    <p style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#444651;">
+      Hola <strong style="color:#2b2f38;">${params.pacienteNombre}</strong>, te enviamos el resumen de tus sesiones del mes de <strong style="color:#2b2f38;">${params.mes}</strong>.
+    </p>
+
+    <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#001a48;letter-spacing:0.5px;text-transform:uppercase;">Detalle de sesiones</p>
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-bottom:24px;">
+      <thead>
+        <tr style="background-color:#f9fafb;">
+          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:left;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Fecha</th>
+          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:center;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Duración</th>
+          <th style="padding:10px 12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#6b7280;text-align:right;letter-spacing:0.3px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sesionesRows || '<tr><td colspan="3" style="padding:16px;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#9ca3af;">Sin sesiones</td></tr>'}
+      </tbody>
+    </table>
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f7f9fb;border-radius:10px;margin-bottom:28px;">
+      <tr><td style="padding:20px 24px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#7a7f8a;border-bottom:1px solid #e0e3e5;">Total del mes</td>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#001a48;text-align:right;border-bottom:1px solid #e0e3e5;">${params.moneda}&nbsp;${fmt(params.totalMes)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#7a7f8a;border-bottom:1px solid #e0e3e5;">Ya abonado</td>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#10b981;text-align:right;border-bottom:1px solid #e0e3e5;">${params.moneda}&nbsp;${fmt(params.yaAbonado)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#001a48;">Saldo pendiente</td>
+            <td style="padding:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:${params.saldoPendiente > 0 ? '#dc2626' : '#001a48'};text-align:right;">${params.moneda}&nbsp;${fmt(params.saldoPendiente)}</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    ${cta('Ver detalle online &rarr;', 'https://app.klia.com.ar/cobros')}
+
+    <p style="margin:32px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#6b7280;text-align:center;">
+      Ante cualquier consulta podés comunicarte directamente con tu profesional.
+    </p>
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;padding-top:24px;border-top:1px solid #e8eaf0;">
+      <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:#374151;">
+        <strong style="color:#001a48;">${params.profesionalNombre}</strong><br>
+        ${params.profesionalEspecialidad ? `<span style="color:#6b7280;">${params.profesionalEspecialidad}</span><br>` : ''}
+        <a href="mailto:${params.profesionalEmail}" style="color:#2563EB;text-decoration:none;">${params.profesionalEmail}</a>
+      </td></tr>
+    </table>
+  `
+  return baseTemplate(contenido, `Resumen de sesiones — ${params.mes}`)
+}
+
 export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): string {
   return baseTemplate(`
     ${icon('👋', '#f1f5f9')}

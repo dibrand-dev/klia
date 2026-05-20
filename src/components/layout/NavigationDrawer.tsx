@@ -20,6 +20,7 @@ const MODULE_ITEMS = [
     children: [] as { href: string; label: string }[] },
   { href: '/atenciones', label: 'Atenciones', icon: 'medical_services', moduloId: 'atenciones',
     children: [] },
+  { href: '/cobros', label: 'Cobros', icon: 'account_balance_wallet', moduloId: 'cobros', children: [] },
   { href: '/pacientes', label: 'Pacientes', icon: 'groups', moduloId: 'pacientes',
     children: [] },
   { href: '/facturacion/liquidacion', label: 'Facturación', icon: 'payments', moduloId: 'facturacion',

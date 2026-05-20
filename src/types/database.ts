@@ -242,6 +242,8 @@ export type Database = {
           google_event_id: string | null
           ai_summary: string | null
           estado_atencion: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
+          estado_pago: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
+          monto_pagado: number | null
           created_at: string
           updated_at: string
         }
@@ -263,6 +265,8 @@ export type Database = {
           google_event_id?: string | null
           ai_summary?: string | null
           estado_atencion?: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
+          estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
+          monto_pagado?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -279,6 +283,8 @@ export type Database = {
           notas?: string | null
           ai_summary?: string | null
           estado_atencion?: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
+          estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
+          monto_pagado?: number | null
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
@@ -303,6 +309,41 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      cobros: {
+        Row: {
+          id: string
+          turno_id: string
+          terapeuta_id: string
+          paciente_id: string
+          monto_cobrado: number
+          moneda: string
+          medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago'
+          fecha_cobro: string
+          notas: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          turno_id: string
+          terapeuta_id: string
+          paciente_id: string
+          monto_cobrado: number
+          moneda?: string
+          medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago'
+          fecha_cobro?: string
+          notas?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          monto_cobrado?: number
+          moneda?: string
+          medio_pago?: 'efectivo' | 'transferencia' | 'mercado_pago'
+          fecha_cobro?: string
+          notas?: string | null
+        }
+        Relationships: []
       }
       notas_clinicas: {
         Row: {
@@ -994,6 +1035,9 @@ export type Entrevista = Database['public']['Tables']['entrevistas']['Row']
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]
 }
+
+export type Cobro = Database['public']['Tables']['cobros']['Row']
+export type EstadoPago = 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado'
 
 export interface Turno extends TurnoRow {
   paciente?: Paciente
