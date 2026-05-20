@@ -98,28 +98,29 @@ const TD: React.CSSProperties = { padding: '14px 16px', fontSize: '13.5px', vert
 
 function SumCard({ type, label, value, moneda, meta }: { type: 'histo' | 'month'; label: string; value: number; moneda: string; meta: string }) {
   const sym = getCurrencySymbol(moneda)
+  const dotColor = type === 'histo' ? '#001a48' : '#f59e0b'
   return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '12px', padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: type === 'histo' ? 'linear-gradient(90deg, #001a48, #2563EB)' : 'linear-gradient(90deg, #f59e0b, #FB923C)' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
-        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: type === 'histo' ? 'linear-gradient(90deg, #001a48, var(--accent))' : 'linear-gradient(90deg, #f59e0b, #FB923C)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         {label}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: '#0B1220', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-        <span style={{ fontSize: '13px', color: '#5B6472', fontWeight: 500, marginRight: '4px' }}>{sym}</span>
+      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+        <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 500, marginRight: '4px' }}>{sym}</span>
         {fmtNum(value)}
       </div>
-      {meta && <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#5B6472' }}>{meta}</div>}
+      {meta && <div style={{ marginTop: '6px', fontSize: '11.5px', color: 'var(--muted)' }}>{meta}</div>}
     </div>
   )
 }
 
 function StatusChip({ estado }: { estado: string }) {
   const map: Record<string, { bg: string; color: string; label: string }> = {
-    pendiente:   { bg: '#FEE2E2', color: '#DC2626', label: 'Pendiente' },
-    pago_parcial:{ bg: '#FEF3C7', color: '#B45309', label: 'Pago parcial' },
-    bonificado:  { bg: '#F3F4F6', color: '#6b7280', label: 'Bonificado' },
-    pagado:      { bg: '#DCFCE7', color: '#047857', label: 'Pagado' },
+    pendiente:   { bg: 'var(--danger-soft)', color: 'var(--danger)', label: 'Pendiente' },
+    pago_parcial:{ bg: 'var(--warn-soft)',   color: 'var(--warn)',   label: 'Pago parcial' },
+    bonificado:  { bg: 'var(--surface-2)',   color: 'var(--muted)',  label: 'Bonificado' },
+    pagado:      { bg: 'var(--ok-soft)',     color: 'var(--ok)',     label: 'Pagado' },
   }
   const s = map[estado] ?? map.pendiente
   return (
@@ -258,27 +259,27 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   return (
     <>
       {/* Sticky top bar — desktop only */}
-      <div className="hidden md:flex" style={{ position: 'sticky', top: 0, zIndex: 40, background: '#FFFFFF', borderBottom: '1px solid #E7E9EE', alignItems: 'center', gap: '16px', padding: '0 32px', height: '56px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', flexShrink: 0 }}>
-          <span style={{ color: '#8A93A1', fontWeight: 500 }}>KLIA</span>
-          <span style={{ color: '#AEB5C0', margin: '0 2px' }}>/</span>
-          <span style={{ color: '#8A93A1', fontWeight: 500 }}>Cobros</span>
-          <span style={{ color: '#AEB5C0', margin: '0 2px' }}>/</span>
-          <span style={{ color: '#0B1220', fontWeight: 600 }}>{MESES_LARGO[mesArg]} {anioArg}</span>
+      <div className="hidden md:flex" style={{ position: 'sticky', top: 0, zIndex: 40, background: 'color-mix(in oklab, var(--bg) 85%, transparent)', backdropFilter: 'saturate(140%) blur(8px)', borderBottom: '1px solid var(--border)', alignItems: 'center', gap: '14px', padding: '10px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', flexShrink: 0 }}>
+          <span style={{ color: 'var(--muted)', fontWeight: 450 }}>KLIA</span>
+          <span style={{ color: 'var(--muted-3)' }}>/</span>
+          <span style={{ color: 'var(--muted)', fontWeight: 450 }}>Cobros</span>
+          <span style={{ color: 'var(--muted-3)' }}>/</span>
+          <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{MESES_LARGO[mesArg]} {anioArg}</span>
         </div>
-        <div style={{ flex: 1, position: 'relative', maxWidth: '380px', margin: '0 auto' }}>
-          <svg style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A1" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '0 10px', borderRadius: '7px', width: '280px', height: '30px', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted-2)" strokeWidth="1.8" style={{ flexShrink: 0 }}><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
           <input
             type="text"
             placeholder="Buscar paciente, sesión..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '32px', paddingRight: '48px', paddingTop: '7px', paddingBottom: '7px', borderRadius: '8px', background: '#F6F7F9', border: '1px solid #E7E9EE', fontSize: '13px', color: '#0B1220', outline: 'none' }}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', color: 'var(--ink)', minWidth: 0 }}
           />
-          <kbd style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10.5px', padding: '1px 5px', borderRadius: '4px', background: '#FFFFFF', border: '1px solid #E7E9EE', color: '#8A93A1', fontFamily: 'inherit' }}>⌘K</kbd>
+          <kbd style={{ fontSize: '10.5px', color: 'var(--muted-2)', background: 'var(--surface-2)', border: '1px solid var(--border)', padding: '1px 5px', borderRadius: '4px', fontFamily: "'JetBrains Mono', monospace", flexShrink: 0 }}>⌘K</kbd>
         </div>
-        <button style={{ width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <button style={{ width: '30px', height: '30px', display: 'grid', placeItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '7px', cursor: 'pointer', flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
       </div>
 
@@ -299,7 +300,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
             Exportar
           </button>
           <button
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: 'none', background: '#0B1220', fontSize: '13px', fontWeight: 600, color: '#FFFFFF', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '7px', border: 'none', background: 'var(--accent)', fontSize: '13px', fontWeight: 500, color: '#FFFFFF', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 5v14M5 12h14"/></svg>
             Registrar cobro
@@ -311,12 +312,13 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" style={{ marginTop: '22px' }}>
         {/* Particulares */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
-            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#EFF4FF', color: '#2563EB', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
             </span>
             Particulares y co-pagos
           </div>
+          <div style={{ height: '3px', background: 'linear-gradient(90deg, #001a48, var(--accent))', borderRadius: '2px', margin: '10px 0 12px' }} />
           <div className="grid grid-cols-2 gap-2.5">
             <SumCard type="histo" label="Adeudado histórico" value={summary.particAdeudado} moneda={moneda} meta={`${summary.particAdeudadoCount} sesión${summary.particAdeudadoCount !== 1 ? 'es' : ''} pendiente${summary.particAdeudadoCount !== 1 ? 's' : ''}`} />
             <SumCard type="month" label="Mes en curso" value={summary.particMesActual} moneda={moneda} meta="" />
@@ -324,12 +326,13 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
         </div>
         {/* Obras Sociales */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
-            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#ECF0FF', color: '#002d72', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'var(--accent-soft)', color: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6l8-4z"/></svg>
             </span>
             Obras sociales
           </div>
+          <div style={{ height: '3px', background: 'linear-gradient(90deg, #001a48, var(--accent))', borderRadius: '2px', margin: '10px 0 12px' }} />
           <div className="grid grid-cols-2 gap-2.5">
             <SumCard type="histo" label="Adeudado histórico" value={summary.osAdeudado} moneda={moneda} meta={`${summary.osAdeudadoCount} sesión${summary.osAdeudadoCount !== 1 ? 'es' : ''}`} />
             <SumCard type="month" label="Mes en curso" value={summary.osMesActual} moneda={moneda} meta="" />
@@ -341,7 +344,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
       {top3.length > 0 && (
         <div style={{ marginTop: '22px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: '10px' }}>
-            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: '#FEE2E2', color: '#DC2626', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '6px', background: 'var(--danger-soft)', color: 'var(--danger)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>
             </span>
             Top 3 deudores
@@ -368,12 +371,12 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                     <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#0B1220', letterSpacing: '-0.005em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {d.nombre} {d.apellido}
                     </div>
-                    <span style={{ display: 'inline-flex', fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '100px', marginTop: '2px', background: d.os_nombre ? '#ECF0FF' : '#EFF4FF', color: d.os_nombre ? '#002d72' : '#2563EB' }}>
+                    <span style={{ display: 'inline-flex', fontSize: '10.5px', fontWeight: 600, padding: '1px 6px', borderRadius: '100px', marginTop: '2px', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
                       {d.os_nombre ?? 'Particular'}
                     </span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '16px', color: '#DC2626', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', textAlign: 'right', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11.5px', color: '#5B6472', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                  <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--danger)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', textAlign: 'right', flexShrink: 0 }}>
+                    <span style={{ fontSize: '11.5px', color: 'var(--muted)', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
                     {fmtNum(d.saldo)}
                   </div>
                 </button>
@@ -406,17 +409,20 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
         </div>
 
         {/* Date range */}
-        <select
-          value={dateFilter}
-          onChange={e => setDateFilter(e.target.value as DateFilter)}
-          style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #E7E9EE', fontSize: '13px', color: '#1F2937', cursor: 'pointer', outline: 'none' }}
-        >
-          <option value="mes_actual">Mes actual · {MESES_CORTO[mesArg]} {anioArg}</option>
-          <option value="mes_anterior">Mes anterior</option>
-          <option value="semestre">Últimos 6 meses</option>
-          <option value="anio">Año {anioArg}</option>
-          <option value="historico">Histórico</option>
-        </select>
+        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <svg style={{ position: 'absolute', left: '10px', pointerEvents: 'none', zIndex: 1 }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <select
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value as DateFilter)}
+            style={{ padding: '5px 11px 5px 30px', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '13px', color: 'var(--ink-2)', cursor: 'pointer', outline: 'none', appearance: 'auto' }}
+          >
+            <option value="mes_actual">Mes actual · {MESES_CORTO[mesArg].charAt(0).toUpperCase() + MESES_CORTO[mesArg].slice(1)} {anioArg}</option>
+            <option value="mes_anterior">Mes anterior</option>
+            <option value="semestre">Últimos 6 meses</option>
+            <option value="anio">Año {anioArg}</option>
+            <option value="historico">Histórico</option>
+          </select>
+        </div>
 
         {/* Status chips */}
         <div style={{ display: 'inline-flex', gap: '6px', marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -494,7 +500,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                         {t.duracion_min} min
                       </td>
                       <td style={TD} className="hidden md:table-cell">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: t.os_config_id ? '#ECF0FF' : '#EFF4FF', color: t.os_config_id ? '#002d72' : '#2563EB' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
                           {t.os_nombre ?? 'Particular'}
                         </span>
                       </td>
@@ -514,8 +520,8 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                       </td>
                       <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {saldo > 0 ? (
-                          <span style={{ fontWeight: 700, color: '#DC2626' }}>
-                            <span style={{ fontSize: '11px', color: '#DC2626', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--danger)' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--danger)', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{sym}</span>
                             {fmtNum(saldo)}
                           </span>
                         ) : <span style={{ fontWeight: 500, color: '#AEB5C0' }}>—</span>}
