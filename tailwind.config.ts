@@ -11,7 +11,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Material Design 3 tokens
+        // KLIN design tokens — reference via CSS variables
+        'ink':          'var(--ink)',
+        'ink-2':        'var(--ink-2)',
+        'muted':        'var(--muted)',
+        'muted-2':      'var(--muted-2)',
+        'muted-3':      'var(--muted-3)',
+        'accent':       'var(--accent)',
+        'accent-ink':   'var(--accent-ink)',
+        'accent-soft':  'var(--accent-soft)',
+        'accent-soft-2':'var(--accent-soft-2)',
+        'klin-bg':      'var(--bg)',
+        'klin-surface': 'var(--surface)',
+        'surface-2':    'var(--surface-2)',
+        'surface-3':    'var(--surface-3)',
+        'klin-border':  'var(--border)',
+        'border-strong':'var(--border-strong)',
+        'ok':           'var(--ok)',
+        'ok-soft':      'var(--ok-soft)',
+        'warn':         'var(--warn)',
+        'warn-soft':    'var(--warn-soft)',
+        'danger':       'var(--danger)',
+        'danger-soft':  'var(--danger-soft)',
+        'violet':       'var(--violet)',
+        'violet-soft':  'var(--violet-soft)',
+
+        // Material Design 3 tokens (backward compat)
         'inverse-surface': '#2d3133',
         'on-surface-variant': '#444651',
         'on-surface': '#191c1e',
@@ -59,18 +84,14 @@ const config: Config = {
         'on-tertiary-fixed': '#002113',
         'on-primary-container': '#7a97e2',
         'primary-fixed': '#b1c5ff',
-        // Semantic aliases kept for compatibility
-        'ok': '#00ae79',
-        'ok-soft': '#e7f5ee',
-        'warn': '#A65A06',
-        'warn-soft': '#FBF1E2',
-        'danger': '#ba1a1a',
-        'danger-soft': '#ffdad6',
+        // (removed — now defined via CSS variables above)
       },
       borderRadius: {
         DEFAULT: '0.25rem',
-        lg: '0.5rem',
-        xl: '0.75rem',
+        sm:  'var(--r-sm)',
+        md:  'var(--r-md)',
+        lg:  'var(--r-lg)',
+        xl:  'var(--r-xl)',
         '2xl': '1rem',
         '3xl': '1.5rem',
         full: '9999px',
@@ -83,8 +104,10 @@ const config: Config = {
         label: ['Inter'],
       },
       boxShadow: {
+        'sm':  'var(--shadow-sm)',
+        'md':  'var(--shadow-md)',
+        'lg':  'var(--shadow-lg)',
         'card': '0 8px 24px rgba(0,26,72,0.04)',
-        'sm': '0 1px 3px rgba(0,0,0,0.06)',
         'primary': '0 4px 14px rgba(0,26,72,0.25)',
       },
     },
