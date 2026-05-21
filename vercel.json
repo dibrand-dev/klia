@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/bloquear-trials",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/pagos/vencer",
+      "schedule": "0 7 * * *"
     }
   ]
 }

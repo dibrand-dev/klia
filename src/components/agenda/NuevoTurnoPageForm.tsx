@@ -27,6 +27,7 @@ interface NuevoTurnoPageFormProps {
   terapeutaId: string
   fechaInicial?: Date
   pacienteIdInicial?: string
+  mpConectado?: boolean
   onCreado?: (turno: Turno) => void
   onEntrevistaCreada?: (e: Entrevista) => void
   onClose?: () => void
@@ -49,7 +50,7 @@ function quinSemana(fechaStr: string): 1 | 2 {
 }
 
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, onCreado, onEntrevistaCreada, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -94,6 +95,7 @@ export default function NuevoTurnoPageForm({
   const [conflictos, setConflictos] = useState<ConflictoDetallado[]>([])
   const [fechasValidas, setFechasValidas] = useState<Date[]>([])
   const [mostrandoConflictos, setMostrandoConflictos] = useState(false)
+  const [pagoPrevio, setPagoPrevio] = useState(false)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -253,6 +255,26 @@ export default function NuevoTurnoPageForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ turno_id: data.id, action: 'create' }),
       }).catch(() => {})
+
+      if (pagoPrevio) {
+        try {
+          const pagoRes = await fetch('/api/pagos/crear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turno_id: data.id }),
+          })
+          if (!pagoRes.ok) {
+            const err = await pagoRes.json() as { error?: string }
+            setError(err.error ?? 'No se pudo generar el link de pago')
+            setLoading(false)
+            return
+          }
+        } catch {
+          setError('Error al generar el link de pago')
+          setLoading(false)
+          return
+        }
+      }
     }
     if (onCreado && data) {
       onCreado(data as unknown as Turno)
@@ -610,6 +632,37 @@ export default function NuevoTurnoPageForm({
             )}
           </div>
 
+          {mpConectado && !esFijo && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Requerir pago previo</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {pagoPrevio ? 'Se enviará link de pago al paciente' : 'El turno no requiere pago anticipado'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPagoPrevio((v) => !v)}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
+                    pagoPrevio ? 'bg-primary' : 'bg-gray-300'
+                  )}
+                >
+                  <span className={cn(
+                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ease-in-out',
+                    pagoPrevio ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+              </div>
+              {pagoPrevio && !form.monto && (
+                <p className="text-xs text-amber-600 mt-2 px-1">
+                  Agregá un monto al turno para poder requerir el pago previo.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-1">
             <button
               type="button"
@@ -618,8 +671,8 @@ export default function NuevoTurnoPageForm({
             >
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className={cn('btn-primary flex-1 py-3', loading && 'opacity-70')}>
-              {loading ? 'Verificando...' : esFijo ? 'Crear serie' : 'Crear turno'}
+            <button type="submit" disabled={loading || (pagoPrevio && !form.monto)} className={cn('btn-primary flex-1 py-3', (loading || (pagoPrevio && !form.monto)) && 'opacity-70')}>
+              {loading ? (pagoPrevio ? 'Enviando link...' : 'Verificando...') : esFijo ? 'Crear serie' : 'Crear turno'}
             </button>
           </div>
         </>

@@ -11,12 +11,11 @@ export default async function NuevoTurnoPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: pacientes } = await supabase
-    .from('pacientes')
-    .select('*')
-    .eq('terapeuta_id', user.id)
-    .eq('activo', true)
-    .order('apellido')
+  const [{ data: pacientes }, { data: profileRaw }] = await Promise.all([
+    supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('activo', true).order('apellido'),
+    supabase.from('profiles').select('mp_user_id').eq('id', user.id).single(),
+  ])
+  const mpConectado = !!(profileRaw as Record<string, unknown> | null)?.mp_user_id
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -35,7 +34,7 @@ export default async function NuevoTurnoPage() {
 
         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
           <Suspense>
-            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={user.id} />
+            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={user.id} mpConectado={mpConectado} />
           </Suspense>
         </div>
       </div>
