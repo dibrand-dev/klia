@@ -26,6 +26,14 @@ interface Props {
   suscripcion: Suscripcion
   googleConectado: boolean
   googleSyncEnabled: boolean
+  mpConectado: boolean
+  mpEmail: string | null
+  mpNombre: string | null
+  cobrosVentanaHoras: number
+  cobrosCancelacionHoras: number
+  cobrosPrecioSesion: number | null
+  cobrosMoneda: string
+  cobrosMessagePaciente: string
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -154,7 +162,7 @@ const HORAS_INICIO = Array.from({ length: 24 }, (_, i) => i)
 const HORAS_FIN = Array.from({ length: 23 }, (_, i) => i + 1)
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente }: Props) {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
 
@@ -188,6 +196,15 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // Firmas state
   const [firmaUrl, setFirmaUrl] = useState<string | null>(profile.firma_url ?? null)
   const [firmaSelloUrl, setFirmaSelloUrl] = useState<string | null>(profile.firma_sello_url ?? null)
+
+  // Cobros y pagos state
+  const [cobrosVentana, setCobrosVentana] = useState(cobrosVentanaHoras)
+  const [cobrosCancelacion, setCobrosCancelacion] = useState(cobrosCancelacionHoras)
+  const [cobrosPrecio, setCobrosPrecio] = useState(cobrosPrecioSesion?.toString() ?? '')
+  const [cobrosMonedaVal, setCobrosMonedaVal] = useState(cobrosMoneda)
+  const [cobrosMensaje, setCobrosMensaje] = useState(cobrosMessagePaciente)
+  const [cobrosLoading, setCobrosLoading] = useState(false)
+  const [cobrosSaved, setCobrosSaved] = useState(false)
 
   // ── IntersectionObserver for scroll-spy ───────────────────────────
   useEffect(() => {
@@ -269,6 +286,22 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     const supabase = createClient()
     await supabase.from('profiles').update({ cobrar_inasistencias: nuevo }).eq('id', profile.id)
     setCobrarGuardando(false)
+  }
+
+  // ── Cobros save ────────────────────────────────────────────────────
+  async function handleCobrosSave(e: React.FormEvent) {
+    e.preventDefault()
+    setCobrosLoading(true); setCobrosSaved(false)
+    const supabase = createClient()
+    await supabase.from('profiles').update({
+      cobros_ventana_horas: cobrosVentana,
+      cobros_cancelacion_horas: cobrosCancelacion,
+      cobros_precio_sesion: cobrosPrecio ? parseFloat(cobrosPrecio) : null,
+      cobros_moneda: cobrosMonedaVal,
+      cobros_mensaje_paciente: cobrosMensaje || null,
+    } as never).eq('id', profile.id)
+    setCobrosLoading(false); setCobrosSaved(true)
+    setTimeout(() => setCobrosSaved(false), 2500)
   }
 
   // ── Firma update ───────────────────────────────────────────────────
@@ -528,49 +561,93 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Cobros y pagos</h2>
                 <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá cómo y cuándo se cobran las sesiones agendadas desde tu link público.</p>
               </div>
-              <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--ok-soft)', color: 'var(--ok)' }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-                Mercado Pago vinculado
-              </div>
+              {mpConectado && (
+                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--ok-soft)', color: 'var(--ok)', flexShrink: 0 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+                  Mercado Pago vinculado
+                </div>
+              )}
             </div>
 
-            {/* Precio de sesión */}
-            <div style={{ marginBottom: 22 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Precio de sesión — link público</div>
-              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Este precio se aplica cuando un paciente agenda desde tu link público.</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 480 }}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Moneda</label>
-                  <select style={inputStyle}>
-                    <option>ARS — Peso argentino</option>
-                    <option>USD — Dólar</option>
-                  </select>
+            <form onSubmit={handleCobrosSave}>
+              {/* Ventana de pago */}
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Ventana de pago</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Cuánto tiempo tiene el paciente para pagar antes de que se libere el turno?</div>
+                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
+                  {[24, 48, 72].map(h => (
+                    <button key={h} type="button" onClick={() => setCobrosVentana(h)}
+                      style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === h ? 'var(--ink)' : 'transparent', color: cobrosVentana === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                      {h} hs
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setCobrosVentana(0)}
+                    style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === 0 ? 'var(--ink)' : 'transparent', color: cobrosVentana === 0 ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                    Sin límite
+                  </button>
                 </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Monto por sesión</label>
-                  <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                    <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>$</span>
-                    <input style={{ ...inputStyle, border: 'none', flex: 1, borderRadius: 0 }} type="number" placeholder="60000" />
+              </div>
+
+              {/* Política de cancelación */}
+              <div style={{ marginBottom: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Política de cancelación</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Con cuántas horas de anticipación puede cancelar el paciente con devolución completa?</div>
+                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
+                  {[6, 12, 24, 48].map(h => (
+                    <button key={h} type="button" onClick={() => setCobrosCancelacion(h)}
+                      style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosCancelacion === h ? 'var(--ink)' : 'transparent', color: cobrosCancelacion === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                      {h} hs
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Precio de sesión */}
+              <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)', marginBottom: 22 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Precio de sesión — link público</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Este precio se aplica cuando un paciente agenda desde tu link público.</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 480 }}>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Moneda</label>
+                    <select style={inputStyle} value={cobrosMonedaVal} onChange={e => setCobrosMonedaVal(e.target.value)}>
+                      <option value="ARS">ARS — Peso argentino</option>
+                      <option value="USD">USD — Dólar</option>
+                      <option value="EUR">EUR — Euro</option>
+                    </select>
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Monto por sesión</label>
+                    <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                      <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>$</span>
+                      <input style={{ ...inputStyle, border: 'none', flex: 1, borderRadius: 0 }} type="number" min="0" step="0.01" placeholder="60000" value={cobrosPrecio} onChange={e => setCobrosPrecio(e.target.value)} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Mensaje al paciente */}
-            <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)' }}>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Mensaje personalizado al paciente</label>
-                <textarea style={textareaStyle} placeholder="Se incluye en el email de confirmación de turno…" />
-                <span style={hintStyle}>Se incluye en el email de confirmación de turno y en el link público.</span>
+              {/* Mensaje al paciente */}
+              <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Mensaje personalizado al paciente</label>
+                  <textarea style={textareaStyle} placeholder="Se incluye en el email de confirmación de turno…" value={cobrosMensaje} onChange={e => setCobrosMensaje(e.target.value)} />
+                  <span style={hintStyle}>Se incluye en el email de confirmación de turno y en el link público.</span>
+                </div>
               </div>
-            </div>
 
-            <div style={secFootStyle}>
-              <div style={{ flex: 1 }} />
-              <button style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white' }}>
-                Guardar cambios
-              </button>
-            </div>
+              <div style={secFootStyle}>
+                {cobrosSaved && (
+                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                    Cambios guardados
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <button type="submit" disabled={cobrosLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: cobrosLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: cobrosLoading ? 0.7 : 1 }}>
+                  {cobrosLoading ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
           </section>
 
           {/* ═══ POLÍTICA DE COBROS ═══ */}
@@ -627,7 +704,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
             </div>
             <Suspense fallback={null}>
-              <IntegracionesClient conectado={googleConectado} syncEnabled={googleSyncEnabled} />
+              <IntegracionesClient
+                conectado={googleConectado}
+                syncEnabled={googleSyncEnabled}
+                mpConectado={mpConectado}
+                mpEmail={mpEmail}
+                mpNombre={mpNombre}
+              />
             </Suspense>
           </section>
 

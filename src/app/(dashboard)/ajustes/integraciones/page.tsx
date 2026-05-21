@@ -13,11 +13,11 @@ export default async function IntegracionesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: googleTokens } = await supabase
-    .from('google_calendar_tokens')
-    .select('sync_enabled')
-    .eq('terapeuta_id', user.id)
-    .maybeSingle()
+  const [{ data: googleTokens }, { data: profile }] = await Promise.all([
+    supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', user.id).maybeSingle(),
+    supabase.from('profiles').select('mp_user_id, mp_email, mp_nombre').eq('id', user.id).single(),
+  ])
+  const p = profile as Record<string, unknown> | null
 
   return (
     <div className="mx-auto w-full max-w-[860px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
@@ -40,6 +40,9 @@ export default async function IntegracionesPage() {
         <IntegracionesClient
           conectado={!!googleTokens}
           syncEnabled={googleTokens?.sync_enabled ?? false}
+          mpConectado={!!p?.mp_user_id}
+          mpEmail={(p?.mp_email as string) ?? null}
+          mpNombre={(p?.mp_nombre as string) ?? null}
         />
       </Suspense>
     </div>

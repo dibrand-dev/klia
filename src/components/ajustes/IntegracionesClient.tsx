@@ -7,27 +7,45 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 export default function IntegracionesClient({
   conectado,
   syncEnabled,
+  mpConectado,
+  mpEmail,
+  mpNombre,
 }: {
   conectado: boolean
   syncEnabled: boolean
+  mpConectado: boolean
+  mpEmail: string | null
+  mpNombre: string | null
 }) {
   const searchParams = useSearchParams()
   const googleParam = searchParams.get('google')
+  const mpParam = searchParams.get('mp')
   const router = useRouter()
 
   const [sync, setSync] = useState(syncEnabled)
-
-  useEffect(() => {
-    if (googleParam === 'connected') {
-      router.refresh()
-    }
-  }, [])
   const [desconectando, setDesconectando] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [mpDesconectando, setMpDesconectando] = useState(false)
+  const [mpConfirmOpen, setMpConfirmOpen] = useState(false)
+  const [mpActualConectado, setMpActualConectado] = useState(mpConectado)
+  const [mpActualEmail, setMpActualEmail] = useState(mpEmail)
+  const [mpActualNombre, setMpActualNombre] = useState(mpNombre)
   const [error, setError] = useState<string | null>(
-    googleParam === 'error' ? 'No se pudo conectar con Google Calendar. Intentá de nuevo.' : null
+    googleParam === 'error' ? 'No se pudo conectar con Google Calendar. Intentá de nuevo.' :
+    mpParam === 'error' ? 'No se pudo conectar con Mercado Pago. Intentá de nuevo.' : null
   )
-  const [exito] = useState(googleParam === 'connected')
+
+  useEffect(() => {
+    if (googleParam === 'connected' || mpParam === 'connected') {
+      router.refresh()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Sync MP state when props update after router.refresh()
+  useEffect(() => { setMpActualConectado(mpConectado) }, [mpConectado])
+  useEffect(() => { setMpActualEmail(mpEmail) }, [mpEmail])
+  useEffect(() => { setMpActualNombre(mpNombre) }, [mpNombre])
 
   async function toggleSync() {
     const nuevo = !sync
@@ -39,7 +57,7 @@ export default function IntegracionesClient({
     }).catch(() => setSync(!nuevo))
   }
 
-  async function desconectar() {
+  async function desconectarGoogle() {
     setDesconectando(true)
     setError(null)
     try {
@@ -52,94 +70,189 @@ export default function IntegracionesClient({
     }
   }
 
+  async function desconectarMP() {
+    setMpDesconectando(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/auth/mercadopago/disconnect', { method: 'POST' })
+      if (!res.ok) throw new Error()
+      setMpActualConectado(false)
+      setMpActualEmail(null)
+      setMpActualNombre(null)
+      router.refresh()
+    } catch {
+      setError('Error al desconectar Mercado Pago. Intentá de nuevo.')
+    } finally {
+      setMpDesconectando(false)
+    }
+  }
+
+  // ── Integration card wrapper ──────────────────────────────────────
+  const intStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'flex-start', gap: 14,
+    padding: '16px 18px',
+    border: '1px solid var(--border)', borderRadius: 12,
+    background: 'var(--surface)', marginBottom: 12,
+  }
+  const logoStyle: React.CSSProperties = {
+    width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+    display: 'grid', placeItems: 'center',
+    border: '1px solid var(--border)', background: 'var(--surface)',
+  }
+  const statusOn: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    padding: '2px 9px', borderRadius: 100,
+    fontSize: 11, fontWeight: 600,
+    background: 'var(--ok-soft)', color: 'var(--ok)',
+  }
+  const statusOff: React.CSSProperties = {
+    ...statusOn, background: 'var(--surface-3)', color: 'var(--muted)',
+  }
+  const dot: React.CSSProperties = {
+    width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block',
+  }
+
   return (
-    <div className="space-y-4">
-      {(error || exito) && (
-        <div className={`text-sm px-4 py-3 rounded-xl border ${
-          exito
-            ? 'bg-green-50 border-green-200 text-green-700'
-            : 'bg-red-50 border-red-200 text-red-700'
-        }`}>
-          {exito ? 'Google Calendar conectado correctamente.' : error}
+    <div>
+      {error && (
+        <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 8, marginBottom: 14, background: 'var(--danger-soft)', border: '1px solid var(--danger)', color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
+      {(googleParam === 'connected') && (
+        <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 8, marginBottom: 14, background: 'var(--ok-soft)', border: '1px solid var(--ok)', color: 'var(--ok)' }}>
+          Google Calendar conectado correctamente.
+        </div>
+      )}
+      {mpParam === 'connected' && (
+        <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 8, marginBottom: 14, background: 'var(--ok-soft)', border: '1px solid var(--ok)', color: 'var(--ok)' }}>
+          Mercado Pago conectado correctamente.
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white border border-outline-variant/20 flex items-center justify-center shadow-sm shrink-0">
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none">
-                <rect x="3" y="4" width="18" height="17" rx="2" stroke="#4285F4" strokeWidth="1.5" />
-                <path d="M3 9h18" stroke="#4285F4" strokeWidth="1.5" />
-                <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
-                <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#EA4335" />
-                <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#FBBC04" />
-                <rect x="15" y="13" width="2" height="3" rx="0.5" fill="#34A853" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-on-surface">Google Calendar</p>
-              {conectado ? (
-                <span className="flex items-center gap-1 text-xs text-green-700 font-medium mt-0.5">
-                  <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  Conectado
-                </span>
-              ) : (
-                <span className="text-xs text-on-surface-variant mt-0.5 block">No conectado</span>
-              )}
-            </div>
-          </div>
+      {/* ── Google Calendar ── */}
+      <div style={intStyle}>
+        <div style={logoStyle}>
+          <svg viewBox="0 0 24 24" style={{ width: 26, height: 26 }} fill="none">
+            <rect x="3" y="4" width="18" height="17" rx="2" stroke="#4285F4" strokeWidth="1.5" />
+            <path d="M3 9h18" stroke="#4285F4" strokeWidth="1.5" />
+            <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
+            <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#EA4335" />
+            <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#FBBC04" />
+            <rect x="15" y="13" width="2" height="3" rx="0.5" fill="#34A853" />
+          </svg>
         </div>
-
-        {conectado ? (
-          <div className="space-y-4">
-            <p className="text-sm text-on-surface-variant">
-              Los turnos de KLIA aparecen en tu Google Calendar automáticamente.
-              Los horarios ocupados se muestran en tu agenda y no podés crear turnos encima.
-            </p>
-
-            <div className="flex items-center justify-between py-3 border-t border-outline-variant/10">
-              <div>
-                <p className="text-sm font-medium text-on-surface">Sincronización activa</p>
-                <p className="text-xs text-on-surface-variant">Los nuevos turnos se sincronizan automáticamente</p>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.005em' }}>Google Calendar</span>
+            <span style={conectado ? statusOn : statusOff}>
+              <span style={dot} />{conectado ? 'Conectado' : 'No conectado'}
+            </span>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.55 }}>
+            Los turnos de KLIA aparecen automáticamente en tu Google Calendar. La sincronización es bidireccional.
+          </p>
+          {conectado ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>Sincronización activa</p>
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>Los nuevos turnos se sincronizan automáticamente</p>
+                </div>
+                <button onClick={toggleSync} style={{
+                  position: 'relative', width: 38, height: 22, flexShrink: 0,
+                  background: sync ? 'var(--ink)' : 'var(--border-strong)',
+                  borderRadius: 100, cursor: 'pointer', border: 'none',
+                  transition: 'background .15s ease',
+                }}>
+                  <span style={{ position: 'absolute', top: 2, left: sync ? 18 : 2, width: 18, height: 18, borderRadius: '50%', background: 'white', transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'block' }} />
+                </button>
               </div>
-              <button
-                onClick={toggleSync}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  sync ? 'bg-primary' : 'bg-outline-variant'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    sync ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
+                <button onClick={() => setConfirmOpen(true)} disabled={desconectando}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)', opacity: desconectando ? 0.6 : 1 }}>
+                  {desconectando ? 'Desconectando…' : 'Desconectar'}
+                </button>
+              </div>
             </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10, lineHeight: 1.55 }}>
+                Sincronizá tus turnos con Google Calendar y bloqueá automáticamente los horarios que ya tenés ocupados.
+              </p>
+              <a href="/api/auth/google" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
+                background: 'linear-gradient(135deg, var(--accent) 0%, #1D4ED8 100%)',
+                color: 'white', border: 'none', textDecoration: 'none',
+                boxShadow: '0 4px 10px rgba(37,99,235,0.18)',
+              }}>
+                <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'white', strokeWidth: 2, fill: 'none' }}><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                Conectar Google Calendar
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
 
-            <button
-              onClick={() => setConfirmOpen(true)}
-              disabled={desconectando}
-              className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors disabled:opacity-60"
-            >
-              {desconectando ? 'Desconectando…' : 'Desconectar'}
-            </button>
+      {/* ── Mercado Pago ── */}
+      <div style={{ ...intStyle, marginBottom: 0 }}>
+        <div style={{ ...logoStyle, background: '#009EE3', border: 'none' }}>
+          <svg viewBox="0 0 32 32" fill="none" style={{ width: 26, height: 26 }}>
+            <ellipse cx="16" cy="16" rx="14" ry="10" fill="#009EE3"/>
+            <path d="M9 17c1.5-2 3.5-3 6-3-1 1.5-1 3 0 4 1-1 2-2 4-2 1 0 2 .5 2.5 1.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.005em' }}>Mercado Pago</span>
+            <span style={mpActualConectado ? statusOn : statusOff}>
+              <span style={dot} />{mpActualConectado ? 'Conectado' : 'No conectado'}
+            </span>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-on-surface-variant">
-              Sincronizá tus turnos con Google Calendar y bloqueá automáticamente
-              los horarios que ya tenés ocupados.
-            </p>
-            <a
-              href="/api/auth/google"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-base">link</span>
-              Conectar Google Calendar
-            </a>
-          </div>
-        )}
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.55 }}>
+            Tus pacientes pueden pagar sesiones directamente a tu cuenta. <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>El dinero entra al instante</strong> — KLIA no retiene fondos.
+          </p>
+          {mpActualConectado ? (
+            <div>
+              {(mpActualNombre || mpActualEmail) && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  marginTop: 8, padding: '4px 10px',
+                  background: 'var(--surface-2)', border: '1px solid var(--border)',
+                  borderRadius: 100, fontSize: 12, color: 'var(--ink-2)',
+                }}>
+                  <svg viewBox="0 0 24 24" style={{ width: 11, height: 11, stroke: 'var(--muted)', strokeWidth: 1.8, fill: 'none' }}>
+                    <path d="M3 7h18v10H3z"/><path d="M3 11h18"/>
+                  </svg>
+                  {mpActualNombre && <strong style={{ fontWeight: 600 }}>{mpActualNombre}</strong>}
+                  {mpActualEmail && <span style={{ color: 'var(--muted)' }}>· {mpActualEmail}</span>}
+                </div>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button onClick={() => setMpConfirmOpen(true)} disabled={mpDesconectando}
+                  style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0, opacity: mpDesconectando ? 0.6 : 1 }}>
+                  {mpDesconectando ? 'Desconectando…' : 'Desconectar cuenta'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10, lineHeight: 1.55 }}>
+                Conectá tu cuenta de Mercado Pago para que tus pacientes puedan pagar sesiones desde el link público.
+              </p>
+              <a href="/api/auth/mercadopago" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '7px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600,
+                background: '#009EE3', color: 'white', border: 'none', textDecoration: 'none',
+                boxShadow: '0 4px 10px rgba(0,158,227,0.22)',
+              }}>
+                <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'white', strokeWidth: 2, fill: 'none' }}><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                Conectar Mercado Pago
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -148,8 +261,17 @@ export default function IntegracionesClient({
         message="Los turnos ya creados en Google no se eliminarán. ¿Querés continuar?"
         confirmLabel="Desconectar"
         variant="danger"
-        onConfirm={() => { setConfirmOpen(false); desconectar() }}
+        onConfirm={() => { setConfirmOpen(false); desconectarGoogle() }}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={mpConfirmOpen}
+        title="Desconectar Mercado Pago"
+        message="Los pacientes ya no podrán pagar desde tu link público. Podés volver a conectarlo cuando quieras. ¿Confirmás?"
+        confirmLabel="Desconectar"
+        variant="danger"
+        onConfirm={() => { setMpConfirmOpen(false); desconectarMP() }}
+        onCancel={() => setMpConfirmOpen(false)}
       />
     </div>
   )

@@ -24,6 +24,8 @@ export default async function AjustesPage() {
 
   if (!profile) redirect('/login')
 
+  const p = profile as Record<string, unknown>
+
   return (
     <AjustesClient
       profile={profile}
@@ -31,6 +33,14 @@ export default async function AjustesPage() {
       suscripcion={suscripcion ?? null}
       googleConectado={!!googleTokens}
       googleSyncEnabled={googleTokens?.sync_enabled ?? false}
+      mpConectado={!!p.mp_user_id}
+      mpEmail={(p.mp_email as string | null) ?? null}
+      mpNombre={(p.mp_nombre as string | null) ?? null}
+      cobrosVentanaHoras={(p.cobros_ventana_horas as number | null) ?? 48}
+      cobrosCancelacionHoras={(p.cobros_cancelacion_horas as number | null) ?? 24}
+      cobrosPrecioSesion={(p.cobros_precio_sesion as number | null) ?? null}
+      cobrosMoneda={(p.cobros_moneda as string | null) ?? 'ARS'}
+      cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
     />
   )
 }
