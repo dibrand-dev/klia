@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       refresh_token: string
       user_id: number
       expires_in: number
+      public_key: string
     }
 
     // Get MP user info
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       mp_access_token: tokenData.access_token,
       mp_refresh_token: tokenData.refresh_token,
       mp_user_id: String(tokenData.user_id),
+      mp_public_key: tokenData.public_key ?? null,
       mp_email: mpUser?.email ?? null,
       mp_nombre: mpUser ? `${mpUser.first_name} ${mpUser.last_name}`.trim() : null,
       mp_token_expiry: expiry,

@@ -333,3 +333,136 @@ export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): 
     ${help('<a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>')}
   `, 'Tu suscripción fue cancelada — KLIA')
 }
+
+// ── Payment flow templates ────────────────────────────────────────────
+
+function sessionDetailBox(params: {
+  fecha: string; hora: string; duracion: number; modalidad: string; monto: number; moneda: string
+}): string {
+  const modalidadLabel: Record<string, string> = {
+    presencial: 'Presencial', videollamada: 'Videollamada', telefonica: 'Telefónica',
+  }
+  const montoFmt = params.monto.toLocaleString('es-AR')
+  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+    style="background-color:#F6F7F9;border-radius:12px;border:1px solid #E7E9EE;margin-top:24px;">
+    <tr><td style="padding:18px 20px;">
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.06em;padding-bottom:14px;">Detalle de tu sesión</td>
+        </tr>
+        <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:13.5px;color:#1F2937;padding:5px 0;border-bottom:1px solid #E7E9EE;">
+          📅 <strong>Fecha:</strong> ${params.fecha}
+        </td></tr>
+        <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:13.5px;color:#1F2937;padding:5px 0;border-bottom:1px solid #E7E9EE;">
+          🕐 <strong>Horario:</strong> ${params.hora} hs · ${params.duracion} min
+        </td></tr>
+        <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:13.5px;color:#1F2937;padding:5px 0;border-bottom:1px solid #E7E9EE;">
+          📍 <strong>Modalidad:</strong> ${modalidadLabel[params.modalidad] ?? params.modalidad}
+        </td></tr>
+        <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1220;padding:10px 0 4px;">
+          💰 Total: $${montoFmt} ${params.moneda}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`
+}
+
+function ctaMP(text: string, url: string): string {
+  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto 0;">
+  <tr>
+    <td align="center" bgcolor="#009EE3" style="background-color:#009EE3;border-radius:12px;">
+      <a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">${text}</a>
+    </td>
+  </tr>
+</table>`
+}
+
+export function emailPagoSesionPendiente(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  profesionalEspecialidad: string
+  fecha: string
+  hora: string
+  duracion: number
+  modalidad: string
+  monto: number
+  moneda: string
+  hash: string
+  venceAt: string
+  mensajePersonalizado: string
+}): string {
+  const appUrl = 'https://app.klia.com.ar'
+  const payUrl = `${appUrl}/pagar/${params.hash}`
+  const venceFmt = new Date(params.venceAt).toLocaleString('es-AR', {
+    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  })
+  return baseTemplate(`
+    ${icon('🗓️', '#EFF4FF')}
+    ${h1('Completá el pago para confirmar tu sesión')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, ${params.profesionalNombre}${params.profesionalEspecialidad ? ` (${params.profesionalEspecialidad})` : ''} agendó una sesión para vos.`)}
+    ${sessionDetailBox(params)}
+    ${ctaMP('Pagar sesión', payUrl)}
+    ${infoBox(`⏳ Tenés hasta el <strong style="color:#334155;">${venceFmt}</strong> para completar el pago y confirmar tu lugar.${params.mensajePersonalizado ? `<br><br>💬 Mensaje de tu profesional: <em>${params.mensajePersonalizado}</em>` : ''}`, '#FFF7ED', '#F59E0B', '#92400E')}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Confirmá tu sesión — KLIA')
+}
+
+export function emailPagoSesionConfirmada(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  fecha: string
+  hora: string
+  duracion: number
+  modalidad: string
+  monto: number
+  moneda: string
+}): string {
+  const montoFmt = params.monto.toLocaleString('es-AR')
+  return baseTemplate(`
+    ${icon('✅', '#DCFCE7')}
+    ${h1('¡Sesión confirmada!')}
+    ${para(`Tu pago fue procesado correctamente. Tu sesión con <strong style="color:#2b2f38;font-weight:600;">${params.profesionalNombre}</strong> está confirmada.`)}
+    ${sessionDetailBox(params)}
+    ${infoBox(`✅ Pago de <strong style="color:#334155;">$${montoFmt} ${params.moneda}</strong> recibido correctamente.${params.modalidad === 'videollamada' ? '<br><br>📹 Tu profesional te enviará el link de videollamada antes de la sesión.' : ''}`, '#F0FDF4', '#22C55E', '#166534')}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Sesión confirmada — KLIA')
+}
+
+export function emailPagoSesionRechazada(params: {
+  destinatario: 'paciente' | 'profesional'
+  pacienteNombre: string
+  profesionalNombre: string
+  fecha: string
+  hora: string
+}): string {
+  const esPaciente = params.destinatario === 'paciente'
+  return baseTemplate(`
+    ${icon('❌', '#FEE2E2')}
+    ${h1(esPaciente ? 'No pudimos procesar tu pago' : 'Sesión no confirmada por falta de pago')}
+    ${esPaciente
+      ? para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, luego de varios intentos no pudimos procesar tu pago. Tu sesión del ${params.fecha} a las ${params.hora} hs fue <strong style="color:#dc2626;">cancelada</strong>.`)
+      : para(`La sesión del <strong style="color:#2b2f38;font-weight:600;">${params.fecha} a las ${params.hora} hs</strong> con <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong> fue cancelada por falta de pago luego de 3 intentos fallidos.`)
+    }
+    ${infoBox(
+      esPaciente
+        ? 'Si querés agendar una nueva sesión, contactá directamente a tu profesional.'
+        : `El turno fue liberado en tu agenda. Podés contactar al paciente si lo considerás necesario.`,
+      '#FEF2F2', '#EF4444', '#991B1B'
+    )}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Sesión cancelada — KLIA')
+}
+
+export function emailPagoSesionVencida(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  fecha: string
+}): string {
+  return baseTemplate(`
+    ${icon('⏰', '#FEF3C7')}
+    ${h1('Tu reserva venció')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, el tiempo para completar el pago de tu sesión del ${params.fecha} con <strong style="color:#2b2f38;font-weight:600;">${params.profesionalNombre}</strong> expiró.`)}
+    ${infoBox('Tu lugar fue liberado. Si querés agendar una nueva sesión, contactá directamente a tu profesional.', '#FFFBEB', '#F59E0B', '#92400E')}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Tu reserva venció — KLIA')
+}
