@@ -133,6 +133,7 @@ export default function PacienteDetalle({
   turnos = [],
   profesionalCobrarInasistencias = false,
   profesionalData = null,
+  turnoRecurrente = null,
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
@@ -144,6 +145,7 @@ export default function PacienteDetalle({
   turnos?: TurnoRow[]
   profesionalCobrarInasistencias?: boolean
   profesionalData?: ProfesionalData | null
+  turnoRecurrente?: { dia_semana: number; hora: string } | null
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
@@ -702,7 +704,7 @@ export default function PacienteDetalle({
   }
 
   if (activeTab === 'informes') {
-    return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} />
+    return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} turnoRecurrente={turnoRecurrente ?? null} />
   }
 
   if (activeTab && activeTab !== 'datos') {
@@ -1483,18 +1485,25 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
 // ── Informes Tab ──────────────────────────────────────────────────────────────
 
+const DIAS_SEMANA_CERT = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
+
 function InformesTab({
   paciente,
   profesionalData,
+  turnoRecurrente,
 }: {
   paciente: Paciente
   profesionalData: ProfesionalData | null
+  turnoRecurrente: { dia_semana: number; hora: string } | null
 }) {
   const today = new Date().toISOString().slice(0, 10)
 
-  const textoDefault = profesionalData
-    ? `Dejo constancia que el/la Sr./Sra. ${paciente.nombre} ${paciente.apellido}, DNI ${paciente.dni ?? '___________'}, se encuentra bajo mi atención profesional en la especialidad de ${profesionalData.especialidad ?? '___________'} en la localidad de ${profesionalData.localidad ?? '___________'}.`
-    : `Dejo constancia que el/la Sr./Sra. ${paciente.nombre} ${paciente.apellido}, DNI ${paciente.dni ?? '___________'}, se encuentra bajo mi atención profesional.`
+  const dia = turnoRecurrente?.dia_semana !== undefined
+    ? DIAS_SEMANA_CERT[turnoRecurrente.dia_semana]
+    : '___________'
+  const hora = turnoRecurrente?.hora ?? 'HH:MM'
+
+  const textoDefault = `Dejo constancia que Srita. ${paciente.nombre} ${paciente.apellido} DNI Nº ${paciente.dni ?? '___________'}, asiste a sesiones de ${profesionalData?.especialidad ?? '___________'} los días ${dia} en el horario de ${hora} hrs de forma presencial y frecuencia semanal. Ante cualquier duda, quedo a total disposición.`
 
   const [certOpen, setCertOpen] = useState(false)
   const [certLoading, setCertLoading] = useState(false)

@@ -18,7 +18,7 @@ export default async function PacienteDetallePage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes] = await Promise.all([
+  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
@@ -53,6 +53,14 @@ export default async function PacienteDetallePage({
       .eq('terapeuta_id', user.id)
       .eq('activa', true)
       .order('nombre'),
+    supabase
+      .from('turnos_recurrentes')
+      .select('dia_semana, hora')
+      .eq('terapeuta_id', user.id)
+      .eq('paciente_id', params.id)
+      .eq('activo', true)
+      .limit(1)
+      .maybeSingle(),
   ])
 
   if (!paciente) notFound()
@@ -132,6 +140,7 @@ export default async function PacienteDetallePage({
           telefono: (profile as Record<string, unknown>).telefono as string | null ?? null,
           firma_sello_url: (profile as Record<string, unknown>).firma_sello_url as string | null ?? null,
         } : null}
+        turnoRecurrente={turnoRecurrente ?? null}
         key={editMode ? 'edit' : 'view'}
       />
     </div>
