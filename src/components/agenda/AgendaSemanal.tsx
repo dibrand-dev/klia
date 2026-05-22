@@ -47,6 +47,7 @@ interface AgendaSemanalProps {
   entrevistasIniciales?: Entrevista[]
   horaInicio?: number
   horaFin?: number
+  mpConectado?: boolean
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -60,7 +61,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false,
 }: AgendaSemanalProps) {
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
@@ -519,6 +520,7 @@ export default function AgendaSemanal({
             pacientes={pacientes}
             terapeutaId={terapeutaId}
             fechaInicial={nuevoFecha}
+            mpConectado={mpConectado}
             onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
             onEntrevistaCreada={(e) => { setEntrevistas((prev) => [...prev, e]); setNuevoOpen(false) }}
             onClose={() => setNuevoOpen(false)}
