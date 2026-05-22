@@ -105,6 +105,19 @@ function buildForm(p: Paciente) {
 type MedicacionEdit = { farmaco: string; dosis: string; frecuencia: string; prescriptor: string }
 const EMPTY_MED: MedicacionEdit = { farmaco: '', dosis: '', frecuencia: '', prescriptor: '' }
 
+interface ProfesionalData {
+  nombre: string
+  apellido: string
+  especialidad: string | null
+  matricula: string | null
+  localidad: string | null
+  provincia: string | null
+  direccion: string | null
+  email: string
+  telefono: string | null
+  firma_sello_url: string | null
+}
+
 function toMedicacionEdit(m: MedicacionPaciente): MedicacionEdit {
   return { farmaco: m.farmaco, dosis: m.dosis ?? '', frecuencia: m.frecuencia ?? '', prescriptor: m.prescriptor ?? '' }
 }
@@ -119,6 +132,7 @@ export default function PacienteDetalle({
   profObrasSociales = [],
   turnos = [],
   profesionalCobrarInasistencias = false,
+  profesionalData = null,
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
@@ -129,6 +143,7 @@ export default function PacienteDetalle({
   profObrasSociales?: ProfesionalObraSocial[]
   turnos?: TurnoRow[]
   profesionalCobrarInasistencias?: boolean
+  profesionalData?: ProfesionalData | null
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
@@ -684,6 +699,10 @@ export default function PacienteDetalle({
 
   if (activeTab === 'facturacion') {
     return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} />
+  }
+
+  if (activeTab === 'informes') {
+    return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} />
   }
 
   if (activeTab && activeTab !== 'datos') {
@@ -1456,6 +1475,157 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
               </>
             )}
           </button>
+        </div>
+      </SlideOver>
+    </div>
+  )
+}
+
+// ── Informes Tab ──────────────────────────────────────────────────────────────
+
+function InformesTab({
+  paciente,
+  profesionalData,
+}: {
+  paciente: Paciente
+  profesionalData: ProfesionalData | null
+}) {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const textoDefault = profesionalData
+    ? `Dejo constancia que el/la Sr./Sra. ${paciente.nombre} ${paciente.apellido}, DNI ${paciente.dni ?? '___________'}, se encuentra bajo mi atención profesional en la especialidad de ${profesionalData.especialidad ?? '___________'} en la localidad de ${profesionalData.localidad ?? '___________'}.`
+    : `Dejo constancia que el/la Sr./Sra. ${paciente.nombre} ${paciente.apellido}, DNI ${paciente.dni ?? '___________'}, se encuentra bajo mi atención profesional.`
+
+  const [certOpen, setCertOpen] = useState(false)
+  const [certLoading, setCertLoading] = useState(false)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [certForm, setCertForm] = useState({
+    fechaEmision: today,
+    destinatario: 'A quien corresponda',
+    cuerpoTexto: textoDefault,
+  })
+
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  function handleOpen() {
+    setCertForm({ fechaEmision: today, destinatario: 'A quien corresponda', cuerpoTexto: textoDefault })
+    setCertOpen(true)
+  }
+
+  async function handleGenerarPDF() {
+    if (!certForm.cuerpoTexto.trim()) return
+    setCertLoading(true)
+    try {
+      const res = await fetch('/api/certificados/generar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paciente_id: paciente.id,
+          fecha_emision: certForm.fechaEmision,
+          destinatario: certForm.destinatario,
+          cuerpo_texto: certForm.cuerpoTexto,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        showToast(err.error ?? 'Error al generar el PDF', 'error')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Certificado_${paciente.apellido}_${certForm.fechaEmision}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      showToast('Certificado generado correctamente')
+      setCertOpen(false)
+    } catch {
+      showToast('Error al generar el PDF', 'error')
+    } finally {
+      setCertLoading(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 space-y-4">
+      {toast && (
+        <div className={cn(
+          'fixed top-4 right-4 z-[100] px-4 py-3 rounded-lg shadow-lg text-sm font-medium',
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white',
+        )}>
+          {toast.msg}
+        </div>
+      )}
+
+      <div className="card p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>Certificado de Asistencia</h3>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+              Generá un certificado en PDF para presentar donde el paciente lo necesite.
+            </p>
+          </div>
+          <button type="button" onClick={handleOpen} className="btn-secondary shrink-0 text-sm py-2 px-3">
+            Generar certificado
+          </button>
+        </div>
+      </div>
+
+      <SlideOver
+        open={certOpen}
+        onClose={() => setCertOpen(false)}
+        title="Certificado de Asistencia"
+        subtitle={`${paciente.nombre} ${paciente.apellido}`}
+        footer={
+          <div className="flex gap-3 px-6 pb-6 pt-3 border-t border-gray-200">
+            <button type="button" onClick={() => setCertOpen(false)} className="btn-secondary flex-1 py-2.5 text-sm">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleGenerarPDF}
+              disabled={certLoading || !certForm.cuerpoTexto.trim()}
+              className={cn('btn-primary flex-1 py-2.5 text-sm', (certLoading || !certForm.cuerpoTexto.trim()) && 'opacity-70')}
+            >
+              {certLoading ? 'Generando...' : 'Generar PDF'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          <div>
+            <label className={labelCls}>Fecha de emisión</label>
+            <input
+              type="date"
+              value={certForm.fechaEmision}
+              onChange={(e) => setCertForm((prev) => ({ ...prev, fechaEmision: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Destinatario</label>
+            <input
+              type="text"
+              value={certForm.destinatario}
+              onChange={(e) => setCertForm((prev) => ({ ...prev, destinatario: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Cuerpo del certificado *</label>
+            <textarea
+              value={certForm.cuerpoTexto}
+              onChange={(e) => setCertForm((prev) => ({ ...prev, cuerpoTexto: e.target.value }))}
+              rows={8}
+              className={cn(inputCls, 'resize-y')}
+            />
+          </div>
         </div>
       </SlideOver>
     </div>

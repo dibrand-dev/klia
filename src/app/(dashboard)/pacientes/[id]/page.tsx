@@ -27,7 +27,7 @@ export default async function PacienteDetallePage({
       .single(),
     supabase
       .from('profiles')
-      .select('cobrar_inasistencias')
+      .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, direccion, localidad, provincia, email, telefono, firma_sello_url')
       .eq('id', user.id)
       .single(),
     supabase
@@ -120,6 +120,18 @@ export default async function PacienteDetallePage({
         profObrasSociales={profObrasSociales}
         turnos={turnos}
         profesionalCobrarInasistencias={profile?.cobrar_inasistencias ?? false}
+        profesionalData={profile ? {
+          nombre: (profile as Record<string, unknown>).nombre as string ?? '',
+          apellido: (profile as Record<string, unknown>).apellido as string ?? '',
+          especialidad: (profile as Record<string, unknown>).especialidad as string | null ?? null,
+          matricula: (profile as Record<string, unknown>).matricula as string | null ?? null,
+          localidad: (profile as Record<string, unknown>).localidad as string | null ?? null,
+          provincia: (profile as Record<string, unknown>).provincia as string | null ?? null,
+          direccion: (profile as Record<string, unknown>).direccion as string | null ?? null,
+          email: (profile as Record<string, unknown>).email as string ?? '',
+          telefono: (profile as Record<string, unknown>).telefono as string | null ?? null,
+          firma_sello_url: (profile as Record<string, unknown>).firma_sello_url as string | null ?? null,
+        } : null}
         key={editMode ? 'edit' : 'view'}
       />
     </div>
