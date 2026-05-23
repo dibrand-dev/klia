@@ -1,7 +1,5 @@
 'use client'
 
-import Image from 'next/image'
-
 interface SesionData {
   hash: string
   estado: string
@@ -40,15 +38,6 @@ function formatMonto(monto: number, moneda: string): string {
   return `${moneda} ${monto}`
 }
 
-function Initials({ nombre, apellido }: { nombre: string; apellido: string }) {
-  const init = `${nombre[0] ?? ''}${apellido[0] ?? ''}`.toUpperCase()
-  return (
-    <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold shrink-0"
-      style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-      {init}
-    </div>
-  )
-}
 
 export default function PagarSesionClient({ sesion, fechaFmt, mpInitPoint, statusParam }: Props) {
   const isPagado = sesion.estado === 'pagado' || statusParam === 'success'
@@ -129,17 +118,27 @@ export default function PagarSesionClient({ sesion, fechaFmt, mpInitPoint, statu
         {prof && (
           <div className="w-full card p-5 flex items-center gap-4">
             {prof.avatar_url ? (
-              <Image
+              <img
                 src={prof.avatar_url}
                 alt={`${prof.nombre} ${prof.apellido}`}
-                width={64}
-                height={64}
-                className="rounded-full object-cover shrink-0"
-                style={{ width: 64, height: 64 }}
+                className="w-16 h-16 rounded-full object-cover shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  const next = e.currentTarget.nextElementSibling as HTMLElement | null
+                  if (next) next.style.display = 'flex'
+                }}
               />
-            ) : (
-              <Initials nombre={prof.nombre} apellido={prof.apellido} />
-            )}
+            ) : null}
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-semibold shrink-0"
+              style={{
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+                display: prof.avatar_url ? 'none' : 'flex',
+              }}
+            >
+              {prof.nombre?.[0]}{prof.apellido?.[0]}
+            </div>
             <div className="min-w-0">
               <p className="text-base font-semibold" style={{ color: 'var(--ink)' }}>
                 {prof.nombre} {prof.apellido}
