@@ -327,7 +327,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   ]
 
   return (
-    <div className="px-4 md:px-7 pb-20 w-full mx-auto overflow-x-hidden" style={{ maxWidth: 1320 }}>
+    <div className="px-4 md:px-7 pb-20 w-full mx-auto" style={{ maxWidth: 1320 }}>
       {/* Page header */}
       <header style={{ padding: '26px 0 18px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: 'var(--ink)' }}>
@@ -338,54 +338,79 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         </p>
       </header>
 
-      {/* Settings grid */}
-      <div className="flex flex-col gap-6 md:grid md:gap-8 items-start" style={{ gridTemplateColumns: '240px 1fr' }}>
+      {/* Mobile chip nav — horizontal scroll strip */}
+      <div className="md:hidden mb-5">
+        <div
+          className="ajustes-nav flex gap-2 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+        >
+          {navItems.filter(i => i.id !== 'sep').map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id!)}
+              style={{
+                flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: activeSection === item.id ? 600 : 500,
+                background: activeSection === item.id ? 'var(--ink)' : 'var(--surface-2)',
+                color: activeSection === item.id ? 'white' : 'var(--ink-2)',
+                whiteSpace: 'nowrap',
+                transition: 'background .12s ease, color .12s ease',
+              }}
+            >
+              <span style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {ICONS[item.id!]}
+              </span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Sub-nav */}
-        <nav className="md:sticky" style={{ top: 70 }}>
-          <div
-            className="ajustes-nav flex md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-2 md:pb-0 md:p-1"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
-          >
-            {navItems.map(item =>
-              item.id === 'sep' ? (
-                <div key="sep" className="hidden md:block" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
-              ) : (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id!)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 8,
-                    border: 'none', cursor: 'pointer', flexShrink: 0,
-                    textDecoration: 'none', color: activeSection === item.id ? 'white' : 'var(--ink-2)',
-                    fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
-                    background: activeSection === item.id ? 'var(--ink)' : 'transparent',
-                    transition: 'background .12s ease, color .12s ease',
-                    textAlign: 'left', whiteSpace: 'nowrap',
-                  }}
-                  onMouseEnter={e => {
-                    if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
-                  }}
-                  onMouseLeave={e => {
-                    if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'transparent'
-                  }}
-                >
-                  <span style={{ width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {ICONS[item.id!]}
-                  </span>
-                  {item.label}
-                </button>
-              )
-            )}
-          </div>
+      {/* Settings grid — desktop: sidebar + content; mobile: content only */}
+      <div className="md:grid md:gap-8 md:items-start" style={{ gridTemplateColumns: '240px 1fr' }}>
+
+        {/* Desktop sidebar nav */}
+        <nav className="hidden md:flex md:flex-col md:sticky gap-1 p-1" style={{ top: 70 }}>
+          {navItems.map(item =>
+            item.id === 'sep' ? (
+              <div key="sep" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
+            ) : (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id!)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 12px', borderRadius: 8,
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
+                  color: activeSection === item.id ? 'white' : 'var(--ink-2)',
+                  fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
+                  background: activeSection === item.id ? 'var(--ink)' : 'transparent',
+                  transition: 'background .12s ease, color .12s ease',
+                  textAlign: 'left', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => {
+                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
+                }}
+                onMouseLeave={e => {
+                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'transparent'
+                }}
+              >
+                <span style={{ width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {ICONS[item.id!]}
+                </span>
+                {item.label}
+              </button>
+            )
+          )}
         </nav>
 
         {/* Sections */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
           {/* ═══ PERFIL PROFESIONAL ═══ */}
-          <section className="ajustes-sec" id="perfil" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'perfil' ? ' hidden md:block' : ''}`} id="perfil" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.perfil}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -519,7 +544,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ HORARIOS ═══ */}
-          <section className="ajustes-sec" id="horarios" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#FFF4E4', 'var(--warn)')}>{ICONS.horarios}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -559,7 +584,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ COBROS Y PAGOS ═══ */}
-          <section className="ajustes-sec" id="cobros-pagos" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'cobros-pagos' ? ' hidden md:block' : ''}`} id="cobros-pagos" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.cobros}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -656,7 +681,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ POLÍTICA DE COBROS ═══ */}
-          <section className="ajustes-sec" id="politica" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'politica' ? ' hidden md:block' : ''}`} id="politica" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--warn-soft)', '#B45309')}>{ICONS.politica}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -688,7 +713,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ OBRAS SOCIALES ═══ */}
-          <section className="ajustes-sec" id="obras" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'obras' ? ' hidden md:block' : ''}`} id="obras" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#ECF0FF', '#002d72')}>{ICONS.obras}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -700,7 +725,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ INTEGRACIONES ═══ */}
-          <section className="ajustes-sec" id="integraciones" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'integraciones' ? ' hidden md:block' : ''}`} id="integraciones" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.integraciones}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -720,7 +745,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ FIRMAS DIGITALES ═══ */}
-          <section className="ajustes-sec" id="firmas" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'firmas' ? ' hidden md:block' : ''}`} id="firmas" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--violet-soft)', 'var(--violet)')}>{ICONS.firmas}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -772,7 +797,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ SUSCRIPCIÓN Y PLAN ═══ */}
-          <section className="ajustes-sec" id="plan" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'plan' ? ' hidden md:block' : ''}`} id="plan" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#FEF3E2', '#D97706')}>{ICONS.plan}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -792,7 +817,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ CUENTA Y SEGURIDAD ═══ */}
-          <section className="ajustes-sec" id="cuenta" style={secStyle}>
+          <section className={`ajustes-sec${activeSection !== 'cuenta' ? ' hidden md:block' : ''}`} id="cuenta" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--danger-soft)', 'var(--danger)')}>{ICONS.cuenta}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
