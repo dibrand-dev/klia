@@ -327,7 +327,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   ]
 
   return (
-    <div style={{ padding: '0 28px 80px', maxWidth: 1320, width: '100%', margin: '0 auto' }}>
+    <div className="px-4 md:px-7 pb-20 w-full mx-auto" style={{ maxWidth: 1320 }}>
       {/* Page header */}
       <header style={{ padding: '26px 0 18px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: 'var(--ink)' }}>
@@ -339,13 +339,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       </header>
 
       {/* Settings grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 32, alignItems: 'flex-start' }}>
+      <div className="flex flex-col gap-6 md:grid md:gap-8 items-start" style={{ gridTemplateColumns: '240px 1fr' }}>
 
         {/* Sub-nav */}
-        <nav style={{ position: 'sticky', top: 70, display: 'flex', flexDirection: 'column', gap: 1, padding: 4 }}>
+        <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-1 md:pb-0 md:sticky" style={{ top: 70, padding: 4 }}>
           {navItems.map(item =>
             item.id === 'sep' ? (
-              <div key="sep" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
+              <div key="sep" className="hidden md:block" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
             ) : (
               <button
                 key={item.id}
@@ -353,7 +353,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 12px', borderRadius: 8,
-                  border: 'none', cursor: 'pointer',
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
                   textDecoration: 'none', color: activeSection === item.id ? 'white' : 'var(--ink-2)',
                   fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
                   background: activeSection === item.id ? 'var(--ink)' : 'transparent',
