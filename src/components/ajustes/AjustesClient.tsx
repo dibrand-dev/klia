@@ -327,7 +327,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   ]
 
   return (
-    <div className="px-4 md:px-7 pb-20 w-full mx-auto" style={{ maxWidth: 1320 }}>
+    <div className="px-4 md:px-7 pb-20 w-full mx-auto overflow-x-hidden" style={{ maxWidth: 1320 }}>
       {/* Page header */}
       <header style={{ padding: '26px 0 18px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.15, color: 'var(--ink)' }}>
@@ -344,7 +344,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         {/* Sub-nav */}
         <nav className="md:sticky" style={{ top: 70 }}>
           <div
-            className="ajustes-nav flex md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-2 md:pb-0 -mx-4 md:mx-0 px-4 md:px-1 md:py-1"
+            className="ajustes-nav flex md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-2 md:pb-0 md:p-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
           >
             {navItems.map(item =>
