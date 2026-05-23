@@ -71,6 +71,7 @@ const inputStyle: React.CSSProperties = {
   padding: '0 12px', height: 38,
   font: 'inherit', fontSize: 14, color: 'var(--ink)',
   background: 'var(--surface)', outline: 'none',
+  width: '100%',
   transition: 'border-color .12s ease, box-shadow .12s ease',
 }
 const textareaStyle: React.CSSProperties = {
@@ -78,12 +79,10 @@ const textareaStyle: React.CSSProperties = {
   padding: '10px 12px',
   font: 'inherit', fontSize: 14, color: 'var(--ink)',
   background: 'var(--surface)', outline: 'none',
-  minHeight: 80, resize: 'vertical', lineHeight: 1.55,
+  width: '100%', minHeight: 80, resize: 'vertical', lineHeight: 1.55,
   transition: 'border-color .12s ease, box-shadow .12s ease',
 }
-const grid2Style: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
-}
+const grid2Class = 'grid grid-cols-1 sm:grid-cols-2 gap-4'
 const hintStyle: React.CSSProperties = {
   fontSize: 11.5, color: 'var(--muted-2)',
 }
@@ -472,7 +471,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
             <form onSubmit={handlePerfilSave}>
               {/* Read-only identity */}
-              <div style={{ ...grid2Style, marginBottom: 16 }}>
+              <div className={`${grid2Class} mb-4`}>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Nombre completo <span style={{ color: '#DC2626' }}>*</span></label>
                   <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={`${profile.nombre} ${profile.apellido}`} readOnly />
@@ -483,7 +482,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 </div>
               </div>
 
-              <div style={{ ...grid2Style, marginBottom: 16 }}>
+              <div className={`${grid2Class} mb-4`}>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Especialidad</label>
                   <select style={inputStyle} value={perfilForm.especialidad} onChange={e => setPerfilForm(p => ({ ...p, especialidad: e.target.value }))}>
@@ -520,7 +519,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <label style={labelStyle}>Localidad / Ciudad</label>
                   <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={perfilForm.localidad} onChange={e => setPerfilForm(p => ({ ...p, localidad: e.target.value }))} />
                 </div>
-                <div style={{ ...fieldStyle, gridColumn: 'span 2' }}>
+                <div className="sm:col-span-2" style={fieldStyle}>
                   <label style={labelStyle}>Dirección donde realiza la prestación</label>
                   <input style={inputStyle} type="text" placeholder="Av. Corrientes 1234, Piso 3" value={perfilForm.direccion} onChange={e => setPerfilForm(p => ({ ...p, direccion: e.target.value }))} />
                   <span style={hintStyle}>Se usa en las planillas de asistencia para obras sociales.</span>
@@ -636,7 +635,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)', marginBottom: 22 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Precio de sesión — link público</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Este precio se aplica cuando un paciente agenda desde tu link público.</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 480 }}>
+                <div className={grid2Class} style={{ maxWidth: 480 }}>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>Moneda</label>
                     <select style={inputStyle} value={cobrosMonedaVal} onChange={e => setCobrosMonedaVal(e.target.value)}>
@@ -754,7 +753,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+            <div className={`${grid2Class} mb-5`}>
               <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px', background: 'var(--surface)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Firma</div>
                 <FirmaUploader
