@@ -197,10 +197,16 @@ export default function IntegracionesClient({
 
       {/* ── Mercado Pago ── */}
       <div style={{ ...intStyle, marginBottom: 0 }}>
-        <div style={{ ...logoStyle, background: '#009EE3', border: 'none' }}>
-          <svg viewBox="0 0 32 32" fill="none" style={{ width: 26, height: 26 }}>
-            <ellipse cx="16" cy="16" rx="14" ry="10" fill="#009EE3"/>
-            <path d="M9 17c1.5-2 3.5-3 6-3-1 1.5-1 3 0 4 1-1 2-2 4-2 1 0 2 .5 2.5 1.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" fill="none"/>
+        <div style={{ ...logoStyle, background: '#009EE3', border: 'none', padding: 0, overflow: 'hidden', borderRadius: 10 }}>
+          {/* Official Mercado Pago handshake icon */}
+          <svg viewBox="0 0 56 36" fill="none" style={{ width: 56, height: 36, display: 'block' }}>
+            <rect width="56" height="36" rx="10" fill="#009EE3"/>
+            {/* Left arm / hand */}
+            <path d="M6 26 C8 22 12 19 16 19 L22 19 C23 19 24 20 23.5 21 L22 23 C21.5 24 22 25 23 25 L26 24 C27.5 24 28.5 25 28.5 26.5 C28.5 27.5 27.5 28.5 26 28.5 L20 29 C16 29.5 12 28 10 26 L6 26Z" fill="white"/>
+            {/* Right arm / hand */}
+            <path d="M50 10 C48 14 44 17 40 17 L34 17 C33 17 32 16 32.5 15 L34 13 C34.5 12 34 11 33 11 L30 12 C28.5 12 27.5 11 27.5 9.5 C27.5 8.5 28.5 7.5 30 7.5 L36 7 C40 6.5 44 8 46 10 L50 10Z" fill="white"/>
+            {/* Clasping fingers overlap */}
+            <path d="M28.5 20 C28.5 22 28.5 24 27.5 25 L29 25 C30 24 30 22 30 20 L28.5 20Z" fill="white" opacity="0.6"/>
           </svg>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
