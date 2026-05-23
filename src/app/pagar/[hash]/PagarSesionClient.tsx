@@ -53,7 +53,8 @@ export default function PagarSesionClient({ sesion, fechaFmt, mpInitPoint, statu
     <div className="min-h-screen flex flex-col" style={{ background: '#F5F6FA' }}>
       {/* Header */}
       <header className="flex items-center justify-center py-5" style={{ background: 'white', borderBottom: '1px solid var(--border)' }}>
-        <span className="text-lg font-bold tracking-tight" style={{ color: 'var(--ink)', letterSpacing: '-0.02em' }}>KLIA</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="KLIA" style={{ height: 28, width: 'auto' }} />
       </header>
 
       {/* Content */}
