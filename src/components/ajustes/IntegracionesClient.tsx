@@ -133,14 +133,7 @@ export default function IntegracionesClient({
       {/* ── Google Calendar ── */}
       <div style={intStyle}>
         <div style={logoStyle}>
-          <svg viewBox="0 0 24 24" style={{ width: 26, height: 26 }} fill="none">
-            <rect x="3" y="4" width="18" height="17" rx="2" stroke="#4285F4" strokeWidth="1.5" />
-            <path d="M3 9h18" stroke="#4285F4" strokeWidth="1.5" />
-            <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
-            <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#EA4335" />
-            <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#FBBC04" />
-            <rect x="15" y="13" width="2" height="3" rx="0.5" fill="#34A853" />
-          </svg>
+          <img src="/google-calendar.svg" alt="Google Calendar" style={{ width: 32, height: 32, objectFit: 'contain' }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
