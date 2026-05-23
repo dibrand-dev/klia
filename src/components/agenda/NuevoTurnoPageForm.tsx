@@ -142,12 +142,81 @@ export default function NuevoTurnoPageForm({
     setEntrevistaForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Unified conflict check — turnos use fecha_hora+duracion_min, entrevistas use fecha+hora+duracion
+  async function validarConflicto(
+    fecha: string,
+    hora: string,
+    duracion: number,
+  ): Promise<{ hayConflicto: boolean; mensaje?: string }> {
+    const supabase = createClient()
+    const newStart = new Date(`${fecha}T${hora}:00`)
+    const newEnd = new Date(newStart.getTime() + (duracion || 50) * 60 * 1000)
+
+    const dayStart = `${fecha}T00:00:00.000Z`
+    const dayEnd   = `${fecha}T23:59:59.999Z`
+
+    const [{ data: turnosExistentes }, { data: entrevistasExistentes }] = await Promise.all([
+      supabase
+        .from('turnos')
+        .select('id, fecha_hora, duracion_min, estado, paciente:pacientes(nombre, apellido)')
+        .eq('terapeuta_id', terapeutaId)
+        .gte('fecha_hora', dayStart)
+        .lte('fecha_hora', dayEnd)
+        .not('estado', 'eq', 'cancelado'),
+      supabase
+        .from('entrevistas')
+        .select('id, hora, duracion, nombre, apellido')
+        .eq('terapeuta_id', terapeutaId)
+        .eq('fecha', fecha)
+        .not('estado', 'eq', 'cancelada'),
+    ])
+
+    const turnoConflicto = (turnosExistentes ?? []).find(t => {
+      const tStart = new Date(t.fecha_hora)
+      const tEnd = new Date(tStart.getTime() + (t.duracion_min ?? 50) * 60 * 1000)
+      return newStart < tEnd && newEnd > tStart
+    })
+
+    if (turnoConflicto) {
+      const pac = turnoConflicto.paciente as unknown as { nombre: string; apellido: string } | null
+      const nombre = pac ? `${pac.nombre} ${pac.apellido}` : 'otro paciente'
+      const esPendientePago = turnoConflicto.estado === 'pendiente'
+      return {
+        hayConflicto: true,
+        mensaje: esPendientePago
+          ? `Este horario está reservado para ${nombre} con pago pendiente. Se liberará automáticamente si no se abona en el tiempo configurado.`
+          : `Este horario ya está ocupado por ${nombre}. Por favor elegí otro horario.`,
+      }
+    }
+
+    const entrevistaConflicto = (entrevistasExistentes ?? []).find(e => {
+      const eStart = new Date(`${fecha}T${e.hora}:00`)
+      const eEnd = new Date(eStart.getTime() + (e.duracion ?? 50) * 60 * 1000)
+      return newStart < eEnd && newEnd > eStart
+    })
+
+    if (entrevistaConflicto) {
+      return {
+        hayConflicto: true,
+        mensaje: `Este horario ya tiene una entrevista con ${entrevistaConflicto.nombre} ${entrevistaConflicto.apellido}. Por favor elegí otro horario.`,
+      }
+    }
+
+    return { hayConflicto: false }
+  }
+
   async function handleSubmitEntrevista(e: React.FormEvent) {
     e.preventDefault()
     if (!entrevistaForm.nombre.trim()) { setError('Nombre es requerido'); return }
     if (!entrevistaForm.apellido.trim()) { setError('Apellido es requerido'); return }
     setLoading(true)
     setError(null)
+
+    const { hayConflicto: conflictoEnt, mensaje: mensajeEnt } = await validarConflicto(
+      entrevistaForm.fecha, entrevistaForm.hora, Number(entrevistaForm.duracion) || 50
+    )
+    if (conflictoEnt) { setError(mensajeEnt!); setLoading(false); return }
+
     const supabase = createClient()
     const { data, error: dbError } = await supabase
       .from('entrevistas')
@@ -226,42 +295,12 @@ export default function NuevoTurnoPageForm({
       return
     }
 
+    const { hayConflicto, mensaje } = await validarConflicto(
+      form.fecha, form.hora, Number(form.duracion_min) || 50
+    )
+    if (hayConflicto) { setError(mensaje!); setLoading(false); return }
+
     const supabase = createClient()
-
-    // Conflict check: fetch all non-cancelled turnos for this professional on the same day
-    const dayStart = `${form.fecha}T00:00:00.000Z`
-    const dayEnd   = `${form.fecha}T23:59:59.999Z`
-    const newStart = new Date(`${form.fecha}T${form.hora}:00`)
-    const newDuracion = Number(form.duracion_min) || 50
-    const newEnd = new Date(newStart.getTime() + newDuracion * 60 * 1000)
-
-    const { data: turnosExistentes } = await supabase
-      .from('turnos')
-      .select('id, fecha_hora, duracion_min, estado, paciente:pacientes(nombre, apellido)')
-      .eq('terapeuta_id', terapeutaId)
-      .gte('fecha_hora', dayStart)
-      .lte('fecha_hora', dayEnd)
-      .not('estado', 'eq', 'cancelado')
-
-    const turnoConflicto = (turnosExistentes ?? []).find(t => {
-      const tStart = new Date(t.fecha_hora)
-      const tEnd = new Date(tStart.getTime() + (t.duracion_min ?? 50) * 60 * 1000)
-      return newStart < tEnd && newEnd > tStart
-    })
-
-    if (turnoConflicto) {
-      const pac = turnoConflicto.paciente as unknown as { nombre: string; apellido: string } | null
-      const nombre = pac ? `${pac.nombre} ${pac.apellido}` : 'otro paciente'
-      const esPendientePago = turnoConflicto.estado === 'pendiente'
-      setError(
-        esPendientePago
-          ? `Este horario está reservado para ${nombre} con pago pendiente. Se liberará automáticamente si no se abona en el tiempo configurado.`
-          : `Este horario ya está ocupado por ${nombre}. Por favor elegí otro horario.`
-      )
-      setLoading(false)
-      return
-    }
-
     const { data, error: dbError } = await supabase
       .from('turnos')
       .insert({
