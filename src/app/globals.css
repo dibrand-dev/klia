@@ -73,6 +73,8 @@
   ::-webkit-scrollbar-thumb:hover { background: #C8CDD6; }
 }
 
+.ajustes-nav::-webkit-scrollbar { display: none; }
+
 @layer components {
   /* Sidebar mobile */
   #sidebar {

@@ -342,38 +342,43 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       <div className="flex flex-col gap-6 md:grid md:gap-8 items-start" style={{ gridTemplateColumns: '240px 1fr' }}>
 
         {/* Sub-nav */}
-        <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-1 md:pb-0 md:sticky" style={{ top: 70, padding: 4 }}>
-          {navItems.map(item =>
-            item.id === 'sep' ? (
-              <div key="sep" className="hidden md:block" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
-            ) : (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id!)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 12px', borderRadius: 8,
-                  border: 'none', cursor: 'pointer', flexShrink: 0,
-                  textDecoration: 'none', color: activeSection === item.id ? 'white' : 'var(--ink-2)',
-                  fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
-                  background: activeSection === item.id ? 'var(--ink)' : 'transparent',
-                  transition: 'background .12s ease, color .12s ease',
-                  textAlign: 'left', whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
-                }}
-                onMouseLeave={e => {
-                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'transparent'
-                }}
-              >
-                <span style={{ width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {ICONS[item.id!]}
-                </span>
-                {item.label}
-              </button>
-            )
-          )}
+        <nav className="md:sticky" style={{ top: 70 }}>
+          <div
+            className="ajustes-nav flex md:flex-col overflow-x-auto md:overflow-visible gap-1 pb-2 md:pb-0 -mx-4 md:mx-0 px-4 md:px-1 md:py-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+          >
+            {navItems.map(item =>
+              item.id === 'sep' ? (
+                <div key="sep" className="hidden md:block" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
+              ) : (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id!)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 12px', borderRadius: 8,
+                    border: 'none', cursor: 'pointer', flexShrink: 0,
+                    textDecoration: 'none', color: activeSection === item.id ? 'white' : 'var(--ink-2)',
+                    fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
+                    background: activeSection === item.id ? 'var(--ink)' : 'transparent',
+                    transition: 'background .12s ease, color .12s ease',
+                    textAlign: 'left', whiteSpace: 'nowrap',
+                  }}
+                  onMouseEnter={e => {
+                    if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
+                  }}
+                  onMouseLeave={e => {
+                    if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'transparent'
+                  }}
+                >
+                  <span style={{ width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {ICONS[item.id!]}
+                  </span>
+                  {item.label}
+                </button>
+              )
+            )}
+          </div>
         </nav>
 
         {/* Sections */}
