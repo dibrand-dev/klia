@@ -227,6 +227,41 @@ export default function NuevoTurnoPageForm({
     }
 
     const supabase = createClient()
+
+    // Conflict check: fetch all non-cancelled turnos for this professional on the same day
+    const dayStart = `${form.fecha}T00:00:00.000Z`
+    const dayEnd   = `${form.fecha}T23:59:59.999Z`
+    const newStart = new Date(`${form.fecha}T${form.hora}:00`)
+    const newDuracion = Number(form.duracion_min) || 50
+    const newEnd = new Date(newStart.getTime() + newDuracion * 60 * 1000)
+
+    const { data: turnosExistentes } = await supabase
+      .from('turnos')
+      .select('id, fecha_hora, duracion_min, estado, paciente:pacientes(nombre, apellido)')
+      .eq('terapeuta_id', terapeutaId)
+      .gte('fecha_hora', dayStart)
+      .lte('fecha_hora', dayEnd)
+      .not('estado', 'eq', 'cancelado')
+
+    const turnoConflicto = (turnosExistentes ?? []).find(t => {
+      const tStart = new Date(t.fecha_hora)
+      const tEnd = new Date(tStart.getTime() + (t.duracion_min ?? 50) * 60 * 1000)
+      return newStart < tEnd && newEnd > tStart
+    })
+
+    if (turnoConflicto) {
+      const pac = turnoConflicto.paciente as unknown as { nombre: string; apellido: string } | null
+      const nombre = pac ? `${pac.nombre} ${pac.apellido}` : 'otro paciente'
+      const esPendientePago = turnoConflicto.estado === 'pendiente'
+      setError(
+        esPendientePago
+          ? `Este horario está reservado para ${nombre} con pago pendiente. Se liberará automáticamente si no se abona en el tiempo configurado.`
+          : `Este horario ya está ocupado por ${nombre}. Por favor elegí otro horario.`
+      )
+      setLoading(false)
+      return
+    }
+
     const { data, error: dbError } = await supabase
       .from('turnos')
       .insert({
