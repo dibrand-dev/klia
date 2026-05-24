@@ -45,7 +45,7 @@ function formatFecha(fecha: string): string {
 function formatPrice(price: number | null, moneda: string): string {
   if (price === null) return 'A confirmar'
   const sym = moneda === 'USD' ? 'US$' : moneda === 'EUR' ? '€' : '$'
-  return `${sym}${price.toLocaleString('es-AR')}`
+  return `${sym} ${price.toLocaleString('es-AR')} ${moneda}`
 }
 
 function InputField({
@@ -148,8 +148,6 @@ export default function StepDatos({
     : profile.booking_precio_entrevista
 
   const fechaFmt = formatFecha(fecha)
-  const preciofmt = formatPrice(precio, profile.booking_moneda)
-
   const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim()
 
   function setField(k: keyof FormData, v: string) {
@@ -158,36 +156,6 @@ export default function StepDatos({
 
   return (
     <div>
-      {/* Resumen */}
-      <div style={{
-        background: '#EFF4FF',
-        borderRadius: 16,
-        border: '1px solid #BFDBFE',
-        padding: '16px 18px',
-        marginBottom: 16,
-      }}>
-        <p style={{
-          margin: '0 0 10px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#1e40af',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}>
-          Resumen de tu reserva
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <SummaryRow icon="🗂" label={TIPO_LABELS[tipo] ?? tipo} />
-          <SummaryRow icon="👤" label={`${profile.nombre} ${profile.apellido}`} />
-          <SummaryRow icon="📅" label={<span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>} />
-          <SummaryRow icon="🕐" label={`${hora} hs`} />
-          <SummaryRow icon="⏱" label={`${duracion} min · ${MODALIDAD_LABELS[modalidad] ?? modalidad}`} />
-          {precio !== null && (
-            <SummaryRow icon="💰" label={<strong style={{ color: '#1e40af' }}>{preciofmt}</strong>} />
-          )}
-        </div>
-      </div>
-
       {/* Form card */}
       <div style={{
         background: '#fff',
@@ -252,6 +220,37 @@ export default function StepDatos({
         />
       </div>
 
+      {/* Resumen — below form, no icons */}
+      <div style={{
+        background: '#EFF4FF',
+        borderRadius: 16,
+        border: '1px solid #BFDBFE',
+        padding: '16px 18px',
+        marginBottom: 16,
+      }}>
+        <p style={{
+          margin: '0 0 12px',
+          fontSize: 11,
+          fontWeight: 700,
+          color: '#1e40af',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          Resumen de tu reserva
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ResumenRow label="Modalidad elegida" value={MODALIDAD_LABELS[modalidad] ?? modalidad} />
+          <ResumenRow
+            label="Fecha"
+            value={<span style={{ textTransform: 'capitalize' }}>{fechaFmt} · {hora} hs</span>}
+          />
+          <ResumenRow label="Duración" value={`${duracion} min · ${TIPO_LABELS[tipo] ?? tipo}`} />
+          {precio !== null && (
+            <ResumenRow label="Precio" value={formatPrice(precio, profile.booking_moneda)} />
+          )}
+        </div>
+      </div>
+
       {/* Actions */}
       <div style={{ display: 'flex', gap: 10 }}>
         <button
@@ -298,11 +297,11 @@ export default function StepDatos({
   )
 }
 
-function SummaryRow({ icon, label }: { icon: string; label: React.ReactNode }) {
+function ResumenRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontSize: 13, color: '#1F2937', lineHeight: 1.4 }}>{label}</span>
+    <div style={{ display: 'flex', gap: 4, fontSize: 13, color: '#1F2937', lineHeight: 1.5 }}>
+      <span style={{ color: '#5B6472', flexShrink: 0 }}>{label}:</span>
+      <span style={{ fontWeight: 500 }}>{value}</span>
     </div>
   )
 }

@@ -53,12 +53,6 @@ const TIPO_LABELS: Record<string, string> = {
   entrevista: 'Entrevista inicial',
 }
 
-const MODALIDAD_LABELS: Record<string, string> = {
-  presencial: 'Presencial',
-  videollamada: 'Videollamada',
-  telefonica: 'Telefónica',
-}
-
 function formatFecha(fecha: string): string {
   const [y, m, d] = fecha.split('-').map(Number)
   const date = new Date(y, m - 1, d)
@@ -356,7 +350,7 @@ export default function StepPago({
 
   return (
     <div>
-      {/* Summary */}
+      {/* Summary — plain text, no icons */}
       <div style={{
         background: '#EFF4FF',
         borderRadius: 16,
@@ -364,30 +358,20 @@ export default function StepPago({
         padding: '16px 18px',
         marginBottom: 16,
       }}>
-        <p style={{
-          margin: '0 0 10px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#1e40af',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}>
-          Tu reserva
+        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0B1220' }}>
+          {profile.nombre} {profile.apellido}
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <SRow icon="🗂" label={TIPO_LABELS[tipo] ?? tipo} />
-          <SRow icon="👤" label={`${profile.nombre} ${profile.apellido}`} />
-          <SRow icon="📅" label={<span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>} />
-          <SRow icon="🕐" label={`${hora} hs · ${duracion} min`} />
-          <SRow icon="📍" label={MODALIDAD_LABELS[modalidad] ?? modalidad} />
-          {reserva.monto > 0 && (
-            <SRow icon="💰" label={
-              <strong style={{ color: '#1e40af' }}>
-                ${reserva.monto.toLocaleString('es-AR')} {profile.booking_moneda}
-              </strong>
-            } />
-          )}
-        </div>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#5B6472' }}>
+          {TIPO_LABELS[tipo] ?? tipo}
+          {' · '}
+          <span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>
+          {' · '}{hora} hs
+        </p>
+        {reserva.monto > 0 && (
+          <p style={{ margin: '6px 0 0', fontSize: 16, fontWeight: 700, color: '#1e40af' }}>
+            ${reserva.monto.toLocaleString('es-AR')} {profile.booking_moneda}
+          </p>
+        )}
       </div>
 
       {/* MP Brick */}
@@ -444,11 +428,3 @@ export default function StepPago({
   )
 }
 
-function SRow({ icon, label }: { icon: string; label: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontSize: 13, color: '#1F2937', lineHeight: 1.4 }}>{label}</span>
-    </div>
-  )
-}
