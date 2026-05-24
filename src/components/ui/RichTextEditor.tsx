@@ -38,7 +38,7 @@ function ToolbarBtn({
 
 export default function RichTextEditor({ value, onChange, placeholder, minHeight = '180px' }: Props) {
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [StarterKit.configure({ underline: false }), Underline],
     content: value,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
