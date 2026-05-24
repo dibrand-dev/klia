@@ -31,6 +31,23 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Test query: verify service role can see profiles
+  const { count } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+  console.log('🔵 BOOKING: total profiles visible:', count)
+
+  // Debug query: check slug match and booking_activo
+  const { data: debugData, error: debugError } = await supabase
+    .from('profiles')
+    .select('id, nombre, booking_slug, booking_activo')
+    .eq('booking_slug', slug)
+    .single()
+  console.log('🔵 BOOKING: data:', JSON.stringify(debugData))
+  console.log('🔵 BOOKING: error:', JSON.stringify(debugError))
+  console.log('🔵 BOOKING: booking_activo value:', debugData?.booking_activo)
+  console.log('🔵 BOOKING: typeof booking_activo:', typeof debugData?.booking_activo)
+
   const { data, error } = await supabase
     .from('profiles')
     .select(`
