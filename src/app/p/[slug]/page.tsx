@@ -52,13 +52,18 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     .from('profiles')
     .select(`
       id, nombre, apellido, especialidad, matricula, avatar_url,
-      booking_slug, booking_bio, booking_duracion_sesion, booking_duracion_entrevista,
-      booking_tiempo_entre, booking_anticipacion_minutos, booking_modalidades,
-      booking_precio_sesion, booking_precio_entrevista, booking_moneda,
-      booking_requiere_pago, booking_activo, mp_access_token, mp_public_key
+      booking_slug, booking_bio, booking_activo,
+      booking_duracion_sesion, booking_duracion_entrevista,
+      booking_tiempo_entre, booking_anticipacion_minutos,
+      booking_modalidades, booking_precio_sesion, booking_precio_entrevista,
+      booking_moneda, booking_requiere_pago,
+      mp_access_token, mp_public_key
     `)
     .eq('booking_slug', slug)
     .single()
+
+  console.log('🔵 BOOKING full query data:', JSON.stringify(data))
+  console.log('🔵 BOOKING full query error:', JSON.stringify(error))
 
   if (error || !data) return null
   if (!data.booking_activo) return null
