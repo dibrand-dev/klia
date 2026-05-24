@@ -1,21 +1,23 @@
 import { requireAdminUser } from '@/lib/ops/auth'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { SYSTEM_FEATURES } from '@/lib/ops/features'
-import type { PlanConFuncionalidades } from '@/types/database'
+import type { Plan } from '@/types/database'
 
 export const metadata = { title: 'Planes — Klia Ops' }
+
+type ModuloRow = { modulo_id: string; nombre: string; planes: string[] }
 
 export default async function PlanesPage() {
   await requireAdminUser()
   const supabase = createClient()
 
-  const { data: planes } = await supabase
-    .from('planes')
-    .select('*, plan_funcionalidades(funcionalidad)')
-    .order('precio_mensual', { ascending: true })
+  const [{ data: planesData }, { data: modulosData }] = await Promise.all([
+    supabase.from('planes').select('*').order('precio_mensual', { ascending: true }),
+    supabase.from('modulos_config').select('modulo_id, nombre, planes').eq('activo', true).order('modulo_id'),
+  ])
 
-  const list = (planes ?? []) as PlanConFuncionalidades[]
+  const list = (planesData ?? []) as Plan[]
+  const modulos = (modulosData ?? []) as ModuloRow[]
 
   return (
     <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1100px]">
@@ -41,8 +43,8 @@ export default async function PlanesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {list.map((plan) => {
-            const funcKeys = plan.plan_funcionalidades.map((f) => f.funcionalidad)
-            const funcs = SYSTEM_FEATURES.filter((f) => funcKeys.includes(f.key))
+            const planKey = plan.nombre.toLowerCase()
+            const includedCount = modulos.filter(m => m.planes.includes(planKey)).length
 
             return (
               <div
@@ -87,25 +89,36 @@ export default async function PlanesPage() {
                   </div>
                 </div>
 
-                {/* Features */}
+                {/* Modules */}
                 <div className="p-5 flex-1">
-                  {funcs.length === 0 ? (
-                    <p className="text-xs text-on-surface-variant italic">Sin funcionalidades asignadas</p>
+                  {modulos.length === 0 ? (
+                    <p className="text-xs text-on-surface-variant italic">Sin módulos configurados</p>
                   ) : (
                     <ul className="space-y-1.5">
-                      {funcs.map((f) => (
-                        <li key={f.key} className="flex items-center gap-2 text-sm text-on-surface">
-                          <span className="material-symbols-outlined text-primary text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            check_circle
-                          </span>
-                          {f.label}
-                        </li>
-                      ))}
+                      {modulos.map((m) => {
+                        const incluido = m.planes.includes(planKey)
+                        return (
+                          <li key={m.modulo_id} className="flex items-center gap-2 text-sm">
+                            <span
+                              className="material-symbols-outlined text-base shrink-0"
+                              style={{
+                                fontVariationSettings: "'FILL' 1",
+                                color: incluido ? '#16a34a' : '#d1d5db',
+                              }}
+                            >
+                              {incluido ? 'check_circle' : 'cancel'}
+                            </span>
+                            <span style={{ color: incluido ? 'inherit' : '#9ca3af' }}>
+                              {m.nombre}
+                            </span>
+                          </li>
+                        )
+                      })}
                     </ul>
                   )}
-                  {funcKeys.length < SYSTEM_FEATURES.length && funcs.length > 0 && (
-                    <p className="text-xs text-on-surface-variant mt-2">
-                      {SYSTEM_FEATURES.length - funcKeys.length} funcionalidades no incluidas
+                  {modulos.length > 0 && (
+                    <p className="text-xs text-on-surface-variant mt-3">
+                      {includedCount} de {modulos.length} módulos incluidos
                     </p>
                   )}
                 </div>
