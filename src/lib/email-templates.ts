@@ -466,3 +466,23 @@ export function emailPagoSesionVencida(params: {
     ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
   `, 'Tu reserva venció — KLIA')
 }
+
+export function emailRecuperacionContrasena(nombre: string, resetUrl: string): string {
+  return baseTemplate(`
+    ${icon('🔐', '#EFF6FF')}
+    ${h1('Recuperá tu contraseña')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, recibimos una solicitud para restablecer la contraseña de tu cuenta en KLIA. Hacé click en el botón para crear una nueva.`)}
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${resetUrl}" style="display:inline-block;background:linear-gradient(135deg,#001a48,#002d72);color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:12px;text-decoration:none;">
+        Crear nueva contraseña
+      </a>
+    </div>
+    <hr style="border:none;border-top:1px solid #e0e3e5;margin:32px 0;" />
+    <p style="margin:0;font-size:12px;color:#747782;text-align:center;">
+      Si no solicitaste este cambio podés ignorar este email. Tu contraseña no será modificada.
+    </p>
+    <p style="margin:8px 0 0;font-size:12px;color:#747782;text-align:center;">
+      Este link expira en 24 horas.
+    </p>
+  `, 'Recuperá tu contraseña en KLIA')
+}

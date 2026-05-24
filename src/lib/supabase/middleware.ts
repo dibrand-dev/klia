@@ -5,6 +5,8 @@ import type { Database } from '@/types/database'
 const PUBLIC_ROUTES = [
   '/login',
   '/registro',
+  '/recuperar',
+  '/nueva-contrasena',
   '/auth/callback',
   '/auth/redirect',
   '/bienvenida',
