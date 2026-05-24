@@ -15,19 +15,26 @@ export default function AuthCallbackPage() {
       const code = params.get('code')
       const type = params.get('type') || new URLSearchParams(hash.slice(1)).get('type')
 
+      console.log('🔵 CALLBACK hash:', hash.substring(0, 100))
+      console.log('🔵 CALLBACK search:', window.location.search)
+      console.log('🔵 CALLBACK code presente:', !!code, '| type:', type)
+
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (error) {
+          console.log('🔵 CALLBACK ERROR exchangeCodeForSession:', JSON.stringify(error))
           router.replace('https://www.klia.com.ar/login?error=auth_callback_error')
           return
         }
       } else if (hash && hash.includes('access_token')) {
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error || !session) {
+          console.log('🔵 CALLBACK ERROR getSession:', JSON.stringify(error))
           router.replace('https://www.klia.com.ar/login?error=auth_callback_error')
           return
         }
       } else {
+        console.log('🔵 CALLBACK ERROR: ni code ni access_token')
         router.replace('https://www.klia.com.ar/login?error=auth_callback_error')
         return
       }
