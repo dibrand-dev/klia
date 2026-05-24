@@ -44,7 +44,6 @@ export default async function PlanesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {list.map((plan) => {
             const planKey = plan.nombre.toLowerCase()
-            const includedCount = modulos.filter(m => m.planes.includes(planKey)).length
 
             return (
               <div
@@ -91,36 +90,26 @@ export default async function PlanesPage() {
 
                 {/* Modules */}
                 <div className="p-5 flex-1">
-                  {modulos.length === 0 ? (
-                    <p className="text-xs text-on-surface-variant italic">Sin módulos configurados</p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {modulos.map((m) => {
-                        const incluido = m.planes.includes(planKey)
-                        return (
-                          <li key={m.modulo_id} className="flex items-center gap-2 text-sm">
+                  {(() => {
+                    const modulosIncluidos = modulos.filter(m => m.planes.includes(planKey))
+                    return modulosIncluidos.length === 0 ? (
+                      <p className="text-xs text-on-surface-variant italic">Sin módulos incluidos</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {modulosIncluidos.map((m) => (
+                          <li key={m.modulo_id} className="flex items-center gap-2 text-sm text-on-surface">
                             <span
                               className="material-symbols-outlined text-base shrink-0"
-                              style={{
-                                fontVariationSettings: "'FILL' 1",
-                                color: incluido ? '#16a34a' : '#d1d5db',
-                              }}
+                              style={{ fontVariationSettings: "'FILL' 1", color: '#16a34a' }}
                             >
-                              {incluido ? 'check_circle' : 'cancel'}
+                              check_circle
                             </span>
-                            <span style={{ color: incluido ? 'inherit' : '#9ca3af' }}>
-                              {m.nombre}
-                            </span>
+                            {m.nombre}
                           </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                  {modulos.length > 0 && (
-                    <p className="text-xs text-on-surface-variant mt-3">
-                      {includedCount} de {modulos.length} módulos incluidos
-                    </p>
-                  )}
+                        ))}
+                      </ul>
+                    )
+                  })()}
                 </div>
 
                 {/* Footer */}
