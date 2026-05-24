@@ -101,6 +101,7 @@ const ICONS: Record<string, React.ReactNode> = {
   obras:        icnSvg(<path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6l8-4z"/>),
   integraciones:icnSvg(<><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/><path d="M8 5h8M8 19h8M5 8v8M19 8v8"/></>),
   firmas:       icnSvg(<path d="M12 20h9M16 3l5 5-11 11H5v-5z"/>),
+  'link-publico': icnSvg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>),
   plan:         icnSvg(<path d="M12 2l3 7 7 .5-5.5 4.5L18 21l-6-4-6 4 1.5-7L2 9.5 9 9z"/>),
   cuenta:       icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
 }
@@ -205,6 +206,24 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [cobrosLoading, setCobrosLoading] = useState(false)
   const [cobrosSaved, setCobrosSaved] = useState(false)
 
+  // Link público state
+  const p = profile as unknown as Record<string, unknown>
+  const [bookingActivo, setBookingActivo] = useState<boolean>(!!(p.booking_activo))
+  const [bookingBio, setBookingBio] = useState<string>((p.booking_bio as string | null) ?? '')
+  const [bookingDuracionSesion, setBookingDuracionSesion] = useState<number>((p.booking_duracion_sesion as number | null) ?? 50)
+  const [bookingDuracionEntrevista, setBookingDuracionEntrevista] = useState<number>((p.booking_duracion_entrevista as number | null) ?? 30)
+  const [bookingTiempoEntre, setBookingTiempoEntre] = useState<number>((p.booking_tiempo_entre as number | null) ?? 10)
+  const [bookingAnticipacion, setBookingAnticipacion] = useState<number>((p.booking_anticipacion_minutos as number | null) ?? 60)
+  const [bookingModalidades, setBookingModalidades] = useState<string[]>((p.booking_modalidades as string[] | null) ?? ['presencial'])
+  const [bookingPrecioSesion, setBookingPrecioSesion] = useState<string>(p.booking_precio_sesion != null ? String(p.booking_precio_sesion) : '')
+  const [bookingPrecioEntrevista, setBookingPrecioEntrevista] = useState<string>(p.booking_precio_entrevista != null ? String(p.booking_precio_entrevista) : '')
+  const [bookingRequierePago, setBookingRequierePago] = useState<boolean>((p.booking_requiere_pago as boolean | null) ?? true)
+  const [bookingSlug] = useState<string>((p.booking_slug as string | null) ?? '')
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingSaved, setBookingSaved] = useState(false)
+  const [bookingCopied, setBookingCopied] = useState(false)
+
+
   // ── IntersectionObserver for scroll-spy ───────────────────────────
   useEffect(() => {
     const sections = document.querySelectorAll('.ajustes-sec[id]')
@@ -303,6 +322,28 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setTimeout(() => setCobrosSaved(false), 2500)
   }
 
+  // ── Booking save ───────────────────────────────────────────────────
+  async function handleBookingSave(e: React.FormEvent) {
+    e.preventDefault()
+    setBookingLoading(true); setBookingSaved(false)
+    const supabase = createClient()
+    await supabase.from('profiles').update({
+      booking_activo: bookingActivo,
+      booking_bio: bookingBio || null,
+      booking_duracion_sesion: bookingDuracionSesion,
+      booking_duracion_entrevista: bookingDuracionEntrevista,
+      booking_tiempo_entre: bookingTiempoEntre,
+      booking_anticipacion_minutos: bookingAnticipacion,
+      booking_modalidades: bookingModalidades,
+      booking_precio_sesion: bookingPrecioSesion ? parseFloat(bookingPrecioSesion) : null,
+      booking_precio_entrevista: bookingPrecioEntrevista ? parseFloat(bookingPrecioEntrevista) : null,
+      booking_requiere_pago: bookingRequierePago,
+    } as never).eq('id', profile.id)
+    setBookingLoading(false); setBookingSaved(true)
+    setTimeout(() => setBookingSaved(false), 2500)
+  }
+
+
   // ── Firma update ───────────────────────────────────────────────────
   async function updateFirmaDB(campo: 'firma_url' | 'firma_sello_url', url: string | null) {
     const supabase = createClient()
@@ -320,6 +361,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'obras', label: 'Obras sociales' },
     { id: 'integraciones', label: 'Integraciones' },
     { id: 'firmas', label: 'Firmas digitales' },
+    { id: 'link-publico', label: 'Link público' },
     { id: 'sep' },
     { id: 'plan', label: 'Suscripción y plan' },
     { id: 'cuenta', label: 'Cuenta y seguridad' },
@@ -795,7 +837,129 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             </div>
           </section>
 
-          {/* ═══ SUSCRIPCIÓN Y PLAN ═══ */}
+          {/* ═══ LINK PÚBLICO ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'link-publico' ? ' hidden md:block' : ''}`} id="link-publico" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('#EFF4FF', '#2563EB')}>{ICONS['link-publico']}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Link público de reservas</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Compartí tu link personal para que tus pacientes reserven turnos online.</p>
+              </div>
+              <Toggle on={bookingActivo} onChange={() => setBookingActivo(v => !v)} />
+            </div>
+
+            {/* Slug read-only */}
+            {bookingSlug && (
+              <div style={{ marginBottom: 20, padding: '12px 16px', background: 'var(--surface-variant, #F6F7F9)', borderRadius: 10, border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Tu link público</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <code style={{ flex: 1, fontSize: 13, color: 'var(--ink)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    app.klia.com.ar/p/{bookingSlug}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://app.klia.com.ar/p/${bookingSlug}`)
+                      setBookingCopied(true)
+                      setTimeout(() => setBookingCopied(false), 2000)
+                    }}
+                    style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: bookingCopied ? 'var(--ok)' : 'var(--ink-2)', whiteSpace: 'nowrap' }}
+                  >
+                    {bookingCopied ? '✓ Copiado' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleBookingSave}>
+              {/* Bio */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Bio pública</label>
+                <textarea
+                  value={bookingBio}
+                  onChange={e => setBookingBio(e.target.value)}
+                  rows={3}
+                  placeholder="Describí brevemente tu enfoque y especialidad (visible para pacientes)..."
+                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Duraciones y buffer */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ marginBottom: 18 }}>
+                {[
+                  { label: 'Duración sesión (min)', value: bookingDuracionSesion, set: setBookingDuracionSesion },
+                  { label: 'Duración entrevista (min)', value: bookingDuracionEntrevista, set: setBookingDuracionEntrevista },
+                  { label: 'Buffer entre turnos (min)', value: bookingTiempoEntre, set: setBookingTiempoEntre },
+                ].map(({ label, value, set }) => (
+                  <div key={label}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                    <input type="number" min={5} max={240} value={value} onChange={e => set(Number(e.target.value))}
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Anticipación */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Anticipación mínima (minutos)</label>
+                <input type="number" min={0} max={10080} value={bookingAnticipacion} onChange={e => setBookingAnticipacion(Number(e.target.value))}
+                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Mínimo de minutos de anticipación para reservar. Ej: 60 = 1 hora de anticipación.</p>
+              </div>
+
+              {/* Modalidades */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Modalidades disponibles</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[['presencial','Presencial'],['videollamada','Videollamada'],['telefonica','Telefónica']].map(([val, lbl]) => (
+                    <label key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={bookingModalidades.includes(val)} onChange={e => {
+                        if (e.target.checked) setBookingModalidades(m => [...m, val])
+                        else setBookingModalidades(m => m.filter(x => x !== val))
+                      }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                      {lbl}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Precios */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 18 }}>
+                {[
+                  { label: 'Precio sesión', value: bookingPrecioSesion, set: setBookingPrecioSesion },
+                  { label: 'Precio entrevista inicial', value: bookingPrecioEntrevista, set: setBookingPrecioEntrevista },
+                ].map(({ label, value, set }) => (
+                  <div key={label}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                    <input type="number" min={0} value={value} onChange={e => set(e.target.value)} placeholder="0"
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Requiere pago */}
+              <ToggleRow
+                name="Requiere pago para confirmar"
+                desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago."
+                on={bookingRequierePago}
+                onChange={() => setBookingRequierePago(v => !v)}
+              />
+
+              <div style={secFootStyle}>
+                <button type="submit" disabled={bookingLoading} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '9px 18px', borderRadius: 8, fontSize: 13.5, fontWeight: 600,
+                  cursor: bookingLoading ? 'not-allowed' : 'pointer',
+                  border: 'none', background: 'var(--ink)', color: 'white',
+                  opacity: bookingLoading ? 0.7 : 1,
+                }}>
+                  {bookingLoading ? 'Guardando...' : bookingSaved ? '✓ Guardado' : 'Guardar configuración'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* ═══ SUSCRIPCIÓN ═══ */}
           <section className={`ajustes-sec${activeSection !== 'plan' ? ' hidden md:block' : ''}`} id="plan" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#FEF3E2', '#D97706')}>{ICONS.plan}</div>

@@ -30,6 +30,18 @@ export type Database = {
           agenda_hora_fin: number
           cobrar_inasistencias: boolean
           email_bloqueada_enviado: boolean
+          booking_slug: string | null
+          booking_bio: string | null
+          booking_duracion_sesion: number
+          booking_duracion_entrevista: number
+          booking_tiempo_entre: number
+          booking_anticipacion_minutos: number
+          booking_modalidades: string[]
+          booking_precio_sesion: number | null
+          booking_precio_entrevista: number | null
+          booking_moneda: string
+          booking_activo: boolean
+          booking_requiere_pago: boolean
           created_at: string
           updated_at: string
         }
@@ -58,6 +70,18 @@ export type Database = {
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
+          booking_slug?: string | null
+          booking_bio?: string | null
+          booking_duracion_sesion?: number
+          booking_duracion_entrevista?: number
+          booking_tiempo_entre?: number
+          booking_anticipacion_minutos?: number
+          booking_modalidades?: string[]
+          booking_precio_sesion?: number | null
+          booking_precio_entrevista?: number | null
+          booking_moneda?: string
+          booking_activo?: boolean
+          booking_requiere_pago?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -86,6 +110,18 @@ export type Database = {
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
+          booking_slug?: string | null
+          booking_bio?: string | null
+          booking_duracion_sesion?: number
+          booking_duracion_entrevista?: number
+          booking_tiempo_entre?: number
+          booking_anticipacion_minutos?: number
+          booking_modalidades?: string[]
+          booking_precio_sesion?: number | null
+          booking_precio_entrevista?: number | null
+          booking_moneda?: string
+          booking_activo?: boolean
+          booking_requiere_pago?: boolean
           created_at?: string
           updated_at?: string
         }

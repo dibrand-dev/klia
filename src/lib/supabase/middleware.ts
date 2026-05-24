@@ -7,6 +7,7 @@ const PUBLIC_ROUTES = [
   '/registro',
   '/recuperar',
   '/nueva-contrasena',
+  '/p',
   '/auth/callback',
   '/auth/redirect',
   '/bienvenida',

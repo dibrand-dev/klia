@@ -486,3 +486,80 @@ export function emailRecuperacionContrasena(nombre: string, resetUrl: string): s
     </p>
   `, 'Recuperá tu contraseña en KLIA')
 }
+
+// ── Booking public flow ───────────────────────────────────────────────────────
+
+export function emailBookingConfirmacion(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  especialidad: string
+  tipo: string        // 'Sesión' | 'Entrevista inicial'
+  fecha: string       // formatted, e.g. "martes 27 de mayo de 2026"
+  hora: string        // 'HH:MM'
+  duracion: number    // minutes
+  modalidad: string   // 'presencial' | 'videollamada' | 'telefonica'
+  monto: number
+  moneda: string
+  referencia: string  // short hash
+}): string {
+  const modalidadLabel: Record<string, string> = {
+    presencial: 'Presencial',
+    videollamada: 'Videollamada',
+    telefonica: 'Telefónica',
+  }
+  const sym = params.moneda === 'USD' ? 'US$' : params.moneda === 'EUR' ? '€' : '$'
+  const montoFmt = `${sym}${params.monto.toLocaleString('es-AR')} ${params.moneda}`
+  const modalidadFmt = modalidadLabel[params.modalidad] ?? params.modalidad
+  const firstName = params.pacienteNombre.split(' ')[0]
+
+  return baseTemplate(`
+    ${icon('✅', '#DCFCE7')}
+    ${h1('¡Reserva confirmada!')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${firstName}</strong>, tu ${params.tipo.toLowerCase()} fue agendada y el pago procesado correctamente.`)}
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#F6F7F9;border-radius:12px;border:1px solid #E7E9EE;margin-top:24px;">
+      <tr><td style="padding:18px 20px;">
+        <p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.08em;">
+          Detalle de tu reserva
+        </p>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;width:40%;">Profesional</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">
+              ${params.profesionalNombre}${params.especialidad ? `<br><span style="font-weight:400;color:#5B6472;font-size:12px;">${params.especialidad}</span>` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Tipo</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">${params.tipo}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Fecha</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;text-transform:capitalize;">${params.fecha}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Horario</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">${params.hora} hs · ${params.duracion} min</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Modalidad</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">${modalidadFmt}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1220;">Total abonado</td>
+            <td style="padding:10px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#047857;text-align:right;">${montoFmt}</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    ${infoBox(`
+      <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#0f3a27;">Referencia de pago</p>
+      <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:600;color:#1d4a36;letter-spacing:0.06em;">${params.referencia}</p>
+      <p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#2d6a4f;">Guardá este código como comprobante de tu reserva.</p>
+    `, '#f0fdf4', '#10b981', '#1d4a36')}
+
+    ${help('¿Necesitás cancelar o reprogramar? Contactá directamente al profesional o escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>')}
+  `, `¡Reserva confirmada! — ${params.tipo} con ${params.profesionalNombre}`)
+}
