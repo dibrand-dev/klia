@@ -36,9 +36,9 @@ export default function StepCalendario({
   onNext,
   onBack,
 }: Props) {
-  const today = new Date()
-  const [viewYear, setViewYear] = useState(today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1) // 1-based
+  const [today] = useState(() => new Date())
+  const [viewYear, setViewYear] = useState(() => today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(() => today.getMonth() + 1) // 1-based
   const [availableDays, setAvailableDays] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
 
