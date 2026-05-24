@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
-import BookingClient from '@/components/booking/BookingClient'
+import dynamicImport from 'next/dynamic'
 import Image from 'next/image'
 
 export const dynamic = 'force-dynamic'
+
+const BookingClient = dynamicImport(
+  () => import('@/components/booking/BookingClient'),
+  { ssr: false }
+)
 
 export type ProfileData = {
   id: string
@@ -26,47 +31,29 @@ export type ProfileData = {
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
+  console.log('🔵 BOOKING: slug recibido:', slug)
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Test query: verify service role can see profiles
-  const { count } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-  console.log('🔵 BOOKING: total profiles visible:', count)
-
-  // Debug query: check slug match and booking_activo
-  const { data: debugData, error: debugError } = await supabase
-    .from('profiles')
-    .select('id, nombre, booking_slug, booking_activo')
-    .eq('booking_slug', slug)
-    .single()
-  console.log('🔵 BOOKING: data:', JSON.stringify(debugData))
-  console.log('🔵 BOOKING: error:', JSON.stringify(debugError))
-  console.log('🔵 BOOKING: booking_activo value:', debugData?.booking_activo)
-  console.log('🔵 BOOKING: typeof booking_activo:', typeof debugData?.booking_activo)
-
   const { data, error } = await supabase
     .from('profiles')
-    .select(`
-      id, nombre, apellido, especialidad, matricula, avatar_url,
-      booking_slug, booking_bio, booking_activo,
-      booking_duracion_sesion, booking_duracion_entrevista,
-      booking_tiempo_entre, booking_anticipacion_minutos,
-      booking_modalidades, booking_precio_sesion, booking_precio_entrevista,
-      booking_moneda, booking_requiere_pago,
-      mp_access_token, mp_public_key
-    `)
+    .select('*')
     .eq('booking_slug', slug)
+    .eq('booking_activo', true)
     .single()
 
-  console.log('🔵 BOOKING full query data:', JSON.stringify(data))
-  console.log('🔵 BOOKING full query error:', JSON.stringify(error))
+  console.log('🔵 BOOKING: error:', JSON.stringify(error))
+  console.log('🔵 BOOKING: data keys:', data ? Object.keys(data).join(', ') : 'null')
 
-  if (error || !data) return null
-  if (!data.booking_activo) return null
+  if (error || !data) {
+    console.log('🔵 BOOKING: profile encontrado: no')
+    return null
+  }
+
+  console.log('🔵 BOOKING: profile encontrado: sí')
 
   return {
     id: data.id,
@@ -96,9 +83,7 @@ export default async function BookingPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  console.log('🔵 BOOKING: slug recibido:', slug)
   const profile = await getProfile(slug)
-  console.log('🔵 BOOKING: profile encontrado:', profile ? 'sí' : 'no')
 
   if (!profile) {
     return (
