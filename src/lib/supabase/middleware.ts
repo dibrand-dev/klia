@@ -16,6 +16,19 @@ const PUBLIC_ROUTES = [
   '/privacidad',
 ]
 
+// Routes that require a specific module to be enabled for the professional's plan
+const MODULE_PATHS: Record<string, string> = {
+  '/atenciones': 'atenciones',
+  '/cobros': 'cobros',
+  '/facturacion': 'facturacion',
+  '/informes': 'informes',
+}
+
+function getModuloFromPath(pathname: string): string | null {
+  const entry = Object.entries(MODULE_PATHS).find(([path]) => pathname.startsWith(path))
+  return entry?.[1] ?? null
+}
+
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
@@ -63,17 +76,30 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect blocked accounts to the paused-access page (page routes only)
+  // Page-level checks (skip API routes and ops)
   if (user && !isAuthRoute && !pathname.startsWith('/cuenta-bloqueada') && !pathname.startsWith('/api/') && !pathname.startsWith('/ops/')) {
-    const { data: profileStatus } = await supabase
-      .from('profiles')
-      .select('estado_cuenta')
-      .eq('id', user.id)
-      .single()
-    if (profileStatus?.estado_cuenta === 'bloqueada') {
+    const moduloId = getModuloFromPath(pathname)
+
+    const [{ data: profile }, { data: modulos }] = await Promise.all([
+      supabase.from('profiles').select('estado_cuenta, plan').eq('id', user.id).single(),
+      moduloId
+        ? supabase.from('modulos_config').select('modulo_id, planes').eq('activo', true)
+        : Promise.resolve({ data: null }),
+    ])
+
+    if (profile?.estado_cuenta === 'bloqueada') {
       const url = request.nextUrl.clone()
       url.pathname = '/cuenta-bloqueada'
       return NextResponse.redirect(url)
+    }
+
+    if (moduloId && modulos && profile?.plan) {
+      const modulo = modulos.find((m: { modulo_id: string; planes: string[] }) => m.modulo_id === moduloId)
+      if (modulo && !modulo.planes.includes(profile.plan)) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
@@ -85,3 +111,4 @@ export async function updateSession(request: NextRequest) {
 
   return supabaseResponse
 }
+
