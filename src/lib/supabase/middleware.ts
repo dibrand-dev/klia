@@ -10,6 +10,7 @@ const PUBLIC_ROUTES = [
   '/bienvenida',
   '/ops/login',
   '/planes',
+  '/pagar',
   '/cuenta-bloqueada',
   '/checkout',
   '/terminos',
@@ -62,8 +63,17 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  console.log('🔵 MW path:', pathname)
+  console.log('🔵 MW user:', user?.email ?? 'null')
+  console.log('🔵 MW cookies:', request.cookies.getAll().map(c => c.name).join(', '))
+
   // /auth/* routes handle their own authentication internally
   if (pathname.startsWith('/auth/')) {
+    return supabaseResponse
+  }
+
+  // /ops routes have their own admin auth guard (requireAdminUser) — skip profile checks
+  if (pathname.startsWith('/ops/') && !pathname.startsWith('/ops/login')) {
     return supabaseResponse
   }
 
