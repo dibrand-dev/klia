@@ -71,9 +71,12 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
 export default async function BookingPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
-  const profile = await getProfile(params.slug)
+  const { slug } = await params
+  console.log('🔵 BOOKING: slug recibido:', slug)
+  const profile = await getProfile(slug)
+  console.log('🔵 BOOKING: profile encontrado:', profile ? 'sí' : 'no')
 
   if (!profile) {
     return (
