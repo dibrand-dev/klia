@@ -34,6 +34,11 @@ function getModuloFromPath(pathname: string): string | null {
 }
 
 export async function updateSession(request: NextRequest) {
+  // Allow CORS preflight requests — never redirect OPTIONS
+  if (request.method === 'OPTIONS') {
+    return NextResponse.next()
+  }
+
   const pathname = request.nextUrl.pathname
 
   // Si es ruta pública → pasar directamente sin llamar a Supabase

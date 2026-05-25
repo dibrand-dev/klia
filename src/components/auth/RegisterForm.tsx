@@ -37,31 +37,35 @@ export default function RegisterForm() {
 
     setLoading(true)
 
-    const res = await fetch('/api/auth/registro', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: form.email,
-        password: form.password,
-        nombre: form.nombre,
-        apellido: form.apellido,
-        especialidad: form.especialidad || null,
-      }),
-    })
+    try {
+      const res = await fetch('https://app.klia.com.ar/api/auth/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          nombre: form.nombre,
+          apellido: form.apellido,
+          especialidad: form.especialidad || null,
+        }),
+      })
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({})) as { error?: string }
-      setError(
-        body.error === 'already_registered'
-          ? 'Ese email ya está registrado. ¿Querés iniciar sesión?'
-          : 'Error al crear la cuenta. Intentá de nuevo.'
-      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        setError(
+          body.error === 'already_registered'
+            ? 'Ese email ya está registrado. ¿Querés iniciar sesión?'
+            : 'Error al crear la cuenta. Intentá de nuevo.'
+        )
+        return
+      }
+
+      setSuccess(true)
+    } catch {
+      setError('No pudimos conectar con el servidor. Intentá de nuevo.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    setSuccess(true)
-    setLoading(false)
   }
 
   if (success) {
