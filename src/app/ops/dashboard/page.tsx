@@ -32,6 +32,21 @@ function MetricCard({
   )
 }
 
+const PLAN_LABELS: Record<string, string> = {
+  esencial: 'Esencial',
+  profesional: 'Profesional',
+  premium: 'Premium',
+}
+
+const MODALIDAD_LABELS: Record<string, string> = {
+  mensual: 'Mensual',
+  anual: 'Anual',
+}
+
+function formatMonto(monto: number): string {
+  return `$${monto.toLocaleString('es-AR')}`
+}
+
 export default async function OpsDashboardPage() {
   await requireAdminUser()
   const supabase = createClient()
@@ -42,11 +57,38 @@ export default async function OpsDashboardPage() {
     { count: totalPrestadores },
     { count: nuevosEsteMes },
     { data: ultimosPrestadores },
+    { data: suscrAutorizadasMes },
+    { count: debitosRechazados },
+    { count: pendientesDePago },
+    { data: ultimasSuscripciones },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', inicioMes),
     supabase.from('profiles').select('id, nombre, apellido, email, especialidad, created_at').order('created_at', { ascending: false }).limit(10),
+    // Autorizadas este mes para calcular ingresos
+    supabase.from('suscripciones').select('monto').eq('estado', 'authorized').gte('suscripcion_inicio', inicioMes),
+    // Pausadas este mes (débitos rechazados)
+    supabase.from('suscripciones').select('*', { count: 'exact', head: true }).eq('estado', 'paused').gte('updated_at', inicioMes),
+    // Pendientes totales
+    supabase.from('suscripciones').select('*', { count: 'exact', head: true }).eq('estado', 'pending'),
+    // Últimas suscripciones autorizadas
+    supabase.from('suscripciones').select('id, terapeuta_id, plan, modalidad, monto, suscripcion_inicio').eq('estado', 'authorized').order('suscripcion_inicio', { ascending: false }).limit(8),
   ])
+
+  const ingresosMes = (suscrAutorizadasMes ?? []).reduce((acc, s) => acc + (s.monto ?? 0), 0)
+
+  // Fetch profiles for the last subscriptions
+  const terapeutaIds = (ultimasSuscripciones ?? []).map((s) => s.terapeuta_id).filter(Boolean)
+  const perfilesMap: Record<string, { nombre: string; apellido: string }> = {}
+  if (terapeutaIds.length > 0) {
+    const { data: perfiles } = await supabase
+      .from('profiles')
+      .select('id, nombre, apellido')
+      .in('id', terapeutaIds)
+    for (const p of perfiles ?? []) {
+      perfilesMap[p.id] = { nombre: p.nombre, apellido: p.apellido }
+    }
+  }
 
   return (
     <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1200px]">
@@ -65,9 +107,27 @@ export default async function OpsDashboardPage() {
         <MetricCard label="Nuevos este mes" value={nuevosEsteMes ?? 0} icon="person_add" color="text-green-600" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <MetricCard label="Ingresos del mes" value="—" sub="Integración MP pendiente" icon="payments" color="text-primary" />
-        <MetricCard label="Débitos rechazados" value="—" sub="Integración MP pendiente" icon="money_off" color="text-error" />
-        <MetricCard label="Pendientes de pago" value="—" sub="Integración MP pendiente" icon="pending" color="text-amber-500" />
+        <MetricCard
+          label="Ingresos del mes"
+          value={ingresosMes > 0 ? formatMonto(ingresosMes) : '—'}
+          sub={ingresosMes > 0 ? `${(suscrAutorizadasMes ?? []).length} pagos recibidos` : 'Sin cobros este mes'}
+          icon="payments"
+          color="text-primary"
+        />
+        <MetricCard
+          label="Débitos rechazados"
+          value={debitosRechazados ?? 0}
+          sub="Este mes"
+          icon="money_off"
+          color="text-error"
+        />
+        <MetricCard
+          label="Pendientes de pago"
+          value={pendientesDePago ?? 0}
+          sub="Suscripciones sin confirmar"
+          icon="pending"
+          color="text-amber-500"
+        />
       </div>
 
       {/* Tablas */}
@@ -111,16 +171,43 @@ export default async function OpsDashboardPage() {
           </div>
         </div>
 
-        {/* Últimos pagos (mock) */}
+        {/* Últimos pagos recibidos */}
         <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-outline-variant/10">
             <h2 className="text-sm font-bold text-on-surface">Últimos pagos recibidos</h2>
           </div>
-          <div className="px-6 py-10 text-center text-on-surface-variant">
-            <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">payments</span>
-            <p className="text-sm">Integración con Mercado Pago pendiente.</p>
-            <p className="text-xs mt-1 opacity-60">Los pagos aparecerán aquí en una fase posterior.</p>
-          </div>
+          {(ultimasSuscripciones ?? []).length === 0 ? (
+            <div className="px-6 py-10 text-center text-on-surface-variant">
+              <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">payments</span>
+              <p className="text-sm">Sin pagos registrados aún.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-outline-variant/10">
+              {(ultimasSuscripciones ?? []).map((s) => {
+                const perfil = perfilesMap[s.terapeuta_id]
+                return (
+                  <li key={s.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-on-surface truncate">
+                        {perfil ? `${perfil.nombre} ${perfil.apellido}` : '—'}
+                      </p>
+                      <p className="text-xs text-on-surface-variant">
+                        {PLAN_LABELS[s.plan] ?? s.plan} · {MODALIDAD_LABELS[s.modalidad] ?? s.modalidad}
+                      </p>
+                      {s.suscripcion_inicio && (
+                        <p className="text-[11px] text-on-surface-variant opacity-60 mt-0.5">
+                          {format(parseISO(s.suscripcion_inicio), "d MMM yyyy", { locale: es })}
+                        </p>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-green-600">
+                      {formatMonto(s.monto)}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </div>
