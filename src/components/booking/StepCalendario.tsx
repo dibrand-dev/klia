@@ -22,10 +22,9 @@ function pad(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-/** Returns 0=Mon .. 6=Sun offset for the first day of the month */
 function firstDayOffset(year: number, month: number): number {
-  const d = new Date(year, month - 1, 1).getDay() // 0=Sun
-  return (d + 6) % 7 // shift so Mon=0
+  const d = new Date(year, month - 1, 1).getDay()
+  return (d + 6) % 7
 }
 
 export default function StepCalendario({
@@ -38,7 +37,7 @@ export default function StepCalendario({
 }: Props) {
   const [today] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(() => today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(() => today.getMonth() + 1) // 1-based
+  const [viewMonth, setViewMonth] = useState(() => today.getMonth() + 1)
   const [availableDays, setAvailableDays] = useState<number[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -97,7 +96,6 @@ export default function StepCalendario({
   const cells: Array<{ day: number | null }> = []
   for (let i = 0; i < offset; i++) cells.push({ day: null })
   for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d })
-  // pad to complete last row
   while (cells.length % 7 !== 0) cells.push({ day: null })
 
   function isPast(day: number): boolean {
@@ -126,14 +124,21 @@ export default function StepCalendario({
 
   return (
     <div>
+      <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        Elegí una fecha
+      </p>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#5B6472' }}>
+        Seleccioná el día que mejor te quede.
+      </p>
+
       {/* Card */}
       <div style={{
         background: '#fff',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid #E7E9EE',
-        padding: '20px',
-        marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+        padding: '22px',
+        marginBottom: 18,
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
       }}>
         {/* Month navigation */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -159,7 +164,7 @@ export default function StepCalendario({
               {MONTH_NAMES[viewMonth - 1]} {viewYear}
             </div>
             {loading && (
-              <div style={{ fontSize: 11, color: '#AEB5C0', marginTop: 2 }}>Cargando disponibilidad…</div>
+              <div style={{ fontSize: 11, color: '#AEB5C0', marginTop: 2 }}>Cargando…</div>
             )}
           </div>
 
@@ -181,20 +186,11 @@ export default function StepCalendario({
         </div>
 
         {/* Day of week headers */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 4,
-          marginBottom: 8,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
           {DOW_HEADERS.map((h) => (
             <div key={h} style={{
-              textAlign: 'center',
-              fontSize: 11,
-              fontWeight: 600,
-              color: '#8A93A1',
-              letterSpacing: '0.04em',
-              padding: '4px 0',
+              textAlign: 'center', fontSize: 11, fontWeight: 600,
+              color: '#8A93A1', letterSpacing: '0.04em', padding: '4px 0',
             }}>
               {h}
             </div>
@@ -202,15 +198,9 @@ export default function StepCalendario({
         </div>
 
         {/* Day grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 4,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
           {cells.map((cell, i) => {
-            if (!cell.day) {
-              return <div key={`empty-${i}`} />
-            }
+            if (!cell.day) return <div key={`empty-${i}`} />
             const day = cell.day
             const past = isPast(day)
             const today_ = isToday(day)
@@ -225,10 +215,8 @@ export default function StepCalendario({
                 style={{
                   position: 'relative',
                   aspectRatio: '1',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
                   borderRadius: 10,
                   border: today_ && !selected ? '2px solid #2563EB' : '2px solid transparent',
                   background: selected ? '#002d72' : 'transparent',
@@ -241,26 +229,15 @@ export default function StepCalendario({
                 <span style={{
                   fontSize: 14,
                   fontWeight: selected ? 700 : slots ? 600 : 400,
-                  color: selected
-                    ? '#fff'
-                    : past
-                    ? '#AEB5C0'
-                    : slots
-                    ? '#002d72'
-                    : '#374151',
+                  color: selected ? '#fff' : past ? '#AEB5C0' : slots ? '#002d72' : '#374151',
                   textDecoration: past ? 'line-through' : 'none',
                 }}>
                   {day}
                 </span>
-                {/* Slot availability dot */}
                 {slots && !selected && !past && (
                   <div style={{
-                    position: 'absolute',
-                    bottom: 3,
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    background: '#2563EB',
+                    position: 'absolute', bottom: 3,
+                    width: 4, height: 4, borderRadius: 2, background: '#2563EB',
                   }} />
                 )}
               </button>
@@ -268,71 +245,69 @@ export default function StepCalendario({
           })}
         </div>
 
-        {/* Legend */}
+        {/* Legend — 3 items */}
         <div style={{
-          display: 'flex',
-          gap: 16,
-          marginTop: 16,
-          paddingTop: 16,
-          borderTop: '1px solid #F1F3F6',
+          display: 'flex', gap: 16, marginTop: 16, paddingTop: 16,
+          borderTop: '1px solid #F1F3F6', flexWrap: 'wrap',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: 4, background: '#2563EB' }} />
-            <span style={{ fontSize: 11, color: '#8A93A1' }}>Con disponibilidad</span>
+            <span style={{ fontSize: 11, color: '#8A93A1' }}>Disponible</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{
-              width: 20, height: 20, borderRadius: 6,
-              border: '2px solid #2563EB',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span style={{ fontSize: 10, color: '#0B1220' }}>H</span>
-            </div>
-            <span style={{ fontSize: 11, color: '#8A93A1' }}>Hoy</span>
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: '#002d72' }} />
+            <span style={{ fontSize: 11, color: '#8A93A1' }}>Seleccionado</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: '#E7E9EE' }} />
+            <span style={{ fontSize: 11, color: '#8A93A1' }}>No disponible</span>
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={onBack}
-          style={{
-            flex: 1,
-            background: '#F6F7F9',
-            color: '#374151',
-            border: '1px solid #E7E9EE',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'Inter, system-ui, sans-serif',
-          }}
-        >
-          ← Atrás
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={onNext}
           disabled={!selectedFecha}
           style={{
-            flex: 2,
-            background: selectedFecha
-              ? 'linear-gradient(135deg, #001a48, #002d72)'
-              : '#E7E9EE',
+            width: '100%',
+            background: selectedFecha ? 'linear-gradient(135deg, #001a48, #002d72)' : '#E7E9EE',
             color: selectedFecha ? '#fff' : '#AEB5C0',
             border: 'none',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 700,
+            borderRadius: 10,
+            padding: '13px 18px',
+            fontSize: 14.5,
+            fontWeight: 600,
             cursor: selectedFecha ? 'pointer' : 'not-allowed',
             fontFamily: 'Inter, system-ui, sans-serif',
-            boxShadow: selectedFecha ? '0 4px 14px rgba(0,26,72,0.25)' : 'none',
+            boxShadow: selectedFecha ? '0 6px 18px rgba(0,45,114,0.25)' : 'none',
             transition: 'all 0.15s',
           }}
         >
           Ver horarios →
+        </button>
+        <button
+          onClick={onBack}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            color: '#5B6472',
+            border: 'none',
+            borderRadius: 10,
+            padding: '11px 12px',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Volver
         </button>
       </div>
     </div>

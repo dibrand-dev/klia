@@ -14,7 +14,7 @@ interface Props {
 
 const MODALIDAD_LABELS: Record<string, string> = {
   presencial: 'Presencial',
-  videollamada: 'Videollamada',
+  videollamada: 'Online',
   telefonica: 'Telefónica',
 }
 
@@ -27,11 +27,11 @@ function Initials({ nombre, apellido }: { nombre: string; apellido: string }) {
   const initials = `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
   return (
     <div style={{
-      width: 72, height: 72, borderRadius: 36,
-      background: 'linear-gradient(135deg, #001a48, #002d72)',
+      width: 80, height: 80, borderRadius: 40,
+      background: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 26, fontWeight: 700, color: '#fff',
-      flexShrink: 0,
+      fontSize: 28, fontWeight: 700, color: '#16389F',
+      boxShadow: '0 8px 20px rgba(16,24,40,0.08)',
     }}>
       {initials}
     </div>
@@ -75,122 +75,71 @@ export default function StepTipoConsulta({
 
   return (
     <div>
-      {/* Pro card */}
+      {/* Pro card — centered layout */}
       <div style={{
         background: '#fff',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid #E7E9EE',
-        padding: '24px 20px',
-        marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+        padding: '26px 22px 22px',
+        marginBottom: 18,
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
+        textAlign: 'center',
       }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-          {/* Avatar */}
-          <div style={{ flexShrink: 0 }}>
-            {profile.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt={`${profile.nombre} ${profile.apellido}`}
-                width={72}
-                height={72}
-                style={{ width: 72, height: 72, borderRadius: 36, objectFit: 'cover' }}
-              />
-            ) : (
-              <Initials nombre={profile.nombre} apellido={profile.apellido} />
-            )}
-          </div>
-
-          {/* Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{
-              margin: '0 0 4px',
-              fontSize: 20,
-              fontWeight: 700,
-              color: '#0B1220',
-              letterSpacing: '-0.3px',
-            }}>
-              {profile.nombre} {profile.apellido}
-            </h1>
-            {profile.especialidad && (
-              <p style={{ margin: '0 0 4px', fontSize: 14, color: '#5B6472', fontWeight: 500 }}>
-                {profile.especialidad}
-              </p>
-            )}
-            {profile.matricula && (
-              <span style={{
-                display: 'inline-block',
-                fontSize: 11,
-                fontWeight: 600,
-                color: '#8A93A1',
-                background: '#F1F3F6',
-                borderRadius: 6,
-                padding: '2px 8px',
-                letterSpacing: '0.02em',
-              }}>
-                Mat. {profile.matricula}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div style={{
-          display: 'flex',
-          gap: 20,
-          marginTop: 16,
-          paddingTop: 16,
-          borderTop: '1px solid #F1F3F6',
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#001a48' }}>120+</div>
-            <div style={{ fontSize: 11, color: '#8A93A1', marginTop: 2 }}>Pacientes</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#001a48' }}>4.9</div>
-            <div style={{ fontSize: 11, color: '#8A93A1', marginTop: 2 }}>Valoración</div>
-          </div>
-          {profile.booking_modalidades.length > 0 && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#001a48' }}>
-                {profile.booking_modalidades.length}
-              </div>
-              <div style={{ fontSize: 11, color: '#8A93A1', marginTop: 2 }}>Modalidades</div>
-            </div>
+        {/* Avatar with verified badge */}
+        <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 14px' }}>
+          {profile.avatar_url ? (
+            <Image
+              src={profile.avatar_url}
+              alt={`${profile.nombre} ${profile.apellido}`}
+              width={80}
+              height={80}
+              style={{ width: 80, height: 80, borderRadius: 40, objectFit: 'cover', boxShadow: '0 8px 20px rgba(16,24,40,0.08)' }}
+            />
+          ) : (
+            <Initials nombre={profile.nombre} apellido={profile.apellido} />
           )}
+          <div style={{
+            position: 'absolute', bottom: 0, right: 0,
+            width: 24, height: 24, borderRadius: 12,
+            background: '#2563EB', border: '3px solid #fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          </div>
         </div>
 
-        {/* Bio */}
-        {profile.booking_bio && (
-          <p style={{
-            margin: '16px 0 0',
-            fontSize: 14,
-            color: '#374151',
-            lineHeight: 1.65,
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.3px' }}>
+          {profile.nombre} {profile.apellido}
+        </h1>
+        {profile.especialidad && (
+          <p style={{ margin: '0 0 6px', fontSize: 14, color: '#5B6472', fontWeight: 500 }}>
+            {profile.especialidad}
+          </p>
+        )}
+        {profile.matricula && (
+          <span style={{
+            display: 'inline-block',
+            fontSize: 11, fontWeight: 600, color: '#8A93A1',
+            background: '#F1F3F6', borderRadius: 6, padding: '2px 8px',
+            letterSpacing: '0.02em',
           }}>
+            Mat. {profile.matricula}
+          </span>
+        )}
+        {profile.booking_bio && (
+          <p style={{ margin: '14px 0 0', fontSize: 14, color: '#374151', lineHeight: 1.65, textAlign: 'left' }}>
             {profile.booking_bio}
           </p>
         )}
       </div>
 
       {/* Session type */}
-      <div style={{
-        background: '#fff',
-        borderRadius: 20,
-        border: '1px solid #E7E9EE',
-        padding: '20px',
-        marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
-      }}>
-        <p style={{
-          margin: '0 0 14px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#8A93A1',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}>
-          Tipo de consulta
-        </p>
+      <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        Tipo de consulta
+      </p>
+      <div style={{ marginBottom: 18 }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: tipoOptions.length === 1 ? '1fr' : '1fr 1fr',
@@ -203,8 +152,9 @@ export default function StepTipoConsulta({
                 key={opt.key}
                 onClick={() => onTipo(opt.key)}
                 style={{
-                  background: selected ? '#EFF4FF' : '#F6F7F9',
-                  border: selected ? '2px solid #2563EB' : '2px solid transparent',
+                  background: selected ? '#F4F7FF' : '#F6F7F9',
+                  border: selected ? '2px solid #002d72' : '2px solid transparent',
+                  boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
                   borderRadius: 14,
                   padding: '16px 14px',
                   cursor: 'pointer',
@@ -213,12 +163,7 @@ export default function StepTipoConsulta({
                   fontFamily: 'Inter, system-ui, sans-serif',
                 }}
               >
-                <div style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: selected ? '#1e40af' : '#0B1220',
-                  marginBottom: 4,
-                }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220', marginBottom: 4 }}>
                   {opt.label}
                 </div>
                 <div style={{ fontSize: 12, color: '#5B6472', marginBottom: 8 }}>
@@ -226,23 +171,15 @@ export default function StepTipoConsulta({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {opt.price !== null ? (
-                    <span style={{
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: selected ? '#1e40af' : '#0B1220',
-                    }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220' }}>
                       {formatPrice(opt.price, profile.booking_moneda)}
                     </span>
                   ) : (
                     <span style={{ fontSize: 14, color: '#8A93A1' }}>A confirmar</span>
                   )}
                   <span style={{
-                    fontSize: 11,
-                    color: '#8A93A1',
-                    background: '#fff',
-                    borderRadius: 20,
-                    padding: '2px 8px',
-                    fontWeight: 500,
+                    fontSize: 11, color: '#8A93A1', background: '#fff',
+                    borderRadius: 20, padding: '2px 8px', fontWeight: 500,
                   }}>
                     {opt.dur} min
                   </span>
@@ -253,30 +190,15 @@ export default function StepTipoConsulta({
         </div>
       </div>
 
-      {/* Modality toggle */}
+      {/* Modality toggle — pill container */}
       {showModalidadToggle && (
-        <div style={{
-          background: '#fff',
-          borderRadius: 20,
-          border: '1px solid #E7E9EE',
-          padding: '20px',
-          marginBottom: 16,
-          boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
-        }}>
-          <p style={{
-            margin: '0 0 14px',
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#8A93A1',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-          }}>
+        <div style={{ marginBottom: 18 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
             Modalidad
           </p>
           <div style={{
-            display: 'flex',
-            gap: 8,
-            flexWrap: 'wrap',
+            display: 'flex', padding: 3, borderRadius: 10,
+            border: '1px solid #E7E9EE', background: '#F6F7F9', gap: 3,
           }}>
             {profile.booking_modalidades.map((m) => {
               const selected = modalidad === m
@@ -285,12 +207,12 @@ export default function StepTipoConsulta({
                   key={m}
                   onClick={() => onModalidad(m)}
                   style={{
-                    background: selected ? '#001a48' : '#F6F7F9',
-                    color: selected ? '#fff' : '#374151',
-                    border: 'none',
-                    borderRadius: 10,
-                    padding: '9px 18px',
-                    fontSize: 14,
+                    flex: 1,
+                    background: selected ? '#0B1220' : 'transparent',
+                    color: selected ? '#fff' : '#5B6472',
+                    border: 'none', borderRadius: 8,
+                    padding: '9px 12px',
+                    fontSize: 13.5,
                     fontWeight: selected ? 600 : 400,
                     cursor: 'pointer',
                     transition: 'all 0.15s',
@@ -313,14 +235,14 @@ export default function StepTipoConsulta({
           background: 'linear-gradient(135deg, #001a48, #002d72)',
           color: '#fff',
           border: 'none',
-          borderRadius: 14,
-          padding: '15px 24px',
-          fontSize: 16,
-          fontWeight: 700,
+          borderRadius: 10,
+          padding: '13px 18px',
+          fontSize: 14.5,
+          fontWeight: 600,
           cursor: 'pointer',
           letterSpacing: '-0.1px',
           fontFamily: 'Inter, system-ui, sans-serif',
-          boxShadow: '0 4px 14px rgba(0,26,72,0.25)',
+          boxShadow: '0 6px 18px rgba(0,45,114,0.25)',
         }}
       >
         Elegir fecha →

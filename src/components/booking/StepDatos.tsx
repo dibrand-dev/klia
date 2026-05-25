@@ -28,7 +28,7 @@ const TIPO_LABELS: Record<string, string> = {
 
 const MODALIDAD_LABELS: Record<string, string> = {
   presencial: 'Presencial',
-  videollamada: 'Videollamada',
+  videollamada: 'Online',
   telefonica: 'Telefónica',
 }
 
@@ -40,12 +40,6 @@ function formatFecha(fecha: string): string {
     day: 'numeric',
     month: 'long',
   })
-}
-
-function formatPrice(price: number | null, moneda: string): string {
-  if (price === null) return 'A confirmar'
-  const sym = moneda === 'USD' ? 'US$' : moneda === 'EUR' ? '€' : '$'
-  return `${sym} ${price.toLocaleString('es-AR')} ${moneda}`
 }
 
 function InputField({
@@ -154,28 +148,26 @@ export default function StepDatos({
     onForm({ ...form, [k]: v })
   }
 
+  const sym = profile.booking_moneda === 'USD' ? 'US$' : profile.booking_moneda === 'EUR' ? '€' : '$'
+
   return (
     <div>
-      {/* Form card */}
+      <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        Tus datos
+      </p>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#5B6472' }}>
+        Completá los siguientes datos para confirmar tu turno.
+      </p>
+
+      {/* Form card with summary inside */}
       <div style={{
         background: '#fff',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid #E7E9EE',
-        padding: '20px',
-        marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+        padding: '22px',
+        marginBottom: 18,
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
       }}>
-        <p style={{
-          margin: '0 0 18px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#8A93A1',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}>
-          Tus datos
-        </p>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
           <div style={{ paddingRight: 8 }}>
             <InputField
@@ -218,79 +210,95 @@ export default function StepDatos({
           placeholder="11 1234-5678"
           prefix="+54"
         />
-      </div>
 
-      {/* Resumen — below form, no icons */}
-      <div style={{
-        background: '#EFF4FF',
-        borderRadius: 16,
-        border: '1px solid #BFDBFE',
-        padding: '16px 18px',
-        marginBottom: 16,
-      }}>
-        <p style={{
-          margin: '0 0 12px',
-          fontSize: 11,
-          fontWeight: 700,
-          color: '#1e40af',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
+        {/* Summary inside form-card */}
+        <div style={{
+          background: 'linear-gradient(135deg, #F4F7FF, #fff)',
+          border: '1px solid #EFF4FF',
+          borderRadius: 12,
+          padding: '16px 18px',
+          marginTop: 4,
         }}>
-          Resumen de tu reserva
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <ResumenRow label="Modalidad elegida" value={MODALIDAD_LABELS[modalidad] ?? modalidad} />
-          <ResumenRow
-            label="Fecha"
-            value={<span style={{ textTransform: 'capitalize' }}>{fechaFmt} · {hora} hs</span>}
-          />
-          <ResumenRow label="Duración" value={`${duracion} min · ${TIPO_LABELS[tipo] ?? tipo}`} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            <span style={{
+              fontSize: 10.5, fontWeight: 700, color: '#1e40af',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>
+              Resumen de tu reserva
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <ResumenRow label="Modalidad" value={MODALIDAD_LABELS[modalidad] ?? modalidad} />
+            <ResumenRow
+              label="Fecha"
+              value={<span style={{ textTransform: 'capitalize' }}>{fechaFmt} · {hora} hs</span>}
+            />
+            <ResumenRow label="Duración" value={`${duracion} min · ${TIPO_LABELS[tipo] ?? tipo}`} />
+          </div>
           {precio !== null && (
-            <ResumenRow label="Precio" value={formatPrice(precio, profile.booking_moneda)} />
+            <div style={{
+              marginTop: 12, paddingTop: 12, borderTop: '1px solid #EFF4FF',
+              display: 'flex', alignItems: 'baseline', gap: 4,
+            }}>
+              <span style={{ fontSize: 12, color: '#5B6472', fontWeight: 500 }}>Total</span>
+              <span style={{ fontSize: 19, fontWeight: 700, color: '#0B1220', marginLeft: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{sym}</span>
+                {precio.toLocaleString('es-AR')}
+              </span>
+              <span style={{ fontSize: 12, color: '#8A93A1', fontWeight: 500 }}>{profile.booking_moneda}</span>
+            </div>
           )}
         </div>
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={onBack}
-          style={{
-            flex: 1,
-            background: '#F6F7F9',
-            color: '#374151',
-            border: '1px solid #E7E9EE',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'Inter, system-ui, sans-serif',
-          }}
-        >
-          ← Atrás
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={onNext}
           disabled={!isValid}
           style={{
-            flex: 2,
+            width: '100%',
             background: isValid
               ? 'linear-gradient(135deg, #001a48, #002d72)'
               : '#E7E9EE',
             color: isValid ? '#fff' : '#AEB5C0',
             border: 'none',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 700,
+            borderRadius: 10,
+            padding: '13px 18px',
+            fontSize: 14.5,
+            fontWeight: 600,
             cursor: isValid ? 'pointer' : 'not-allowed',
             fontFamily: 'Inter, system-ui, sans-serif',
-            boxShadow: isValid ? '0 4px 14px rgba(0,26,72,0.25)' : 'none',
+            boxShadow: isValid ? '0 6px 18px rgba(0,45,114,0.25)' : 'none',
             transition: 'all 0.15s',
           }}
         >
-          Ir al pago →
+          Continuar al pago →
+        </button>
+        <button
+          onClick={onBack}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            color: '#5B6472',
+            border: 'none',
+            borderRadius: 10,
+            padding: '11px 12px',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Volver
         </button>
       </div>
     </div>

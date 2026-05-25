@@ -26,7 +26,7 @@ function SlotSkeleton() {
   return (
     <div style={{
       height: 40,
-      borderRadius: 10,
+      borderRadius: 9,
       background: 'linear-gradient(90deg, #F1F3F6 25%, #E7E9EE 50%, #F1F3F6 75%)',
       backgroundSize: '200% 100%',
       animation: 'shimmer 1.4s infinite',
@@ -94,39 +94,35 @@ export default function StepHorario({
         }
       `}</style>
 
+      <p style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        Elegí tu horario
+      </p>
+
+      {/* Date badge */}
+      <div style={{ marginBottom: 16 }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 10px', borderRadius: 100,
+          background: '#EFF4FF', color: '#2563EB',
+          fontSize: 12.5, fontWeight: 500,
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M8 2v4M16 2v4M3 10h18"/>
+          </svg>
+          <span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>
+        </span>
+      </div>
+
       {/* Card */}
       <div style={{
         background: '#fff',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid #E7E9EE',
-        padding: '20px',
-        marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+        padding: '22px',
+        marginBottom: 18,
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
       }}>
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{
-            margin: '0 0 4px',
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#8A93A1',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-          }}>
-            Horarios disponibles
-          </p>
-          <h2 style={{
-            margin: 0,
-            fontSize: 17,
-            fontWeight: 700,
-            color: '#0B1220',
-            letterSpacing: '-0.2px',
-            textTransform: 'capitalize',
-          }}>
-            {fechaFmt}
-          </h2>
-        </div>
-
         {loading && (
           <div>
             <div style={{ marginBottom: 16 }}>
@@ -173,20 +169,18 @@ export default function StepHorario({
             {manana.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#8A93A1',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, fontWeight: 600, color: '#8A93A1',
+                  letterSpacing: '0.05em', textTransform: 'uppercase',
                   marginBottom: 10,
                 }}>
-                  ☀️ Mañana
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                  </svg>
+                  Mañana
                 </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: 8,
-                }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                   {manana.map((slot) => {
                     const selected = selectedHora === slot
                     return (
@@ -195,11 +189,11 @@ export default function StepHorario({
                         onClick={() => onHora(slot)}
                         style={{
                           padding: '10px 4px',
-                          borderRadius: 10,
+                          borderRadius: 9,
                           border: selected ? '2px solid #002d72' : '2px solid #E7E9EE',
                           background: selected ? '#002d72' : '#F6F7F9',
                           color: selected ? '#fff' : '#1F2937',
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: 500,
                           cursor: 'pointer',
                           fontFamily: '"JetBrains Mono", "Courier New", monospace',
@@ -218,20 +212,17 @@ export default function StepHorario({
             {tarde.length > 0 && (
               <div>
                 <div style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#8A93A1',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 12, fontWeight: 600, color: '#8A93A1',
+                  letterSpacing: '0.05em', textTransform: 'uppercase',
                   marginBottom: 10,
                 }}>
-                  🌆 Tarde
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                  </svg>
+                  Tarde
                 </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: 8,
-                }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                   {tarde.map((slot) => {
                     const selected = selectedHora === slot
                     return (
@@ -240,11 +231,11 @@ export default function StepHorario({
                         onClick={() => onHora(slot)}
                         style={{
                           padding: '10px 4px',
-                          borderRadius: 10,
+                          borderRadius: 9,
                           border: selected ? '2px solid #002d72' : '2px solid #E7E9EE',
                           background: selected ? '#002d72' : '#F6F7F9',
                           color: selected ? '#fff' : '#1F2937',
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: 500,
                           cursor: 'pointer',
                           fontFamily: '"JetBrains Mono", "Courier New", monospace',
@@ -264,45 +255,48 @@ export default function StepHorario({
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={onBack}
-          style={{
-            flex: 1,
-            background: '#F6F7F9',
-            color: '#374151',
-            border: '1px solid #E7E9EE',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'Inter, system-ui, sans-serif',
-          }}
-        >
-          ← Atrás
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button
           onClick={onNext}
           disabled={!selectedHora}
           style={{
-            flex: 2,
-            background: selectedHora
-              ? 'linear-gradient(135deg, #001a48, #002d72)'
-              : '#E7E9EE',
+            width: '100%',
+            background: selectedHora ? 'linear-gradient(135deg, #001a48, #002d72)' : '#E7E9EE',
             color: selectedHora ? '#fff' : '#AEB5C0',
             border: 'none',
-            borderRadius: 14,
-            padding: '14px 20px',
-            fontSize: 15,
-            fontWeight: 700,
+            borderRadius: 10,
+            padding: '13px 18px',
+            fontSize: 14.5,
+            fontWeight: 600,
             cursor: selectedHora ? 'pointer' : 'not-allowed',
             fontFamily: 'Inter, system-ui, sans-serif',
-            boxShadow: selectedHora ? '0 4px 14px rgba(0,26,72,0.25)' : 'none',
+            boxShadow: selectedHora ? '0 6px 18px rgba(0,45,114,0.25)' : 'none',
             transition: 'all 0.15s',
           }}
         >
           Continuar →
+        </button>
+        <button
+          onClick={onBack}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            color: '#5B6472',
+            border: 'none',
+            borderRadius: 10,
+            padding: '11px 12px',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Volver
         </button>
       </div>
     </div>
