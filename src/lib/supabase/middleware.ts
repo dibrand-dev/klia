@@ -34,8 +34,8 @@ function getModuloFromPath(pathname: string): string | null {
 }
 
 export async function updateSession(request: NextRequest) {
-  // Allow CORS preflight requests — never redirect OPTIONS
-  if (request.method === 'OPTIONS') {
+  // Bypass middleware for API routes and OPTIONS preflight
+  if (request.method === 'OPTIONS' || request.nextUrl.pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
