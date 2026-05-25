@@ -71,8 +71,6 @@ export default function StepTipoConsulta({
     })
   }
 
-  const showModalidadToggle = profile.booking_modalidades.length > 1
-
   return (
     <div>
       {/* Pro card — centered layout */}
@@ -190,42 +188,60 @@ export default function StepTipoConsulta({
         </div>
       </div>
 
-      {/* Modality toggle — pill container */}
-      {showModalidadToggle && (
-        <div style={{ marginBottom: 18 }}>
-          <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
-            Modalidad
-          </p>
-          <div style={{
-            display: 'flex', padding: 3, borderRadius: 10,
-            border: '1px solid #E7E9EE', background: '#F6F7F9', gap: 3,
-          }}>
-            {profile.booking_modalidades.map((m) => {
-              const selected = modalidad === m
-              return (
-                <button
-                  key={m}
-                  onClick={() => onModalidad(m)}
-                  style={{
-                    flex: 1,
-                    background: selected ? '#0B1220' : 'transparent',
-                    color: selected ? '#fff' : '#5B6472',
-                    border: 'none', borderRadius: 8,
-                    padding: '9px 12px',
-                    fontSize: 13.5,
-                    fontWeight: selected ? 600 : 400,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                  }}
-                >
-                  {MODALIDAD_LABELS[m] ?? m}
-                </button>
-              )
-            })}
-          </div>
+      {/* Modality toggle — always shown */}
+      <div style={{ marginBottom: 18 }}>
+        <p style={{
+          margin: '0 0 10px',
+          fontSize: 13, fontWeight: 700, color: '#8A93A1',
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>
+          Modalidad
+        </p>
+        <div style={{
+          display: 'flex', padding: 3, borderRadius: 10,
+          border: '1px solid #E7E9EE', background: '#F6F7F9', gap: 3,
+        }}>
+          {profile.booking_modalidades.map((m) => {
+            const selected = modalidad === m
+            return (
+              <button
+                key={m}
+                onClick={() => onModalidad(m)}
+                style={{
+                  flex: 1,
+                  background: selected ? '#0B1220' : 'transparent',
+                  color: selected ? '#fff' : '#5B6472',
+                  border: 'none', borderRadius: 7,
+                  padding: '9px 12px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                {m === 'presencial' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/>
+                  </svg>
+                )}
+                {m === 'videollamada' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/>
+                  </svg>
+                )}
+                {m === 'telefonica' && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                )}
+                {MODALIDAD_LABELS[m] ?? m}
+              </button>
+            )
+          })}
         </div>
-      )}
+      </div>
 
       {/* Continue */}
       <button
