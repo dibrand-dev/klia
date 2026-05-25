@@ -323,8 +323,15 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   }
 
   // ── Booking save ───────────────────────────────────────────────────
+  const [bookingError, setBookingError] = useState<string | null>(null)
+
   async function handleBookingSave(e: React.FormEvent) {
     e.preventDefault()
+    setBookingError(null)
+    if (bookingBio && bookingBio.length > 200) {
+      setBookingError('Bio pública no puede exceder 200 caracteres')
+      return
+    }
     setBookingLoading(true); setBookingSaved(false)
     const supabase = createClient()
     await supabase.from('profiles').update({
@@ -877,11 +884,21 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Bio pública</label>
                 <textarea
                   value={bookingBio}
-                  onChange={e => setBookingBio(e.target.value)}
+                  onChange={e => {
+                    if (e.target.value.length > 200) return
+                    setBookingBio(e.target.value)
+                  }}
                   rows={3}
+                  maxLength={200}
                   placeholder="Describí brevemente tu enfoque y especialidad (visible para pacientes)..."
                   style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
+                <div style={{
+                  marginTop: 4, textAlign: 'right', fontSize: 12, fontWeight: 500,
+                  color: bookingBio.length < 150 ? '#10b981' : bookingBio.length < 191 ? '#F59E0B' : '#EF4444',
+                }}>
+                  {bookingBio.length}/200
+                </div>
               </div>
 
               {/* Duraciones y buffer */}
@@ -946,6 +963,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               />
 
               <div style={secFootStyle}>
+                {bookingError && (
+                  <span style={{ fontSize: 12, color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block' }} />
+                    {bookingError}
+                  </span>
+                )}
+                {bookingSaved && !bookingError && (
+                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                    Cambios guardados
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
                 <button type="submit" disabled={bookingLoading} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
                   padding: '9px 18px', borderRadius: 8, fontSize: 13.5, fontWeight: 600,
