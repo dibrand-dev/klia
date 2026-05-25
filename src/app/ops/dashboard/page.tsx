@@ -56,6 +56,8 @@ export default async function OpsDashboardPage() {
   const [
     { count: totalPrestadores },
     { count: nuevosEsteMes },
+    { count: enTrial },
+    { count: accesoBloqueado },
     { data: ultimosPrestadores },
     { data: suscrAutorizadasMes },
     { count: debitosRechazados },
@@ -64,6 +66,8 @@ export default async function OpsDashboardPage() {
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', inicioMes),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('estado_cuenta', 'trial'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('estado_cuenta', 'bloqueada'),
     supabase.from('profiles').select('id, nombre, apellido, email, especialidad, created_at').order('created_at', { ascending: false }).limit(10),
     // Autorizadas este mes para calcular ingresos
     supabase.from('suscripciones').select('monto').eq('estado', 'authorized').gte('suscripcion_inicio', inicioMes),
@@ -102,8 +106,8 @@ export default async function OpsDashboardPage() {
       {/* Métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <MetricCard label="Prestadores activos" value={totalPrestadores ?? 0} icon="groups" color="text-primary" />
-        <MetricCard label="En período de prueba" value="—" sub="Próximamente" icon="hourglass_empty" color="text-amber-500" />
-        <MetricCard label="Acceso bloqueado" value="—" sub="Próximamente" icon="block" color="text-error" />
+        <MetricCard label="En período de prueba" value={enTrial ?? 0} sub="Estado trial activo" icon="hourglass_empty" color="text-amber-500" />
+        <MetricCard label="Acceso bloqueado" value={accesoBloqueado ?? 0} sub="Pago fallido o cancelado" icon="block" color="text-error" />
         <MetricCard label="Nuevos este mes" value={nuevosEsteMes ?? 0} icon="person_add" color="text-green-600" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
