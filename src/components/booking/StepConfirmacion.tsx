@@ -32,7 +32,7 @@ function buildGCalUrl(params: { title: string; start: string; end: string; detai
 
 export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion }: Props) {
   const tipoLabel = tipo === 'sesion' ? 'Sesión' : 'Entrevista inicial'
-  const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Videollamada', telefonica: 'Telefónica' }
+  const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
 
   const gCalUrl = (() => {
     const [y, m, d] = fecha.split('-').map(Number)
@@ -59,10 +59,10 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
       <div style={{
         background: '#fff',
         border: '1px solid #E7E9EE',
-        borderRadius: 20,
-        padding: '40px 28px 32px',
+        borderRadius: 16,
+        padding: '32px 26px 26px',
         textAlign: 'center',
-        boxShadow: '0 1px 2px rgba(16,24,40,.04)',
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
         marginBottom: 18,
       }}>
         {/* Success icon */}
@@ -136,6 +136,32 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
             Agregar a Google Calendar
           </a>
+          {confirmacion.referencia && (
+            <a
+              href={`/api/booking/comprobante?ref=${confirmacion.referencia}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '10px 16px',
+                background: 'transparent',
+                color: '#5B6472',
+                border: '1px solid #E7E9EE',
+                borderRadius: 9,
+                fontSize: 13,
+                fontWeight: 500,
+                textDecoration: 'none',
+                fontFamily: 'Inter, system-ui, sans-serif',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Descargar comprobante de pago
+            </a>
+          )}
         </div>
 
         {/* Reference */}

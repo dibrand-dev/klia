@@ -221,6 +221,7 @@ export default function StepPago({
     : profile.booking_duracion_entrevista
 
   const fechaFmt = formatFecha(fecha)
+  const sym = profile.booking_moneda === 'USD' ? 'US$' : profile.booking_moneda === 'EUR' ? '€' : '$'
 
   useEffect(() => {
     let cancelled = false
@@ -308,11 +309,11 @@ export default function StepPago({
     return (
       <div style={{
         background: '#fff',
-        borderRadius: 20,
+        borderRadius: 16,
         border: '1px solid #E7E9EE',
         padding: '48px 32px',
         textAlign: 'center',
-        boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: 28,
@@ -332,12 +333,13 @@ export default function StepPago({
             background: '#001a48',
             color: '#fff',
             border: 'none',
-            borderRadius: 12,
-            padding: '12px 24px',
-            fontSize: 14,
+            borderRadius: 10,
+            padding: '13px 24px',
+            fontSize: 14.5,
             fontWeight: 600,
             cursor: 'pointer',
             fontFamily: 'Inter, system-ui, sans-serif',
+            boxShadow: '0 6px 18px rgba(0,45,114,0.25)',
           }}
         >
           Volver atrás
@@ -350,13 +352,17 @@ export default function StepPago({
 
   return (
     <div>
-      {/* Summary — plain text, no icons */}
+      <p style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        Completá el pago
+      </p>
+
+      {/* Summary */}
       <div style={{
         background: '#EFF4FF',
         borderRadius: 16,
         border: '1px solid #BFDBFE',
         padding: '16px 18px',
-        marginBottom: 16,
+        marginBottom: 14,
       }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0B1220' }}>
           {profile.nombre} {profile.apellido}
@@ -368,21 +374,37 @@ export default function StepPago({
           {' · '}{hora} hs
         </p>
         {reserva.monto > 0 && (
-          <p style={{ margin: '6px 0 0', fontSize: 16, fontWeight: 700, color: '#1e40af' }}>
-            ${reserva.monto.toLocaleString('es-AR')} {profile.booking_moneda}
-          </p>
+          <div style={{ margin: '8px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span style={{ fontSize: 12, color: '#5B6472', fontWeight: 500 }}>A pagar</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#1e40af', marginLeft: 4 }}>
+              {sym}{reserva.monto.toLocaleString('es-AR')}
+            </span>
+            <span style={{ fontSize: 12, color: '#8A93A1' }}>{profile.booking_moneda}</span>
+          </div>
         )}
+      </div>
+
+      {/* Security notice */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: '#F6F7F9', borderRadius: 100, padding: '10px 14px',
+        marginBottom: 14, fontSize: 12, color: '#5B6472',
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Pago seguro procesado por <strong>Mercado Pago</strong></span>
       </div>
 
       {/* MP Brick */}
       {reserva.preference_id && reserva.mp_public_key && (
         <div style={{
           background: '#fff',
-          borderRadius: 20,
+          borderRadius: 16,
           border: '1px solid #E7E9EE',
           padding: '20px',
-          marginBottom: 16,
-          boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+          marginBottom: 14,
+          boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
         }}>
           <p style={{
             margin: '0 0 16px',
@@ -410,21 +432,25 @@ export default function StepPago({
         onClick={onBack}
         style={{
           width: '100%',
-          background: '#F6F7F9',
-          color: '#374151',
-          border: '1px solid #E7E9EE',
-          borderRadius: 14,
-          padding: '13px 20px',
-          fontSize: 14,
-          fontWeight: 600,
+          background: 'transparent',
+          color: '#5B6472',
+          border: 'none',
+          borderRadius: 10,
+          padding: '11px 12px',
+          fontSize: 13.5,
+          fontWeight: 500,
           cursor: 'pointer',
           fontFamily: 'Inter, system-ui, sans-serif',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
           marginTop: 4,
         }}
       >
-        ← Volver y editar datos
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Volver y editar datos
       </button>
     </div>
   )
 }
-

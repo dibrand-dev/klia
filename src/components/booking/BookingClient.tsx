@@ -259,11 +259,11 @@ export default function BookingClient({ profile }: Props) {
             <div key="err-slot" className="booking-step-in">
               <div style={{
                 background: '#fff',
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid #E7E9EE',
                 padding: '48px 32px',
                 textAlign: 'center',
-                boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+                boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
               }}>
                 <div style={{
                   width: 64, height: 64, borderRadius: 32,
@@ -283,12 +283,13 @@ export default function BookingClient({ profile }: Props) {
                     background: '#001a48',
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 12,
+                    borderRadius: 10,
                     padding: '13px 28px',
-                    fontSize: 15,
+                    fontSize: 14.5,
                     fontWeight: 600,
                     cursor: 'pointer',
                     fontFamily: 'Inter, system-ui, sans-serif',
+                    boxShadow: '0 6px 18px rgba(0,45,114,0.25)',
                   }}
                 >
                   Elegir otra fecha
@@ -301,11 +302,11 @@ export default function BookingClient({ profile }: Props) {
             <div key="err-pay" className="booking-step-in">
               <div style={{
                 background: '#fff',
-                borderRadius: 20,
+                borderRadius: 16,
                 border: '1px solid #E7E9EE',
                 padding: '48px 32px',
                 textAlign: 'center',
-                boxShadow: '0 1px 4px rgba(0,26,72,0.05)',
+                boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
               }}>
                 <div style={{
                   width: 64, height: 64, borderRadius: 32,
@@ -325,12 +326,13 @@ export default function BookingClient({ profile }: Props) {
                     background: '#001a48',
                     color: '#fff',
                     border: 'none',
-                    borderRadius: 12,
+                    borderRadius: 10,
                     padding: '13px 28px',
-                    fontSize: 15,
+                    fontSize: 14.5,
                     fontWeight: 600,
                     cursor: 'pointer',
                     fontFamily: 'Inter, system-ui, sans-serif',
+                    boxShadow: '0 6px 18px rgba(0,45,114,0.25)',
                   }}
                 >
                   Intentar nuevamente
