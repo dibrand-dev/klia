@@ -25,6 +25,36 @@ Super Admin panel: https://app.klia.com.ar/ops/login
 - Super Admin auth is separate: /ops/login → checks admin_users table
 - Emails always sent via Brevo, never via Supabase default templates
 
+## CRITICAL — Mandatory testing after auth/middleware changes
+
+Any change to these files REQUIRES completing the full registration+login test before pushing to main:
+
+**Critical files:**
+- `src/middleware.ts`
+- `src/lib/supabase/middleware.ts`
+- `src/app/api/auth/registro/route.ts`
+- `src/app/api/auth/callback/route.ts`
+- `src/app/auth/callback/page.tsx`
+- `src/app/login/page.tsx`
+- `src/app/(dashboard)/layout.tsx`
+- Any file touching `profiles`, `auth.users`, or RLS policies
+
+**Critical Supabase functions:**
+- `handle_new_user()` — profile creation trigger
+- `trigger_generar_booking_slug()` — slug trigger
+- Any RLS policy on `profiles`
+
+**Minimum test checklist (all steps must pass):**
+1. Register new user with a test email
+2. Verify confirmation email arrives
+3. Confirm email → verify redirect to `/bienvenida`
+4. Verify profile was created correctly in `profiles`
+5. Login with that user
+6. Verify dashboard loads correctly
+7. Delete test user when done
+
+If any step fails → do NOT push to main until resolved.
+
 ## Auth flow
 - Professional login: www.klia.com.ar/login → app.klia.com.ar/auth/callback → /dashboard
 - Super Admin login: app.klia.com.ar/ops/login → /ops/dashboard
