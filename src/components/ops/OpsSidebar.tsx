@@ -22,7 +22,13 @@ const NAV_ITEMS_TOTAL = [
   { href: '/ops/configuracion', label: 'Configuración', icon: 'settings' },
 ]
 
-export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
+interface Props {
+  adminUser: AdminUser
+  open?: boolean
+  onClose?: () => void
+}
+
+export default function OpsSidebar({ adminUser, open, onClose }: Props) {
   const pathname = usePathname()
 
   async function handleLogout() {
@@ -36,11 +42,27 @@ export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
     : NAV_ITEMS
 
   return (
-    <nav className="flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl">
-      {/* Logo */}
-      <div className="mb-8">
-        <Logo className="h-14 w-auto" />
-        <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mt-1 pl-0.5">Ops</span>
+    <nav className={cn(
+      'flex flex-col h-screen fixed left-0 top-0 p-6 z-50 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl',
+      'transition-transform duration-300 ease-in-out',
+      open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+    )}>
+      {/* Logo + close button (mobile) */}
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <Logo className="h-14 w-auto" />
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mt-1 pl-0.5">Ops</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="md:hidden mt-1 p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors"
+          aria-label="Cerrar menú"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
 
       {/* Admin card */}
@@ -58,6 +80,7 @@ export default function OpsSidebar({ adminUser }: { adminUser: AdminUser }) {
             <li key={item.href}>
               <Link
                 href={item.href}
+                onClick={onClose}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors duration-200 active:scale-[0.98]',
                   isActive
