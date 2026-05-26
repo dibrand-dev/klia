@@ -15,10 +15,11 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
-// Reemplaza el email de confirmación de Supabase.
-// Usa admin.generateLink para obtener el action_link (no disponible en el SDK cliente)
-// y lo envía via Brevo en lugar del sistema nativo de Supabase.
-// Requiere que los templates de Supabase estén vaciados en el dashboard.
+// Flujo:
+// 1. admin.createUser — crea el usuario (dispara handle_new_user → INSERT profiles)
+// 2. admin.generateLink type='signup' sobre el usuario ya creado — obtiene el action_link
+//    sin volver a crear el usuario, solo genera el link de confirmación
+// 3. Envía el link via Brevo en lugar del sistema nativo de Supabase
 export async function POST(req: NextRequest) {
   console.log('🔵 REGISTRO: endpoint llamado')
   try {
@@ -30,12 +31,12 @@ export async function POST(req: NextRequest) {
       especialidad?: string
       matricula?: string
     }
-    console.log('🔵 REGISTRO: datos recibidos:', { email: body.email, nombre: body.nombre })
+    console.log('🔵 REGISTRO: datos recibidos:', { email: body.email, nombre: body.nombre, apellido: body.apellido })
 
     const { email, password, nombre, apellido, especialidad, matricula } = body
 
     if (!email || !password || !nombre || !apellido) {
-      console.log('🔵 REGISTRO: faltan campos requeridos')
+      console.log('🔵 REGISTRO: faltan campos requeridos:', { email: !!email, password: !!password, nombre: !!nombre, apellido: !!apellido })
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400, headers: CORS_HEADERS })
     }
 
@@ -44,30 +45,51 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
-    console.log('🔵 REGISTRO: llamando a generateLink para:', email)
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'signup',
+    // Paso 1: Crear el usuario con admin.createUser (usa /admin/users, no /admin/generate_link)
+    console.log('🔵 REGISTRO: creando usuario para:', email)
+    const { data: userData, error: createError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: { nombre, apellido, especialidad: especialidad ?? null, matricula: matricula ?? null },
-        redirectTo: 'https://app.klia.com.ar/auth/callback',
+      user_metadata: {
+        nombre,
+        apellido,
+        ...(especialidad ? { especialidad } : {}),
+        ...(matricula ? { matricula } : {}),
       },
+      email_confirm: false,
     })
 
-    if (error) {
-      console.log('🔵 REGISTRO: error en generateLink:', error.message, error.status)
-      const yaRegistrado = error.message.toLowerCase().includes('already registered')
-        || error.message.toLowerCase().includes('already been registered')
+    if (createError) {
+      console.log('🔵 REGISTRO: error en createUser:', createError.message)
+      const yaRegistrado = createError.message.toLowerCase().includes('already registered')
+        || createError.message.toLowerCase().includes('already been registered')
+        || createError.message.toLowerCase().includes('already exists')
       return NextResponse.json(
         { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.' },
         { status: yaRegistrado ? 409 : 500, headers: CORS_HEADERS }
       )
     }
 
-    const confirmationUrl = data.properties.action_link
-    console.log('🔵 REGISTRO: action_link generado:', confirmationUrl)
-    console.log('🔵 REGISTRO: properties completas:', JSON.stringify(data.properties))
+    console.log('🔵 REGISTRO: usuario creado:', userData.user.id)
+
+    // Paso 2: Generar link de confirmación sobre el usuario ya existente
+    console.log('🔵 REGISTRO: generando link de confirmación para:', email)
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      options: {
+        redirectTo: 'https://app.klia.com.ar/auth/callback',
+      },
+    })
+
+    if (linkError) {
+      console.error('🔵 REGISTRO: error generando link (usuario creado igual):', linkError.message)
+      // El usuario fue creado aunque no podamos mandar el link — retornar OK igual
+      // El usuario puede usar "reenviar confirmación" desde login
+      return NextResponse.json({ ok: true, warning: 'link_failed' }, { headers: CORS_HEADERS })
+    }
+
+    const confirmationUrl = linkData.properties.action_link
     console.log('🔵 REGISTRO: link generado, enviando email a:', email)
 
     try {
@@ -80,7 +102,6 @@ export async function POST(req: NextRequest) {
       console.log('🔵 REGISTRO: email enviado correctamente')
     } catch (emailError) {
       console.error('🔵 REGISTRO: error enviando email:', emailError)
-      // Don't fail the registration if email fails
     }
 
     return NextResponse.json({ ok: true }, { headers: CORS_HEADERS })
