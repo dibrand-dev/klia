@@ -1,4 +1,4 @@
--- Actualiza el trigger de creación de perfil para incluir campos de trial por defecto
+-- Actualiza el trigger de creación de perfil para incluir campos de trial por defecto y matrícula
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -9,6 +9,7 @@ BEGIN
     nombre,
     apellido,
     especialidad,
+    matricula,
     plan,
     estado_cuenta,
     trial_inicio,
@@ -19,6 +20,7 @@ BEGIN
     coalesce(new.raw_user_meta_data->>'nombre', ''),
     coalesce(new.raw_user_meta_data->>'apellido', ''),
     new.raw_user_meta_data->>'especialidad',
+    new.raw_user_meta_data->>'matricula',
     'premium',
     'trial',
     now(),

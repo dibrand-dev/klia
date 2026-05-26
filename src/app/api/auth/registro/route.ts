@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       const yaRegistrado = error.message.toLowerCase().includes('already registered')
         || error.message.toLowerCase().includes('already been registered')
       return NextResponse.json(
-        { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.', _debug: error.message },
+        { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.' },
         { status: yaRegistrado ? 409 : 500, headers: CORS_HEADERS }
       )
     }
@@ -85,8 +85,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true }, { headers: CORS_HEADERS })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('🔵 REGISTRO: excepcion no capturada:', msg)
-    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.', _debug: msg }, { status: 500, headers: CORS_HEADERS })
+    console.error('🔵 REGISTRO: excepcion no capturada:', err)
+    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.' }, { status: 500, headers: CORS_HEADERS })
   }
 }
