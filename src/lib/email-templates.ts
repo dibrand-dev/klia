@@ -416,14 +416,26 @@ export function emailPagoSesionConfirmada(params: {
   modalidad: string
   monto: number
   moneda: string
+  meetLink?: string | null
 }): string {
   const montoFmt = params.monto.toLocaleString('es-AR')
+  const meetBlock = params.meetLink
+    ? `<div style="margin:24px 0;text-align:center;">
+        <a href="${params.meetLink}" style="display:inline-block;background:#1F4FD9;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;">
+          🎥 Unirse a la videollamada
+        </a>
+      </div>`
+    : ''
+  const videollamadaNote = params.modalidad === 'videollamada' && !params.meetLink
+    ? '<br><br>📹 Tu profesional te enviará el link de videollamada antes de la sesión.'
+    : ''
   return baseTemplate(`
     ${icon('✅', '#DCFCE7')}
     ${h1('¡Sesión confirmada!')}
     ${para(`Tu pago fue procesado correctamente. Tu sesión con <strong style="color:#2b2f38;font-weight:600;">${params.profesionalNombre}</strong> está confirmada.`)}
     ${sessionDetailBox(params)}
-    ${infoBox(`✅ Pago de <strong style="color:#334155;">$${montoFmt} ${params.moneda}</strong> recibido correctamente.${params.modalidad === 'videollamada' ? '<br><br>📹 Tu profesional te enviará el link de videollamada antes de la sesión.' : ''}`, '#F0FDF4', '#22C55E', '#166534')}
+    ${meetBlock}
+    ${infoBox(`✅ Pago de <strong style="color:#334155;">$${montoFmt} ${params.moneda}</strong> recibido correctamente.${videollamadaNote}`, '#F0FDF4', '#22C55E', '#166534')}
     ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
   `, 'Sesión confirmada — KLIA')
 }

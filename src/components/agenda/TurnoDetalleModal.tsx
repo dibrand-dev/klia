@@ -561,6 +561,26 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             </span>
             <span className="capitalize">{turno.modalidad}</span>
           </div>
+          {turno.modalidad === 'videollamada' && (
+            turno.meet_link ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-base leading-none">🔗</span>
+                <a
+                  href={turno.meet_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline font-medium"
+                >
+                  Unirse a la videollamada
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-base leading-none">🔗</span>
+                <span>Link de videollamada no disponible — reconectá Google Calendar desde Ajustes</span>
+              </div>
+            )
+          )}
           {turno.monto != null && (
             <div className="flex items-center gap-2 text-sm text-gray-700">
               <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

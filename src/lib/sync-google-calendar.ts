@@ -41,7 +41,7 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
   const fecha = format(parseISO(turno.fecha_hora), 'yyyy-MM-dd')
   const hora = format(parseISO(turno.fecha_hora), 'HH:mm')
 
-  const eventId = await crearEventoCalendario(
+  const { googleEventId, meetLink } = await crearEventoCalendario(
     calendarClient,
     {
       paciente_nombre: paciente.nombre,
@@ -54,7 +54,7 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
     tokens.calendar_id || 'primary',
   )
 
-  await supabase.from('turnos').update({ google_event_id: eventId }).eq('id', turnoId)
+  await supabase.from('turnos').update({ google_event_id: googleEventId, meet_link: meetLink }).eq('id', turnoId)
 }
 
 export async function sincronizarTurnoCancelado(turnoId: string, terapeutaId: string) {
@@ -133,7 +133,7 @@ export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeut
   const fechaUTC = argDateTime.toISOString().slice(0, 10)
   const horaUTC = argDateTime.toISOString().slice(11, 16)
 
-  const eventId = await crearEventoCalendario(
+  const { googleEventId } = await crearEventoCalendario(
     calendarClient,
     {
       paciente_nombre: entrevista.nombre,
@@ -147,7 +147,7 @@ export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeut
     tokens.calendar_id || 'primary',
   )
 
-  await supabase.from('entrevistas').update({ google_event_id: eventId }).eq('id', entrevistaId)
+  await supabase.from('entrevistas').update({ google_event_id: googleEventId }).eq('id', entrevistaId)
 }
 
 export async function sincronizarEntrevistaCancelada(entrevistaId: string, terapeutaId: string) {

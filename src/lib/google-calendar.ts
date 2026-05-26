@@ -50,13 +50,15 @@ export async function crearEventoCalendario(
     tipo?: string
   },
   calendarId = 'primary',
-): Promise<string> {
+): Promise<{ googleEventId: string; meetLink: string | null }> {
   const inicio = new Date(`${turno.fecha}T${turno.hora}:00Z`)
   const fin = new Date(inicio.getTime() + turno.duracion * 60000)
   const tipoLabel = turno.tipo ?? 'Sesión'
+  const isVideoCall = turno.modalidad === 'videollamada'
 
   const evento = await calendarClient.events.insert({
     calendarId,
+    conferenceDataVersion: isVideoCall ? 1 : 0,
     requestBody: {
       summary: `${turno.paciente_apellido}, ${turno.paciente_nombre} | ${tipoLabel}`,
       start: {
@@ -69,9 +71,22 @@ export async function crearEventoCalendario(
       },
       description: 'Sesión registrada en KLIA',
       source: { title: 'KLIA', url: 'https://app.klia.com.ar' },
+      ...(isVideoCall ? {
+        conferenceData: {
+          createRequest: {
+            requestId: `klia-${Date.now().toString(36)}`,
+            conferenceSolutionKey: { type: 'hangoutsMeet' },
+          },
+        },
+      } : {}),
     },
   })
-  return evento.data.id!
+
+  const meetLink = isVideoCall
+    ? (evento.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri ?? null)
+    : null
+
+  return { googleEventId: evento.data.id!, meetLink }
 }
 
 export async function eliminarEventoCalendario(
