@@ -56,11 +56,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (error) {
-      console.log('🔵 REGISTRO: error en generateLink:', error.message)
+      console.log('🔵 REGISTRO: error en generateLink:', error.message, error.status)
       const yaRegistrado = error.message.toLowerCase().includes('already registered')
         || error.message.toLowerCase().includes('already been registered')
       return NextResponse.json(
-        { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.' },
+        { error: yaRegistrado ? 'already_registered' : 'Error al crear la cuenta.', _debug: error.message },
         { status: yaRegistrado ? 409 : 500, headers: CORS_HEADERS }
       )
     }
@@ -85,7 +85,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true }, { headers: CORS_HEADERS })
   } catch (err) {
-    console.error('🔵 REGISTRO: excepcion no capturada:', err)
-    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.' }, { status: 500, headers: CORS_HEADERS })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('🔵 REGISTRO: excepcion no capturada:', msg)
+    return NextResponse.json({ error: 'Error al crear la cuenta. Intentá de nuevo.', _debug: msg }, { status: 500, headers: CORS_HEADERS })
   }
 }
