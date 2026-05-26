@@ -28,10 +28,11 @@ export async function POST(req: NextRequest) {
       nombre?: string
       apellido?: string
       especialidad?: string
+      matricula?: string
     }
     console.log('🔵 REGISTRO: datos recibidos:', { email: body.email, nombre: body.nombre })
 
-    const { email, password, nombre, apellido, especialidad } = body
+    const { email, password, nombre, apellido, especialidad, matricula } = body
 
     if (!email || !password || !nombre || !apellido) {
       console.log('🔵 REGISTRO: faltan campos requeridos')
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       options: {
-        data: { nombre, apellido, especialidad: especialidad ?? null },
+        data: { nombre, apellido, especialidad: especialidad ?? null, matricula: matricula ?? null },
         redirectTo: 'https://app.klia.com.ar/auth/callback',
       },
     })
