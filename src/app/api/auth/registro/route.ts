@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'signup',
       email,
+      password,
       options: {
         redirectTo: 'https://app.klia.com.ar/auth/callback',
       },
