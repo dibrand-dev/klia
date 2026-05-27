@@ -1,7 +1,25 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import AppShell from '@/components/layout/AppShell'
+import dynamic from 'next/dynamic'
 import { getModulosConfig } from '@/lib/modulos'
+
+const AppShell = dynamic(
+  () => import('@/components/layout/AppShell'),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FAFBFC',
+      }}>
+        <div style={{ color: '#001a48', fontSize: 14 }}>Cargando...</div>
+      </div>
+    ),
+  }
+)
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
