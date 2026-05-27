@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { format, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -89,7 +89,8 @@ export default function NuevoTurnoPageForm({
   const [frecuencia, setFrecuencia] = useState<'semanal' | 'quincenal' | 'mensual'>('semanal')
   const [diaSemana, setDiaSemana] = useState(diaDeFecha(fechaParam))
   const [semanaDelMes, setSemanaDelMes] = useState<number>(nesimaOcurrencia(fechaParam))
-  const [fechaFin, setFechaFin] = useState(format(addMonths(new Date(), 12), 'yyyy-MM-dd'))
+  const [fechaFin, setFechaFin] = useState('')
+  useEffect(() => { setFechaFin(format(addMonths(new Date(), 12), 'yyyy-MM-dd')) }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conflictos, setConflictos] = useState<ConflictoDetallado[]>([])

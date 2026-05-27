@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,8 @@ interface Props {
 
 export default function NuevaNotaForm({ pacienteId, turnoId, onCreada, onClose }: Props) {
   const [contenido, setContenido] = useState('')
-  const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [fecha, setFecha] = useState('')
+  useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
