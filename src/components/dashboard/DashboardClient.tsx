@@ -77,7 +77,8 @@ function saludo(): string {
 }
 
 function formatARS(n: number): string {
-  return '$' + n.toLocaleString('es-AR')
+  const intPart = Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `$${intPart}`
 }
 
 function formatFechaCorta(iso: string): string {

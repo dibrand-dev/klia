@@ -15,11 +15,9 @@ export const MONEDA_LABEL: Record<Moneda, string> = {
 
 export function formatearMonto(monto: number, moneda: Moneda): string {
   const simbolo = MONEDA_SIMBOLO[moneda]
-  const numero = new Intl.NumberFormat('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(monto)
-  return `${simbolo} ${numero}`
+  const [intPart, decPart = '00'] = monto.toFixed(2).split('.')
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${simbolo} ${formattedInt},${decPart}`
 }
 
 export function agruparPorMoneda(
