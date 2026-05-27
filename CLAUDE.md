@@ -25,6 +25,19 @@ Super Admin panel: https://app.klia.com.ar/ops/login
 - Super Admin auth is separate: /ops/login → checks admin_users table
 - Emails always sent via Brevo, never via Supabase default templates
 
+## CRITICAL — Supabase: new tables require explicit GRANTs (breaking change from 2026-05-30)
+
+Every new `CREATE TABLE` in the `public` schema MUST include these statements immediately after:
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.nombre_tabla TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.nombre_tabla TO service_role;
+ALTER TABLE public.nombre_tabla ENABLE ROW LEVEL SECURITY;
+```
+
+Without these GRANTs the table is inaccessible via supabase-js and the app fails silently.
+Always include them in the same migration file as the CREATE TABLE.
+
 ## CRITICAL — Mandatory testing after auth/middleware changes
 
 Any change to these files REQUIRES completing the full registration+login test before pushing to main:
