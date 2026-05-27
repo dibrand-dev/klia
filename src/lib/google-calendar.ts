@@ -1,4 +1,5 @@
 import { google, calendar_v3 } from 'googleapis'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -20,11 +21,10 @@ export function getAuthUrl(terapeutaId: string): string {
   })
 }
 
-export async function getAuthenticatedClient(tokens: {
-  access_token: string
-  refresh_token: string
-  token_expiry: string
-}): Promise<calendar_v3.Calendar> {
+export async function getAuthenticatedClient(
+  tokens: { access_token: string; refresh_token: string; token_expiry: string },
+  terapeutaId?: string,
+): Promise<calendar_v3.Calendar> {
   const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -35,6 +35,29 @@ export async function getAuthenticatedClient(tokens: {
     refresh_token: tokens.refresh_token,
     expiry_date: new Date(tokens.token_expiry).getTime(),
   })
+
+  // Persist refreshed tokens back to DB so subsequent requests don't re-use the expired token
+  if (terapeutaId) {
+    client.on('tokens', (newTokens) => {
+      if (newTokens.access_token) {
+        const supabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        )
+        supabase
+          .from('google_calendar_tokens')
+          .update({
+            access_token: newTokens.access_token,
+            ...(newTokens.expiry_date
+              ? { token_expiry: new Date(newTokens.expiry_date).toISOString() }
+              : {}),
+          })
+          .eq('terapeuta_id', terapeutaId)
+          .then(() => {})
+      }
+    })
+  }
+
   return google.calendar({ version: 'v3', auth: client })
 }
 

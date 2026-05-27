@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   if (!tokens) return NextResponse.json({ eventosConHora: [], eventosDiaCompleto: [] })
 
   try {
-    const calendarClient = await getAuthenticatedClient(tokens)
+    const calendarClient = await getAuthenticatedClient(tokens, user.id)
     const { eventosConHora, eventosDiaCompleto } = await obtenerEventosGoogle(
       calendarClient,
       new Date(start),

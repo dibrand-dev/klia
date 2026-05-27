@@ -37,7 +37,7 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
   const paciente = turno.paciente as { nombre: string; apellido: string } | null
   if (!paciente) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   const fecha = format(parseISO(turno.fecha_hora), 'yyyy-MM-dd')
   const hora = format(parseISO(turno.fecha_hora), 'HH:mm')
 
@@ -76,7 +76,7 @@ export async function sincronizarTurnoCancelado(turnoId: string, terapeutaId: st
 
   if (!turno?.google_event_id) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   await eliminarEventoCalendario(calendarClient, turno.google_event_id, tokens.calendar_id || 'primary')
   await supabase.from('turnos').update({ google_event_id: null }).eq('id', turnoId)
 }
@@ -126,7 +126,7 @@ export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeut
 
   if (!entrevista) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
 
   // hora is stored as Argentina local time (UTC-3); convert to UTC for crearEventoCalendario
   const argDateTime = new Date(`${entrevista.fecha}T${entrevista.hora.slice(0, 5)}:00-03:00`)
@@ -169,7 +169,7 @@ export async function sincronizarEntrevistaCancelada(entrevistaId: string, terap
 
   if (!entrevista?.google_event_id) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   await eliminarEventoCalendario(calendarClient, entrevista.google_event_id, tokens.calendar_id || 'primary')
   await supabase.from('entrevistas').update({ google_event_id: null }).eq('id', entrevistaId)
 }
@@ -195,7 +195,7 @@ export async function sincronizarTurnoActualizado(turnoId: string, terapeutaId: 
   const paciente = turno.paciente as { nombre: string; apellido: string } | null
   if (!paciente) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   const fecha = format(parseISO(turno.fecha_hora), 'yyyy-MM-dd')
   const hora = format(parseISO(turno.fecha_hora), 'HH:mm')
   await actualizarEventoCalendario(calendarClient, turno.google_event_id, {
@@ -225,7 +225,7 @@ export async function sincronizarEntrevistaActualizada(entrevistaId: string, ter
     .single()
   if (!entrevista?.google_event_id) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   const argDateTime = new Date(`${entrevista.fecha}T${entrevista.hora.slice(0, 5)}:00-03:00`)
   const fechaUTC = argDateTime.toISOString().slice(0, 10)
   const horaUTC = argDateTime.toISOString().slice(11, 16)
@@ -264,7 +264,7 @@ export async function sincronizarSerieCancelada(
 
   if (!turnos || turnos.length === 0) return
 
-  const calendarClient = await getAuthenticatedClient(tokens)
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   await Promise.all(
     turnos
       .filter((t) => t.google_event_id)

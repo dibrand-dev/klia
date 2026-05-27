@@ -55,7 +55,7 @@ export default async function AgendaPage() {
   let googleEventsDiaCompletosIniciales: { id: string; titulo: string; fecha: string }[] = []
   if (googleTokens) {
     try {
-      const calendarClient = await getAuthenticatedClient(googleTokens)
+      const calendarClient = await getAuthenticatedClient(googleTokens, user.id)
       const tresMesesAtras = new Date()
       tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3)
       tresMesesAtras.setHours(0, 0, 0, 0)
