@@ -310,7 +310,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     setLoading(false)
   }
 
-  async function marcarRealizado(conNota: boolean) {
+  async function marcarRealizado(conNota: boolean, modoNota: 'texto' | 'voz' = 'texto') {
     setLoading(true)
     setError(null)
     const supabase = createClient()
@@ -319,7 +319,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     onTurnoActualizado({ ...turno, estado: 'realizado' })
     if (conNota) {
       window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', {
-        detail: { pacienteId: turno.paciente_id, turnoId: turno.id }
+        detail: { pacienteId: turno.paciente_id, turnoId: turno.id, modo: modoNota }
       }))
     }
     setLoading(false)
@@ -467,15 +467,33 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             <p className="text-sm text-gray-500 mt-0.5">¿Querés agregar una nota de sesión?</p>
           </div>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
-          <div className="flex gap-3">
-            <button onClick={() => setModo('ver')} className="btn-secondary flex-1 py-3 text-sm">Volver</button>
-            <button onClick={() => marcarRealizado(false)} disabled={loading}
-              className={cn('flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors', loading && 'opacity-50')}>
-              Sin nota
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setModo('ver')} className="btn-secondary py-3 text-sm col-span-2">
+              Volver
             </button>
-            <button onClick={() => marcarRealizado(true)} disabled={loading}
-              className={cn('flex-1 py-3 btn-primary text-sm', loading && 'opacity-50')}>
-              Agregar nota
+            <button
+              onClick={() => marcarRealizado(false)}
+              disabled={loading}
+              className={cn('py-3 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5', loading && 'opacity-50')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>check</span>
+              Solo marcar
+            </button>
+            <button
+              onClick={() => marcarRealizado(true, 'texto')}
+              disabled={loading}
+              className={cn('py-3 rounded-xl text-sm font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5', loading && 'opacity-50')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
+              Escribir nota
+            </button>
+            <button
+              onClick={() => marcarRealizado(true, 'voz')}
+              disabled={loading}
+              className={cn('py-3 btn-primary text-sm flex items-center justify-center gap-1.5 col-span-2', loading && 'opacity-50')}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>mic</span>
+              Nota de voz
             </button>
           </div>
         </div>

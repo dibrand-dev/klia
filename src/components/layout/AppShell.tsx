@@ -8,6 +8,7 @@ import type { Profile, Paciente, ModuloConfig } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
 import NavigationDrawer from './NavigationDrawer'
 import SlideOver from '@/components/ui/SlideOver'
+import { puedeAcceder } from '@/lib/modulos'
 import Logo from '@/components/ui/Logo'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
@@ -53,6 +54,7 @@ export default function AppShell({
   const [nuevaNotaOpen, setNuevaNotaOpen] = useState(false)
   const [notaPacienteId, setNotaPacienteId] = useState<string>('')
   const [notaTurnoId, setNotaTurnoId] = useState<string | null>(null)
+  const [notaModo, setNotaModo] = useState<'texto' | 'voz'>('texto')
 
   useEffect(() => {
     if (mobileOpen) {
@@ -94,10 +96,11 @@ export default function AppShell({
 
   useEffect(() => {
     function handler(e: Event) {
-      const detail = (e as CustomEvent<{ pacienteId: string; turnoId?: string }>).detail
+      const detail = (e as CustomEvent<{ pacienteId: string; turnoId?: string; modo?: 'texto' | 'voz' }>).detail
       if (detail?.pacienteId) {
         setNotaPacienteId(detail.pacienteId)
         setNotaTurnoId(detail.turnoId ?? null)
+        setNotaModo(detail.modo ?? 'texto')
         setNuevaNotaOpen(true)
       }
     }
@@ -170,9 +173,11 @@ export default function AppShell({
         title="Nueva nota clínica"
       >
         <NuevaNotaForm
-          key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}` : 'closed'}
+          key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}-${notaModo}` : 'closed'}
           pacienteId={notaPacienteId}
           turnoId={notaTurnoId ?? undefined}
+          modoInicial={notaModo}
+          tieneVoz={puedeAcceder('nota_voz', profile?.plan ?? '', modulos)}
           onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
           onClose={() => setNuevaNotaOpen(false)}
         />

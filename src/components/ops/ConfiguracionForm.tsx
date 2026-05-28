@@ -6,11 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Configuracion } from '@/types/database'
 
-const LABELS: Record<string, { label: string; type: 'number' | 'text'; prefix?: string }> = {
-  dias_prueba:               { label: 'Días de período de prueba', type: 'number' },
-  precio_esencial_mensual:   { label: 'Precio plan Esencial mensual', type: 'number', prefix: 'ARS' },
-  precio_profesional_mensual:{ label: 'Precio plan Profesional mensual', type: 'number', prefix: 'ARS' },
-  precio_premium_mensual:    { label: 'Precio plan Premium mensual', type: 'number', prefix: 'ARS' },
+const LABELS: Record<string, { label: string; type: 'number' | 'text'; prefix?: string; suffix?: string }> = {
+  dias_prueba:                  { label: 'Días de período de prueba', type: 'number' },
+  precio_esencial_mensual:      { label: 'Precio plan Esencial mensual', type: 'number', prefix: 'ARS' },
+  precio_profesional_mensual:   { label: 'Precio plan Profesional mensual', type: 'number', prefix: 'ARS' },
+  precio_premium_mensual:       { label: 'Precio plan Premium mensual', type: 'number', prefix: 'ARS' },
+  voz_duracion_max_segundos:    { label: 'Duración máxima de nota de voz', type: 'number', suffix: 'segundos' },
 }
 
 export default function ConfiguracionForm({ configs }: { configs: Configuracion[] }) {
@@ -85,9 +86,15 @@ export default function ConfiguracionForm({ configs }: { configs: Configuracion[
                   onChange={(e) => setValues((prev) => ({ ...prev, [config.clave]: e.target.value }))}
                   className={cn(
                     'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none',
-                    meta.prefix && 'pl-12'
+                    meta.prefix && 'pl-12',
+                    meta.suffix && 'pr-24'
                   )}
                 />
+                {meta.suffix && (
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium pointer-events-none">
+                    {meta.suffix}
+                  </span>
+                )}
               </div>
             </div>
           )

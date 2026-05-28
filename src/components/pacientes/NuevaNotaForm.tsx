@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/RichTextEditor'
+import VoiceRecorder from '@/components/ui/VoiceRecorder'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -13,16 +14,47 @@ function isHtmlEmpty(html: string): boolean {
 interface Props {
   pacienteId: string
   turnoId?: string
+  modoInicial?: 'texto' | 'voz'
+  tieneVoz?: boolean
   onCreada?: () => void
   onClose?: () => void
 }
 
-export default function NuevaNotaForm({ pacienteId, turnoId, onCreada, onClose }: Props) {
+export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', tieneVoz = false, onCreada, onClose }: Props) {
+  const [modo, setModo] = useState<'texto' | 'voz'>(modoInicial)
   const [contenido, setContenido] = useState('')
   const [fecha, setFecha] = useState('')
-  useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
+  const [maxSeconds, setMaxSeconds] = useState(300)
+  const [pendingText, setPendingText] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
+
+  useEffect(() => {
+    createClient()
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', 'voz_duracion_max_segundos')
+      .single()
+      .then(({ data }) => { if (data?.valor) setMaxSeconds(Number(data.valor)) })
+  }, [])
+
+  function handleTranscripcion(text: string) {
+    if (isHtmlEmpty(contenido)) {
+      setContenido(`<p>${text}</p>`)
+      setModo('texto')
+    } else {
+      setPendingText(text)
+    }
+  }
+
+  function aplicarPendiente(accion: 'append' | 'replace') {
+    if (!pendingText) return
+    setContenido(accion === 'append' ? contenido + `<p>${pendingText}</p>` : `<p>${pendingText}</p>`)
+    setPendingText(null)
+    setModo('texto')
+  }
 
   async function handleGuardar() {
     if (isHtmlEmpty(contenido)) return
@@ -51,25 +83,82 @@ export default function NuevaNotaForm({ pacienteId, turnoId, onCreada, onClose }
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
       )}
 
-      <div className="card p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
-        <input
-          type="date"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-          className="input-field"
-        />
-      </div>
+      {/* Mode toggle */}
+      {tieneVoz && (
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+          <button
+            type="button"
+            onClick={() => setModo('texto')}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors', modo === 'texto' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
+            Escribir
+          </button>
+          <button
+            type="button"
+            onClick={() => setModo('voz')}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors', modo === 'voz' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>mic</span>
+            Voz
+          </button>
+        </div>
+      )}
 
-      <div className="card p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión</label>
-        <RichTextEditor
-          value={contenido}
-          onChange={setContenido}
-          placeholder="¿Qué trabajaron en esta sesión? Temas tratados, evolución, próximos pasos..."
-          minHeight="220px"
-        />
-      </div>
+      {/* Pending transcription choice */}
+      {pendingText && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-medium text-blue-900">Transcripción lista. ¿Qué hacemos con el texto existente?</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => aplicarPendiente('append')}
+              className="flex-1 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Agregar al final
+            </button>
+            <button
+              type="button"
+              onClick={() => aplicarPendiente('replace')}
+              className="flex-1 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reemplazar todo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {modo === 'voz' ? (
+        <div className="card p-4">
+          <VoiceRecorder
+            onTranscription={handleTranscripcion}
+            onError={(msg) => setError(msg)}
+            maxSeconds={maxSeconds}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="card p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div className="card p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión</label>
+            <RichTextEditor
+              value={contenido}
+              onChange={setContenido}
+              placeholder="¿Qué trabajaron en esta sesión? Temas tratados, evolución, próximos pasos..."
+              minHeight="220px"
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex gap-3 pt-1">
         <button
@@ -78,13 +167,15 @@ export default function NuevaNotaForm({ pacienteId, turnoId, onCreada, onClose }
         >
           Cancelar
         </button>
-        <button
-          onClick={handleGuardar}
-          disabled={loading || isHtmlEmpty(contenido)}
-          className={cn('btn-primary flex-1 py-3', (loading || isHtmlEmpty(contenido)) && 'opacity-50')}
-        >
-          {loading ? 'Guardando...' : 'Guardar nota'}
-        </button>
+        {modo === 'texto' && (
+          <button
+            onClick={handleGuardar}
+            disabled={loading || isHtmlEmpty(contenido)}
+            className={cn('btn-primary flex-1 py-3', (loading || isHtmlEmpty(contenido)) && 'opacity-50')}
+          >
+            {loading ? 'Guardando...' : 'Guardar nota'}
+          </button>
+        )}
       </div>
     </div>
   )
