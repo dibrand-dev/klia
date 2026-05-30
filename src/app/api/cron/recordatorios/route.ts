@@ -18,9 +18,18 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const ahora = new Date()
-  const desde = new Date(ahora.getTime() + 23 * 60 * 60 * 1000)
-  const hasta = new Date(ahora.getTime() + 25 * 60 * 60 * 1000)
+  const ahoraAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }))
+  const mananaAR = new Date(ahoraAR)
+  mananaAR.setDate(mananaAR.getDate() + 1)
+
+  const desdeAR = new Date(mananaAR)
+  desdeAR.setHours(0, 0, 0, 0)
+
+  const hastaAR = new Date(mananaAR)
+  hastaAR.setHours(23, 59, 59, 999)
+
+  const desde = desdeAR
+  const hasta = hastaAR
 
   const { data: turnos, error } = await supabase
     .from('turnos')
