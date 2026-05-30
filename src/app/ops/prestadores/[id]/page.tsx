@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import PrestadorActions from '@/components/ops/PrestadorActions'
+import PrestadorEditButton from '@/components/ops/PrestadorEditButton'
 
 export const metadata = { title: 'Detalle prestador — Klia Ops' }
 
@@ -68,7 +69,10 @@ export default async function PrestadorDetallePage({
           {profile.nombre[0]}{profile.apellido[0]}
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-on-surface">{profile.nombre} {profile.apellido}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="text-2xl font-bold text-on-surface">{profile.nombre} {profile.apellido}</h1>
+            <PrestadorEditButton profile={profile} />
+          </div>
           <p className="text-sm text-on-surface-variant mt-0.5">{profile.especialidad ?? '—'} · {profile.email}</p>
           <div className="flex gap-2 mt-2">
             <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
