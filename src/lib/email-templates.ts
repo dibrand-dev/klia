@@ -575,3 +575,74 @@ export function emailBookingConfirmacion(params: {
     ${help('¿Necesitás cancelar o reprogramar? Contactá directamente al profesional o escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>')}
   `, `¡Reserva confirmada! — ${params.tipo} con ${params.profesionalNombre}`)
 }
+
+export function emailRecordatorioTurno({
+  pacienteNombre,
+  profesionalNombre,
+  profesionalEspecialidad,
+  fecha,
+  hora,
+  duracion,
+  modalidad,
+  meetLink,
+}: {
+  pacienteNombre: string
+  profesionalNombre: string
+  profesionalEspecialidad: string
+  fecha: string
+  hora: string
+  duracion: number
+  modalidad: string
+  meetLink?: string | null
+}): string {
+  const modalidadFmt = modalidad === 'videollamada' ? 'Videollamada' : modalidad === 'telefonica' ? 'Telefónica' : 'Presencial'
+  return baseTemplate(`
+    ${icon('🗓️', '#EFF6FF')}
+    ${h1('Recordatorio de sesión')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${pacienteNombre}</strong>, te recordamos que mañana tenés una sesión agendada.`)}
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#F6F7F9;border-radius:12px;border:1px solid #E7E9EE;margin-top:24px;">
+      <tr><td style="padding:18px 20px;">
+        <p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;color:#8A93A1;text-transform:uppercase;letter-spacing:0.08em;">
+          Detalle de tu sesión
+        </p>
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;width:40%;">Profesional</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">
+              ${profesionalNombre}${profesionalEspecialidad ? `<br><span style="font-weight:400;color:#5B6472;font-size:12px;">${profesionalEspecialidad}</span>` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Fecha</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;text-transform:capitalize;">${fecha}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Horario</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">${hora}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Duración</td>
+            <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#0B1220;text-align:right;">${duracion} min</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Modalidad</td>
+            <td style="padding:6px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#0B1220;text-align:right;">${modalidadFmt}</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+
+    ${meetLink ? `
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto 0;">
+      <tr>
+        <td align="center" bgcolor="#1F4FD9" style="background-color:#1F4FD9;border-radius:12px;">
+          <a href="${meetLink}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">🎥 Unirse a la videollamada</a>
+        </td>
+      </tr>
+    </table>` : ''}
+
+    ${help('Si no podés asistir, contactá a tu profesional con anticipación.')}
+  `, 'Recordatorio de sesión — KLIA')
+}
