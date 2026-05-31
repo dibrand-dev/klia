@@ -94,16 +94,18 @@ const icnSvg = (d: string | React.ReactNode) => (
   </svg>
 )
 const ICONS: Record<string, React.ReactNode> = {
-  perfil:       icnSvg(<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>),
-  horarios:     icnSvg(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
-  cobros:       icnSvg(<><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></>),
-  politica:     icnSvg(<><path d="M3 10h18M5 6h14l1 14H4L5 6z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></>),
-  obras:        icnSvg(<path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6l8-4z"/>),
-  integraciones:icnSvg(<><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/><path d="M8 5h8M8 19h8M5 8v8M19 8v8"/></>),
-  firmas:       icnSvg(<path d="M12 20h9M16 3l5 5-11 11H5v-5z"/>),
-  'link-publico': icnSvg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>),
-  plan:         icnSvg(<path d="M12 2l3 7 7 .5-5.5 4.5L18 21l-6-4-6 4 1.5-7L2 9.5 9 9z"/>),
-  cuenta:       icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
+  perfil:          icnSvg(<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>),
+  horarios:        icnSvg(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
+  cobros:          icnSvg(<><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></>),
+  'cobros-pagos':  icnSvg(<><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></>),
+  politica:        icnSvg(<><path d="M3 10h18M5 6h14l1 14H4L5 6z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></>),
+  feriados:        icnSvg(<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9.5" y1="14.5" x2="14.5" y2="19.5"/><line x1="14.5" y1="14.5" x2="9.5" y2="19.5"/></>),
+  obras:           icnSvg(<path d="M12 2l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V6l8-4z"/>),
+  integraciones:   icnSvg(<><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/><path d="M8 5h8M8 19h8M5 8v8M19 8v8"/></>),
+  firmas:          icnSvg(<path d="M12 20h9M16 3l5 5-11 11H5v-5z"/>),
+  'link-publico':  icnSvg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>),
+  plan:            icnSvg(<path d="M12 2l3 7 7 .5-5.5 4.5L18 21l-6-4-6 4 1.5-7L2 9.5 9 9z"/>),
+  cuenta:          icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
 }
 
 // ── Toggle switch ──────────────────────────────────────────────────────
@@ -793,12 +795,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           {/* ═══ FERIADOS ═══ */}
           <section className={`ajustes-sec${activeSection !== 'feriados' ? ' hidden md:block' : ''}`} id="feriados" style={secStyle}>
             <div style={secHdrStyle}>
-              <div style={icnStyle('#FEF3C7', '#92400E')}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
-                </svg>
-              </div>
+              <div style={icnStyle('#FEF3C7', '#92400E')}>{ICONS.feriados}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Feriados y días no laborales</h2>
                 <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá cómo KLIA maneja los feriados en tu agenda y link público.</p>
