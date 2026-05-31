@@ -193,6 +193,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [cobrar, setCobrar] = useState(profile.cobrar_inasistencias ?? false)
   const [cobrarGuardando, setCobrarGuardando] = useState(false)
 
+  // Feriados state
+  const [feriadosNacionales, setFeriadosNacionales] = useState(profile.feriados_nacionales ?? false)
+  const [feriadosProvinciales, setFeriadosProvinciales] = useState(profile.feriados_provinciales ?? false)
+  const [feriadosTrabajaSiConfirmado, setFeriadosTrabajaSiConfirmado] = useState(profile.feriados_trabajar_si_confirmado ?? false)
+
   // Firmas state
   const [firmaUrl, setFirmaUrl] = useState<string | null>(profile.firma_url ?? null)
   const [firmaSelloUrl, setFirmaSelloUrl] = useState<string | null>(profile.firma_sello_url ?? null)
@@ -306,6 +311,30 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setCobrarGuardando(false)
   }
 
+  // ── Feriados toggles ──────────────────────────────────────────────
+  async function handleFeriadosNacionalesToggle() {
+    const nuevo = !feriadosNacionales
+    setFeriadosNacionales(nuevo)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ feriados_nacionales: nuevo } as never).eq('id', profile.id)
+    if (nuevo) fetch('/api/ajustes/aplicar-feriados', { method: 'POST' }).catch(() => {})
+  }
+
+  async function handleFeriadosProvincialesToggle() {
+    const nuevo = !feriadosProvinciales
+    setFeriadosProvinciales(nuevo)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ feriados_provinciales: nuevo } as never).eq('id', profile.id)
+    if (nuevo) fetch('/api/ajustes/aplicar-feriados', { method: 'POST' }).catch(() => {})
+  }
+
+  async function handleFeriadosTrabajaSiConfirmadoToggle() {
+    const nuevo = !feriadosTrabajaSiConfirmado
+    setFeriadosTrabajaSiConfirmado(nuevo)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ feriados_trabajar_si_confirmado: nuevo } as never).eq('id', profile.id)
+  }
+
   // ── Cobros save ────────────────────────────────────────────────────
   async function handleCobrosSave(e: React.FormEvent) {
     e.preventDefault()
@@ -365,6 +394,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'horarios', label: 'Horarios' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'politica', label: 'Política de cobros' },
+    { id: 'feriados', label: 'Feriados' },
     { id: 'obras', label: 'Obras sociales' },
     { id: 'integraciones', label: 'Integraciones' },
     { id: 'firmas', label: 'Firmas digitales' },
@@ -758,6 +788,43 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
               <Toggle on={true} onChange={() => {}} />
             </div>
+          </section>
+
+          {/* ═══ FERIADOS ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'feriados' ? ' hidden md:block' : ''}`} id="feriados" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('#FEF3C7', '#92400E')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ width: 22, height: 22 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Feriados y días no laborales</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá cómo KLIA maneja los feriados en tu agenda y link público.</p>
+              </div>
+            </div>
+            <ToggleRow
+              name="Respetar feriados nacionales"
+              desc="Los feriados nacionales no aparecen como disponibles en tu link público de turnos."
+              on={feriadosNacionales}
+              onChange={handleFeriadosNacionalesToggle}
+            />
+            <ToggleRow
+              name={`Respetar feriados de ${perfilForm.provincia || 'tu provincia'}`}
+              desc={!perfilForm.provincia
+                ? '⚠️ Completá tu provincia en el perfil para activar esta opción.'
+                : `Los feriados provinciales de ${perfilForm.provincia} no aparecen como disponibles en tu link público.`}
+              on={feriadosProvinciales}
+              onChange={handleFeriadosProvincialesToggle}
+              disabled={!perfilForm.provincia}
+            />
+            <ToggleRow
+              name="Mantener sesiones confirmadas en feriados"
+              desc="Las sesiones ya confirmadas en feriados se mantienen y se cobran normalmente. Solo bloquea nuevos turnos."
+              on={feriadosTrabajaSiConfirmado}
+              onChange={handleFeriadosTrabajaSiConfirmadoToggle}
+            />
           </section>
 
           {/* ═══ OBRAS SOCIALES ═══ */}

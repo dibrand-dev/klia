@@ -37,6 +37,12 @@ type GoogleDayEventSerialized = {
   fecha: string
 }
 
+interface FeriadosConfig {
+  nacionales: boolean
+  provinciales: boolean
+  provincia: string | null
+}
+
 interface AgendaSemanalProps {
   turnosIniciales: Turno[]
   pacientes: Paciente[]
@@ -48,6 +54,7 @@ interface AgendaSemanalProps {
   horaInicio?: number
   horaFin?: number
   mpConectado?: boolean
+  feriadosConfig?: FeriadosConfig
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -61,7 +68,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig,
 }: AgendaSemanalProps) {
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
@@ -78,6 +85,7 @@ export default function AgendaSemanal({
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<Turno | null>(null)
   const [entrevistaSeleccionada, setEntrevistaSeleccionada] = useState<Entrevista | null>(null)
+  const [feriados, setFeriados] = useState<{ dia: number; mes: number; motivo: string }[]>([])
   function abrirNuevoTurno(fecha: Date) {
     setNuevoFecha(fecha)
     setNuevoOpen(true)
@@ -91,6 +99,20 @@ export default function AgendaSemanal({
     if (window.innerWidth < 768) setVista('dia')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!feriadosConfig?.nacionales && !feriadosConfig?.provinciales) return
+    const anio = semanaActual.getFullYear()
+    const params = new URLSearchParams({ anio: String(anio) })
+    if (feriadosConfig.provinciales && feriadosConfig.provincia) {
+      params.set('provincia', feriadosConfig.provincia)
+    }
+    fetch(`/api/feriados?${params}`)
+      .then(r => r.json())
+      .then(data => setFeriados(data.feriados ?? []))
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feriadosConfig?.nacionales, feriadosConfig?.provinciales, feriadosConfig?.provincia])
 
   const googleCacheRef = useRef<{ desde: Date; hasta: Date } | null>(null)
 
@@ -457,6 +479,7 @@ export default function AgendaSemanal({
                 const dayAllDayEvents = showAllDayRow
                   ? googleEventsDiaCompleto.filter((e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia))
                   : []
+                const feriadoDelDia = feriados.find(f => f.dia === dia.getDate() && f.mes === dia.getMonth() + 1)
                 return (
                   <div key={dia.toISOString()} className="flex-1 min-w-0 border-r border-gray-200 last:border-r-0">
                     <div className={cn(
@@ -472,6 +495,15 @@ export default function AgendaSemanal({
                       )}>
                         {format(dia, 'd')}
                       </span>
+                      {feriadoDelDia && (
+                        <span
+                          className="text-[9px] px-1 py-px rounded-full leading-tight"
+                          style={{ background: '#FEF3C7', color: '#92400E' }}
+                          title={feriadoDelDia.motivo}
+                        >
+                          Feriado
+                        </span>
+                      )}
                     </div>
                     {showAllDayRow && (
                       <div className="h-8 border-b border-gray-100 flex items-center gap-1 px-1 overflow-hidden">

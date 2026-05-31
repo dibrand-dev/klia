@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
+import { getFeriados, getFeriadosProvinciales, esFeriado } from '@/lib/feriados'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -25,11 +26,25 @@ async function getAvailableSlots(
 
   const { data: profile } = await db
     .from('profiles')
-    .select('id, agenda_hora_inicio, agenda_hora_fin, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo')
+    .select('id, agenda_hora_inicio, agenda_hora_fin, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
     .eq('booking_slug', slug)
     .single()
 
   if (!profile || !profile.booking_activo) return []
+
+  // Block holidays if configured
+  if (profile.feriados_nacionales || profile.feriados_provinciales) {
+    const anio = new Date(fecha).getFullYear()
+    const [nacionales, provinciales] = await Promise.all([
+      profile.feriados_nacionales ? getFeriados(anio) : Promise.resolve([]),
+      profile.feriados_provinciales && profile.provincia
+        ? getFeriadosProvinciales(anio, profile.provincia)
+        : Promise.resolve([]),
+    ])
+    const todosFeriados = [...nacionales, ...provinciales]
+    const fechaObj = new Date(fecha + 'T12:00:00')
+    if (esFeriado(fechaObj, todosFeriados)) return []
+  }
 
   const duracion: number = tipo === 'sesion'
     ? (profile.booking_duracion_sesion ?? 50)

@@ -42,6 +42,9 @@ export type Database = {
           booking_moneda: string
           booking_activo: boolean
           booking_requiere_pago: boolean
+          feriados_nacionales: boolean
+          feriados_provinciales: boolean
+          feriados_trabajar_si_confirmado: boolean
           created_at: string
           updated_at: string
         }
@@ -82,6 +85,9 @@ export type Database = {
           booking_moneda?: string
           booking_activo?: boolean
           booking_requiere_pago?: boolean
+          feriados_nacionales?: boolean
+          feriados_provinciales?: boolean
+          feriados_trabajar_si_confirmado?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -122,6 +128,9 @@ export type Database = {
           booking_moneda?: string
           booking_activo?: boolean
           booking_requiere_pago?: boolean
+          feriados_nacionales?: boolean
+          feriados_provinciales?: boolean
+          feriados_trabajar_si_confirmado?: boolean
           created_at?: string
           updated_at?: string
         }
