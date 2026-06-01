@@ -54,15 +54,22 @@ export async function GET(req: NextRequest) {
   const errores: string[] = []
 
   for (const turno of turnos ?? []) {
+    const paciente = turno.paciente as unknown as { nombre: string; apellido: string; email: string | null } | null
+    const terapeuta = turno.terapeuta as unknown as { nombre: string; apellido: string; especialidad: string | null } | null
+
+    if (!paciente?.email) {
+      errores.push(`turno ${turno.id}: paciente sin email`)
+      fallidos++
+      continue
+    }
+
+    if (!terapeuta?.nombre) {
+      errores.push(`turno ${turno.id}: terapeuta sin datos`)
+      fallidos++
+      continue
+    }
+
     try {
-      const paciente = turno.paciente as unknown as { nombre: string; apellido: string; email: string | null } | null
-      const terapeuta = turno.terapeuta as unknown as { nombre: string; apellido: string; especialidad: string | null } | null
-
-      if (!paciente?.email) {
-        fallidos++
-        continue
-      }
-
       const fechaHora = new Date(turno.fecha_hora)
       const fecha = fechaHora.toLocaleDateString('es-AR', {
         weekday: 'long',
@@ -118,5 +125,11 @@ export async function GET(req: NextRequest) {
     total: turnos?.length ?? 0,
     timestamp: new Date().toISOString(),
     errores,
+    sample: turnos?.[0] ? {
+      id: turnos[0].id,
+      tienePaciente: !!(turnos[0].paciente),
+      tieneTerapeuta: !!(turnos[0].terapeuta),
+      pacienteEmail: (turnos[0].paciente as unknown as { email?: string })?.email ?? null,
+    } : null,
   })
 }
