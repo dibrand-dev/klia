@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
 
   let enviados = 0
   let fallidos = 0
+  const errores: string[] = []
 
   for (const turno of turnos ?? []) {
     try {
@@ -103,10 +104,9 @@ export async function GET(req: NextRequest) {
         .eq('id', turno.id)
 
       enviados++
-    } catch (err) {
-      console.error(`[cron/recordatorios] Error en turno ${turno.id}:`, err)
-      console.error('[cron/recordatorios] Paciente email:', (turno.paciente as unknown as { email?: string })?.email)
-      console.error('[cron/recordatorios] Error detail:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
+    } catch (err: unknown) {
+      const errorMsg = (err as Error)?.message ?? JSON.stringify(err)
+      errores.push(`turno ${turno.id}: ${errorMsg}`)
       fallidos++
     }
   }
@@ -117,5 +117,6 @@ export async function GET(req: NextRequest) {
     fallidos,
     total: turnos?.length ?? 0,
     timestamp: new Date().toISOString(),
+    errores,
   })
 }
