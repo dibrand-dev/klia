@@ -105,6 +105,8 @@ export async function GET(req: NextRequest) {
       enviados++
     } catch (err) {
       console.error(`[cron/recordatorios] Error en turno ${turno.id}:`, err)
+      console.error('[cron/recordatorios] Paciente email:', (turno.paciente as unknown as { email?: string })?.email)
+      console.error('[cron/recordatorios] Error detail:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
       fallidos++
     }
   }
