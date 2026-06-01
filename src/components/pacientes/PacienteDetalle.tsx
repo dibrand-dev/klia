@@ -382,6 +382,12 @@ export default function PacienteDetalle({
             <div>
               <label className={labelCls}>Email</label>
               <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" className={inputCls} />
+              {!form.email && (
+                <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
+                  Sin email no se envían recordatorios automáticos de turnos.
+                </p>
+              )}
             </div>
           </div>
         </FormCard>
