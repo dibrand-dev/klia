@@ -240,7 +240,7 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
                 {!agregando ? (
                   <button
                     onClick={() => { setAgregando(true); setAgregandoError(null) }}
-                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                    className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-sm">add</span>
                     Agregar obra social
