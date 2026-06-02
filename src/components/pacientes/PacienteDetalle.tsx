@@ -6,6 +6,7 @@ import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
+import { detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 import type { Paciente, MedicacionPaciente, Interconsulta, ProfesionalObraSocial, TurnoRow } from '@/types/database'
 import type { PacienteTabKey } from './PacienteTabs'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
@@ -1158,16 +1159,10 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
     // Determine which endpoint to use
     const hasTemplate = !!osConfig.planilla_template_id
-    const osNombre = osConfig.nombre.toLowerCase()
-    const esHospitalItaliano = osNombre.includes('hospital italiano')
-    const esIoma = osNombre.includes('ioma')
+    const generadorCustom = detectarGeneradorCustom(osConfig.nombre)
     const endpoint = hasTemplate
       ? '/api/planillas/generar'
-      : esHospitalItaliano
-        ? '/api/planillas/hospital-italiano'
-        : esIoma
-          ? '/api/planillas/ioma'
-          : null
+      : generadorCustom?.endpoint ?? null
 
     if (!endpoint) {
       setPlanillaError('Esta obra social no tiene plantilla configurada. Contactá al soporte de KLIA.')

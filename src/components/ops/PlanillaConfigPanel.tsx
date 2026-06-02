@@ -3,15 +3,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraSocial } from '@/types/database'
-
-const CUSTOM_GENERATORS: { id: string; label: string; match: string }[] = [
-  { id: 'hospital_italiano', label: 'Hospital Italiano', match: 'hospital italiano' },
-  { id: 'ioma',              label: 'IOMA',              match: 'ioma' },
-]
-
-function detectTemplate(nombre: string): string | null {
-  return CUSTOM_GENERATORS.find(g => nombre.toLowerCase().includes(g.match))?.id ?? null
-}
+import { GENERADORES_CUSTOM, detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 
 const STORAGE_BUCKET = 'obras-sociales'
 
@@ -68,15 +60,15 @@ export default function PlanillaConfigPanel({ obras }: Props) {
   const obrasSorted = obras
     .slice()
     .sort((a, b) => {
-      const aHas = detectTemplate(a.nombre) !== null ? 0 : 1
-      const bHas = detectTemplate(b.nombre) !== null ? 0 : 1
+      const aHas = detectarGeneradorCustom(a.nombre) !== null ? 0 : 1
+      const bHas = detectarGeneradorCustom(b.nombre) !== null ? 0 : 1
       return aHas - bHas || a.nombre.localeCompare(b.nombre)
     })
 
   return (
     <div className="space-y-3">
       {obrasSorted.map((obra) => {
-        const template = detectTemplate(obra.nombre)
+        const template = detectarGeneradorCustom(obra.nombre)
         const state = logoStates[obra.id] ?? { uploading: false, error: null, logoUrl: null }
         const currentLogoUrl = state.logoUrl ?? loadedLogos[obra.id]
 
@@ -103,7 +95,7 @@ export default function PlanillaConfigPanel({ obras }: Props) {
                 {template ? (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                     <span className="material-symbols-outlined text-xs">check_circle</span>
-                    {CUSTOM_GENERATORS.find((t) => t.id === template)?.label ?? template}
+                    {template?.label ?? ''}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant/60 bg-surface-container px-2 py-0.5 rounded-full">

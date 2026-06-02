@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ProfesionalObraSocial } from '@/types/database'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
+import { GENERADORES_CUSTOM, detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 import SlideOver from '@/components/ui/SlideOver'
 
 type Template = { id: string; nombre_os: string; slug: string }
@@ -22,9 +23,7 @@ type FormOS = {
   planilla_template_id: string
 }
 
-const CUSTOM_GENERATORS = ['hospital italiano', 'ioma']
-const tieneGeneradorCustom = (nombre: string) =>
-  CUSTOM_GENERATORS.some(g => nombre.toLowerCase().includes(g))
+const tieneGeneradorCustom = (nombre: string) => detectarGeneradorCustom(nombre) !== null
 
 const BLANK: FormOS = {
   nombre: '',
