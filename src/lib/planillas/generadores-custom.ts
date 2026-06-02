@@ -15,6 +15,7 @@ export interface GeneradorCustom {
 export const GENERADORES_CUSTOM: GeneradorCustom[] = [
   { match: 'hospital italiano', label: 'Hospital Italiano', endpoint: '/api/planillas/hospital-italiano' },
   { match: 'ioma',              label: 'IOMA',              endpoint: '/api/planillas/ioma' },
+  { match: 'swiss medical',     label: 'Swiss Medical',     endpoint: '/api/planillas/swiss-medical' },
 ]
 
 export function detectarGeneradorCustom(nombreOS: string): GeneradorCustom | null {
