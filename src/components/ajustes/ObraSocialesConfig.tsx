@@ -22,6 +22,10 @@ type FormOS = {
   planilla_template_id: string
 }
 
+const CUSTOM_GENERATORS = ['hospital italiano', 'ioma']
+const tieneGeneradorCustom = (nombre: string) =>
+  CUSTOM_GENERATORS.some(g => nombre.toLowerCase().includes(g))
+
 const BLANK: FormOS = {
   nombre: '',
   nombreLibre: '',
@@ -301,21 +305,29 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
 
           <div className="border-t border-outline-variant/20 pt-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">Planilla de asistencia</p>
-            <label className={labelCls}>Plantilla de planilla</label>
-            <select name="planilla_template_id" value={form.planilla_template_id} onChange={handleChange} className={inputCls}>
-              <option value="">Sin plantilla configurada</option>
-              {templates.map(t => (
-                <option key={t.id} value={t.id}>{t.nombre_os}</option>
-              ))}
-            </select>
-            {form.planilla_template_id ? (
-              <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
-                <span>✅</span> Planilla configurada · al generar usará esta plantilla automáticamente
+            {tieneGeneradorCustom(form.nombre === '__otra__' ? form.nombreLibre : form.nombre) ? (
+              <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                ✓ Esta obra social tiene una planilla de asistencia incluida en KLIA. No requiere configuración adicional.
               </p>
             ) : (
-              <p className="text-xs text-on-surface-variant/60 mt-1.5">
-                Sin plantilla, no se podrá generar planilla de asistencia para esta OS.
-              </p>
+              <>
+                <label className={labelCls}>Plantilla de planilla</label>
+                <select name="planilla_template_id" value={form.planilla_template_id} onChange={handleChange} className={inputCls}>
+                  <option value="">Sin plantilla configurada</option>
+                  {templates.map(t => (
+                    <option key={t.id} value={t.id}>{t.nombre_os}</option>
+                  ))}
+                </select>
+                {form.planilla_template_id ? (
+                  <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                    <span>✅</span> Planilla configurada · al generar usará esta plantilla automáticamente
+                  </p>
+                ) : (
+                  <p className="text-xs text-on-surface-variant/60 mt-1.5">
+                    Sin plantilla, no se podrá generar planilla de asistencia para esta OS.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -351,7 +363,9 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
                     Código: {os.codigo_practica || '—'} · {formatPrecio(os.honorario_por_sesion)}/sesión
                     {tmpl
                       ? <span className="text-emerald-600"> · 📄 Planilla: {tmpl.nombre_os}</span>
-                      : <span className="text-amber-600"> · ⚠️ Sin plantilla de planilla</span>
+                      : tieneGeneradorCustom(os.nombre)
+                        ? <span className="text-emerald-600"> · ✓ Planilla incluida</span>
+                        : <span className="text-amber-600"> · ⚠️ Sin plantilla de planilla</span>
                     }
                   </p>
                 </div>
