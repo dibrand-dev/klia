@@ -4,14 +4,13 @@ import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraSocial } from '@/types/database'
 
-// Known planilla templates by OS name pattern
-const PLANILLA_TEMPLATES = [
-  { id: 'hospital_italiano', label: 'Hospital Italiano' },
-] as const
+const CUSTOM_GENERATORS: { id: string; label: string; match: string }[] = [
+  { id: 'hospital_italiano', label: 'Hospital Italiano', match: 'hospital italiano' },
+  { id: 'ioma',              label: 'IOMA',              match: 'ioma' },
+]
 
 function detectTemplate(nombre: string): string | null {
-  if (nombre.toLowerCase().includes('hospital italiano')) return 'hospital_italiano'
-  return null
+  return CUSTOM_GENERATORS.find(g => nombre.toLowerCase().includes(g.match))?.id ?? null
 }
 
 const STORAGE_BUCKET = 'obras-sociales'
@@ -104,7 +103,7 @@ export default function PlanillaConfigPanel({ obras }: Props) {
                 {template ? (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                     <span className="material-symbols-outlined text-xs">check_circle</span>
-                    {PLANILLA_TEMPLATES.find((t) => t.id === template)?.label ?? template}
+                    {CUSTOM_GENERATORS.find((t) => t.id === template)?.label ?? template}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant/60 bg-surface-container px-2 py-0.5 rounded-full">
