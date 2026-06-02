@@ -1158,12 +1158,16 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
     // Determine which endpoint to use
     const hasTemplate = !!osConfig.planilla_template_id
-    const esHospitalItaliano = osConfig.nombre.toLowerCase().includes('hospital italiano')
+    const osNombre = osConfig.nombre.toLowerCase()
+    const esHospitalItaliano = osNombre.includes('hospital italiano')
+    const esIoma = osNombre.includes('ioma')
     const endpoint = hasTemplate
       ? '/api/planillas/generar'
       : esHospitalItaliano
         ? '/api/planillas/hospital-italiano'
-        : null
+        : esIoma
+          ? '/api/planillas/ioma'
+          : null
 
     if (!endpoint) {
       setPlanillaError('Esta obra social no tiene plantilla configurada. Contactá al soporte de KLIA.')

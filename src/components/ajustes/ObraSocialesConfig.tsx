@@ -38,6 +38,7 @@ const BLANK: FormOS = {
 
 const MATCH_OS_TEMPLATE: Record<string, string> = {
   'Hospital Italiano': 'hospital-italiano',
+  'IOMA': 'ioma',
   'Obra Social de Choferes de Camiones': 'choferes-camiones',
   'OSPETELCO': 'ospetelco',
   'OMINT': 'omint',
