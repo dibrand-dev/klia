@@ -13,6 +13,34 @@ type Props = {
 
 export default function ObrasSocialesTable({ obras, pendientes, showPendientes = false }: Props) {
   const router = useRouter()
+
+  // — Agregar OS manualmente
+  const [agregando, setAgregando] = useState(false)
+  const [nuevaNombre, setNuevaNombre] = useState('')
+  const [nuevoPlan, setNuevoPlan] = useState('')
+  const [agregandoLoading, setAgregandoLoading] = useState(false)
+  const [agregandoError, setAgregandoError] = useState<string | null>(null)
+
+  async function agregarOS() {
+    const nombre = nuevaNombre.trim()
+    if (!nombre) return
+    setAgregandoLoading(true)
+    setAgregandoError(null)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('obras_sociales')
+      .insert({ nombre, plan: nuevoPlan.trim() || null, validada: true, veces_ingresada: 0 })
+    if (error) {
+      setAgregandoError(error.message.includes('unique') ? 'Ya existe una obra social con ese nombre.' : error.message)
+      setAgregandoLoading(false)
+      return
+    }
+    setAgregando(false)
+    setNuevaNombre('')
+    setNuevoPlan('')
+    setAgregandoLoading(false)
+    router.refresh()
+  }
   const [loading, setLoading] = useState<string | null>(null)
 
   // — Activas: edición inline
@@ -112,27 +140,26 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
   // ─── Activas ────────────────────────────────────────────────
 
   if (!showPendientes) {
-    if (obras.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant">
-          <span className="material-symbols-outlined text-4xl mb-3 opacity-40">health_and_safety</span>
-          <p className="text-sm font-medium">No hay obras sociales activas todavía</p>
-        </div>
-      )
-    }
-
     return (
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-outline-variant/20 bg-surface-container-lowest">
-            <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Nombre</th>
-            <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Plan</th>
-            <th className="text-left px-4 py-3 font-semibold text-on-surface-variant">Usos</th>
-            <th className="px-6 py-3 w-32" />
-          </tr>
-        </thead>
-        <tbody>
-          {obras.map((obra) => (
+      <div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-outline-variant/20 bg-surface-container-lowest">
+              <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Nombre</th>
+              <th className="text-left px-6 py-3 font-semibold text-on-surface-variant">Plan</th>
+              <th className="text-left px-4 py-3 font-semibold text-on-surface-variant">Usos</th>
+              <th className="px-6 py-3 w-32" />
+            </tr>
+          </thead>
+          <tbody>
+            {obras.length === 0 && !agregando && (
+              <tr>
+                <td colSpan={4} className="px-6 py-12 text-center text-sm text-on-surface-variant">
+                  No hay obras sociales activas todavía.
+                </td>
+              </tr>
+            )}
+            {obras.map((obra) => (
             <tr key={obra.id} className="border-b border-outline-variant/10 last:border-0">
               {editando === obra.id ? (
                 <>
@@ -204,9 +231,75 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
                 </>
               )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+            ))}
+
+            {/* Inline add row */}
+            {agregando && (
+              <tr className="border-t border-outline-variant/20 bg-surface-container-lowest/50">
+                <td className="px-6 py-3">
+                  <input
+                    type="text"
+                    value={nuevaNombre}
+                    onChange={(e) => setNuevaNombre(e.target.value)}
+                    placeholder="Nombre de la OS"
+                    className="input-field text-sm w-full"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') agregarOS()
+                      if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
+                    }}
+                  />
+                  {agregandoError && <p className="text-xs text-red-600 mt-1">{agregandoError}</p>}
+                </td>
+                <td className="px-6 py-3">
+                  <input
+                    type="text"
+                    value={nuevoPlan}
+                    onChange={(e) => setNuevoPlan(e.target.value)}
+                    placeholder="Ej: Plata, 310..."
+                    className="input-field text-sm w-full"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') agregarOS()
+                      if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
+                    }}
+                  />
+                </td>
+                <td className="px-4 py-3 text-on-surface-variant text-sm">0</td>
+                <td className="px-6 py-3">
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      onClick={agregarOS}
+                      disabled={!nuevaNombre.trim() || agregandoLoading}
+                      className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+                    >
+                      {agregandoLoading ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button
+                      onClick={() => { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Agregar OS button */}
+        {!agregando && (
+          <div className="px-6 py-3 border-t border-outline-variant/10">
+            <button
+              onClick={() => { setAgregando(true); setAgregandoError(null) }}
+              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              Agregar obra social
+            </button>
+          </div>
+        )}
+      </div>
     )
   }
 
