@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
+import CentroDeAyudaButton from './CentroDeAyudaButton'
 
 export default function GlobalFooter() {
   return (
@@ -8,19 +10,14 @@ export default function GlobalFooter() {
           <Logo className="h-5 w-auto opacity-70" />
           <nav className="flex items-center space-x-3">
             <span className="text-slate-300">|</span>
-            <a
-              href="#"
-              className="text-slate-400 hover:text-primary-container transition-colors duration-200 cursor-pointer active:scale-[0.98]"
-            >
-              Centro de Ayuda
-            </a>
+            <CentroDeAyudaButton />
             <span className="text-slate-300">|</span>
-            <a
-              href="#"
+            <Link
+              href="/privacidad"
               className="text-slate-400 hover:text-primary-container transition-colors duration-200 cursor-pointer active:scale-[0.98]"
             >
               Privacidad y Términos
-            </a>
+            </Link>
           </nav>
         </div>
         <div className="text-slate-300">v2.1.4</div>
