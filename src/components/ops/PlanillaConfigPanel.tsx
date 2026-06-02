@@ -38,13 +38,14 @@ export default function PlanillaConfigPanel({ obras }: Props) {
   async function loadLogo(osId: string) {
     if (loadedLogos[osId] !== undefined) return
     const supabase = createClient()
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(`logos/${osId}`)
-    // Check if the file actually exists by trying to fetch its metadata
-    const { data: list } = await supabase.storage.from(STORAGE_BUCKET).list('logos', {
-      search: osId,
-    })
-    const exists = (list ?? []).some((f) => f.name.startsWith(osId))
-    setLoadedLogos((prev) => ({ ...prev, [osId]: exists ? data.publicUrl : null }))
+    const { data: list } = await supabase.storage.from(STORAGE_BUCKET).list('logos', { search: osId })
+    const logoFile = (list ?? []).find((f) => f.name.startsWith(osId))
+    if (!logoFile) {
+      setLoadedLogos((prev) => ({ ...prev, [osId]: null }))
+      return
+    }
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(`logos/${logoFile.name}`)
+    setLoadedLogos((prev) => ({ ...prev, [osId]: data.publicUrl }))
   }
 
   async function uploadLogo(osId: string, file: File) {
