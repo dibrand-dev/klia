@@ -233,44 +233,47 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
             </tr>
             ))}
 
-            {/* Inline add row */}
-            {agregando && (
-              <tr className="border-t border-outline-variant/20 bg-surface-container-lowest/50">
-                <td className="px-6 py-3">
-                  <input
-                    type="text"
-                    value={nuevaNombre}
-                    onChange={(e) => setNuevaNombre(e.target.value)}
-                    placeholder="Nombre de la OS"
-                    className="input-field text-sm w-full"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') agregarOS()
-                      if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
-                    }}
-                  />
-                  {agregandoError && <p className="text-xs text-red-600 mt-1">{agregandoError}</p>}
-                </td>
-                <td className="px-6 py-3">
-                  <input
-                    type="text"
-                    value={nuevoPlan}
-                    onChange={(e) => setNuevoPlan(e.target.value)}
-                    placeholder="Ej: Plata, 310..."
-                    className="input-field text-sm w-full"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') agregarOS()
-                      if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
-                    }}
-                  />
-                </td>
-                <td className="px-4 py-3 text-on-surface-variant text-sm">0</td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2 justify-end">
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-outline-variant/10">
+              <td colSpan={4} className="px-6 py-3">
+                {!agregando ? (
+                  <button
+                    onClick={() => { setAgregando(true); setAgregandoError(null) }}
+                    className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Agregar obra social
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={nuevaNombre}
+                      onChange={(e) => setNuevaNombre(e.target.value)}
+                      placeholder="Nombre de la OS"
+                      className="input-field text-sm flex-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') agregarOS()
+                        if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={nuevoPlan}
+                      onChange={(e) => setNuevoPlan(e.target.value)}
+                      placeholder="Plan (opcional)"
+                      className="input-field text-sm w-40"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') agregarOS()
+                        if (e.key === 'Escape') { setAgregando(false); setNuevaNombre(''); setNuevoPlan(''); setAgregandoError(null) }
+                      }}
+                    />
                     <button
                       onClick={agregarOS}
                       disabled={!nuevaNombre.trim() || agregandoLoading}
-                      className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+                      className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50 whitespace-nowrap"
                     >
                       {agregandoLoading ? 'Guardando...' : 'Guardar'}
                     </button>
@@ -280,25 +283,13 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
                     >
                       Cancelar
                     </button>
+                    {agregandoError && <p className="text-xs text-red-600">{agregandoError}</p>}
                   </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
+                )}
+              </td>
+            </tr>
+          </tfoot>
         </table>
-
-        {/* Agregar OS button */}
-        {!agregando && (
-          <div className="px-6 py-3 border-t border-outline-variant/10">
-            <button
-              onClick={() => { setAgregando(true); setAgregandoError(null) }}
-              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              Agregar obra social
-            </button>
-          </div>
-        )}
       </div>
     )
   }
