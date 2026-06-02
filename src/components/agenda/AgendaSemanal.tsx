@@ -72,7 +72,7 @@ export default function AgendaSemanal({
 }: AgendaSemanalProps) {
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
-  const HORAS = Array.from({ length: hf - hi }, (_, i) => hi + i)
+  const HORAS = Array.from({ length: hf - hi + 1 }, (_, i) => hi + i)
   const [vista, setVista] = useState<'dia' | 'semana' | 'mes'>('semana')
   const [semanaActual, setSemanaActual] = useState(new Date())
   const [diaActual, setDiaActual] = useState(new Date())

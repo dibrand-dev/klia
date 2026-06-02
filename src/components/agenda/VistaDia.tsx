@@ -42,7 +42,7 @@ export default function VistaDia({
 }: VistaDiaProps) {
   const hi = horaInicioP ?? 7
   const hf = horaFinP ?? 21
-  const HORAS = Array.from({ length: hf - hi }, (_, i) => hi + i)
+  const HORAS = Array.from({ length: hf - hi + 1 }, (_, i) => hi + i)
   const turnosDia = turnos
     .filter((t) => isSameDay(parseISO(t.fecha_hora), dia))
     .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
