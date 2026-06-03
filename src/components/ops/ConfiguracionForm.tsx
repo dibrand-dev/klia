@@ -31,7 +31,7 @@ export default function ConfiguracionForm({ configs }: { configs: Configuracion[
     const supabase = createClient()
 
     const updates = Object.entries(values).map(([clave, valor]) =>
-      supabase.from('configuracion').update({ valor, updated_at: new Date().toISOString() }).eq('clave', clave)
+      supabase.from('configuracion_global').update({ valor, updated_at: new Date().toISOString() }).eq('clave', clave)
     )
 
     const results = await Promise.all(updates)

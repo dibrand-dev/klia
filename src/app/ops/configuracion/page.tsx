@@ -10,7 +10,7 @@ export default async function ConfiguracionPage() {
   const supabase = createClient()
 
   const { data: configs } = await supabase
-    .from('configuracion')
+    .from('configuracion_global')
     .select('*')
     .order('clave')
 

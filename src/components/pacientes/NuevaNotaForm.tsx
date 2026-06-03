@@ -33,7 +33,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
   useEffect(() => {
     createClient()
-      .from('configuracion')
+      .from('configuracion_global')
       .select('valor')
       .eq('clave', 'voz_duracion_max_segundos')
       .single()
