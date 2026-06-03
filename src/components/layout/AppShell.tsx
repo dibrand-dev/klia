@@ -196,6 +196,7 @@ export default function AppShell({
             terapeutaId={profile?.id ?? ''}
             pacienteIdInicial={nuevoPacienteId}
             mpConectado={!!((profile as Record<string, unknown> | null)?.mp_user_id)}
+            terminologia={profile?.terminologia ?? undefined}
             onCreado={() => { setNuevoTurnoOpen(false); router.refresh() }}
             onClose={() => setNuevoTurnoOpen(false)}
           />

@@ -45,6 +45,7 @@ export type Database = {
           feriados_nacionales: boolean
           feriados_provinciales: boolean
           feriados_trabajar_si_confirmado: boolean
+          terminologia: 'sesion' | 'consulta' | null
           created_at: string
           updated_at: string
         }
@@ -88,6 +89,7 @@ export type Database = {
           feriados_nacionales?: boolean
           feriados_provinciales?: boolean
           feriados_trabajar_si_confirmado?: boolean
+          terminologia?: 'sesion' | 'consulta' | null
           created_at?: string
           updated_at?: string
         }
@@ -131,6 +133,7 @@ export type Database = {
           feriados_nacionales?: boolean
           feriados_provinciales?: boolean
           feriados_trabajar_si_confirmado?: boolean
+          terminologia?: 'sesion' | 'consulta' | null
           created_at?: string
           updated_at?: string
         }

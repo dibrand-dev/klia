@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { ProfesionalObraSocial, Paciente } from '@/types/database'
 import type { ItemLiquidacion } from '@/lib/liquidacion-excel'
 import SlideOver from '@/components/ui/SlideOver'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -31,10 +32,12 @@ function formatARS(n: number) {
   return '$' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function LiquidacionView({ osList, terapeutaId }: {
+export default function LiquidacionView({ osList, terapeutaId, terminologia }: {
   osList: ProfesionalObraSocial[]
   terapeutaId: string
+  terminologia?: 'sesion' | 'consulta'
 }) {
+  const t = getTerminologia(terminologia)
   const now = new Date()
   const [mes, setMes] = useState(now.getMonth() + 1)
   const [anio, setAnio] = useState(now.getFullYear())
@@ -152,7 +155,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
         {detalle && (
           <div>
             {detalle.items.length === 0 ? (
-              <p className="text-sm text-on-surface-variant py-8 text-center">Sin sesiones realizadas en este período.</p>
+              <p className="text-sm text-on-surface-variant py-8 text-center">{t.sin_sesiones} en este período.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -269,7 +272,7 @@ export default function LiquidacionView({ osList, terapeutaId }: {
                   {res.cargado ? (
                     res.sesiones > 0 ? (
                       <p className="text-sm text-on-surface-variant">
-                        {res.pacientes} paciente{res.pacientes !== 1 ? 's' : ''} · {res.sesiones} sesiones · {formatARS(res.importe)}
+                        {res.pacientes} paciente{res.pacientes !== 1 ? 's' : ''} · {res.sesiones} {t.sesiones} · {formatARS(res.importe)}
                       </p>
                     ) : (
                       <p className="text-sm text-on-surface-variant">Sin turnos cobrables en este período</p>

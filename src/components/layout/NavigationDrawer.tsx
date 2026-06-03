@@ -7,6 +7,7 @@ import type { Profile, ModuloConfig } from '@/types/database'
 import SidebarUserCard from '@/components/ui/SidebarUserCard'
 import Logo from '@/components/ui/Logo'
 import { puedeAcceder } from '@/lib/modulos'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 // Items that always show (not controlled by modulos_config)
 const ALWAYS_ITEMS = [
@@ -137,7 +138,7 @@ export default function NavigationDrawer({
           className="w-full bg-primary text-on-primary font-medium text-sm px-4 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container transition-colors duration-200 shadow-sm active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-xl">add</span>
-          Nueva Sesión
+          {getTerminologia(profile?.terminologia).Nueva_sesion}
         </button>
       </div>
 

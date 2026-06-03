@@ -177,6 +177,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     provincia: profile.provincia ?? '',
     localidad: profile.localidad ?? '',
     direccion: profile.direccion ?? '',
+    terminologia: (profile.terminologia ?? 'sesion') as 'sesion' | 'consulta',
   })
   const [perfilLoading, setPerfilLoading] = useState(false)
   const [perfilSaved, setPerfilSaved] = useState(false)
@@ -289,6 +290,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       provincia: perfilForm.provincia || null,
       localidad: perfilForm.localidad || null,
       direccion: perfilForm.direccion || null,
+      terminologia: perfilForm.terminologia,
     }).eq('id', profile.id)
     if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
     setPerfilSaved(true); setPerfilLoading(false); router.refresh()
@@ -570,6 +572,14 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                     <option value="">Sin especificar</option>
                     {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
                   </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Término para los turnos</label>
+                  <select style={inputStyle} value={perfilForm.terminologia} onChange={e => setPerfilForm(p => ({ ...p, terminologia: e.target.value as 'sesion' | 'consulta' }))}>
+                    <option value="sesion">Sesión</option>
+                    <option value="consulta">Consulta</option>
+                  </select>
+                  <span style={hintStyle}>Personaliza cómo se llaman los turnos en toda la app.</span>
                 </div>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Matrícula profesional</label>

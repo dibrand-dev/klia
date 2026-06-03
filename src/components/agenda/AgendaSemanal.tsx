@@ -55,6 +55,7 @@ interface AgendaSemanalProps {
   horaFin?: number
   mpConectado?: boolean
   feriadosConfig?: FeriadosConfig
+  terminologia?: 'sesion' | 'consulta'
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -68,7 +69,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia,
 }: AgendaSemanalProps) {
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
@@ -553,6 +554,7 @@ export default function AgendaSemanal({
             terapeutaId={terapeutaId}
             fechaInicial={nuevoFecha}
             mpConectado={mpConectado}
+            terminologia={terminologia}
             onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
             onEntrevistaCreada={(e) => { setEntrevistas((prev) => [...prev, e]); setNuevoOpen(false) }}
             onClose={() => setNuevoOpen(false)}
@@ -587,6 +589,7 @@ export default function AgendaSemanal({
           turno={turnoSeleccionado}
           onClose={() => setTurnoSeleccionado(null)}
           onTurnoActualizado={actualizarTurno}
+          terminologia={terminologia}
           onEliminar={async (id) => {
             fetch('/api/google-calendar/sync', {
               method: 'POST',

@@ -9,12 +9,11 @@ export default async function LiquidacionPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: osList } = await supabase
-    .from('profesional_obras_sociales')
-    .select('*')
-    .eq('terapeuta_id', user.id)
-    .eq('activa', true)
-    .order('nombre')
+  const [{ data: osList }, { data: profileRaw }] = await Promise.all([
+    supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', user.id).eq('activa', true).order('nombre'),
+    supabase.from('profiles').select('terminologia').eq('id', user.id).single(),
+  ])
+  const terminologia = (profileRaw as Record<string, unknown> | null)?.terminologia as 'sesion' | 'consulta' | undefined
 
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
@@ -22,7 +21,7 @@ export default async function LiquidacionPage() {
       <p className="text-sm text-on-surface-variant mb-8">
         Calculá y exportá la planilla mensual por obra social.
       </p>
-      <LiquidacionView osList={osList ?? []} terapeutaId={user.id} />
+      <LiquidacionView osList={osList ?? []} terapeutaId={user.id} terminologia={terminologia} />
     </div>
   )
 }

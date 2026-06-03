@@ -28,6 +28,7 @@ export type ProfileData = {
   booking_moneda: string
   booking_requiere_pago: boolean
   mp_conectado: boolean
+  terminologia: 'sesion' | 'consulta'
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
@@ -74,6 +75,7 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     booking_moneda: data.booking_moneda ?? 'ARS',
     booking_requiere_pago: data.booking_requiere_pago ?? true,
     mp_conectado: !!(data.mp_access_token),
+    terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
   }
 }
 

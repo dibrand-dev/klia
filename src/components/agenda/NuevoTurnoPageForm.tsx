@@ -14,6 +14,7 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
 import type { Moneda } from '@/lib/monedas'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 const DURACIONES = [30, 45, 50, 60, 90]
 const MODALIDADES: { value: ModalidadTurno; label: string }[] = [
@@ -28,6 +29,7 @@ interface NuevoTurnoPageFormProps {
   fechaInicial?: Date
   pacienteIdInicial?: string
   mpConectado?: boolean
+  terminologia?: 'sesion' | 'consulta'
   onCreado?: (turno: Turno) => void
   onEntrevistaCreada?: (e: Entrevista) => void
   onClose?: () => void
@@ -50,8 +52,9 @@ function quinSemana(fechaStr: string): 1 | 2 {
 }
 
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, onCreado, onEntrevistaCreada, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
+  const t = getTerminologia(terminologia)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -382,7 +385,7 @@ export default function NuevoTurnoPageForm({
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="tipo" value="sesion" checked={false}
                 onChange={() => setTipo('sesion')} className="accent-primary" />
-              <span className="text-sm text-gray-700">Sesión</span>
+              <span className="text-sm text-gray-700">{t.Sesion}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="tipo" value="entrevista" checked
@@ -485,7 +488,7 @@ export default function NuevoTurnoPageForm({
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="tipo" value="sesion" checked
               onChange={() => {}} className="accent-primary" />
-            <span className="text-sm text-gray-700 font-medium">Sesión</span>
+            <span className="text-sm text-gray-700 font-medium">{t.Sesion}</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="radio" name="tipo" value="entrevista" checked={false}

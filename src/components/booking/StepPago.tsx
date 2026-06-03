@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProfileData } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 declare global {
   interface Window {
@@ -212,6 +213,7 @@ export default function StepPago({
   onErrPago,
   onErrSlot,
 }: Props) {
+  const t = getTerminologia(profile.terminologia)
   const [creating, setCreating] = useState(true)
   const [createError, setCreateError] = useState<string | null>(null)
   const [reserva, setReserva] = useState<CrearResponse | null>(null)
@@ -368,7 +370,7 @@ export default function StepPago({
           {profile.nombre} {profile.apellido}
         </p>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#5B6472' }}>
-          {TIPO_LABELS[tipo] ?? tipo}
+          {tipo === 'sesion' ? t.Sesion : (TIPO_LABELS[tipo] ?? tipo)}
           {' · '}
           <span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>
           {' · '}{hora} hs

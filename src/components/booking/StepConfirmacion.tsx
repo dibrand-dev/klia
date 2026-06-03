@@ -2,6 +2,7 @@
 
 import type { ProfileData } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 interface Props {
   profile: ProfileData
@@ -31,7 +32,8 @@ function buildGCalUrl(params: { title: string; start: string; end: string; detai
 }
 
 export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion }: Props) {
-  const tipoLabel = tipo === 'sesion' ? 'Sesión' : 'Entrevista inicial'
+  const t = getTerminologia(profile.terminologia)
+  const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
   const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
 
   const gCalUrl = (() => {

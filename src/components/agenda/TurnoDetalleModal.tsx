@@ -17,6 +17,7 @@ import type { ConflictoDetallado } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
 import ConflictosPanel from './ConflictosPanel'
 import { type Moneda, formatearMonto } from '@/lib/monedas'
+import { getTerminologia } from '@/hooks/useTerminologia'
 
 interface TurnoDetalleModalProps {
   turno: Turno
@@ -25,6 +26,7 @@ interface TurnoDetalleModalProps {
   onTurnoActualizado: (turno: Turno) => void
   onEliminar: (id: string) => void
   onEliminarFuturos?: (turnoId: string, serieId: string, fechaHora: string) => Promise<void>
+  terminologia?: 'sesion' | 'consulta'
 }
 
 const ESTADOS_TRANSICION: EstadoTurno[] = ['pendiente', 'confirmado', 'realizado', 'no_asistio', 'cancelado']
@@ -52,7 +54,8 @@ function ModalShell({ children, open, onClose, title, subtitle }: {
   )
 }
 
-export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos }: TurnoDetalleModalProps) {
+export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, terminologia }: TurnoDetalleModalProps) {
+  const t = getTerminologia(terminologia)
   const router = useRouter()
   const paciente = turno.paciente
   const fecha = parseISO(turno.fecha_hora)
@@ -464,7 +467,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         <div className="p-5 space-y-4">
           <div>
             <h3 className="font-semibold text-gray-900">Marcar como realizado</h3>
-            <p className="text-sm text-gray-500 mt-0.5">¿Querés agregar una nota de sesión?</p>
+            <p className="text-sm text-gray-500 mt-0.5">¿Querés agregar una {t.nota_sesion}?</p>
           </div>
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
