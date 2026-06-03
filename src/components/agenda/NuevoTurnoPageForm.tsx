@@ -578,9 +578,9 @@ export default function NuevoTurnoPageForm({
           <div className="card p-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div>
-                <p className="text-sm font-medium text-gray-900">¿Es un turno fijo?</p>
+                <p className="text-sm font-medium text-gray-900">Turno recurrente</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {esFijo ? 'Se crearán turnos recurrentes' : 'Turno único'}
+                  {esFijo ? 'El turno se repetirá automáticamente según la frecuencia elegida' : 'Turno único'}
                 </p>
               </div>
               <button
