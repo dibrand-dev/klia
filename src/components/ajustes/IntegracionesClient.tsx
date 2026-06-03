@@ -147,6 +147,17 @@ export default function IntegracionesClient({
           </p>
           {conectado ? (
             <div>
+              <div style={{ marginTop: 12, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: '#92400e', lineHeight: 1.55 }}>
+                  <strong>Actualizá tu conexión</strong> para habilitar la subida de archivos al módulo de Archivos.{' '}
+                  <button
+                    onClick={desconectarGoogle}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#92400e', textDecoration: 'underline', fontWeight: 600, fontSize: 12.5 }}
+                  >
+                    Reconectar Google
+                  </button>
+                </p>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>Sincronización activa</p>
