@@ -32,13 +32,19 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
 
   useEffect(() => {
-    createClient()
-      .from('configuracion_global')
-      .select('voz_duracion_max_segundos')
-      .eq('id', 1)
-      .single()
-      .then(({ data }) => { if (data?.voz_duracion_max_segundos) setMaxSeconds(Number(data.voz_duracion_max_segundos)) })
-      .catch(() => {})
+    const fetchConfig = async () => {
+      try {
+        const { data } = await createClient()
+          .from('configuracion_global')
+          .select('voz_duracion_max_segundos')
+          .eq('id', 1)
+          .single()
+        if (data?.voz_duracion_max_segundos) setMaxSeconds(Number(data.voz_duracion_max_segundos))
+      } catch {
+        // fallback to default 300
+      }
+    }
+    fetchConfig()
   }, [])
 
   function handleTranscripcion(text: string) {
