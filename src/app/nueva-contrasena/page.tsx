@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -11,6 +11,28 @@ export default function NuevaContrasenaPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionReady, setSessionReady] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    // Parse access_token and refresh_token from URL hash (implicit flow)
+    const hash = window.location.hash.slice(1)
+    const params = new URLSearchParams(hash)
+    const accessToken = params.get('access_token')
+    const refreshToken = params.get('refresh_token')
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(() => setSessionReady(true))
+        .catch(() => setError('El link expiró. Solicitá uno nuevo desde la pantalla de login.'))
+    } else {
+      // PKCE flow: session already set by exchangeCodeForSession in the callback route
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) setSessionReady(true)
+        else setError('El link expiró. Solicitá uno nuevo desde la pantalla de login.')
+      })
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -122,15 +144,15 @@ export default function NuevaContrasenaPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !sessionReady}
             style={{
               width: '100%', padding: '10px 16px', borderRadius: 8,
-              fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 14, fontWeight: 600, cursor: (loading || !sessionReady) ? 'not-allowed' : 'pointer',
               border: 'none', background: 'var(--ink)', color: 'white',
-              opacity: loading ? 0.7 : 1, transition: 'opacity .15s ease',
+              opacity: (loading || !sessionReady) ? 0.7 : 1, transition: 'opacity .15s ease',
             }}
           >
-            {loading ? 'Guardando...' : 'Guardar nueva contraseña'}
+            {loading ? 'Guardando...' : !sessionReady ? 'Verificando...' : 'Guardar nueva contraseña'}
           </button>
         </form>
       </div>
