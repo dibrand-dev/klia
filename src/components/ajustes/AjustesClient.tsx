@@ -163,6 +163,19 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
 const HORAS_INICIO = Array.from({ length: 24 }, (_, i) => i)
 const HORAS_FIN = Array.from({ length: 23 }, (_, i) => i + 1)
 
+type HorarioDia = { activo: boolean; inicio: number; fin: number }
+type HorariosPorDia = Record<string, HorarioDia>
+
+const DIAS_SEMANA_CONFIG = [
+  { key: 'lunes',     label: 'Lunes' },
+  { key: 'martes',    label: 'Martes' },
+  { key: 'miercoles', label: 'Miércoles' },
+  { key: 'jueves',    label: 'Jueves' },
+  { key: 'viernes',   label: 'Viernes' },
+  { key: 'sabado',    label: 'Sábado' },
+  { key: 'domingo',   label: 'Domingo' },
+]
+
 // ── Main component ─────────────────────────────────────────────────────
 export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente }: Props) {
   const router = useRouter()
@@ -187,8 +200,20 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Horarios state
-  const [horaInicio, setHoraInicio] = useState(profile.agenda_hora_inicio ?? 7)
-  const [horaFin, setHoraFin] = useState(profile.agenda_hora_fin ?? 21)
+  const [horariosPorDia, setHorariosPorDia] = useState<HorariosPorDia>(() => {
+    if (profile.horarios_por_dia) return profile.horarios_por_dia as HorariosPorDia
+    const ini = profile.agenda_hora_inicio ?? 9
+    const fin = profile.agenda_hora_fin ?? 18
+    return {
+      lunes:     { activo: true,  inicio: ini, fin },
+      martes:    { activo: true,  inicio: ini, fin },
+      miercoles: { activo: true,  inicio: ini, fin },
+      jueves:    { activo: true,  inicio: ini, fin },
+      viernes:   { activo: true,  inicio: ini, fin },
+      sabado:    { activo: false, inicio: 9,   fin: 13 },
+      domingo:   { activo: false, inicio: 9,   fin: 13 },
+    }
+  })
   const [horarioLoading, setHorarioLoading] = useState(false)
   const [horarioSaved, setHorarioSaved] = useState(false)
 
@@ -296,11 +321,23 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setPerfilSaved(true); setPerfilLoading(false); router.refresh()
   }
 
+  const updateHorarioDia = (dia: string, campo: keyof HorarioDia, valor: boolean | number) => {
+    setHorariosPorDia(prev => ({ ...prev, [dia]: { ...prev[dia], [campo]: valor } }))
+    setHorarioSaved(false)
+  }
+
   // ── Horario save ───────────────────────────────────────────────────
   async function handleHorarioSave() {
     setHorarioLoading(true)
     const supabase = createClient()
-    await supabase.from('profiles').update({ agenda_hora_inicio: horaInicio, agenda_hora_fin: horaFin }).eq('id', profile.id)
+    const diasActivos = Object.values(horariosPorDia).filter(d => d.activo)
+    const globalInicio = diasActivos.length ? Math.min(...diasActivos.map(d => d.inicio)) : 9
+    const globalFin = diasActivos.length ? Math.max(...diasActivos.map(d => d.fin)) : 18
+    await supabase.from('profiles').update({
+      horarios_por_dia: horariosPorDia,
+      agenda_hora_inicio: globalInicio,
+      agenda_hora_fin: globalFin,
+    } as never).eq('id', profile.id)
     setHorarioLoading(false); setHorarioSaved(true)
     setTimeout(() => setHorarioSaved(false), 2500)
     router.refresh()
@@ -643,19 +680,44 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16, marginBottom: 16 }}>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Hora de inicio</label>
-                <select style={{ ...inputStyle, height: 38, paddingRight: 12 }} value={horaInicio} onChange={e => { setHoraInicio(Number(e.target.value)); setHorarioSaved(false) }}>
-                  {HORAS_INICIO.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
-                </select>
-              </div>
-              <div style={fieldStyle}>
-                <label style={labelStyle}>Hora de fin</label>
-                <select style={{ ...inputStyle, height: 38, paddingRight: 12 }} value={horaFin} onChange={e => { setHoraFin(Number(e.target.value)); setHorarioSaved(false) }}>
-                  {HORAS_FIN.filter(h => h > horaInicio).map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
-                </select>
-              </div>
+            <div style={{ marginBottom: 16 }}>
+              {DIAS_SEMANA_CONFIG.map((dia, idx) => {
+                const horario = horariosPorDia[dia.key] ?? { activo: false, inicio: 9, fin: 18 }
+                return (
+                  <div key={dia.key} style={{
+                    display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0',
+                    borderBottom: idx < DIAS_SEMANA_CONFIG.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: 130, flexShrink: 0 }}>
+                      <Toggle on={horario.activo} onChange={() => updateHorarioDia(dia.key, 'activo', !horario.activo)} />
+                      <span style={{ fontSize: 13.5, fontWeight: horario.activo ? 600 : 400, color: horario.activo ? 'var(--ink)' : 'var(--muted)' }}>
+                        {dia.label}
+                      </span>
+                    </div>
+                    {horario.activo ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <select
+                          style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
+                          value={horario.inicio}
+                          onChange={e => updateHorarioDia(dia.key, 'inicio', Number(e.target.value))}
+                        >
+                          {HORAS_INICIO.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+                        </select>
+                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>a</span>
+                        <select
+                          style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
+                          value={horario.fin}
+                          onChange={e => updateHorarioDia(dia.key, 'fin', Number(e.target.value))}
+                        >
+                          {HORAS_FIN.filter(h => h > horario.inicio).map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+                        </select>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>No disponible</span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             <div style={secFootStyle}>

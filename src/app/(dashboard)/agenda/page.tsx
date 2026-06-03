@@ -22,7 +22,7 @@ export default async function AgendaPage() {
   const finStr = format(finSemana, 'yyyy-MM-dd')
 
   const [{ data: profile }, { data: turnos }, { data: pacientes }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
-    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia').eq('id', user.id).single(),
+    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia, horarios_por_dia').eq('id', user.id).single(),
     supabase
       .from('turnos')
       .select('*, paciente:pacientes(*)')
@@ -93,6 +93,7 @@ export default async function AgendaPage() {
           provincia: profile?.provincia ?? null,
         }}
         terminologia={profile?.terminologia ?? undefined}
+        horariosPorDia={profile?.horarios_por_dia ?? undefined}
       />
     </div>
   )

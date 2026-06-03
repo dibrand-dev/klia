@@ -43,6 +43,9 @@ interface FeriadosConfig {
   provincia: string | null
 }
 
+type HorarioDiaAgenda = { activo: boolean; inicio: number; fin: number }
+const DIAS_KEY_AGD = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+
 interface AgendaSemanalProps {
   turnosIniciales: Turno[]
   pacientes: Paciente[]
@@ -56,6 +59,7 @@ interface AgendaSemanalProps {
   mpConectado?: boolean
   feriadosConfig?: FeriadosConfig
   terminologia?: 'sesion' | 'consulta'
+  horariosPorDia?: Record<string, HorarioDiaAgenda>
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -69,7 +73,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia,
 }: AgendaSemanalProps) {
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
@@ -481,11 +485,12 @@ export default function AgendaSemanal({
                   ? googleEventsDiaCompleto.filter((e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia))
                   : []
                 const feriadoDelDia = feriados.find(f => f.dia === dia.getDate() && f.mes === dia.getMonth() + 1)
+                const esNoLaboral = horariosPorDia ? !horariosPorDia[DIAS_KEY_AGD[dia.getDay()]]?.activo : false
                 return (
-                  <div key={dia.toISOString()} className="flex-1 min-w-0 border-r border-gray-200 last:border-r-0">
+                  <div key={dia.toISOString()} className={cn('flex-1 min-w-0 border-r border-gray-200 last:border-r-0', esNoLaboral && 'bg-gray-50')}>
                     <div className={cn(
-                      'h-14 border-b border-gray-200 flex flex-col items-center justify-center sticky top-0 z-10 bg-white',
-                      esHoy && 'bg-primary-fixed/20'
+                      'h-14 border-b border-gray-200 flex flex-col items-center justify-center sticky top-0 z-10',
+                      esHoy ? 'bg-primary-fixed/20' : esNoLaboral ? 'bg-gray-50' : 'bg-white'
                     )}>
                       <span className={cn('text-[10px] md:text-xs font-medium uppercase tracking-wider', esHoy ? 'text-primary' : 'text-gray-500')}>
                         {format(dia, 'EEE', { locale: es })}

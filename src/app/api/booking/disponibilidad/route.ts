@@ -26,11 +26,18 @@ async function getAvailableSlots(
 
   const { data: profile } = await db
     .from('profiles')
-    .select('id, agenda_hora_inicio, agenda_hora_fin, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
+    .select('id, agenda_hora_inicio, agenda_hora_fin, horarios_por_dia, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
     .eq('booking_slug', slug)
     .single()
 
   if (!profile || !profile.booking_activo) return []
+
+  // Check per-day schedule
+  const DIAS_KEY = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+  const diaNombre = DIAS_KEY[new Date(fecha + 'T12:00:00').getDay()]
+  type HorarioDia = { activo: boolean; inicio: number; fin: number }
+  const horariosDia = (profile.horarios_por_dia as Record<string, HorarioDia> | null)?.[diaNombre]
+  if (horariosDia && !horariosDia.activo) return []
 
   // Block holidays if configured
   if (profile.feriados_nacionales || profile.feriados_provinciales) {
@@ -53,8 +60,8 @@ async function getAvailableSlots(
   const interval = duracion + buffer
   const anticipacion: number = profile.booking_anticipacion_minutos ?? 60
 
-  const startMin = (profile.agenda_hora_inicio ?? 9) * 60
-  const endMin = (profile.agenda_hora_fin ?? 20) * 60
+  const startMin = (horariosDia?.inicio ?? profile.agenda_hora_inicio ?? 9) * 60
+  const endMin = (horariosDia?.fin ?? profile.agenda_hora_fin ?? 20) * 60
 
   // Generate all possible slots
   const allSlots: string[] = []

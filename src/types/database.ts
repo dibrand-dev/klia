@@ -46,6 +46,7 @@ export type Database = {
           feriados_provinciales: boolean
           feriados_trabajar_si_confirmado: boolean
           terminologia: 'sesion' | 'consulta' | null
+          horarios_por_dia: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           created_at: string
           updated_at: string
         }
@@ -90,6 +91,7 @@ export type Database = {
           feriados_provinciales?: boolean
           feriados_trabajar_si_confirmado?: boolean
           terminologia?: 'sesion' | 'consulta' | null
+          horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           created_at?: string
           updated_at?: string
         }
@@ -134,6 +136,7 @@ export type Database = {
           feriados_provinciales?: boolean
           feriados_trabajar_si_confirmado?: boolean
           terminologia?: 'sesion' | 'consulta' | null
+          horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           created_at?: string
           updated_at?: string
         }
