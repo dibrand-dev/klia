@@ -9,10 +9,11 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
 
   if (!code) {
-    // Recovery via implicit flow (token in hash fragment) — redirect so the browser
-    // carries the hash to the password reset page, where Supabase client detects it
     if (type === 'recovery') {
       return NextResponse.redirect(new URL('/nueva-contrasena', 'https://app.klia.com.ar'))
+    }
+    if (type === 'signup') {
+      return NextResponse.redirect(new URL('/auth/confirm', 'https://app.klia.com.ar'))
     }
     return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
   }

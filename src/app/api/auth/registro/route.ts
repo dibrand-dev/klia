@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       email,
       password,
       options: {
-        redirectTo: 'https://app.klia.com.ar/auth/callback',
+        redirectTo: 'https://app.klia.com.ar/auth/callback?type=signup',
       },
     })
 
