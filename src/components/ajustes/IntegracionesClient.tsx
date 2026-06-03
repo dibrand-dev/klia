@@ -143,7 +143,7 @@ export default function IntegracionesClient({
             </span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.55 }}>
-            Los turnos de KLIA aparecen automáticamente en tu Google Calendar. La sincronización es bidireccional.
+            Los turnos de KLIA aparecen automáticamente en tu Google Calendar. La sincronización es bidireccional. <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>También habilita Google Drive</strong> para guardar archivos de pacientes.
           </p>
           {conectado ? (
             <div>

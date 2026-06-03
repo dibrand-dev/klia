@@ -41,10 +41,20 @@ export async function POST(request: NextRequest) {
 
   if (!paciente) return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const drive = getDriveClient(tokens.access_token, tokens.refresh_token)
-  const folderId = await getOrCreatePatientFolder(drive, pacienteNombre, categoria)
-  const { fileId, url } = await uploadFileToDrive(drive, buffer, file.name, file.type, folderId)
+  let fileId: string
+  let url: string
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const drive = getDriveClient(tokens.access_token, tokens.refresh_token)
+    const folderId = await getOrCreatePatientFolder(drive, pacienteNombre, categoria)
+    const result = await uploadFileToDrive(drive, buffer, file.name, file.type, folderId)
+    fileId = result.fileId
+    url = result.url
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[archivos/subir] Drive error:', msg)
+    return NextResponse.json({ error: `Error al subir a Google Drive: ${msg}` }, { status: 500 })
+  }
 
   const { data: archivo, error: dbError } = await supabase
     .from('archivos_paciente')
@@ -63,7 +73,10 @@ export async function POST(request: NextRequest) {
     .select()
     .single()
 
-  if (dbError) return NextResponse.json({ error: 'Error al guardar en base de datos' }, { status: 500 })
+  if (dbError) {
+    console.error('[archivos/subir] DB error:', dbError)
+    return NextResponse.json({ error: 'Error al guardar en base de datos' }, { status: 500 })
+  }
 
   return NextResponse.json({ archivo })
 }
