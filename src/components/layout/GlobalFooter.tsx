@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 import CentroDeAyudaButton from './CentroDeAyudaButton'
+import PrivacidadButton from './PrivacidadButton'
 
 export default function GlobalFooter() {
   return (
@@ -12,12 +12,7 @@ export default function GlobalFooter() {
             <span className="text-slate-300">|</span>
             <CentroDeAyudaButton />
             <span className="text-slate-300">|</span>
-            <Link
-              href="/privacidad"
-              className="text-slate-400 hover:text-primary-container transition-colors duration-200 cursor-pointer active:scale-[0.98]"
-            >
-              Privacidad y Términos
-            </Link>
+            <PrivacidadButton />
           </nav>
         </div>
         <div className="text-slate-300">v2.1.4</div>
