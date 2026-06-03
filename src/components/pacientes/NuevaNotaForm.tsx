@@ -34,10 +34,11 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   useEffect(() => {
     createClient()
       .from('configuracion_global')
-      .select('valor')
-      .eq('clave', 'voz_duracion_max_segundos')
+      .select('voz_duracion_max_segundos')
+      .eq('id', 1)
       .single()
-      .then(({ data }) => { if (data?.valor) setMaxSeconds(Number(data.valor)) })
+      .then(({ data }) => { if (data?.voz_duracion_max_segundos) setMaxSeconds(Number(data.voz_duracion_max_segundos)) })
+      .catch(() => {})
   }, [])
 
   function handleTranscripcion(text: string) {
