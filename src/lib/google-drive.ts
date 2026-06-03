@@ -1,4 +1,5 @@
 import { google } from 'googleapis'
+import { Readable } from 'stream'
 
 export function getDriveClient(accessToken: string, refreshToken: string) {
   const oauth2Client = new google.auth.OAuth2(
@@ -64,7 +65,6 @@ export async function uploadFileToDrive(
   mimeType: string,
   folderId: string
 ): Promise<{ fileId: string; url: string }> {
-  const { Readable } = await import('stream')
   const stream = Readable.from(file)
   const res = await drive.files.create({
     requestBody: { name: filename, parents: [folderId] },
