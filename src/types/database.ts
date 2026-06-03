@@ -964,6 +964,43 @@ export type Database = {
         }
         Relationships: []
       }
+      archivos_paciente: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          nombre: string
+          categoria: 'laboratorio' | 'imagenes' | 'documentos' | 'otros'
+          google_drive_file_id: string
+          google_drive_url: string
+          mime_type: string
+          tamanio_bytes: number
+          fecha_estudio: string | null
+          descripcion: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          nombre: string
+          categoria: 'laboratorio' | 'imagenes' | 'documentos' | 'otros'
+          google_drive_file_id: string
+          google_drive_url: string
+          mime_type: string
+          tamanio_bytes: number
+          fecha_estudio?: string | null
+          descripcion?: string | null
+          created_at?: string
+        }
+        Update: {
+          nombre?: string
+          categoria?: 'laboratorio' | 'imagenes' | 'documentos' | 'otros'
+          fecha_estudio?: string | null
+          descripcion?: string | null
+        }
+        Relationships: []
+      }
       google_calendar_tokens: {
         Row: {
           id: string
@@ -1085,6 +1122,7 @@ export type Liquidacion = Database['public']['Tables']['liquidaciones']['Row']
 export type LiquidacionItem = Database['public']['Tables']['liquidacion_items']['Row']
 export type GoogleCalendarToken = Database['public']['Tables']['google_calendar_tokens']['Row']
 export type Entrevista = Database['public']['Tables']['entrevistas']['Row']
+export type ArchivoPaciente = Database['public']['Tables']['archivos_paciente']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]

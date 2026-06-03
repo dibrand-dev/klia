@@ -18,7 +18,7 @@ export default async function PacienteDetallePage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }] = await Promise.all([
+  const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }, { data: googleTokens }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
@@ -61,6 +61,11 @@ export default async function PacienteDetallePage({
       .eq('activo', true)
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from('google_calendar_tokens')
+      .select('id')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle(),
   ])
 
   if (!paciente) notFound()
@@ -84,16 +89,17 @@ export default async function PacienteDetallePage({
 
   const historialCount = notasRes.count || 0
   const medicaciones = medicacionesRes.data ?? []
-  const turnosCount = turnos.filter((t) => t.estado !== 'cancelado').length
+  const tieneDrive = !!googleTokens
 
   const tab: PacienteTabKey =
     searchParams.tab === 'datos' ||
     searchParams.tab === 'historial' ||
     searchParams.tab === 'informes' ||
     searchParams.tab === 'documentos' ||
+    (searchParams.tab === 'archivos' && tieneDrive) ||
     searchParams.tab === 'facturacion' ||
     searchParams.tab === 'interconsultas'
-      ? searchParams.tab
+      ? (searchParams.tab as PacienteTabKey)
       : 'resumen'
 
   const interconsultasRes = tab === 'interconsultas'
@@ -117,6 +123,7 @@ export default async function PacienteDetallePage({
         pacienteId={paciente.id}
         active={tab}
         historialCount={historialCount}
+        tieneDrive={tieneDrive}
       />
       <PacienteDetalle
         paciente={paciente}
@@ -141,6 +148,7 @@ export default async function PacienteDetallePage({
           firma_sello_url: (profile as Record<string, unknown>).firma_sello_url as string | null ?? null,
         } : null}
         turnoRecurrente={turnoRecurrente ?? null}
+        tieneDrive={tieneDrive}
         key={editMode ? 'edit' : 'view'}
       />
     </div>

@@ -15,6 +15,7 @@ import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
+import ArchivosTab from './ArchivosTab'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -135,6 +136,7 @@ export default function PacienteDetalle({
   profesionalCobrarInasistencias = false,
   profesionalData = null,
   turnoRecurrente = null,
+  tieneDrive = false,
 }: {
   paciente: Paciente
   medicacionesIniciales?: MedicacionPaciente[]
@@ -147,6 +149,7 @@ export default function PacienteDetalle({
   profesionalCobrarInasistencias?: boolean
   profesionalData?: ProfesionalData | null
   turnoRecurrente?: { dia_semana: number; hora: string } | null
+  tieneDrive?: boolean
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
@@ -714,6 +717,10 @@ export default function PacienteDetalle({
     return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} turnoRecurrente={turnoRecurrente ?? null} />
   }
 
+  if (activeTab === 'archivos') {
+    return <ArchivosTab pacienteId={paciente.id} pacienteNombre={`${paciente.nombre} ${paciente.apellido}`} />
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <TabEmptyState tab={activeTab} />
   }
@@ -1070,6 +1077,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
       body: 'Historial de pagos y estado de cuenta. Próximamente.',
     },
     interconsultas: { title: 'Interconsultas', body: '' },
+    archivos: { title: 'Archivos', body: '' },
   }
   const c = config[tab]
   return (
