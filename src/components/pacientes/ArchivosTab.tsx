@@ -192,7 +192,7 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-on-surface truncate">{archivo.nombre}</p>
+                <a href={archivo.google_drive_url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate">{archivo.nombre}</a>
                 <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-2 flex-wrap">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{CATEGORIA_ICONS[archivo.categoria]}</span>
