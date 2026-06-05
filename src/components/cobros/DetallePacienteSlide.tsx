@@ -428,8 +428,7 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
                       const estadoKey = s.estado_pago ?? 'pendiente'
                       const chip = STCHIP[estadoKey] ?? STCHIP.pendiente
                       const sSym = getCurrencySymbol(s.moneda)
-                      const sPaid = s.monto_pagado ?? 0
-                      const infoSub = estadoKey === 'pago_parcial' ? `${sSym} ${fmtNum(sPaid)} pagados` : `${s.duracion_min} min`
+                      const saldo = Math.max(0, (s.monto ?? 0) - (s.monto_pagado ?? 0))
 
                       return (
                         <div key={s.id}
@@ -441,11 +440,27 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
                           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11.5px', color: '#8A93A1', fontVariantNumeric: 'tabular-nums' }}>{horaStr}</div>
                           <div style={{ fontSize: '12px', color: '#5B6472', minWidth: 0 }}>
                             <b style={{ color: '#1F2937', fontWeight: 600, fontSize: '13px', display: 'block' }}>{s.duracion_min} min</b>
-                            {infoSub}
                           </div>
-                          <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', fontSize: '13.5px', color: '#0B1220' }}>
-                            <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sSym}</span>
-                            {s.monto != null ? fmtNum(s.monto) : '—'}
+                          <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', minWidth: 0 }}>
+                            {estadoKey === 'pago_parcial' ? (
+                              <>
+                                <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#B45309' }}>
+                                  <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sSym}</span>
+                                  {fmtNum(saldo)}
+                                  <span style={{ fontSize: '10px', color: '#8A93A1', fontWeight: 500, marginLeft: '3px' }}>pendiente</span>
+                                </div>
+                                <div style={{ fontSize: '10.5px', color: '#8A93A1', marginTop: '1px' }}>
+                                  de {sSym} {fmtNum(s.monto ?? 0)} · pag. {sSym} {fmtNum(s.monto_pagado ?? 0)}
+                                </div>
+                              </>
+                            ) : s.monto != null ? (
+                              <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#0B1220' }}>
+                                <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sSym}</span>
+                                {fmtNum(s.monto)}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '11px', color: '#D97706' }}>⚠ Sin honorario</div>
+                            )}
                           </div>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 9px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: chip.bg, color: chip.color }}>
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
