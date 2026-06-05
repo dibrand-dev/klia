@@ -1373,7 +1373,7 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
         </div>
 
         {/* Session list */}
-        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm">
           {turnosMes.length === 0 ? (
             <p className="text-sm text-on-surface-variant p-6">Sin turnos registrados en este período.</p>
           ) : (
