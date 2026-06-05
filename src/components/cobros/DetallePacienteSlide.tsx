@@ -104,8 +104,8 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
       .select('id, fecha_hora, duracion_min, monto, monto_pagado, moneda, estado_pago')
       .eq('paciente_id', pacienteId)
       .eq('terapeuta_id', terapeutaId)
+      .eq('estado', 'realizado')
       .in('estado_pago', ['pendiente', 'pago_parcial'])
-      .in('estado', ['realizado', 'no_asistio'])
       .order('fecha_hora', { ascending: true })
       .then(({ data }) => { setSesiones((data ?? []) as SesionPendiente[]); setLoading(false) })
   }, [pacienteId, open, terapeutaId, refreshKey])
@@ -117,16 +117,19 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
 
   if (!pacienteId) return null
 
-  const monedaDefault = sesiones[0]?.moneda || 'ARS'
+  const sesionesConMonto = sesiones.filter(s => s.monto != null && s.monto > 0)
+  const sesionesSinMonto = sesiones.filter(s => !s.monto || s.monto === 0)
+
+  const monedaDefault = sesionesConMonto[0]?.moneda || 'ARS'
   const sym = getCurrencySymbol(monedaDefault)
 
-  const totalFacturado = sesiones.reduce((acc, s) => acc + (s.monto ?? 0), 0)
-  const totalCobradoParcial = sesiones.reduce((acc, s) => acc + (s.monto_pagado ?? 0), 0)
-  const deudaTotal = sesiones.reduce((acc, s) => acc + Math.max(0, (s.monto ?? 0) - (s.monto_pagado ?? 0)), 0)
-  const sesionesParciales = sesiones.filter(s => s.estado_pago === 'pago_parcial').length
+  const totalFacturado = sesionesConMonto.reduce((acc, s) => acc + (s.monto ?? 0), 0)
+  const totalCobradoParcial = sesionesConMonto.reduce((acc, s) => acc + (s.monto_pagado ?? 0), 0)
+  const deudaTotal = sesionesConMonto.reduce((acc, s) => acc + Math.max(0, (s.monto ?? 0) - (s.monto_pagado ?? 0)), 0)
+  const sesionesParciales = sesionesConMonto.filter(s => s.estado_pago === 'pago_parcial').length
 
-  // Group by month for display
-  const sesionesPorMes = sesiones.reduce((acc, s) => {
+  // Group by month for display (only sesionesConMonto)
+  const sesionesPorMes = sesionesConMonto.reduce((acc, s) => {
     const dt = new Date(new Date(s.fecha_hora).getTime() - 3 * 60 * 60 * 1000)
     const key = `${dt.getFullYear()}-${dt.getMonth()}`
     const label = dt.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
@@ -228,7 +231,7 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
   const h4Style: React.CSSProperties = { margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8A93A1' }
 
   const previewSesiones = montoPago && Number(montoPago) > 0
-    ? calcularPreview(Number(montoPago), sesiones).filter(s => s.aplicado > 0)
+    ? calcularPreview(Number(montoPago), sesionesConMonto).filter(s => s.aplicado > 0)
     : []
 
   const btnDisabled = !montoPago || Number(montoPago) <= 0 || loadingPago
@@ -246,9 +249,9 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#8A93A1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />Sesiones
             </div>
-            <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: '#0B1220' }}>{sesiones.length}</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, color: '#0B1220' }}>{sesionesConMonto.length}</div>
             <div style={{ fontSize: '11px', color: '#5B6472', marginTop: '3px' }}>
-              {sesionesParciales > 0 ? `${sesiones.length - sesionesParciales} pendiente${sesiones.length - sesionesParciales !== 1 ? 's' : ''} · ${sesionesParciales} parcial${sesionesParciales !== 1 ? 'es' : ''}` : 'con saldo pendiente'}
+              {sesionesParciales > 0 ? `${sesionesConMonto.length - sesionesParciales} pendiente${sesionesConMonto.length - sesionesParciales !== 1 ? 's' : ''} · ${sesionesParciales} parcial${sesionesParciales !== 1 ? 'es' : ''}` : 'con saldo pendiente'}
             </div>
           </div>
           {/* Total facturado */}
@@ -406,9 +409,21 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
             </div>
           )}
 
+          {sesionesSinMonto.length > 0 && (
+            <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '12px', color: '#92400E' }}>
+              ⚠ {sesionesSinMonto.length} sesión{sesionesSinMonto.length !== 1 ? 'es' : ''} sin honorario asignado — no se incluyen en el total adeudado.
+              <span style={{ display: 'block', marginTop: '2px', color: '#B45309' }}>
+                Fechas: {sesionesSinMonto.map(s => {
+                  const dt = new Date(new Date(s.fecha_hora).getTime() - 3 * 60 * 60 * 1000)
+                  return dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                }).join(', ')}
+              </span>
+            </div>
+          )}
+
           {loading ? (
             <div style={{ textAlign: 'center', padding: '30px 20px', color: '#5B6472', fontSize: '13px' }}>Cargando...</div>
-          ) : sesiones.length === 0 ? (
+          ) : sesionesConMonto.length === 0 && sesionesSinMonto.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 20px', color: '#8A93A1', fontSize: '13px' }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" style={{ margin: '0 auto 8px', display: 'block' }}><path d="M20 6L9 17l-5-5"/></svg>
               Sin sesiones pendientes de cobro
