@@ -1137,6 +1137,12 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   })
   const todosPagados = sesionesCobrables > 0 && cobrablesPendientes.length === 0
 
+  const monedaPaciente = (paciente.moneda_preferida ?? 'ARS') as Moneda
+  const montoIngresado = parseFloat(montoParcialInput) || 0
+  const totalPendientePaciente = montoPendiente[monedaPaciente] ?? 0
+  const previewPagaCompleto = montoIngresado > 0 && totalPendientePaciente > 0 && montoIngresado >= totalPendientePaciente
+  const previewSaldoTras = Math.max(0, totalPendientePaciente - montoIngresado)
+
   function formatDias(ts: TurnoRow[]) {
     return ts
       .map((t) => format(parseISO(t.fecha_hora), 'd'))
@@ -1460,6 +1466,26 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
                 className={cn(inputCls, 'pl-9')}
               />
             </div>
+            {montoIngresado > 0 && (
+              <div className={cn(
+                'mt-2 rounded-xl px-4 py-3 text-sm flex items-start gap-2',
+                previewPagaCompleto
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-blue-50 border border-blue-200 text-blue-800'
+              )}>
+                {previewPagaCompleto ? (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
+                    <span>El monto ingresado cubre el total del mes. <b>Todas las sesiones quedarán marcadas como pagadas.</b></span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
+                    <span>Saldo restante tras este pago: <b>{formatearMonto(previewSaldoTras, monedaPaciente)}</b></span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-on-surface mb-1.5">Medio de pago</label>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import SlideOver from '@/components/ui/SlideOver'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 import type { Cobro } from '@/types/database'
 
@@ -71,6 +72,8 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [historial, setHistorial] = useState<Cobro[]>([])
+  const [confirmEliminarCobro, setConfirmEliminarCobro] = useState<string | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   useEffect(() => {
     if (!turno) return
@@ -99,6 +102,25 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
   const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
   const av = getAvatarStyle(`${turno.paciente_nombre}${turno.paciente_apellido}`)
+
+  async function handleEliminarCobro(cobroId: string) {
+    setEliminando(true)
+    try {
+      const res = await fetch('/api/cobros/eliminar-cobro', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cobro_id: cobroId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar cobro')
+      setHistorial(prev => prev.filter(c => c.id !== cobroId))
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar cobro')
+    } finally {
+      setEliminando(false)
+      setConfirmEliminarCobro(null)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -174,6 +196,7 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
   const labelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: '#1F2937' }
 
   return (
+    <>
     <SlideOver open={open} onClose={onClose} title="" header={soHeader} footer={soFooter} noPadding width="md">
       <form id="registrar-pago-form" onSubmit={handleSubmit} style={{ padding: '20px 22px' }}>
 
@@ -300,6 +323,14 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
                     <span style={{ fontSize: '11.5px', color: '#5B6472', padding: '2px 8px', borderRadius: '100px', background: '#F6F7F9' }}>
                       {MEDIO_LABELS[c.medio_pago] ?? c.medio_pago}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmEliminarCobro(c.id)}
+                      title="Eliminar cobro"
+                      style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid #FCA5A5', background: '#FEF2F2', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                    </button>
                   </div>
                 )
               })}
@@ -309,5 +340,17 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
 
       </form>
     </SlideOver>
+
+    <ConfirmDialog
+      open={!!confirmEliminarCobro}
+      title="Eliminar cobro"
+      message="¿Estás seguro que querés eliminar este cobro? Esta acción actualizará el saldo pendiente de la sesión."
+      confirmLabel={eliminando ? 'Eliminando...' : 'Eliminar'}
+      cancelLabel="Cancelar"
+      variant="danger"
+      onConfirm={() => confirmEliminarCobro && handleEliminarCobro(confirmEliminarCobro)}
+      onCancel={() => setConfirmEliminarCobro(null)}
+    />
+    </>
   )
 }

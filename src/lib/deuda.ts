@@ -26,6 +26,7 @@ export function calcularDeudaMes(
     monto: number | null
     moneda: string
     pagado: boolean
+    monto_pagado?: number | null
   }>,
   cobrarInasistencia: boolean
 ): {
@@ -48,7 +49,10 @@ export function calcularDeudaMes(
     if (t.pagado) {
       montoCobrado[m] = (montoCobrado[m] ?? 0) + t.monto
     } else {
-      montoPendiente[m] = (montoPendiente[m] ?? 0) + t.monto
+      const cobrado = Math.min(t.monto_pagado ?? 0, t.monto)
+      const pendiente = t.monto - cobrado
+      if (cobrado > 0) montoCobrado[m] = (montoCobrado[m] ?? 0) + cobrado
+      if (pendiente > 0) montoPendiente[m] = (montoPendiente[m] ?? 0) + pendiente
     }
   }
 
