@@ -16,6 +16,8 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
+import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -1108,9 +1110,12 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [montoParcialInput, setMontoParcialInput] = useState('')
   const [guardandoParcial, setGuardandoParcial] = useState(false)
   const [pagoParcialesMedio, setPagoParcialesMedio] = useState<'efectivo' | 'transferencia' | 'mercado_pago'>('efectivo')
+  const [openDrop, setOpenDrop] = useState<string | null>(null)
+  const [localEstados, setLocalEstados] = useState<Record<string, string>>({})
+  const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
+  const [registrarPagoTurno, setRegistrarPagoTurno] = useState<TurnoDeuda | null>(null)
 
   const osConfig = profObrasSociales.find((o) => o.id === paciente.os_config_id)
-  const tienePlanilla = !!paciente.os_config_id && !!osConfig
 
   const cobrarInasistencia = resolverPoliticaInasistencia(
     paciente.cobrar_inasistencias,
@@ -1122,14 +1127,19 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
     return d.getMonth() === mes && d.getFullYear() === anio
   })
 
-  const asistio = turnosMes.filter((t) => t.estado === 'realizado')
-  const noAsistio = turnosMes.filter((t) => t.estado === 'no_asistio')
-  const cancelado = turnosMes.filter((t) => t.estado === 'cancelado')
+  const turnosMesConEstado = turnosMes.map(t => ({
+    ...t,
+    estado: localEstados[t.id] ?? t.estado,
+  }))
 
-  const deuda = calcularDeudaMes(turnosMes, cobrarInasistencia)
+  const asistio = turnosMesConEstado.filter((t) => t.estado === 'realizado')
+  const noAsistio = turnosMesConEstado.filter((t) => t.estado === 'no_asistio')
+  const cancelado = turnosMesConEstado.filter((t) => t.estado === 'cancelado')
+
+  const deuda = calcularDeudaMes(turnosMesConEstado, cobrarInasistencia)
   const { sesionesCobrables, montoTotal, montoCobrado, montoPendiente } = deuda
 
-  const cobrablesPendientes = turnosMes.filter((t) => {
+  const cobrablesPendientes = turnosMesConEstado.filter((t) => {
     if (t.pagado) return false
     if (t.estado === 'realizado') return true
     if (t.estado === 'no_asistio') return cobrarInasistencia
@@ -1143,10 +1153,61 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const previewPagaCompleto = montoIngresado > 0 && totalPendientePaciente > 0 && montoIngresado >= totalPendientePaciente
   const previewSaldoTras = Math.max(0, totalPendientePaciente - montoIngresado)
 
-  function formatDias(ts: TurnoRow[]) {
-    return ts
-      .map((t) => format(parseISO(t.fecha_hora), 'd'))
-      .join(', ')
+  const canGoNext = !(mes === now.getMonth() && anio === now.getFullYear())
+  const anioActual = now.getFullYear()
+  const anios = [anioActual - 1, anioActual, anioActual + 1]
+
+  function prevMes() {
+    if (mes === 0) { setMes(11); setAnio(prev => prev - 1) }
+    else setMes(prev => prev - 1)
+    setMesPagado(false)
+    setLocalEstados({})
+  }
+
+  function nextMes() {
+    if (!canGoNext) return
+    if (mes === 11) { setMes(0); setAnio(prev => prev + 1) }
+    else setMes(prev => prev + 1)
+    setMesPagado(false)
+    setLocalEstados({})
+  }
+
+  async function handleEstadoChange(turnoId: string, newEstado: string) {
+    setUpdatingEstado(turnoId)
+    setOpenDrop(null)
+    setLocalEstados(prev => ({ ...prev, [turnoId]: newEstado }))
+    try {
+      const res = await fetch('/api/turnos/estado', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turno_id: turnoId, estado: newEstado }),
+      })
+      if (!res.ok) {
+        setLocalEstados(prev => { const copy = { ...prev }; delete copy[turnoId]; return copy })
+      } else {
+        router.refresh()
+      }
+    } finally {
+      setUpdatingEstado(null)
+    }
+  }
+
+  function turnoToDeuda(turno: TurnoRow): TurnoDeuda {
+    return {
+      id: turno.id,
+      fecha_hora: turno.fecha_hora,
+      duracion_min: turno.duracion_min ?? 50,
+      monto: turno.monto ?? 0,
+      moneda: turno.moneda ?? 'ARS',
+      estado: localEstados[turno.id] ?? turno.estado,
+      estado_pago: (turno.estado_pago as 'pendiente' | 'pago_parcial' | 'bonificado') ?? 'pendiente',
+      monto_pagado: turno.monto_pagado ?? 0,
+      paciente_id: paciente.id,
+      paciente_nombre: paciente.nombre,
+      paciente_apellido: paciente.apellido,
+      os_config_id: paciente.os_config_id ?? null,
+      os_nombre: profObrasSociales.find(o => o.id === paciente.os_config_id)?.nombre ?? null,
+    }
   }
 
   async function handleMarcarPagado() {
@@ -1198,8 +1259,6 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
     const body = JSON.stringify({ paciente_id: paciente.id, mes: mes + 1, anio, os_config_id: paciente.os_config_id })
     const headers = { 'Content-Type': 'application/json' }
-
-    // Determine which endpoint to use
     const hasTemplate = !!osConfig.planilla_template_id
     const generadorCustom = detectarGeneradorCustom(osConfig.nombre)
     const endpoint = hasTemplate
@@ -1236,389 +1295,429 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
     }
   }
 
-  const anioActual = now.getFullYear()
-  const anios = [anioActual - 1, anioActual, anioActual + 1]
-  const mesNombre = MESES_NOMBRES[mes]
+  const turnosMesOrdenados = [...turnosMes].sort(
+    (a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime()
+  )
 
   return (
-    <div className="mt-6 space-y-6">
-      {/* Selector de período */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">Mes</label>
-          <select
-            value={mes}
-            onChange={(e) => { setMes(Number(e.target.value)); setMesPagado(false) }}
-            className="input-field text-sm py-2"
-          >
-            {MESES_NOMBRES.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
+    <>
+      <div className="mt-6 space-y-5">
+        {/* Month navigation */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={prevMes}
+              className="btn-secondary p-2 flex items-center justify-center"
+              aria-label="Mes anterior"
+            >
+              <span className="material-symbols-outlined text-xl leading-none">chevron_left</span>
+            </button>
+            <h3 className="text-base font-bold text-on-surface text-center" style={{ minWidth: '9rem' }}>
+              {MESES_NOMBRES[mes]} {anio}
+            </h3>
+            <button
+              type="button"
+              onClick={nextMes}
+              disabled={!canGoNext}
+              className={cn('btn-secondary p-2 flex items-center justify-center', !canGoNext && 'opacity-40 cursor-not-allowed')}
+              aria-label="Mes siguiente"
+            >
+              <span className="material-symbols-outlined text-xl leading-none">chevron_right</span>
+            </button>
+          </div>
+          {paciente.os_config_id && osConfig && (
+            <button
+              type="button"
+              onClick={() => setPlanillaOpen(true)}
+              className="btn-secondary px-3 py-2 text-sm flex items-center gap-1.5 shrink-0"
+            >
+              <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+              Planilla OS
+            </button>
+          )}
         </div>
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-1.5">Año</label>
-          <select
-            value={anio}
-            onChange={(e) => { setAnio(Number(e.target.value)); setMesPagado(false) }}
-            className="input-field text-sm py-2"
-          >
-            {anios.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Atendidas</p>
+            <p className="text-2xl font-bold text-green-600">{asistio.length}</p>
+            <p className="text-xs text-on-surface-variant mt-0.5">sesiones</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Ausente / Cancelada</p>
+            <p className="text-2xl font-bold text-slate-400">{noAsistio.length + cancelado.length}</p>
+            <p className="text-xs text-on-surface-variant mt-0.5">sesiones</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Total mes</p>
+            <p className="text-lg font-bold text-on-surface leading-snug">
+              {Object.entries(montoTotal).length > 0
+                ? Object.entries(montoTotal).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')
+                : '—'}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-0.5">{sesionesCobrables} cobrable{sesionesCobrables !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Pendiente</p>
+            <p className="text-lg font-bold text-amber-600 leading-snug">
+              {Object.entries(montoPendiente).length > 0
+                ? Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')
+                : todosPagados && sesionesCobrables > 0 ? '✓ Cobrado' : '—'}
+            </p>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              {cobrablesPendientes.length > 0 ? `${cobrablesPendientes.length} sin cobrar` : ''}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Resumen */}
-      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
-        <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-5">
-          Sesiones de {mesNombre} {anio}
-        </h3>
+        {/* Session list */}
+        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
+          {turnosMes.length === 0 ? (
+            <p className="text-sm text-on-surface-variant p-6">Sin turnos registrados en este período.</p>
+          ) : (
+            <div className="divide-y divide-outline-variant/10">
+              {turnosMesOrdenados.map((turno) => {
+                const efectivoEstado = localEstados[turno.id] ?? turno.estado
+                const isUpdating = updatingEstado === turno.id
+                const esCobrable = efectivoEstado === 'realizado' || (efectivoEstado === 'no_asistio' && cobrarInasistencia)
+                const esPagada = turno.pagado
+                const esParcial = !turno.pagado && turno.estado_pago === 'pago_parcial'
 
-        {turnosMes.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">Sin turnos registrados en este período.</p>
-        ) : (
-          <div className="space-y-3">
-            {/* Realizadas */}
-            <div className="flex items-start gap-3 text-sm">
-              <span className="text-base leading-none mt-0.5">✅</span>
-              <div className="flex-1">
-                <span className="font-semibold text-on-surface">{asistio.length} sesión{asistio.length !== 1 ? 'es' : ''}</span>
-                <span className="text-on-surface-variant"> — Asistió</span>
-                {asistio.length > 0 && (
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    Días: {formatDias(asistio)} de {mesNombre.toLowerCase()}
-                    {Object.entries(montoTotal).length > 0 && asistio.some(t => t.monto) && (
-                      <span className="ml-2 font-medium text-primary">
-                        {Object.entries(
-                          asistio.reduce((acc, t) => {
-                            if (t.monto) { const m = t.moneda || 'ARS'; acc[m] = (acc[m] ?? 0) + t.monto }
-                            return acc
-                          }, {} as Record<string, number>)
-                        ).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
+                return (
+                  <div key={turno.id} className="flex items-center gap-3 px-4 py-3">
+                    {/* Date */}
+                    <div className="shrink-0 text-center" style={{ width: '2.25rem' }}>
+                      <p className="text-lg font-bold text-on-surface leading-none">
+                        {format(parseISO(turno.fecha_hora), 'd')}
+                      </p>
+                      <p className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wide">
+                        {format(parseISO(turno.fecha_hora), 'EEE', { locale: es })}
+                      </p>
+                    </div>
+
+                    <div className="w-px h-8 bg-outline-variant/20 shrink-0" />
+
+                    {/* Time + estado dropdown */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-on-surface-variant">
+                        {format(parseISO(turno.fecha_hora), 'HH:mm')} hs
+                        {turno.monto ? (
+                          <span className="ml-2 font-medium text-on-surface">
+                            {formatearMonto(turno.monto, (turno.moneda ?? 'ARS') as Moneda)}
+                          </span>
+                        ) : null}
+                      </p>
+                      <div className="relative mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => !isUpdating && setOpenDrop(openDrop === turno.id ? null : turno.id)}
+                          className={cn(
+                            'flex items-center gap-1 text-sm font-medium rounded-lg px-2 py-0.5 -mx-2 transition-colors',
+                            efectivoEstado === 'realizado' && 'text-green-700 bg-green-50 hover:bg-green-100',
+                            efectivoEstado === 'no_asistio' && 'text-amber-700 bg-amber-50 hover:bg-amber-100',
+                            efectivoEstado === 'cancelado' && 'text-slate-500 bg-slate-100 hover:bg-slate-200',
+                            isUpdating && 'opacity-60 pointer-events-none',
+                          )}
+                        >
+                          <span>
+                            {efectivoEstado === 'realizado' && 'Atendido'}
+                            {efectivoEstado === 'no_asistio' && 'No asistió'}
+                            {efectivoEstado === 'cancelado' && 'Cancelada'}
+                            {efectivoEstado !== 'realizado' && efectivoEstado !== 'no_asistio' && efectivoEstado !== 'cancelado' && efectivoEstado}
+                          </span>
+                          {isUpdating
+                            ? <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                            : <span className="material-symbols-outlined text-sm">expand_more</span>
+                          }
+                        </button>
+                        {openDrop === turno.id && (
+                          <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-lg border border-outline-variant/20 z-20 overflow-hidden" style={{ minWidth: '10rem' }}>
+                            {(['realizado', 'no_asistio', 'cancelado'] as const).map((est) => (
+                              <button
+                                key={est}
+                                type="button"
+                                onClick={() => handleEstadoChange(turno.id, est)}
+                                className={cn(
+                                  'w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-surface-container-high',
+                                  est === efectivoEstado && 'font-semibold text-primary',
+                                )}
+                              >
+                                {est === 'realizado' && 'Atendido'}
+                                {est === 'no_asistio' && 'No asistió'}
+                                {est === 'cancelado' && 'Cancelada'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Payment chip + Cobrar */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {esPagada && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          ✓ Cobrado
+                        </span>
+                      )}
+                      {esParcial && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                          Parcial
+                        </span>
+                      )}
+                      {esCobrable && !esPagada && (
+                        <button
+                          type="button"
+                          onClick={() => setRegistrarPagoTurno(turnoToDeuda(turno))}
+                          className="btn-primary px-3 py-1.5 text-xs"
+                        >
+                          Cobrar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: pending summary + action buttons */}
+        {sesionesCobrables > 0 && (
+          <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                {(mesPagado || todosPagados) ? (
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
+                    ✅ Mes pagado
+                  </div>
+                ) : Object.keys(montoPendiente).length > 0 ? (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Pendiente</p>
+                    <p className="text-sm font-bold text-on-surface">
+                      {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
+                      <span className="text-on-surface-variant font-normal ml-1.5">
+                        · {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''}
                       </span>
-                    )}
-                  </p>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
+                    ✅ Mes pagado
+                  </div>
                 )}
               </div>
-            </div>
-
-            {/* No asistió */}
-            <div className="flex items-start gap-3 text-sm">
-              <span className="text-base leading-none mt-0.5">❌</span>
-              <div className="flex-1">
-                <span className="font-semibold text-on-surface">{noAsistio.length} sesión{noAsistio.length !== 1 ? 'es' : ''}</span>
-                <span className="text-on-surface-variant"> — No asistió</span>
-                {noAsistio.length > 0 && (
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    Días: {formatDias(noAsistio)} de {mesNombre.toLowerCase()}
-                    {cobrarInasistencia ? (
-                      <span className="ml-2 text-amber-600 font-medium">cobrable según tu política</span>
-                    ) : (
-                      <span className="ml-2 text-on-surface-variant">no cobrable (política: no se cobra)</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Canceladas */}
-            <div className="flex items-start gap-3 text-sm">
-              <span className="text-base leading-none mt-0.5">🚫</span>
-              <div className="flex-1">
-                <span className="font-semibold text-on-surface">{cancelado.length} sesión{cancelado.length !== 1 ? 'es' : ''}</span>
-                <span className="text-on-surface-variant"> — Cancelada{cancelado.length !== 1 ? 's' : ''}</span>
-                {cancelado.length > 0 && (
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    Días: {formatDias(cancelado)} de {mesNombre.toLowerCase()} — no cobrable
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Totales */}
-            <div className="pt-3 border-t border-outline-variant/10 space-y-1.5">
-              <div className="flex items-baseline gap-2">
-                <span className="text-sm font-semibold text-on-surface">
-                  Total cobrable: {sesionesCobrables} sesión{sesionesCobrables !== 1 ? 'es' : ''}
-                </span>
-                {Object.entries(montoTotal).map(([m, v]) => (
-                  <span key={m} className="text-sm font-bold text-primary">{formatearMonto(v, m as Moneda)}</span>
-                ))}
-              </div>
-              {Object.keys(montoCobrado).length > 0 && (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-green-700">Cobrado:</span>
-                  {Object.entries(montoCobrado).map(([m, v]) => (
-                    <span key={m} className="text-xs font-semibold text-green-700">{formatearMonto(v, m as Moneda)} ✅</span>
-                  ))}
-                </div>
-              )}
-              {Object.keys(montoPendiente).length > 0 && (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-amber-600">Pendiente:</span>
-                  {Object.entries(montoPendiente).map(([m, v]) => (
-                    <span key={m} className="text-xs font-semibold text-amber-600">{formatearMonto(v, m as Moneda)} ⏳</span>
-                  ))}
+              {!(mesPagado || todosPagados) && (
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setPagoParcialesOpen(true)}
+                    className="btn-secondary px-4 py-2 text-sm"
+                  >
+                    Pago parcial del mes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(true)}
+                    className="btn-primary px-4 py-2 text-sm"
+                  >
+                    Marcar mes como pagado
+                  </button>
                 </div>
               )}
             </div>
           </div>
         )}
-      </div>
 
-      {/* Marcar mes como pagado */}
-      {sesionesCobrables > 0 && (
-        <div>
-          {(mesPagado || todosPagados) ? (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl border border-green-200 text-sm font-medium">
-              ✅ Mes pagado
-            </div>
-          ) : showConfirm ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-semibold text-on-surface">
-                ¿Marcar todas las sesiones de {mesNombre} {anio} como pagadas?
-              </p>
-              <p className="text-xs text-on-surface-variant">
-                Se marcarán como pagadas {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''}{Object.keys(montoPendiente).length > 0 && <> por <strong className="text-on-surface">{Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}</strong></>}. Las canceladas no se incluyen.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(false)}
-                  className="btn-secondary flex-1 py-2 text-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleMarcarPagado}
-                  disabled={pagando}
-                  className={cn('btn-primary flex-1 py-2 text-sm', pagando && 'opacity-70')}
-                >
-                  {pagando ? 'Procesando...' : 'Confirmar'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2 flex-wrap items-center">
-              <button
-                type="button"
-                onClick={() => setPagoParcialesOpen(true)}
-                className="btn-secondary px-4 py-2.5 text-sm"
-              >
-                Pago parcial
+        {/* Pago parcial del mes SlideOver */}
+        <SlideOver
+          open={pagoParcialesOpen}
+          onClose={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
+          title="Registrar pago parcial"
+          subtitle={`${paciente.nombre} ${paciente.apellido} — ${MESES_NOMBRES[mes]} ${anio}`}
+          footer={
+            <div className="flex gap-3">
+              <button onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }} className="btn-secondary flex-1 py-3 text-sm font-semibold">
+                Cancelar
               </button>
               <button
-                type="button"
-                onClick={() => setShowConfirm(true)}
-                className="btn-primary px-5 py-2.5 text-sm"
+                onClick={handlePagoParcial}
+                disabled={!montoParcialInput || guardandoParcial}
+                className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (!montoParcialInput || guardandoParcial) && 'opacity-50')}
               >
-                Marcar mes como pagado
+                {guardandoParcial ? 'Guardando...' : 'Registrar pago'}
               </button>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Pago parcial del mes */}
-      <SlideOver
-        open={pagoParcialesOpen}
-        onClose={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
-        title="Registrar pago parcial"
-        subtitle={`${paciente.nombre} ${paciente.apellido} — ${mesNombre} ${anio}`}
-        footer={
-          <div className="flex gap-3">
-            <button onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }} className="btn-secondary flex-1 py-3 text-sm font-semibold">
-              Cancelar
-            </button>
-            <button
-              onClick={handlePagoParcial}
-              disabled={!montoParcialInput || guardandoParcial}
-              className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (!montoParcialInput || guardandoParcial) && 'opacity-50')}
-            >
-              {guardandoParcial ? 'Guardando...' : 'Registrar pago'}
-            </button>
-          </div>
-        }
-      >
-        <div className="space-y-5">
-          {Object.keys(montoPendiente).length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-1">Pendiente del mes</p>
-              <p className="text-lg font-bold text-amber-800">
-                {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
-              </p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} pendiente{cobrablesPendientes.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-on-surface mb-1.5">Monto cobrado</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium select-none">
-                {paciente.moneda_preferida === 'USD' ? 'US$' : paciente.moneda_preferida === 'EUR' ? '€' : '$'}
-              </span>
-              <input
-                type="number"
-                min={0}
-                value={montoParcialInput}
-                onChange={(e) => setMontoParcialInput(e.target.value)}
-                placeholder="0"
-                className={cn(inputCls, 'pl-9')}
-              />
-            </div>
-            {montoIngresado > 0 && (
-              <div className={cn(
-                'mt-2 rounded-xl px-4 py-3 text-sm flex items-start gap-2',
-                previewPagaCompleto
-                  ? 'bg-green-50 border border-green-200 text-green-800'
-                  : 'bg-blue-50 border border-blue-200 text-blue-800'
-              )}>
-                {previewPagaCompleto ? (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
-                    <span>El monto ingresado cubre el total del mes. <b>Todas las sesiones quedarán marcadas como pagadas.</b></span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
-                    <span>Saldo restante tras este pago: <b>{formatearMonto(previewSaldoTras, monedaPaciente)}</b></span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-on-surface mb-1.5">Medio de pago</label>
-            <select
-              value={pagoParcialesMedio}
-              onChange={(e) => setPagoParcialesMedio(e.target.value as typeof pagoParcialesMedio)}
-              className={inputCls}
-            >
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="mercado_pago">Mercado Pago</option>
-            </select>
-          </div>
-        </div>
-      </SlideOver>
-
-      {/* Planilla de asistencia */}
-      {paciente.os_config_id && osConfig && (
-        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-1">
-                Planilla de asistencia
-              </h3>
-              <p className="text-sm text-on-surface-variant">
-                {osConfig.nombre} — genera el PDF para adjuntar a la factura
-              </p>
-              {!osConfig.planilla_template_id && (
-                <p className="mt-2 text-sm text-amber-700 flex items-start gap-1.5">
-                  <span className="shrink-0 mt-0.5">⚠️</span>
-                  La obra social de este paciente no tiene plantilla de planilla configurada. Contactá al soporte de KLIA para agregarla.
+          }
+        >
+          <div className="space-y-5">
+            {Object.keys(montoPendiente).length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-1">Pendiente del mes</p>
+                <p className="text-lg font-bold text-amber-800">
+                  {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
                 </p>
-              )}
-            </div>
-            {osConfig.planilla_template_id && (
-              <button
-                type="button"
-                onClick={() => setPlanillaOpen(true)}
-                className="btn-secondary px-4 py-2 text-sm flex items-center gap-2 shrink-0"
-              >
-                <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-                Generar planilla
-              </button>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} pendiente{cobrablesPendientes.length !== 1 ? 's' : ''}
+                </p>
+              </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* SlideOver planilla */}
-      <SlideOver
-        open={planillaOpen}
-        onClose={() => { setPlanillaOpen(false); setPlanillaError(null) }}
-        title="Planilla de asistencia"
-        subtitle={osConfig?.nombre ?? ''}
-      >
-        <div className="space-y-6">
-          <p className="text-sm text-on-surface-variant">
-            Seleccioná el mes y año para generar la planilla con las sesiones registradas.
-          </p>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Mes</label>
-              <select
-                value={mes}
-                onChange={(e) => setMes(Number(e.target.value))}
-                className="input-field text-sm py-2 w-full"
-              >
-                {MESES_NOMBRES.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Año</label>
-              <select
-                value={anio}
-                onChange={(e) => setAnio(Number(e.target.value))}
-                className="input-field text-sm py-2 w-full"
-              >
-                {anios.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {paciente.numero_afiliado && (
-            <div className="bg-surface-container-lowest rounded-xl p-4 space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">Afiliado</span>
-                <span className="font-medium text-on-surface">{paciente.apellido}, {paciente.nombre}</span>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">Monto cobrado</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium select-none">
+                  {paciente.moneda_preferida === 'USD' ? 'US$' : paciente.moneda_preferida === 'EUR' ? '€' : '$'}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  value={montoParcialInput}
+                  onChange={(e) => setMontoParcialInput(e.target.value)}
+                  placeholder="0"
+                  className={cn(inputCls, 'pl-9')}
+                />
               </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">N° socio</span>
-                <span className="font-medium text-on-surface">{paciente.numero_afiliado}</span>
-              </div>
-              {paciente.numero_autorizacion && (
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">N° autorización</span>
-                  <span className="font-medium text-on-surface">{paciente.numero_autorizacion}</span>
+              {montoIngresado > 0 && (
+                <div className={cn(
+                  'mt-2 rounded-xl px-4 py-3 text-sm flex items-start gap-2',
+                  previewPagaCompleto
+                    ? 'bg-green-50 border border-green-200 text-green-800'
+                    : 'bg-blue-50 border border-blue-200 text-blue-800'
+                )}>
+                  {previewPagaCompleto ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
+                      <span>El monto ingresado cubre el total del mes. <b>Todas las sesiones quedarán marcadas como pagadas.</b></span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
+                      <span>Saldo restante tras este pago: <b>{formatearMonto(previewSaldoTras, monedaPaciente)}</b></span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
-          )}
-
-          {!paciente.numero_afiliado && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-              ⚠️ El paciente no tiene N° de afiliado cargado. Completalo en la pestaña Datos antes de generar la planilla.
+            <div>
+              <label className="block text-sm font-medium text-on-surface mb-1.5">Medio de pago</label>
+              <select
+                value={pagoParcialesMedio}
+                onChange={(e) => setPagoParcialesMedio(e.target.value as typeof pagoParcialesMedio)}
+                className={inputCls}
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="mercado_pago">Mercado Pago</option>
+              </select>
             </div>
-          )}
+          </div>
+        </SlideOver>
 
-          {planillaError && (
-            <p className="text-sm text-red-600">{planillaError}</p>
-          )}
+        {/* Planilla SlideOver */}
+        <SlideOver
+          open={planillaOpen}
+          onClose={() => { setPlanillaOpen(false); setPlanillaError(null) }}
+          title="Planilla de asistencia"
+          subtitle={osConfig?.nombre ?? ''}
+        >
+          <div className="space-y-6">
+            <p className="text-sm text-on-surface-variant">
+              Seleccioná el mes y año para generar la planilla con las sesiones registradas.
+            </p>
 
-          <button
-            type="button"
-            onClick={handleGenerarPlanilla}
-            disabled={generando}
-            className={cn('btn-primary w-full py-3 text-sm flex items-center justify-center gap-2', generando && 'opacity-70')}
-          >
-            {generando ? (
-              <>
-                <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                Generando PDF...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-base">download</span>
-                Descargar planilla {MESES_NOMBRES[mes]} {anio}
-              </>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Mes</label>
+                <select
+                  value={mes}
+                  onChange={(e) => setMes(Number(e.target.value))}
+                  className="input-field text-sm py-2 w-full"
+                >
+                  {MESES_NOMBRES.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Año</label>
+                <select
+                  value={anio}
+                  onChange={(e) => setAnio(Number(e.target.value))}
+                  className="input-field text-sm py-2 w-full"
+                >
+                  {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {paciente.numero_afiliado && (
+              <div className="bg-surface-container-lowest rounded-xl p-4 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Afiliado</span>
+                  <span className="font-medium text-on-surface">{paciente.apellido}, {paciente.nombre}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">N° socio</span>
+                  <span className="font-medium text-on-surface">{paciente.numero_afiliado}</span>
+                </div>
+                {paciente.numero_autorizacion && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">N° autorización</span>
+                    <span className="font-medium text-on-surface">{paciente.numero_autorizacion}</span>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
-        </div>
-      </SlideOver>
-    </div>
+
+            {!paciente.numero_afiliado && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
+                ⚠️ El paciente no tiene N° de afiliado cargado. Completalo en la pestaña Datos antes de generar la planilla.
+              </div>
+            )}
+
+            {planillaError && (
+              <p className="text-sm text-red-600">{planillaError}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGenerarPlanilla}
+              disabled={generando}
+              className={cn('btn-primary w-full py-3 text-sm flex items-center justify-center gap-2', generando && 'opacity-70')}
+            >
+              {generando ? (
+                <>
+                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                  Generando PDF...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-base">download</span>
+                  Descargar planilla {MESES_NOMBRES[mes]} {anio}
+                </>
+              )}
+            </button>
+          </div>
+        </SlideOver>
+      </div>
+
+      {/* ConfirmDialog — marcar mes como pagado */}
+      <ConfirmDialog
+        open={showConfirm}
+        title={`Marcar ${MESES_NOMBRES[mes]} ${anio} como pagado`}
+        message={`Se marcarán como pagadas ${cobrablesPendientes.length} sesión${cobrablesPendientes.length !== 1 ? 'es' : ''}${Object.keys(montoPendiente).length > 0 ? ` por ${Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}` : ''}. Las canceladas no se incluyen.`}
+        confirmLabel={pagando ? 'Procesando...' : 'Confirmar'}
+        onConfirm={handleMarcarPagado}
+        onCancel={() => setShowConfirm(false)}
+      />
+
+      {/* RegistrarPagoSlide — cobrar sesión individual */}
+      <RegistrarPagoSlide
+        open={!!registrarPagoTurno}
+        onClose={() => setRegistrarPagoTurno(null)}
+        turno={registrarPagoTurno}
+        onSuccess={() => { setRegistrarPagoTurno(null); router.refresh() }}
+      />
+    </>
   )
 }
 
