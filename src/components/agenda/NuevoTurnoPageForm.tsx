@@ -516,8 +516,12 @@ export default function NuevoTurnoPageForm({
               pacientes={pacientesActivos}
               value={form.paciente_id}
               onChange={(id) => {
-                setForm((prev) => ({ ...prev, paciente_id: id }))
                 const p = pacientes.find((p) => p.id === id)
+                setForm((prev) => ({
+                  ...prev,
+                  paciente_id: id,
+                  monto: prev.monto || (p?.honorarios ? String(p.honorarios) : ''),
+                }))
                 if (p?.moneda_preferida) setMoneda(p.moneda_preferida as Moneda)
               }}
               className="input-field"

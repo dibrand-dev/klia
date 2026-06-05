@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import RegistrarPagoSlide from './RegistrarPagoSlide'
@@ -96,9 +96,9 @@ const TH: React.CSSProperties = {
 }
 const TD: React.CSSProperties = { padding: '14px 16px', fontSize: '13.5px', verticalAlign: 'middle' }
 
-function SumCard({ type, label, value, moneda, meta }: { type: 'histo' | 'month'; label: string; value: number; moneda: string; meta: string }) {
-  const sym = getCurrencySymbol(moneda)
+function SumCardMulti({ type, label, values, meta }: { type: 'histo' | 'month'; label: string; values: Record<string, number>; meta: string }) {
   const dotColor = type === 'histo' ? '#001a48' : '#f59e0b'
+  const entries = Object.entries(values).filter(([, v]) => v > 0)
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: type === 'histo' ? 'linear-gradient(90deg, #001a48, var(--accent))' : 'linear-gradient(90deg, #f59e0b, #FB923C)' }} />
@@ -106,10 +106,15 @@ function SumCard({ type, label, value, moneda, meta }: { type: 'histo' | 'month'
         <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         {label}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-        <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 500, marginRight: '4px' }}>{sym}</span>
-        {fmtNum(value)}
-      </div>
+      {entries.length === 0 ? (
+        <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--muted-2)' }}>—</div>
+      ) : entries.map(([m, v]) => (
+        <div key={m} style={{ fontSize: entries.length > 1 ? '18px' : '24px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>
+          <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 500, marginRight: '4px' }}>{getCurrencySymbol(m)}</span>
+          {fmtNum(v)}
+          {entries.length > 1 && <span style={{ fontSize: '11px', color: 'var(--muted)', marginLeft: '4px' }}>{m}</span>}
+        </div>
+      ))}
       {meta && <div style={{ marginTop: '6px', fontSize: '11.5px', color: 'var(--muted)' }}>{meta}</div>}
     </div>
   )
@@ -159,7 +164,12 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set())
   const menuRef = useRef<HTMLDivElement>(null)
+
+  function toggleExpand(pid: string) {
+    setExpandedPatients(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
+  }
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -204,6 +214,55 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   const countAll = useMemo(() => turnos.filter(t => statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countPartic = useMemo(() => turnos.filter(t => !t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countOS = useMemo(() => turnos.filter(t => !!t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
+
+  const patientGroups = useMemo(() => {
+    type Group = {
+      paciente_id: string; nombre: string; apellido: string
+      os_config_id: string | null; os_nombre: string | null
+      sessions: TurnoDeuda[]
+      saldoPorMoneda: Record<string, number>
+    }
+    const map = new Map<string, Group>()
+    for (const t of filtered) {
+      if (!map.has(t.paciente_id)) {
+        map.set(t.paciente_id, { paciente_id: t.paciente_id, nombre: t.paciente_nombre, apellido: t.paciente_apellido, os_config_id: t.os_config_id, os_nombre: t.os_nombre, sessions: [], saldoPorMoneda: {} })
+      }
+      const g = map.get(t.paciente_id)!
+      g.sessions.push(t)
+      const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
+      const m = t.moneda ?? 'ARS'
+      g.saldoPorMoneda[m] = (g.saldoPorMoneda[m] ?? 0) + saldo
+    }
+    return Array.from(map.values())
+  }, [filtered])
+
+  const currencyBreakdown = useMemo(() => {
+    const histoPartic: Record<string, number> = {}
+    const histoOS: Record<string, number> = {}
+    const mesPartic: Record<string, number> = {}
+    const mesOS: Record<string, number> = {}
+    const ahora = getArgNow()
+    const curMes = ahora.getUTCMonth()
+    const curAnio = ahora.getUTCFullYear()
+    const inicioMes = new Date(Date.UTC(curAnio, curMes, 1, 3, 0, 0))
+    const finMes = new Date(Date.UTC(curAnio, curMes + 1, 1, 3, 0, 0))
+    for (const t of turnos) {
+      if (t.estado_pago === 'bonificado') continue
+      const saldo = Math.max(0, t.monto - t.monto_pagado)
+      if (saldo <= 0) continue
+      const m = t.moneda ?? 'ARS'
+      const dt = new Date(t.fecha_hora)
+      const enMes = dt >= inicioMes && dt < finMes
+      if (!t.os_config_id) {
+        histoPartic[m] = (histoPartic[m] ?? 0) + saldo
+        if (enMes) mesPartic[m] = (mesPartic[m] ?? 0) + saldo
+      } else {
+        histoOS[m] = (histoOS[m] ?? 0) + saldo
+        if (enMes) mesOS[m] = (mesOS[m] ?? 0) + saldo
+      }
+    }
+    return { histoPartic, histoOS, mesPartic, mesOS }
+  }, [turnos])
 
   function toggleStatus(s: string) {
     setStatusFilter(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n })
@@ -319,8 +378,8 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
             Particulares y co-pagos
           </div>
           <div className="grid grid-cols-2 gap-2.5" style={{ marginTop: '12px' }}>
-            <SumCard type="histo" label="Adeudado histórico" value={summary.particAdeudado} moneda={moneda} meta={`${summary.particAdeudadoCount} sesión${summary.particAdeudadoCount !== 1 ? 'es' : ''} pendiente${summary.particAdeudadoCount !== 1 ? 's' : ''}`} />
-            <SumCard type="month" label="Mes en curso" value={summary.particMesActual} moneda={moneda} meta="" />
+            <SumCardMulti type="histo" label="Adeudado histórico" values={currencyBreakdown.histoPartic} meta={`${summary.particAdeudadoCount} sesión${summary.particAdeudadoCount !== 1 ? 'es' : ''} pendiente${summary.particAdeudadoCount !== 1 ? 's' : ''}`} />
+            <SumCardMulti type="month" label="Mes en curso" values={currencyBreakdown.mesPartic} meta="" />
           </div>
         </div>
         {/* Obras Sociales */}
@@ -332,8 +391,8 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
             Obras sociales
           </div>
           <div className="grid grid-cols-2 gap-2.5" style={{ marginTop: '12px' }}>
-            <SumCard type="histo" label="Adeudado histórico" value={summary.osAdeudado} moneda={moneda} meta={`${summary.osAdeudadoCount} sesión${summary.osAdeudadoCount !== 1 ? 'es' : ''}`} />
-            <SumCard type="month" label="Mes en curso" value={summary.osMesActual} moneda={moneda} meta="" />
+            <SumCardMulti type="histo" label="Adeudado histórico" values={currencyBreakdown.histoOS} meta={`${summary.osAdeudadoCount} sesión${summary.osAdeudadoCount !== 1 ? 'es' : ''}`} />
+            <SumCardMulti type="month" label="Mes en curso" values={currencyBreakdown.mesOS} meta="" />
           </div>
         </div>
       </div>
@@ -462,116 +521,183 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                   <th style={{ ...TH, textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.map(t => {
-                  const dt = new Date(t.fecha_hora)
-                  const dtArg = new Date(dt.getTime() - 3 * 60 * 60 * 1000)
-                  const fechaStr = dtArg.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
-                  const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-                  const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
-                  const isBonificado = t.estado_pago === 'bonificado'
-                  const av = getAvatarStyle(`${t.paciente_nombre}${t.paciente_apellido}`)
-                  const sym = getCurrencySymbol(t.moneda)
-                  const isMenuOpen = openMenu === t.id
+              {patientGroups.map(group => {
+                const isExpanded = expandedPatients.has(group.paciente_id)
+                const av = getAvatarStyle(`${group.nombre}${group.apellido}`)
+                const saldoEntries = Object.entries(group.saldoPorMoneda).filter(([, v]) => v > 0)
 
-                  return (
-                    <tr key={t.id} style={{ borderBottom: '1px solid #E7E9EE', transition: 'background .12s ease' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#F6F7F9')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <td style={TD}>
-                        <button onClick={() => openDetalle(t)} style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
-                          <div style={{ width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0, background: av.bg, color: av.color, display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '12.5px', letterSpacing: '-0.02em' }}>
-                            {t.paciente_nombre[0]}{t.paciente_apellido[0]}
-                          </div>
-                          <span style={{ fontWeight: 600, color: '#0B1220', fontSize: '13.5px', letterSpacing: '-0.005em', whiteSpace: 'nowrap' }}>
-                            {t.paciente_nombre} {t.paciente_apellido}
-                          </span>
-                        </button>
-                      </td>
-                      <td style={TD}>
-                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12.5px', color: '#1F2937', fontVariantNumeric: 'tabular-nums' }}>
-                          {fechaStr}<span style={{ color: '#8A93A1', fontSize: '11.5px', marginLeft: '4px' }}>{horaStr}</span>
-                        </div>
-                      </td>
-                      <td style={{ ...TD, color: '#5B6472', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
-                        {t.duracion_min} min
-                      </td>
-                      <td style={TD} className="hidden md:table-cell">
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
-                          {t.os_nombre ?? 'Particular'}
-                        </span>
-                      </td>
-                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden md:table-cell">
-                        <span style={{ fontWeight: 600, color: '#1F2937' }}>
-                          <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
-                          {fmtNum(t.monto)}
-                        </span>
-                      </td>
-                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
-                        {t.monto_pagado > 0 ? (
-                          <span style={{ fontWeight: 600, color: '#10b981' }}>
-                            <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
-                            {fmtNum(t.monto_pagado)}
-                          </span>
-                        ) : <span style={{ color: '#AEB5C0' }}>—</span>}
-                      </td>
-                      <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {saldo > 0 ? (
-                          <span style={{ fontWeight: 700, color: 'var(--danger)' }}>
-                            <span style={{ fontSize: '11px', color: 'var(--danger)', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{sym}</span>
-                            {fmtNum(saldo)}
-                          </span>
-                        ) : <span style={{ fontWeight: 500, color: '#AEB5C0' }}>—</span>}
-                      </td>
-                      <td style={TD}><StatusChip estado={t.estado_pago} /></td>
-                      <td style={{ ...TD, textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                return (
+                  <Fragment key={group.paciente_id}>
+                    {/* Group header row */}
+                    <tbody>
+                      <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid #E7E9EE', background: isExpanded ? '#F0F4FF' : undefined }}>
+                        <td style={TD}>
                           <button
-                            onClick={() => !isBonificado && setPagoSlide({ turno: t })}
-                            disabled={isBonificado}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 11px', borderRadius: '7px', background: isBonificado ? '#F1F3F6' : '#0B1220', color: isBonificado ? '#AEB5C0' : 'white', border: 'none', fontSize: '12.5px', fontWeight: 600, cursor: isBonificado ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+                            onClick={() => setDetalleSlide({ paciente_id: group.paciente_id, nombre: group.nombre, apellido: group.apellido, os_nombre: group.os_nombre })}
+                            style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-                            <span className="hidden sm:inline">Registrar cobro</span>
-                          </button>
-                          <div style={{ position: 'relative' }} ref={isMenuOpen ? menuRef : undefined}>
-                            <button
-                              onClick={() => setOpenMenu(prev => prev === t.id ? null : t.id)}
-                              style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#5B6472">
-                                <circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>
-                              </svg>
-                            </button>
-                            {isMenuOpen && (
-                              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, minWidth: '200px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '10px', boxShadow: '0 8px 24px rgba(16,24,40,.08)', padding: '6px', zIndex: 25 }}>
-                                <MenuBtn onClick={() => handleBonificar(t.id)}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg>
-                                  Bonificar
-                                </MenuBtn>
-                                <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></svg>
-                                  Enviar resumen
-                                </MenuBtn>
-                                <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                                  Ver detalle
-                                </MenuBtn>
-                                <div style={{ height: '1px', background: '#E7E9EE', margin: '4px 2px' }} />
-                                <MenuBtn danger onClick={() => { setOpenMenu(null); setConfirmDelete(t.id) }}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-                                  Eliminar
-                                </MenuBtn>
+                            <div style={{ width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0, background: av.bg, color: av.color, display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '12.5px', letterSpacing: '-0.02em' }}>
+                              {group.nombre[0]}{group.apellido[0]}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, color: '#0B1220', fontSize: '13.5px', letterSpacing: '-0.005em', whiteSpace: 'nowrap' }}>
+                                {group.nombre} {group.apellido}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 7px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, marginTop: '2px', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
+                                {group.os_nombre ?? 'Particular'}
+                              </span>
+                            </div>
+                          </button>
+                        </td>
+                        <td style={TD}>
+                          <span style={{ fontSize: '12px', color: '#8A93A1', fontWeight: 500 }}>
+                            {group.sessions.length} sesión{group.sessions.length !== 1 ? 'es' : ''}
+                          </span>
+                        </td>
+                        <td style={{ ...TD, color: '#AEB5C0' }} className="hidden lg:table-cell">—</td>
+                        <td style={TD} className="hidden md:table-cell">
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
+                            {group.os_nombre ?? 'Particular'}
+                          </span>
+                        </td>
+                        <td style={{ ...TD, textAlign: 'right', color: '#AEB5C0' }} className="hidden md:table-cell">—</td>
+                        <td style={{ ...TD, textAlign: 'right', color: '#AEB5C0' }} className="hidden lg:table-cell">—</td>
+                        <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {saldoEntries.map(([m, v]) => (
+                            <div key={m} style={{ fontWeight: 700, color: 'var(--danger)', lineHeight: 1.3 }}>
+                              <span style={{ fontSize: '11px', color: 'var(--danger)', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{getCurrencySymbol(m)}</span>
+                              {fmtNum(v)}
+                              {saldoEntries.length > 1 && <span style={{ fontSize: '10px', marginLeft: '2px', opacity: 0.7 }}>{m}</span>}
+                            </div>
+                          ))}
+                        </td>
+                        <td style={TD}>
+                          <StatusChip estado={group.sessions.find(s => s.estado_pago === 'pendiente')?.estado_pago ?? group.sessions[0]?.estado_pago ?? 'pendiente'} />
+                        </td>
+                        <td style={{ ...TD, textAlign: 'right' }}>
+                          <button
+                            onClick={() => toggleExpand(group.paciente_id)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 11px', borderRadius: '7px', border: '1px solid #E7E9EE', background: isExpanded ? '#F0F4FF' : '#FFFFFF', color: '#1F2937', fontSize: '12.5px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform .15s ease', flexShrink: 0 }}>
+                              <path d="M6 9l6 6 6-6" />
+                            </svg>
+                            <span className="hidden sm:inline">{isExpanded ? 'Ocultar' : 'Ver sesiones'}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+
+                    {/* Session rows */}
+                    {isExpanded && (
+                      <tbody style={{ background: '#F9FAFC' }}>
+                        {group.sessions.map((t, idx) => {
+                          const dt = new Date(t.fecha_hora)
+                          const dtArg = new Date(dt.getTime() - 3 * 60 * 60 * 1000)
+                          const fechaStr = dtArg.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
+                          const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+                          const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
+                          const isBonificado = t.estado_pago === 'bonificado'
+                          const sym = getCurrencySymbol(t.moneda)
+                          const isMenuOpen = openMenu === t.id
+                          const isLast = idx === group.sessions.length - 1
+
+                          return (
+                            <tr key={t.id} style={{ borderBottom: isLast ? '2px solid #E7E9EE' : '1px dashed #E7E9EE' }}>
+                              <td style={TD}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '8px' }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#AEB5C0" strokeWidth="1.5" style={{ flexShrink: 0 }}>
+                                    <path d="M3 3v10a2 2 0 002 2h16"/>
+                                  </svg>
+                                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12.5px', color: '#1F2937', fontVariantNumeric: 'tabular-nums' }}>
+                                    {fechaStr}<span style={{ color: '#8A93A1', fontSize: '11.5px', marginLeft: '4px' }}>{horaStr}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ ...TD, color: '#AEB5C0' }}>—</td>
+                              <td style={{ ...TD, color: '#5B6472', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
+                                {t.duracion_min} min
+                              </td>
+                              <td style={TD} className="hidden md:table-cell">
+                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}>
+                                  {t.os_nombre ?? 'Particular'}
+                                </span>
+                              </td>
+                              <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden md:table-cell">
+                                <span style={{ fontWeight: 600, color: '#1F2937' }}>
+                                  <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                                  {fmtNum(t.monto)}
+                                </span>
+                              </td>
+                              <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} className="hidden lg:table-cell">
+                                {t.monto_pagado > 0 ? (
+                                  <span style={{ fontWeight: 600, color: '#10b981' }}>
+                                    <span style={{ fontSize: '11px', color: '#8A93A1', fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                                    {fmtNum(t.monto_pagado)}
+                                  </span>
+                                ) : <span style={{ color: '#AEB5C0' }}>—</span>}
+                              </td>
+                              <td style={{ ...TD, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                {saldo > 0 ? (
+                                  <span style={{ fontWeight: 700, color: 'var(--danger)' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--danger)', opacity: 0.6, fontWeight: 500, marginRight: '2px' }}>{sym}</span>
+                                    {fmtNum(saldo)}
+                                  </span>
+                                ) : <span style={{ fontWeight: 500, color: '#AEB5C0' }}>—</span>}
+                              </td>
+                              <td style={TD}><StatusChip estado={t.estado_pago} /></td>
+                              <td style={{ ...TD, textAlign: 'right' }}>
+                                <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => !isBonificado && setPagoSlide({ turno: t })}
+                                    onTouchEnd={(e) => { e.preventDefault(); if (!isBonificado) setPagoSlide({ turno: t }) }}
+                                    disabled={isBonificado}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 11px', borderRadius: '7px', background: isBonificado ? '#F1F3F6' : '#0B1220', color: isBonificado ? '#AEB5C0' : 'white', border: 'none', fontSize: '12.5px', fontWeight: 600, cursor: isBonificado ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', touchAction: 'manipulation' }}
+                                  >
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+                                    <span className="hidden sm:inline">Registrar cobro</span>
+                                  </button>
+                                  <div style={{ position: 'relative' }} ref={isMenuOpen ? menuRef : undefined}>
+                                    <button
+                                      onClick={() => setOpenMenu(prev => prev === t.id ? null : t.id)}
+                                      style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#5B6472">
+                                        <circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>
+                                      </svg>
+                                    </button>
+                                    {isMenuOpen && (
+                                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, minWidth: '200px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '10px', boxShadow: '0 8px 24px rgba(16,24,40,.08)', padding: '6px', zIndex: 25 }}>
+                                        <MenuBtn onClick={() => handleBonificar(t.id)}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg>
+                                          Bonificar
+                                        </MenuBtn>
+                                        <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M4 6h16v12H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+                                          Enviar resumen
+                                        </MenuBtn>
+                                        <MenuBtn onClick={() => { setOpenMenu(null); openDetalle(t) }}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                                          Ver detalle
+                                        </MenuBtn>
+                                        <div style={{ height: '1px', background: '#E7E9EE', margin: '4px 2px' }} />
+                                        <MenuBtn danger onClick={() => { setOpenMenu(null); setConfirmDelete(t.id) }}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                                          Eliminar
+                                        </MenuBtn>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    )}
+                  </Fragment>
+                )
+              })}
             </table>
           </div>
         )}

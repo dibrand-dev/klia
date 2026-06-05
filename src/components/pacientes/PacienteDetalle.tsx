@@ -1104,6 +1104,10 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [planillaOpen, setPlanillaOpen] = useState(false)
   const [generando, setGenerando] = useState(false)
   const [planillaError, setPlanillaError] = useState<string | null>(null)
+  const [pagoParcialesOpen, setPagoParcialesOpen] = useState(false)
+  const [montoParcialInput, setMontoParcialInput] = useState('')
+  const [guardandoParcial, setGuardandoParcial] = useState(false)
+  const [pagoParcialesMedio, setPagoParcialesMedio] = useState<'efectivo' | 'transferencia' | 'mercado_pago'>('efectivo')
 
   const osConfig = profObrasSociales.find((o) => o.id === paciente.os_config_id)
   const tienePlanilla = !!paciente.os_config_id && !!osConfig
@@ -1156,6 +1160,30 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
     setShowConfirm(false)
     setMesPagado(true)
     router.refresh()
+  }
+
+  async function handlePagoParcial() {
+    const monto = parseFloat(montoParcialInput)
+    if (!monto || monto <= 0) return
+    setGuardandoParcial(true)
+    try {
+      const moneda = (paciente.moneda_preferida ?? 'ARS') as string
+      const res = await fetch('/api/cobros/pago-parcial-mes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paciente_id: paciente.id, mes, anio, monto, moneda, medio_pago: pagoParcialesMedio }),
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? 'Error al registrar el pago')
+      setPagoParcialesOpen(false)
+      setMontoParcialInput('')
+      setPagoParcialesMedio('efectivo')
+      router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al registrar el pago')
+    } finally {
+      setGuardandoParcial(false)
+    }
   }
 
   async function handleGenerarPlanilla() {
@@ -1343,8 +1371,7 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
                 ¿Marcar todas las sesiones de {mesNombre} {anio} como pagadas?
               </p>
               <p className="text-xs text-on-surface-variant">
-                Se marcarán como pagadas {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} (realizadas y no asistidas).
-                Las canceladas no se incluyen.
+                Se marcarán como pagadas {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''}{Object.keys(montoPendiente).length > 0 && <> por <strong className="text-on-surface">{Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}</strong></>}. Las canceladas no se incluyen.
               </p>
               <div className="flex gap-2">
                 <button
@@ -1365,16 +1392,89 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowConfirm(true)}
-              className="btn-primary px-5 py-2.5 text-sm"
-            >
-              Marcar mes como pagado
-            </button>
+            <div className="flex gap-2 flex-wrap items-center">
+              <button
+                type="button"
+                onClick={() => setPagoParcialesOpen(true)}
+                className="btn-secondary px-4 py-2.5 text-sm"
+              >
+                Pago parcial
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConfirm(true)}
+                className="btn-primary px-5 py-2.5 text-sm"
+              >
+                Marcar mes como pagado
+              </button>
+            </div>
           )}
         </div>
       )}
+
+      {/* Pago parcial del mes */}
+      <SlideOver
+        open={pagoParcialesOpen}
+        onClose={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
+        title="Registrar pago parcial"
+        subtitle={`${paciente.nombre} ${paciente.apellido} — ${mesNombre} ${anio}`}
+        footer={
+          <div className="flex gap-3">
+            <button onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }} className="btn-secondary flex-1 py-3 text-sm font-semibold">
+              Cancelar
+            </button>
+            <button
+              onClick={handlePagoParcial}
+              disabled={!montoParcialInput || guardandoParcial}
+              className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (!montoParcialInput || guardandoParcial) && 'opacity-50')}
+            >
+              {guardandoParcial ? 'Guardando...' : 'Registrar pago'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          {Object.keys(montoPendiente).length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-1">Pendiente del mes</p>
+              <p className="text-lg font-bold text-amber-800">
+                {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} pendiente{cobrablesPendientes.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-1.5">Monto cobrado</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium select-none">
+                {paciente.moneda_preferida === 'USD' ? 'US$' : paciente.moneda_preferida === 'EUR' ? '€' : '$'}
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={montoParcialInput}
+                onChange={(e) => setMontoParcialInput(e.target.value)}
+                placeholder="0"
+                className={cn(inputCls, 'pl-9')}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-on-surface mb-1.5">Medio de pago</label>
+            <select
+              value={pagoParcialesMedio}
+              onChange={(e) => setPagoParcialesMedio(e.target.value as typeof pagoParcialesMedio)}
+              className={inputCls}
+            >
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mercado_pago">Mercado Pago</option>
+            </select>
+          </div>
+        </div>
+      </SlideOver>
 
       {/* Planilla de asistencia */}
       {paciente.os_config_id && osConfig && (
