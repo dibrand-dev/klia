@@ -15,6 +15,20 @@ interface SesionDetalle {
   monto_pagado: number | null
 }
 
+interface SesionPendiente {
+  id: string
+  fecha_hora: string
+  monto: number | null
+  monto_pagado: number | null
+  moneda: string
+  estado_pago: string | null
+}
+
+interface PreviewSesion extends SesionPendiente {
+  resultado: 'pagado' | 'parcial' | 'sin_cambio'
+  aplicado: number
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -23,6 +37,7 @@ interface Props {
   pacienteApellido: string
   osNombre: string | null
   terapeutaId: string
+  onSuccess?: () => void
 }
 
 const AVATAR_VARIANTS = [
@@ -57,7 +72,24 @@ const STCHIP: Record<string, { bg: string; color: string; label: string }> = {
   bonificado:   { bg: '#F3F4F6', color: '#6b7280', label: 'Bonificada' },
 }
 
-export default function DetallePacienteSlide({ open, onClose, pacienteId, pacienteNombre, pacienteApellido, osNombre, terapeutaId }: Props) {
+function calcularPreview(monto: number, sesiones: SesionPendiente[]): PreviewSesion[] {
+  let restante = monto
+  return sesiones.map(s => {
+    const saldo = (s.monto ?? 0) - (s.monto_pagado ?? 0)
+    if (saldo <= 0) return { ...s, resultado: 'sin_cambio' as const, aplicado: 0 }
+    if (restante >= saldo) {
+      restante -= saldo
+      return { ...s, resultado: 'pagado' as const, aplicado: saldo }
+    } else if (restante > 0) {
+      const aplicado = restante
+      restante = 0
+      return { ...s, resultado: 'parcial' as const, aplicado }
+    }
+    return { ...s, resultado: 'sin_cambio' as const, aplicado: 0 }
+  })
+}
+
+export default function DetallePacienteSlide({ open, onClose, pacienteId, pacienteNombre, pacienteApellido, osNombre, terapeutaId, onSuccess }: Props) {
   const now = new Date()
   const argNow = new Date(now.getTime() - 3 * 60 * 60 * 1000)
 
@@ -68,6 +100,15 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
   const [enviandoResumen, setEnviandoResumen] = useState(false)
   const [resumenEnviado, setResumenEnviado] = useState(false)
   const [resumenError, setResumenError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Pago a cuenta state
+  const [showPagoACuenta, setShowPagoACuenta] = useState(false)
+  const [montoPago, setMontoPago] = useState('')
+  const [medioPago, setMedioPago] = useState<'efectivo' | 'transferencia' | 'mercado_pago'>('efectivo')
+  const [loadingPago, setLoadingPago] = useState(false)
+  const [pagoError, setPagoError] = useState<string | null>(null)
+  const [todasLasSesiones, setTodasLasSesiones] = useState<SesionPendiente[]>([])
 
   useEffect(() => {
     if (!pacienteId || !open) return
@@ -84,7 +125,21 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
       .lt('fecha_hora', finMes.toISOString())
       .order('fecha_hora')
       .then(({ data }) => { setSesiones((data ?? []) as SesionDetalle[]); setLoading(false) })
-  }, [pacienteId, mes, anio, open, terapeutaId])
+  }, [pacienteId, mes, anio, open, terapeutaId, refreshKey])
+
+  // Fetch all pending sessions across all months for pago a cuenta
+  useEffect(() => {
+    if (!pacienteId || !open) return
+    const supabase = createClient()
+    supabase.from('turnos')
+      .select('id, fecha_hora, monto, monto_pagado, moneda, estado_pago')
+      .eq('paciente_id', pacienteId)
+      .eq('terapeuta_id', terapeutaId)
+      .in('estado_pago', ['pendiente', 'pago_parcial'])
+      .in('estado', ['realizado', 'no_asistio'])
+      .order('fecha_hora', { ascending: true })
+      .then(({ data }) => setTodasLasSesiones((data ?? []) as SesionPendiente[]))
+  }, [pacienteId, open, terapeutaId, refreshKey])
 
   useEffect(() => {
     setResumenEnviado(false)
@@ -105,6 +160,10 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
   const countParciales = sesiones.filter(s => s.estado_pago === 'pago_parcial').length
   const countBonif = sesiones.filter(s => s.estado_pago === 'bonificado').length
   const countPendientes = sesiones.filter(s => s.estado_pago === 'pendiente').length
+
+  const deudaTotal = todasLasSesiones.reduce((acc, s) => acc + Math.max(0, (s.monto ?? 0) - (s.monto_pagado ?? 0)), 0)
+  const monedaDeuda = todasLasSesiones[0]?.moneda || 'ARS'
+  const symDeuda = getCurrencySymbol(monedaDeuda)
 
   const monthOptions: { mes: number; anio: number; label: string }[] = []
   for (let i = 0; i < 6; i++) {
@@ -128,6 +187,29 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
       setResumenError(err instanceof Error ? err.message : 'Error al enviar')
     } finally {
       setEnviandoResumen(false)
+    }
+  }
+
+  async function handlePagoACuenta() {
+    if (!pacienteId) return
+    setLoadingPago(true); setPagoError(null)
+    try {
+      const res = await fetch('/api/cobros/pago-a-cuenta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paciente_id: pacienteId, monto_recibido: Number(montoPago), medio_pago: medioPago }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al registrar')
+      setShowPagoACuenta(false)
+      setMontoPago('')
+      setMedioPago('efectivo')
+      setRefreshKey(k => k + 1)
+      onSuccess?.()
+    } catch (err) {
+      setPagoError(err instanceof Error ? err.message : 'Error al registrar el pago')
+    } finally {
+      setLoadingPago(false)
     }
   }
 
@@ -181,6 +263,12 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
 
   const h4Style: React.CSSProperties = { margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8A93A1' }
 
+  const previewSesiones = montoPago && Number(montoPago) > 0
+    ? calcularPreview(Number(montoPago), todasLasSesiones).filter(s => s.aplicado > 0)
+    : []
+
+  const btnDisabled = !montoPago || Number(montoPago) <= 0 || loadingPago
+
   return (
     <SlideOver open={open} onClose={onClose} title="" header={soHeader} footer={soFooter} noPadding width="md">
       <div style={{ padding: '20px 22px' }}>
@@ -231,6 +319,113 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
             <div style={{ fontSize: '11px', color: '#DC2626', marginTop: '3px' }}>{sesionesPendiente} sesión{sesionesPendiente !== 1 ? 'es' : ''} con saldo</div>
           </div>
         </div>
+
+        {/* Pago a cuenta */}
+        {deudaTotal > 0 && !showPagoACuenta && (
+          <button
+            onClick={() => setShowPagoACuenta(true)}
+            style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '10px 16px', borderRadius: '8px', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: 'white', boxShadow: '0 4px 10px rgba(37,99,235,0.20)', marginBottom: '16px' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+            Registrar pago a cuenta · {symDeuda} {fmtNum(deudaTotal)} pendientes
+          </button>
+        )}
+
+        {showPagoACuenta && (
+          <div style={{ marginBottom: '16px', background: '#F6F7F9', border: '1px solid #E7E9EE', borderRadius: '12px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#0B1220' }}>Pago a cuenta</span>
+              <button
+                onClick={() => { setShowPagoACuenta(false); setMontoPago(''); setPagoError(null) }}
+                style={{ width: '24px', height: '24px', display: 'grid', placeItems: 'center', border: 'none', background: 'transparent', cursor: 'pointer' }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A93A1" strokeWidth="2"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+              </button>
+            </div>
+
+            <div style={{ fontSize: '12px', color: '#5B6472', marginBottom: '12px', padding: '8px 12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+              Deuda total (todos los meses): <span style={{ fontWeight: 700, color: '#B45309' }}>{symDeuda} {fmtNum(deudaTotal)} {monedaDeuda}</span>
+              <span style={{ marginLeft: '6px', color: '#92400E' }}>· {todasLasSesiones.length} sesión{todasLasSesiones.length !== 1 ? 'es' : ''}</span>
+            </div>
+
+            {/* Monto */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#1F2937', display: 'block', marginBottom: '5px' }}>Monto recibido</label>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '8px', overflow: 'hidden' }}>
+                <span style={{ padding: '0 10px', fontSize: '13px', color: '#5B6472', fontWeight: 500, background: '#F6F7F9', borderRight: '1px solid #E7E9EE', height: '38px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{symDeuda}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={montoPago}
+                  onChange={e => setMontoPago(e.target.value)}
+                  placeholder="0"
+                  style={{ flex: 1, border: 'none', outline: 'none', padding: '0 12px', height: '38px', fontSize: '15px', color: '#0B1220', background: 'transparent', minWidth: 0, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}
+                />
+              </div>
+            </div>
+
+            {/* Medio de pago */}
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#1F2937', display: 'block', marginBottom: '5px' }}>Medio de pago</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                {([
+                  { value: 'efectivo' as const, label: 'Efectivo' },
+                  { value: 'transferencia' as const, label: 'Transf.' },
+                  { value: 'mercado_pago' as const, label: 'MP' },
+                ]).map(opt => {
+                  const sel = medioPago === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setMedioPago(opt.value)}
+                      style={{ padding: '8px', border: `1px solid ${sel ? '#0B1220' : '#E7E9EE'}`, borderRadius: '7px', background: sel ? '#0B1220' : '#FFFFFF', fontSize: '12px', fontWeight: 500, color: sel ? 'white' : '#1F2937', cursor: 'pointer' }}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Preview distribución */}
+            {previewSesiones.length > 0 && (
+              <div style={{ marginBottom: '10px' }}>
+                <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8A93A1', margin: '0 0 6px' }}>Distribución:</p>
+                <div style={{ border: '1px solid #E7E9EE', borderRadius: '8px', overflow: 'hidden' }}>
+                  {previewSesiones.map((s, i) => {
+                    const dt = new Date(s.fecha_hora)
+                    const dtArg = new Date(dt.getTime() - 3 * 60 * 60 * 1000)
+                    const fechaStr = dtArg.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+                    return (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', borderBottom: i < previewSesiones.length - 1 ? '1px solid #E7E9EE' : 'none', fontSize: '12.5px' }}>
+                        <span style={{ color: '#8A93A1', fontVariantNumeric: 'tabular-nums', width: '52px', flexShrink: 0 }}>{fechaStr}</span>
+                        <span style={{ flex: 1, fontWeight: 600, color: s.resultado === 'pagado' ? '#047857' : '#B45309' }}>
+                          {s.resultado === 'pagado' ? '✓ Saldada' : `Parcial +${symDeuda} ${fmtNum(s.aplicado)}`}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#8A93A1' }}>{symDeuda} {fmtNum((s.monto ?? 0) - (s.monto_pagado ?? 0))} saldo</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {pagoError && (
+              <div style={{ marginBottom: '8px', padding: '8px 12px', background: '#FEE2E2', borderRadius: '8px', fontSize: '12.5px', color: '#DC2626' }}>
+                {pagoError}
+              </div>
+            )}
+
+            <button
+              onClick={handlePagoACuenta}
+              disabled={btnDisabled}
+              style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '10px', borderRadius: '8px', fontSize: '13.5px', fontWeight: 600, cursor: btnDisabled ? 'not-allowed' : 'pointer', border: 'none', background: btnDisabled ? '#F1F3F6' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: btnDisabled ? '#AEB5C0' : 'white', boxShadow: btnDisabled ? 'none' : '0 4px 10px rgba(37,99,235,0.20)' }}
+            >
+              {loadingPago ? 'Registrando...' : 'Registrar pago'}
+            </button>
+          </div>
+        )}
 
         {/* Sessions section */}
         <div style={{ marginTop: '22px' }}>
