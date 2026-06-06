@@ -1109,7 +1109,8 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [pagoParcialesOpen, setPagoParcialesOpen] = useState(false)
   const [montoParcialInput, setMontoParcialInput] = useState('')
   const [guardandoParcial, setGuardandoParcial] = useState(false)
-  const [pagoParcialesMedio, setPagoParcialesMedio] = useState<'efectivo' | 'transferencia' | 'mercado_pago'>('efectivo')
+  const [pagoParcialesMedio, setPagoParcialesMedio] = useState<'efectivo' | 'transferencia' | 'mercado_pago'>('transferencia')
+  const [fechaParcialInput, setFechaParcialInput] = useState(() => new Date(new Date().getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10))
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [localEstados, setLocalEstados] = useState<Record<string, string>>({})
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
@@ -1238,13 +1239,14 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
       const res = await fetch('/api/cobros/pago-parcial-mes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paciente_id: paciente.id, mes, anio, monto, moneda, medio_pago: pagoParcialesMedio }),
+        body: JSON.stringify({ paciente_id: paciente.id, mes, anio, monto, moneda, medio_pago: pagoParcialesMedio, fecha_cobro: fechaParcialInput }),
       })
       const data = await res.json().catch(() => ({})) as { error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Error al registrar el pago')
       setPagoParcialesOpen(false)
       setMontoParcialInput('')
-      setPagoParcialesMedio('efectivo')
+      setPagoParcialesMedio('transferencia')
+      setFechaParcialInput(new Date(new Date().getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10))
       router.refresh()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al registrar el pago')
@@ -1531,88 +1533,159 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
         )}
 
         {/* Pago parcial del mes SlideOver */}
-        <SlideOver
-          open={pagoParcialesOpen}
-          onClose={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
-          title="Registrar pago parcial"
-          subtitle={`${paciente.nombre} ${paciente.apellido} — ${MESES_NOMBRES[mes]} ${anio}`}
-          footer={
-            <div className="flex gap-3">
-              <button onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }} className="btn-secondary flex-1 py-3 text-sm font-semibold">
+        {(() => {
+          const symParcial = monedaPaciente === 'USD' ? 'US$' : monedaPaciente === 'EUR' ? '€' : '$'
+          const fmtN = (n: number) => new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+          const totalMes = montoTotal[monedaPaciente] ?? 0
+          const cobradoMes = montoCobrado[monedaPaciente] ?? 0
+          const pendienteMes = totalPendientePaciente
+          const parcialH4: React.CSSProperties = { margin: '0 0 10px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8A93A1' }
+          const parcialFieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }
+          const parcialLabelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: '#1F2937' }
+
+          const parcialHeader = (
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #E7E9EE', display: 'flex', alignItems: 'flex-start', gap: '12px', background: 'linear-gradient(180deg, #F4F7FE 0%, transparent 100%)', flexShrink: 0 }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0, background: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)', color: '#16389F', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: '16px', letterSpacing: '-0.02em' }}>
+                {paciente.nombre[0]}{paciente.apellido[0]}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#0B1220', letterSpacing: '-0.015em' }}>
+                  {paciente.nombre} {paciente.apellido}
+                </div>
+                <div style={{ fontSize: '12px', color: '#5B6472', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>{MESES_NOMBRES[mes]} {anio}</span>
+                  <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: '#AEB5C0', flexShrink: 0 }} />
+                  <span>{cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} pendiente{cobrablesPendientes.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
+                style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid transparent', background: 'transparent', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                title="Cerrar"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1F2937" strokeWidth="1.8"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+              </button>
+            </div>
+          )
+
+          const parcialFooter = (
+            <div style={{ borderTop: '1px solid #E7E9EE', padding: '12px 16px', display: 'flex', gap: '8px', background: '#F6F7F9' }}>
+              <button
+                type="button"
+                onClick={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '11px 16px', borderRadius: '8px', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', border: '1px solid #E7E9EE', background: '#FFFFFF', color: '#1F2937' }}
+              >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={handlePagoParcial}
-                disabled={!montoParcialInput || guardandoParcial}
-                className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (!montoParcialInput || guardandoParcial) && 'opacity-50')}
+                disabled={!montoParcialInput || guardandoParcial || montoIngresado <= 0}
+                style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '7px', padding: '11px 16px', borderRadius: '8px', fontSize: '13.5px', fontWeight: 600, cursor: !montoParcialInput || guardandoParcial || montoIngresado <= 0 ? 'not-allowed' : 'pointer', border: 'none', background: !montoParcialInput || guardandoParcial || montoIngresado <= 0 ? '#F1F3F6' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: !montoParcialInput || guardandoParcial || montoIngresado <= 0 ? '#AEB5C0' : 'white', boxShadow: !montoParcialInput || guardandoParcial || montoIngresado <= 0 ? 'none' : '0 4px 10px rgba(37,99,235,0.20)' }}
               >
-                {guardandoParcial ? 'Guardando...' : 'Registrar pago'}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
+                {guardandoParcial ? 'Registrando...' : 'Registrar cobro'}
               </button>
             </div>
-          }
-        >
-          <div className="space-y-5">
-            {Object.keys(montoPendiente).length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-1">Pendiente del mes</p>
-                <p className="text-lg font-bold text-amber-800">
-                  {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
-                </p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} pendiente{cobrablesPendientes.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-on-surface mb-1.5">Monto cobrado</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm font-medium select-none">
-                  {paciente.moneda_preferida === 'USD' ? 'US$' : paciente.moneda_preferida === 'EUR' ? '€' : '$'}
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  value={montoParcialInput}
-                  onChange={(e) => setMontoParcialInput(e.target.value)}
-                  placeholder="0"
-                  className={cn(inputCls, 'pl-9')}
-                />
-              </div>
-              {montoIngresado > 0 && (
-                <div className={cn(
-                  'mt-2 rounded-xl px-4 py-3 text-sm flex items-start gap-2',
-                  previewPagaCompleto
-                    ? 'bg-green-50 border border-green-200 text-green-800'
-                    : 'bg-blue-50 border border-blue-200 text-blue-800'
-                )}>
-                  {previewPagaCompleto ? (
-                    <>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><path d="M20 6L9 17l-5-5"/></svg>
-                      <span>El monto ingresado cubre el total del mes. <b>Todas las sesiones quedarán marcadas como pagadas.</b></span>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
-                      <span>Saldo restante tras este pago: <b>{formatearMonto(previewSaldoTras, monedaPaciente)}</b></span>
-                    </>
+          )
+
+          return (
+            <SlideOver open={pagoParcialesOpen} onClose={() => { setPagoParcialesOpen(false); setMontoParcialInput('') }} title="" header={parcialHeader} footer={parcialFooter} noPadding width="md">
+              <div style={{ padding: '20px 22px' }}>
+
+                <h4 style={parcialH4}>Resumen de la sesión</h4>
+                <div style={{ background: '#F6F7F9', border: '1px solid #E7E9EE', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px', color: '#1F2937', fontVariantNumeric: 'tabular-nums' }}>
+                    <span>Monto total</span>
+                    <span><span style={{ fontSize: '11.5px', opacity: 0.7, fontWeight: 500, marginRight: '3px' }}>{symParcial}</span>{fmtN(totalMes)} {monedaPaciente}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ color: '#1F2937' }}>Ya pagado</span>
+                    <span style={{ color: '#10b981', fontWeight: 600 }}><span style={{ fontSize: '11.5px', opacity: 0.7, fontWeight: 500, marginRight: '3px' }}>{symParcial}</span>{fmtN(cobradoMes)} {monedaPaciente}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontVariantNumeric: 'tabular-nums', paddingTop: '8px', borderTop: '1px dashed #E7E9EE', fontWeight: 700, color: '#DC2626', fontSize: '15px' }}>
+                    <span>Saldo pendiente</span>
+                    <span style={{ background: '#FEE2E2', padding: '4px 10px', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '11.5px', opacity: 0.7, fontWeight: 500, marginRight: '3px' }}>{symParcial}</span>{fmtN(pendienteMes)} {monedaPaciente}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '22px' }}>
+                  <h4 style={parcialH4}>Registrar nuevo cobro</h4>
+
+                  <div style={parcialFieldStyle}>
+                    <label style={parcialLabelStyle}>Monto cobrado <em style={{ color: '#DC2626', fontStyle: 'normal', fontWeight: 700, marginLeft: '2px' }}>*</em></label>
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '8px', overflow: 'hidden' }}
+                    >
+                      <span style={{ padding: '0 10px', fontSize: '13px', color: '#5B6472', fontWeight: 500, background: '#F6F7F9', borderRight: '1px solid #E7E9EE', height: '38px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{symParcial}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={montoParcialInput}
+                        onChange={(e) => setMontoParcialInput(e.target.value)}
+                        inputMode="numeric"
+                        placeholder="0"
+                        style={{ flex: 1, border: 'none', outline: 'none', padding: '0 12px', height: '38px', fontSize: '15px', color: '#0B1220', background: 'transparent', minWidth: 0, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}
+                      />
+                      <span style={{ padding: '0 10px', fontSize: '13px', color: '#5B6472', fontWeight: 500, background: '#F6F7F9', borderLeft: '1px solid #E7E9EE', height: '38px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>{monedaPaciente}</span>
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#8A93A1' }}>El saldo pendiente ya está precargado. Podés editarlo si es un pago parcial.</span>
+                  </div>
+
+                  <div style={parcialFieldStyle}>
+                    <label style={parcialLabelStyle}>Medio de pago <em style={{ color: '#DC2626', fontStyle: 'normal', fontWeight: 700, marginLeft: '2px' }}>*</em></label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                      {([
+                        { value: 'efectivo' as const, label: 'Efectivo', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg> },
+                        { value: 'transferencia' as const, label: 'Transferencia', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 7h13l-3-3M21 17H8l3 3"/></svg> },
+                        { value: 'mercado_pago' as const, label: 'Mercado Pago', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></svg> },
+                      ]).map(opt => {
+                        const sel = pagoParcialesMedio === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setPagoParcialesMedio(opt.value)}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', border: `1px solid ${sel ? '#0B1220' : '#E7E9EE'}`, borderRadius: '8px', background: sel ? '#0B1220' : '#FFFFFF', fontSize: '13px', fontWeight: 500, color: sel ? 'white' : '#1F2937', cursor: 'pointer', transition: 'all .12s ease' }}
+                          >
+                            <span style={{ color: sel ? 'white' : '#5B6472', display: 'flex' }}>{opt.icon}</span>
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={parcialFieldStyle}>
+                    <label style={parcialLabelStyle}>Fecha de cobro <em style={{ color: '#DC2626', fontStyle: 'normal', fontWeight: 700, marginLeft: '2px' }}>*</em></label>
+                    <input
+                      type="date"
+                      value={fechaParcialInput}
+                      onChange={e => setFechaParcialInput(e.target.value)}
+                      style={{ border: '1px solid #E7E9EE', borderRadius: '8px', padding: '0 12px', height: '38px', fontSize: '14px', color: '#0B1220', outline: 'none', fontVariantNumeric: 'tabular-nums', width: '100%' }}
+                    />
+                  </div>
+
+                  {montoIngresado > 0 && (
+                    <div style={{ marginTop: '4px', padding: '10px 12px', background: previewPagaCompleto ? '#DCFCE7' : '#FEF3C7', borderRadius: '8px', fontSize: '12.5px', color: previewPagaCompleto ? '#047857' : '#B45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {previewPagaCompleto ? (
+                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
+                          Tras registrar, todas las sesiones quedarán <b>Pagadas</b>.</>
+                      ) : (
+                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
+                          Saldo restante tras este cobro: <b>{symParcial} {fmtN(previewSaldoTras)}</b>.</>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-on-surface mb-1.5">Medio de pago</label>
-              <select
-                value={pagoParcialesMedio}
-                onChange={(e) => setPagoParcialesMedio(e.target.value as typeof pagoParcialesMedio)}
-                className={inputCls}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="mercado_pago">Mercado Pago</option>
-              </select>
-            </div>
-          </div>
-        </SlideOver>
+
+              </div>
+            </SlideOver>
+          )
+        })()}
 
         {/* Planilla SlideOver */}
         <SlideOver
