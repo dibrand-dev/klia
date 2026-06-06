@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import './facturacion.css'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -17,7 +18,6 @@ import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
-import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -1094,6 +1094,16 @@ const MESES_NOMBRES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
+const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+function getCurrencySymbol(moneda: string): string {
+  if (moneda === 'USD') return 'US$'
+  if (moneda === 'EUR') return '€'
+  return '$'
+}
+function fmtNum(n: number): string {
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
+}
 
 function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCobrarInasistencias = false }: { paciente: Paciente; turnos: TurnoRow[]; profObrasSociales?: ProfesionalObraSocial[]; profesionalCobrarInasistencias?: boolean }) {
   const router = useRouter()
@@ -1115,6 +1125,15 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [localEstados, setLocalEstados] = useState<Record<string, string>>({})
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
   const [registrarPagoTurno, setRegistrarPagoTurno] = useState<TurnoDeuda | null>(null)
+
+  useEffect(() => {
+    function closeAll() {
+      setOpenDrop(null)
+      setShowConfirm(false)
+    }
+    document.addEventListener('click', closeAll)
+    return () => document.removeEventListener('click', closeAll)
+  }, [])
 
   const osConfig = profObrasSociales.find((o) => o.id === paciente.os_config_id)
 
@@ -1157,6 +1176,10 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const canGoNext = !(mes === now.getMonth() && anio === now.getFullYear())
   const anioActual = now.getFullYear()
   const anios = [anioActual - 1, anioActual, anioActual + 1]
+
+  const currSym = getCurrencySymbol(monedaPaciente)
+  const totalMesNum = montoTotal[monedaPaciente] ?? 0
+  const montoPendienteNum = montoPendiente[monedaPaciente] ?? 0
 
   function prevMes() {
     if (mes === 0) { setMes(11); setAnio(prev => prev - 1) }
@@ -1303,234 +1326,257 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
   return (
     <>
-      <div className="mt-6 space-y-5">
-        {/* Month navigation */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={prevMes}
-              className="btn-secondary p-2 flex items-center justify-center"
-              aria-label="Mes anterior"
-            >
-              <span className="material-symbols-outlined text-xl leading-none">chevron_left</span>
-            </button>
-            <h3 className="text-base font-bold text-on-surface text-center" style={{ minWidth: '9rem' }}>
-              {MESES_NOMBRES[mes]} {anio}
-            </h3>
-            <button
-              type="button"
-              onClick={nextMes}
-              disabled={!canGoNext}
-              className={cn('btn-secondary p-2 flex items-center justify-center', !canGoNext && 'opacity-40 cursor-not-allowed')}
-              aria-label="Mes siguiente"
-            >
-              <span className="material-symbols-outlined text-xl leading-none">chevron_right</span>
-            </button>
-          </div>
-          {paciente.os_config_id && osConfig && (
-            <button
-              type="button"
-              onClick={() => setPlanillaOpen(true)}
-              className="btn-secondary px-3 py-2 text-sm flex items-center gap-1.5 shrink-0"
-            >
-              <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-              Planilla OS
-            </button>
-          )}
+      {/* Month bar */}
+      <div className="month-bar">
+        <div className="month-nav">
+          <button type="button" onClick={prevMes} title="Mes anterior">
+            <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <div className="month-label">{MESES_NOMBRES[mes]} {anio}</div>
+          <button type="button" onClick={nextMes} disabled={!canGoNext} title="Mes siguiente">
+            <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
         </div>
+        {paciente.os_config_id && osConfig && (
+          <button type="button" className="fac-btn os-sheet" onClick={() => setPlanillaOpen(true)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M4 4h12l4 4v12H4z"/><path d="M14 4v6h6"/><path d="M8 15h8M8 18h5"/>
+            </svg>
+            Generar planilla OS
+          </button>
+        )}
+      </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Atendidas</p>
-            <p className="text-2xl font-bold text-green-600">{asistio.length}</p>
-            <p className="text-xs text-on-surface-variant mt-0.5">sesiones</p>
+      {/* Summary cards */}
+      <div className="bill-stats">
+        <div className="bstat">
+          <div className="bstat-icn ok">
+            <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Ausente / Cancelada</p>
-            <p className="text-2xl font-bold text-slate-400">{noAsistio.length + cancelado.length}</p>
-            <p className="text-xs text-on-surface-variant mt-0.5">sesiones</p>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Total mes</p>
-            <p className="text-lg font-bold text-on-surface leading-snug">
-              {Object.entries(montoTotal).length > 0
-                ? Object.entries(montoTotal).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')
-                : '—'}
-            </p>
-            <p className="text-xs text-on-surface-variant mt-0.5">{sesionesCobrables} cobrable{sesionesCobrables !== 1 ? 's' : ''}</p>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Pendiente</p>
-            <p className="text-lg font-bold text-amber-600 leading-snug">
-              {Object.entries(montoPendiente).length > 0
-                ? Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')
-                : todosPagados && sesionesCobrables > 0 ? '✓ Cobrado' : '—'}
-            </p>
-            <p className="text-xs text-on-surface-variant mt-0.5">
-              {cobrablesPendientes.length > 0 ? `${cobrablesPendientes.length} sin cobrar` : ''}
-            </p>
-          </div>
+          <div className="bstat-v">{asistio.length}</div>
+          <div className="bstat-l">Sesiones atendidas</div>
         </div>
+        <div className="bstat">
+          <div className="bstat-icn warn">
+            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </div>
+          <div className="bstat-v">{noAsistio.length + cancelado.length}</div>
+          <div className="bstat-l">Cancelada / ausente</div>
+        </div>
+        <div className="bstat">
+          <div className="bstat-icn neutral">
+            <svg viewBox="0 0 24 24"><path d="M3 10h18M5 6h14l1 14H4L5 6z"/></svg>
+          </div>
+          <div className="bstat-v">
+            {totalMesNum > 0
+              ? <><span className="cur">{currSym}</span>{fmtNum(totalMesNum)}</>
+              : '—'}
+          </div>
+          <div className="bstat-l">Total del mes</div>
+        </div>
+        <div className={`bstat${montoPendienteNum > 0 ? ' alert' : ''}`}>
+          <div className="bstat-icn danger">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+          <div className="bstat-v">
+            {montoPendienteNum > 0
+              ? <><span className="cur">{currSym}</span>{fmtNum(montoPendienteNum)}</>
+              : todosPagados ? '✓' : '—'}
+          </div>
+          <div className="bstat-l">Pendiente de cobro</div>
+        </div>
+      </div>
 
-        {/* Session list */}
-        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm">
-          {turnosMes.length === 0 ? (
-            <p className="text-sm text-on-surface-variant p-6">Sin turnos registrados en este período.</p>
-          ) : (
-            <div className="divide-y divide-outline-variant/10">
-              {turnosMesOrdenados.map((turno) => {
-                const efectivoEstado = localEstados[turno.id] ?? turno.estado
-                const isUpdating = updatingEstado === turno.id
-                const esCobrable = efectivoEstado === 'realizado' || (efectivoEstado === 'no_asistio' && cobrarInasistencia)
-                const esPagada = turno.pagado
-                const esParcial = !turno.pagado && turno.estado_pago === 'pago_parcial'
+      {turnosMes.length === 0 ? (
+        <div className="bill-empty">
+          <div className="icn">
+            <svg viewBox="0 0 24 24"><path d="M3 10h18M5 6h14l1 14H4L5 6z"/></svg>
+          </div>
+          <h3>Sin sesiones este mes</h3>
+          <p>No hay sesiones registradas para este período.</p>
+        </div>
+      ) : (
+        <>
+          <div className="ses-head">
+            <h3>Sesiones del mes</h3>
+            <span className="ses-count">{turnosMes.length} sesión{turnosMes.length !== 1 ? 'es' : ''}</span>
+          </div>
+          <div className="ses-list">
+            {turnosMesOrdenados.map((turno) => {
+              const efectivoEstado = localEstados[turno.id] ?? turno.estado
+              const esPagado = !!turno.pagado || turno.estado_pago === 'pagado'
+              const esParcial = !esPagado && turno.estado_pago === 'pago_parcial'
+              const esCancelado = efectivoEstado === 'cancelado'
+              const isUpdating = updatingEstado === turno.id
+              const statusClass = efectivoEstado === 'realizado' ? 'atendido' : efectivoEstado === 'no_asistio' ? 'ausente' : 'cancelada'
+              const estadoLabel = efectivoEstado === 'realizado' ? 'Atendido' : efectivoEstado === 'no_asistio' ? 'No asistió' : 'Cancelada'
 
-                return (
-                  <div key={turno.id} className="flex items-center gap-3 px-4 py-3">
-                    {/* Date */}
-                    <div className="shrink-0 text-center" style={{ width: '2.25rem' }}>
-                      <p className="text-lg font-bold text-on-surface leading-none">
-                        {format(parseISO(turno.fecha_hora), 'd')}
-                      </p>
-                      <p className="text-[10px] font-medium text-on-surface-variant uppercase tracking-wide">
-                        {format(parseISO(turno.fecha_hora), 'EEE', { locale: es })}
-                      </p>
+              const d = parseISO(turno.fecha_hora)
+              const diaSemana = DIAS_CORTOS[d.getDay()]
+              const diaNum = d.getDate()
+              const mesNombreTurno = MESES_NOMBRES[d.getMonth()].toLowerCase()
+              const horaTurno = format(d, 'HH:mm')
+              const duracion = turno.duracion_min ?? 50
+
+              const montoTurno = turno.monto ?? 0
+              const montoPagadoTurno = turno.monto_pagado ?? 0
+              const montoPendienteTurno = montoTurno - montoPagadoTurno
+              const monedaTurno = turno.moneda ?? monedaPaciente
+              const symTurno = getCurrencySymbol(monedaTurno)
+
+              const cardClass = ['ses-card', esPagado && 'paid', esCancelado && 'muted'].filter(Boolean).join(' ')
+
+              return (
+                <div key={turno.id} className={cardClass}>
+                  <div className="ses-main">
+                    <div className="ses-date">
+                      <div className="ses-d"><b>{diaSemana} {diaNum}</b> {mesNombreTurno}</div>
+                      <div className="ses-t">{horaTurno} hs · {duracion} min</div>
                     </div>
-
-                    <div className="w-px h-8 bg-outline-variant/20 shrink-0" />
-
-                    {/* Time + estado dropdown */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-on-surface-variant">
-                        {format(parseISO(turno.fecha_hora), 'HH:mm')} hs
-                        {turno.monto ? (
-                          <span className="ml-2 font-medium text-on-surface">
-                            {formatearMonto(turno.monto, (turno.moneda ?? 'ARS') as Moneda)}
-                          </span>
-                        ) : null}
-                      </p>
-                      <div className="relative mt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => !isUpdating && setOpenDrop(openDrop === turno.id ? null : turno.id)}
-                          className={cn(
-                            'flex items-center gap-1 text-sm font-medium rounded-lg px-2 py-0.5 -mx-2 transition-colors',
-                            efectivoEstado === 'realizado' && 'text-green-700 bg-green-50 hover:bg-green-100',
-                            efectivoEstado === 'no_asistio' && 'text-amber-700 bg-amber-50 hover:bg-amber-100',
-                            efectivoEstado === 'cancelado' && 'text-slate-500 bg-slate-100 hover:bg-slate-200',
-                            isUpdating && 'opacity-60 pointer-events-none',
-                          )}
-                        >
-                          <span>
-                            {efectivoEstado === 'realizado' && 'Atendido'}
-                            {efectivoEstado === 'no_asistio' && 'No asistió'}
-                            {efectivoEstado === 'cancelado' && 'Cancelada'}
-                            {efectivoEstado !== 'realizado' && efectivoEstado !== 'no_asistio' && efectivoEstado !== 'cancelado' && efectivoEstado}
-                          </span>
-                          {isUpdating
-                            ? <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                            : <span className="material-symbols-outlined text-sm">expand_more</span>
-                          }
-                        </button>
-                        {openDrop === turno.id && (
-                          <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-lg border border-outline-variant/20 z-20 overflow-hidden" style={{ minWidth: '10rem' }}>
-                            {(['realizado', 'no_asistio', 'cancelado'] as const).map((est) => (
-                              <button
-                                key={est}
-                                type="button"
-                                onClick={() => handleEstadoChange(turno.id, est)}
-                                className={cn(
-                                  'w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-surface-container-high',
-                                  est === efectivoEstado && 'font-semibold text-primary',
-                                )}
-                              >
-                                {est === 'realizado' && 'Atendido'}
-                                {est === 'no_asistio' && 'No asistió'}
-                                {est === 'cancelado' && 'Cancelada'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                    {efectivoEstado === 'no_asistio' && cobrarInasistencia && (
+                      <span className="ses-tag">No asistió — se cobra por política</span>
+                    )}
+                    {esCancelado && (
+                      <span className="ses-tag">Cancelada · sin cargo</span>
+                    )}
+                  </div>
+                  <div className="ses-actions">
+                    <div className={`status-drop${openDrop === turno.id ? ' open' : ''}`}>
+                      <button
+                        type="button"
+                        className={`status-btn ${statusClass}`}
+                        onClick={(e) => { e.stopPropagation(); if (!isUpdating) setOpenDrop(openDrop === turno.id ? null : turno.id) }}
+                      >
+                        <span className="sdot"></span>
+                        {estadoLabel}
+                        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                      <div className="drop-menu">
+                        {(['realizado', 'no_asistio', 'cancelado'] as const).map((est) => {
+                          const cl = est === 'realizado' ? 'atendido' : est === 'no_asistio' ? 'ausente' : 'cancelada'
+                          const lbl = est === 'realizado' ? 'Atendido' : est === 'no_asistio' ? 'No asistió' : 'Cancelada'
+                          const isActive = est === efectivoEstado
+                          return (
+                            <button
+                              key={est}
+                              type="button"
+                              className={`drop-item${isActive ? ' active' : ''}`}
+                              onClick={() => handleEstadoChange(turno.id, est)}
+                            >
+                              <span className={`sdot ${cl}`}></span>
+                              {lbl}
+                              {isActive && (
+                                <svg className="chk" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                              )}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
 
-                    {/* Payment chip + Cobrar */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {esPagada && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                          ✓ Cobrado
+                    {esCancelado ? (
+                      <div className="pay-area">
+                        <span className="no-charge">Sin cargo</span>
+                      </div>
+                    ) : esPagado ? (
+                      <div className="pay-area">
+                        <span className="amount"><span className="cur">{symTurno}</span>{fmtNum(montoTurno)}</span>
+                        <span className="pay-chip pagado">
+                          <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                          Pagado
                         </span>
-                      )}
-                      {esParcial && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                          Parcial
+                      </div>
+                    ) : esParcial ? (
+                      <div className="pay-area">
+                        <span className="pay-chip parcial">
+                          Pagado {symTurno} {fmtNum(montoPagadoTurno)} · Debe {symTurno} {fmtNum(montoPendienteTurno)}
                         </span>
-                      )}
-                      {esCobrable && !esPagada && (
-                        <button
-                          type="button"
-                          onClick={() => setRegistrarPagoTurno(turnoToDeuda(turno))}
-                          className="btn-primary px-3 py-1.5 text-xs"
-                        >
-                          Cobrar
-                        </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="pay-area">
+                        <span className="amount"><span className="cur">{symTurno}</span>{fmtNum(montoTurno)}</span>
+                        <span className="pay-chip pendiente">Pendiente</span>
+                      </div>
+                    )}
+
+                    {!esPagado && !esCancelado && (
+                      <button
+                        type="button"
+                        className="cobrar-btn"
+                        onClick={() => setRegistrarPagoTurno(turnoToDeuda(turno))}
+                      >
+                        <svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        {esParcial ? 'Cobrar saldo' : 'Cobrar'}
+                      </button>
+                    )}
                   </div>
-                )
-              })}
+                </div>
+              )
+            })}
+          </div>
+
+          {(todosPagados || mesPagado) && (
+            <div className="paid-banner">
+              <div className="icn">
+                <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <div className="txt">
+                <b>Mes completamente pagado</b>
+                <span>Todas las sesiones de este mes fueron cobradas.</span>
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Footer: pending summary + action buttons */}
-        {sesionesCobrables > 0 && (
-          <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                {(mesPagado || todosPagados) ? (
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
-                    ✅ Mes pagado
-                  </div>
-                ) : Object.keys(montoPendiente).length > 0 ? (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Pendiente</p>
-                    <p className="text-sm font-bold text-on-surface">
-                      {Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}
-                      <span className="text-on-surface-variant font-normal ml-1.5">
-                        · {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''}
-                      </span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-green-700">
-                    ✅ Mes pagado
-                  </div>
-                )}
+          {!(todosPagados || mesPagado) && cobrablesPendientes.length > 0 && (
+            <div className="bill-foot">
+              <div className="foot-info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
+                </svg>
+                Pendiente de cobro este mes:{' '}
+                <b>{currSym} {fmtNum(montoPendienteNum)}</b>
+                {' '}en {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''}
               </div>
-              {!(mesPagado || todosPagados) && (
-                <div className="flex gap-2 flex-wrap">
+              <div className="foot-actions">
+                <button type="button" className="fac-btn" onClick={() => setPagoParcialesOpen(true)}>
+                  Pago parcial del mes
+                </button>
+                <div className={`confirm-wrap${showConfirm ? ' open' : ''}`}>
                   <button
                     type="button"
-                    onClick={() => setPagoParcialesOpen(true)}
-                    className="btn-secondary px-4 py-2 text-sm"
+                    className="fac-btn fac-btn-blue"
+                    onClick={(e) => { e.stopPropagation(); setShowConfirm(v => !v) }}
                   >
-                    Pago parcial del mes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(true)}
-                    className="btn-primary px-4 py-2 text-sm"
-                  >
+                    <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
                     Marcar mes como pagado
                   </button>
+                  <div className="confirm-pop">
+                    <div className="cp-title">
+                      ¿Marcar {cobrablesPendientes.length} sesión{cobrablesPendientes.length !== 1 ? 'es' : ''} como pagadas?
+                    </div>
+                    <div className="cp-sub">
+                      Se registrarán {currSym} {fmtNum(montoPendienteNum)} en efectivo con fecha de hoy.
+                    </div>
+                    <div className="cp-actions">
+                      <button type="button" className="fac-btn" onClick={() => setShowConfirm(false)}>
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        className="fac-btn fac-btn-blue"
+                        onClick={handleMarcarPagado}
+                        disabled={pagando}
+                      >
+                        {pagando ? 'Procesando...' : 'Sí, marcar pagado'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </>
+      )}
 
         {/* Pago parcial del mes SlideOver */}
         {(() => {
@@ -1722,66 +1768,55 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
               </div>
             </div>
 
-            {paciente.numero_afiliado && (
-              <div className="bg-surface-container-lowest rounded-xl p-4 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Afiliado</span>
-                  <span className="font-medium text-on-surface">{paciente.apellido}, {paciente.nombre}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">N° socio</span>
-                  <span className="font-medium text-on-surface">{paciente.numero_afiliado}</span>
-                </div>
-                {paciente.numero_autorizacion && (
-                  <div className="flex justify-between">
-                    <span className="text-on-surface-variant">N° autorización</span>
-                    <span className="font-medium text-on-surface">{paciente.numero_autorizacion}</span>
-                  </div>
-                )}
+          {paciente.numero_afiliado && (
+            <div className="bg-surface-container-lowest rounded-xl p-4 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Afiliado</span>
+                <span className="font-medium text-on-surface">{paciente.apellido}, {paciente.nombre}</span>
               </div>
-            )}
-
-            {!paciente.numero_afiliado && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-                ⚠️ El paciente no tiene N° de afiliado cargado. Completalo en la pestaña Datos antes de generar la planilla.
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">N° socio</span>
+                <span className="font-medium text-on-surface">{paciente.numero_afiliado}</span>
               </div>
-            )}
-
-            {planillaError && (
-              <p className="text-sm text-red-600">{planillaError}</p>
-            )}
-
-            <button
-              type="button"
-              onClick={handleGenerarPlanilla}
-              disabled={generando}
-              className={cn('btn-primary w-full py-3 text-sm flex items-center justify-center gap-2', generando && 'opacity-70')}
-            >
-              {generando ? (
-                <>
-                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                  Generando PDF...
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-base">download</span>
-                  Descargar planilla {MESES_NOMBRES[mes]} {anio}
-                </>
+              {paciente.numero_autorizacion && (
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">N° autorización</span>
+                  <span className="font-medium text-on-surface">{paciente.numero_autorizacion}</span>
+                </div>
               )}
-            </button>
-          </div>
-        </SlideOver>
-      </div>
+            </div>
+          )}
 
-      {/* ConfirmDialog — marcar mes como pagado */}
-      <ConfirmDialog
-        open={showConfirm}
-        title={`Marcar ${MESES_NOMBRES[mes]} ${anio} como pagado`}
-        message={`Se marcarán como pagadas ${cobrablesPendientes.length} sesión${cobrablesPendientes.length !== 1 ? 'es' : ''}${Object.keys(montoPendiente).length > 0 ? ` por ${Object.entries(montoPendiente).map(([m, v]) => formatearMonto(v, m as Moneda)).join(' + ')}` : ''}. Las canceladas no se incluyen.`}
-        confirmLabel={pagando ? 'Procesando...' : 'Confirmar'}
-        onConfirm={handleMarcarPagado}
-        onCancel={() => setShowConfirm(false)}
-      />
+          {!paciente.numero_afiliado && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
+              ⚠️ El paciente no tiene N° de afiliado cargado. Completalo en la pestaña Datos antes de generar la planilla.
+            </div>
+          )}
+
+          {planillaError && (
+            <p className="text-sm text-red-600">{planillaError}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleGenerarPlanilla}
+            disabled={generando}
+            className={cn('btn-primary w-full py-3 text-sm flex items-center justify-center gap-2', generando && 'opacity-70')}
+          >
+            {generando ? (
+              <>
+                <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                Generando PDF...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-base">download</span>
+                Descargar planilla {MESES_NOMBRES[mes]} {anio}
+              </>
+            )}
+          </button>
+        </div>
+      </SlideOver>
 
       {/* RegistrarPagoSlide — cobrar sesión individual */}
       <RegistrarPagoSlide
