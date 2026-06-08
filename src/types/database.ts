@@ -47,6 +47,8 @@ export type Database = {
           feriados_trabajar_si_confirmado: boolean
           terminologia: 'sesion' | 'consulta' | null
           horarios_por_dia: Record<string, { activo: boolean; inicio: number; fin: number }> | null
+          onboarding_completed: boolean
+          onboarding_skipped: boolean
           created_at: string
           updated_at: string
         }
@@ -92,6 +94,8 @@ export type Database = {
           feriados_trabajar_si_confirmado?: boolean
           terminologia?: 'sesion' | 'consulta' | null
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
+          onboarding_completed?: boolean
+          onboarding_skipped?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -137,6 +141,8 @@ export type Database = {
           feriados_trabajar_si_confirmado?: boolean
           terminologia?: 'sesion' | 'consulta' | null
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
+          onboarding_completed?: boolean
+          onboarding_skipped?: boolean
           created_at?: string
           updated_at?: string
         }
