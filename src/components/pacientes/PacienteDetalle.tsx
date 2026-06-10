@@ -1131,8 +1131,8 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
       setOpenDrop(null)
       setShowConfirm(false)
     }
-    document.addEventListener('click', closeAll)
-    return () => document.removeEventListener('click', closeAll)
+    document.addEventListener('mousedown', closeAll)
+    return () => document.removeEventListener('mousedown', closeAll)
   }, [])
 
   const osConfig = profObrasSociales.find((o) => o.id === paciente.os_config_id)
