@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .single()
 
     if (pacienteError || !paciente) {
-      return NextResponse.json({ error: 'Error al crear paciente' }, { status: 500 })
+      return NextResponse.json({ error: `Error al crear paciente: ${pacienteError?.message}` }, { status: 500 })
     }
 
     const fechaHora = `${entrevista.fecha}T${entrevista.hora}`
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .single()
 
     if (turnoError || !turno) {
-      return NextResponse.json({ error: 'Error al crear sesión' }, { status: 500 })
+      return NextResponse.json({ error: `Error al crear sesión: ${turnoError?.message}` }, { status: 500 })
     }
 
     if (hasCosto) {
