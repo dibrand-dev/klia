@@ -40,7 +40,8 @@ export default async function PacienteDetallePage({
       .from('notas_clinicas')
       .select('id', { count: 'exact', head: true })
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id),
+      .eq('terapeuta_id', user.id)
+      .eq('borrador', false),
     supabase
       .from('medicacion_paciente')
       .select('*')

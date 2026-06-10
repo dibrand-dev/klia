@@ -413,6 +413,7 @@ export type Database = {
           turno_id: string | null
           fecha: string
           contenido: string
+          borrador: boolean
           created_at: string
           updated_at: string
         }
@@ -423,6 +424,7 @@ export type Database = {
           turno_id?: string | null
           fecha: string
           contenido: string
+          borrador?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -433,6 +435,7 @@ export type Database = {
           turno_id?: string | null
           fecha?: string
           contenido?: string
+          borrador?: boolean
           created_at?: string
           updated_at?: string
         }

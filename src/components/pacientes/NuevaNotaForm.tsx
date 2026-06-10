@@ -28,6 +28,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [pendingText, setPendingText] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [draftSaved, setDraftSaved] = useState(false)
 
   useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
 
@@ -47,18 +49,64 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     fetchConfig()
   }, [])
 
-  function handleTranscripcion(text: string) {
-    if (isHtmlEmpty(contenido)) {
-      setContenido(`<p>${text}</p>`)
-      setModo('texto')
-    } else {
-      setPendingText(text)
+  // Load existing draft for this patient+turno on mount
+  useEffect(() => {
+    async function cargarBorrador() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const query = supabase
+        .from('notas_clinicas')
+        .select('id, contenido, fecha')
+        .eq('terapeuta_id', user.id)
+        .eq('paciente_id', pacienteId)
+        .eq('borrador', true as never)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (turnoId) query.eq('turno_id', turnoId)
+      const { data } = await query.maybeSingle()
+      if (data) {
+        const d = data as { id: string; contenido: string; fecha: string }
+        setDraftId(d.id)
+        setContenido(d.contenido)
+        setFecha(d.fecha)
+        setDraftSaved(true)
+      }
     }
+    cargarBorrador()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function autoGuardarBorrador(html: string, fechaActual: string) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('notas_clinicas').insert({
+      terapeuta_id: user.id,
+      paciente_id: pacienteId,
+      turno_id: turnoId ?? null,
+      fecha: fechaActual,
+      contenido: html,
+      borrador: true,
+    } as never).select('id').single()
+    if (data) {
+      setDraftId((data as { id: string }).id)
+      setDraftSaved(true)
+    }
+  }
+
+  function handleTranscripcion(text: string) {
+    const html = isHtmlEmpty(contenido) ? `<p>${text}</p>` : contenido + `<p>${text}</p>`
+    setContenido(html)
+    setModo('texto')
+    setPendingText(null)
+    autoGuardarBorrador(html, fecha || format(new Date(), 'yyyy-MM-dd'))
   }
 
   function aplicarPendiente(accion: 'append' | 'replace') {
     if (!pendingText) return
-    setContenido(accion === 'append' ? contenido + `<p>${pendingText}</p>` : `<p>${pendingText}</p>`)
+    const html = accion === 'append' ? contenido + `<p>${pendingText}</p>` : `<p>${pendingText}</p>`
+    setContenido(html)
     setPendingText(null)
     setModo('texto')
   }
@@ -71,15 +119,24 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { error: dbError } = await supabase.from('notas_clinicas').insert({
-      terapeuta_id: user.id,
-      paciente_id: pacienteId,
-      turno_id: turnoId ?? null,
-      fecha,
-      contenido,
-    })
+    const fechaFinal = fecha || format(new Date(), 'yyyy-MM-dd')
 
-    if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
+    if (draftId) {
+      const { error: dbError } = await supabase.from('notas_clinicas')
+        .update({ contenido, fecha: fechaFinal, borrador: false } as never)
+        .eq('id', draftId)
+      if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
+    } else {
+      const { error: dbError } = await supabase.from('notas_clinicas').insert({
+        terapeuta_id: user.id,
+        paciente_id: pacienteId,
+        turno_id: turnoId ?? null,
+        fecha: fechaFinal,
+        contenido,
+        borrador: false,
+      } as never)
+      if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
+    }
 
     onCreada?.()
   }
@@ -165,6 +222,13 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
             />
           </div>
         </>
+      )}
+
+      {draftSaved && (
+        <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+          Borrador guardado — podés cerrar y continuar después sin perder el texto.
+        </div>
       )}
 
       <div className="flex gap-3 pt-1">

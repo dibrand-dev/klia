@@ -6,6 +6,11 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import RichTextEditor from '@/components/ui/RichTextEditor'
+
+function isHtmlEmpty(html: string): boolean {
+  return !html.replace(/<[^>]*>/g, '').trim()
+}
 
 export default function NuevaNotaPage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -15,7 +20,7 @@ export default function NuevaNotaPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null)
 
   async function handleGuardar() {
-    if (!contenido.trim()) return
+    if (isHtmlEmpty(contenido)) return
     setLoading(true)
     setError(null)
     const supabase = createClient()
@@ -27,7 +32,7 @@ export default function NuevaNotaPage({ params }: { params: { id: string } }) {
       paciente_id: params.id,
       turno_id: null,
       fecha,
-      contenido: contenido.trim(),
+      contenido,
     })
 
     if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
@@ -70,13 +75,11 @@ export default function NuevaNotaPage({ params }: { params: { id: string } }) {
 
         <div className="card p-4">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión</label>
-          <textarea
+          <RichTextEditor
             value={contenido}
-            onChange={(e) => setContenido(e.target.value)}
-            rows={10}
+            onChange={setContenido}
             placeholder="¿Qué trabajaron en esta sesión? Temas tratados, evolución, próximos pasos..."
-            className="input-field resize-none"
-            autoFocus
+            minHeight="260px"
           />
         </div>
 
@@ -89,8 +92,8 @@ export default function NuevaNotaPage({ params }: { params: { id: string } }) {
           </Link>
           <button
             onClick={handleGuardar}
-            disabled={loading || !contenido.trim()}
-            className={cn('btn-primary flex-1 py-3', (loading || !contenido.trim()) && 'opacity-50')}
+            disabled={loading || isHtmlEmpty(contenido)}
+            className={cn('btn-primary flex-1 py-3', (loading || isHtmlEmpty(contenido)) && 'opacity-50')}
           >
             {loading ? 'Guardando...' : 'Guardar nota'}
           </button>
