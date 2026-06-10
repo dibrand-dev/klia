@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import './onboarding.css'
 
 const TOTAL_STEPS = 5
@@ -38,6 +39,7 @@ export default function OnboardingWizard({
   initialTelefono?: string | null
   initialProvincia?: string | null
 }) {
+  const router = useRouter()
   const [step, setStep] = useState(1)
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set())
   const [visible, setVisible] = useState(true)
@@ -107,7 +109,6 @@ export default function OnboardingWizard({
     if (isSkip) setSkippedSteps(prev => new Set(prev).add(step))
     setStep(newStep)
     if (newStep === TOTAL_STEPS) {
-      persistComplete()
       setTimeout(() => fireConfetti(), 200)
     }
   }
@@ -458,21 +459,21 @@ export default function OnboardingWizard({
                 {renderChecklist()}
                 <p className="ob-subtitle" style={{ marginTop: 20 }}>¿Qué querés hacer primero?</p>
                 <div className="ob-quick-actions">
-                  <button className="ob-quick-btn" onClick={closeOverlay}>
+                  <button className="ob-quick-btn" onClick={() => { closeOverlay(); setTimeout(() => window.dispatchEvent(new CustomEvent('openNuevoTurno')), 300) }}>
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <rect x="3" y="4" width="14" height="14" rx="2" />
                       <path d="M7 2v4M13 2v4M3 9h14" />
                     </svg>
                     Agendar mi primer turno
                   </button>
-                  <button className="ob-quick-btn" onClick={closeOverlay}>
+                  <button className="ob-quick-btn" onClick={() => { closeOverlay(); router.push('/pacientes/nuevo') }}>
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <circle cx="10" cy="7" r="3.5" />
                       <path d="M3 18a7 7 0 0 1 14 0" />
                     </svg>
                     Agregar un paciente
                   </button>
-                  <button className="ob-quick-btn" onClick={closeOverlay}>
+                  <button className="ob-quick-btn" onClick={() => { closeOverlay(); router.push('/ajustes/integraciones') }}>
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
                       <path d="M7 3v14M3 10h14M14 6l3 4-3 4" />
                     </svg>

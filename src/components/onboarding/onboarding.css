@@ -356,15 +356,70 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 600px) {
-  .ob-overlay { padding: 16px; }
-  .ob-step-inner { padding: 22px 20px 26px; }
+  /* Full-screen takeover on mobile — no outer scroll, no gaps */
+  .ob-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+  .ob-container {
+    max-width: none;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .ob-card {
+    border-radius: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .ob-progress {
+    padding: 16px 20px 0;
+  }
+  .ob-step.active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .ob-step-inner {
+    flex: 1;
+    padding: 18px 20px 24px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+  }
+  .ob-step-inner.ob-center {
+    align-items: center;
+    text-align: center;
+  }
+  /* Close button moves inside the card, top-right corner */
+  .ob-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: var(--surface-2);
+    border-color: var(--border);
+    z-index: 10;
+  }
+  .ob-close svg { stroke: var(--muted-2); }
+  /* Typography */
   .ob-title { font-size: 19px; }
   .ob-step-title { font-size: 16px; }
-  .ob-actions-row { flex-wrap: wrap; gap: 10px; }
+  .ob-hero-icon { width: 72px; height: 72px; margin-bottom: 12px; }
+  .ob-hero-icon svg { width: 60px; height: 60px; }
+  .ob-time { margin: 10px 0 16px; }
+  /* Actions */
+  .ob-actions-row { flex-wrap: wrap; gap: 10px; margin-top: 20px; padding-top: 14px; }
   .ob-actions-right { margin-left: auto; }
-  .ob-close { top: -42px; right: 4px; }
-  .ob-card { border-radius: 14px; }
-  .ob-sch-row { grid-template-columns: 40px 40px 1fr; gap: 6px; padding: 7px 8px; }
+  /* Schedule */
+  .ob-sch-row { grid-template-columns: 36px 36px 1fr; gap: 6px; padding: 6px 8px; }
   .day-label { font-size: 12px; }
   .day-times input[type="time"] { width: 68px; font-size: 11.5px; }
+  /* Done step */
+  .ob-done-icon { width: 56px; height: 56px; margin-bottom: 10px; }
+  .ob-done-icon svg { width: 56px; height: 56px; }
+  .ob-quick-actions { max-width: none; width: 100%; }
 }
