@@ -24,7 +24,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
       .select('*')
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', user.id)
-      .eq('borrador', false)
+      .not('borrador', 'is', true)
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false }),
     supabase
