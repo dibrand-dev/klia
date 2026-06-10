@@ -49,23 +49,49 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'Error al crear paciente' }, { status: 500 })
     }
 
-    await supabase
-      .from('entrevistas')
-      .update({ estado: 'convertida', paciente_id: paciente.id, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
+    const fechaHora = `${entrevista.fecha}T${entrevista.hora}`
+    const hasCosto = entrevista.costo != null && entrevista.costo > 0
 
-    if (entrevista.costo && entrevista.costo > 0) {
-      await supabase.from('cobros').insert({
-        turno_id: null,
+    const { data: turno, error: turnoError } = await supabase
+      .from('turnos')
+      .insert({
         terapeuta_id: user.id,
         paciente_id: paciente.id,
-        monto_cobrado: entrevista.costo,
+        fecha_hora: fechaHora,
+        duracion_min: entrevista.duracion,
+        modalidad: 'presencial',
+        estado: 'realizado',
+        monto: entrevista.costo ?? null,
+        moneda: entrevista.moneda ?? 'ARS',
+        pagado: hasCosto,
+        estado_pago: hasCosto ? 'pagado' : 'pendiente',
+        monto_pagado: hasCosto ? entrevista.costo : null,
+        notas: 'Entrevista inicial',
+      })
+      .select('id')
+      .single()
+
+    if (turnoError || !turno) {
+      return NextResponse.json({ error: 'Error al crear sesión' }, { status: 500 })
+    }
+
+    if (hasCosto) {
+      await supabase.from('cobros').insert({
+        turno_id: turno.id,
+        terapeuta_id: user.id,
+        paciente_id: paciente.id,
+        monto_cobrado: entrevista.costo!,
         moneda: entrevista.moneda ?? 'ARS',
         medio_pago: null,
         fecha_cobro: entrevista.fecha,
         notas: 'Entrevista inicial',
       })
     }
+
+    await supabase
+      .from('entrevistas')
+      .update({ estado: 'convertida', paciente_id: paciente.id, updated_at: new Date().toISOString() })
+      .eq('id', params.id)
 
     return NextResponse.json({ ok: true, paciente_id: paciente.id })
   }
