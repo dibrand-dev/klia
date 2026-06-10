@@ -102,7 +102,7 @@ export default function LiquidacionView({ osList, terapeutaId, terminologia }: {
         const totalSesiones = items.reduce((s, i) => s + i.cantidad_sesiones, 0)
         const totalImporte = items.reduce((s, i) => s + i.importe_total, 0)
 
-        return { os, pacientes: pacs.length, sesiones: totalSesiones, importe: totalImporte, items, cargado: true }
+        return { os, pacientes: items.length, sesiones: totalSesiones, importe: totalImporte, items, cargado: true }
       })
     )
 
