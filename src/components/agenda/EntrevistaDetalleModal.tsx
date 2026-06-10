@@ -136,6 +136,7 @@ export default function EntrevistaDetalleModal({
     }
     onClose()
     router.push(`/pacientes/${data.paciente_id}`)
+    router.refresh()
   }
 
   const yaConvertida = estado === 'convertida'
