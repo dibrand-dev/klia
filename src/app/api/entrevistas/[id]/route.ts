@@ -71,11 +71,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .select('id')
       .single()
 
-    if (turnoError || !turno) {
-      return NextResponse.json({ error: `Error al crear sesión: ${turnoError?.message}` }, { status: 500 })
+    const turnoOverlap = turnoError?.message?.includes('TURNO_OVERLAP')
+
+    if (turnoError && !turnoOverlap) {
+      return NextResponse.json({ error: `Error al crear sesión: ${turnoError.message}` }, { status: 500 })
     }
 
-    if (hasCosto) {
+    if (turno && hasCosto) {
       await supabase.from('cobros').insert({
         turno_id: turno.id,
         terapeuta_id: user.id,
