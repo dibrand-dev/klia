@@ -8,13 +8,14 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { paciente_id, mes, anio, monto, moneda, medio_pago } = await req.json() as {
+  const { paciente_id, mes, anio, monto, moneda, medio_pago, fecha_cobro } = await req.json() as {
     paciente_id: string
     mes: number
     anio: number
     monto: number
     moneda: string
     medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago'
+    fecha_cobro?: string
   }
 
   if (!paciente_id || !monto || !medio_pago || mes == null || !anio) {
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   let remaining = monto
-  const fechaCobro = new Date().toISOString().slice(0, 10)
+  const fechaCobro = fecha_cobro || new Date().toISOString().slice(0, 10)
   const cobrosBatch: object[] = []
   const turnosUpdates: { id: string; monto_pagado: number; estado_pago: string; pagado: boolean }[] = []
 
