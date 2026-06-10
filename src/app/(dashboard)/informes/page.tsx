@@ -9,15 +9,8 @@ export default async function InformesPage() {
   if (!user) redirect('/login')
 
   return (
-    <div className="px-6 md:px-8 pt-8 pb-20 max-w-[900px]">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-on-surface tracking-tight">Informes</h1>
-        <p className="text-sm text-on-surface-variant mt-1">
-          Informes clínicos, planillas de asistencia y documentación.
-        </p>
-      </div>
-
-      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-10 flex flex-col items-center text-center gap-4">
+    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-6 py-16">
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 shadow-sm p-10 flex flex-col items-center text-center gap-4 max-w-md w-full">
         <span className="material-symbols-outlined text-[48px] text-primary/40">description</span>
         <div>
           <p className="font-semibold text-on-surface text-base">Sección en construcción</p>
@@ -35,3 +28,4 @@ export default async function InformesPage() {
     </div>
   )
 }
+
