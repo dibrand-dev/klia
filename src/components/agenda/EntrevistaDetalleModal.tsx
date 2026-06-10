@@ -51,6 +51,7 @@ export default function EntrevistaDetalleModal({
     hora: entrevista.hora.slice(0, 5),
     duracion: entrevista.duracion,
     costo: entrevista.costo != null ? String(entrevista.costo) : '',
+    moneda: entrevista.moneda ?? 'ARS',
     notas: entrevista.notas ?? '',
   })
 
@@ -73,6 +74,7 @@ export default function EntrevistaDetalleModal({
       hora: editForm.hora,
       duracion: Number(editForm.duracion),
       costo: editForm.costo ? Number(editForm.costo) : null,
+      moneda: editForm.moneda ?? 'ARS',
       notas: editForm.notas.trim() || null,
     }
     const { error: dbError } = await supabase
@@ -204,10 +206,21 @@ export default function EntrevistaDetalleModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Costo (ARS)</label>
-              <input type="number" min="0" step="100" value={editForm.costo}
-                onChange={(e) => setEditForm((p) => ({ ...p, costo: e.target.value }))}
-                className="input-field" placeholder="0" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Costo</label>
+              <div className="flex gap-2">
+                <select
+                  value={editForm.moneda}
+                  onChange={(e) => setEditForm((p) => ({ ...p, moneda: e.target.value }))}
+                  className="input-field w-20 px-2"
+                >
+                  <option value="ARS">ARS</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+                <input type="number" min="0" step="100" value={editForm.costo}
+                  onChange={(e) => setEditForm((p) => ({ ...p, costo: e.target.value }))}
+                  className="input-field flex-1" placeholder="0" />
+              </div>
             </div>
           </div>
           <div>
@@ -305,7 +318,7 @@ export default function EntrevistaDetalleModal({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>$ {entrevista.costo.toLocaleString('es-AR')}</span>
+                <span>{entrevista.moneda ?? 'ARS'} {entrevista.costo.toLocaleString('es-AR')}</span>
               </div>
             )}
           </div>
