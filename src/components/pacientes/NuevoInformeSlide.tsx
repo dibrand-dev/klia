@@ -1,9 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import SlideOver from '@/components/ui/SlideOver'
 import { cn } from '@/lib/utils'
 import { format, subMonths } from 'date-fns'
+
+const RichTextEditor = dynamic(
+  () => import('@/components/ui/RichTextEditor'),
+  { ssr: false, loading: () => <div className="h-48 rounded-lg bg-gray-100 animate-pulse" /> }
+)
 
 const inputCls = 'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
 const labelCls = 'block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-2'
@@ -84,6 +90,26 @@ interface InformeExistente {
   estado: string
 }
 
+function plainToHtml(text: string): string {
+  if (!text) return ''
+  if (text.trimStart().startsWith('<')) return text
+  return text.split('\n').map(line => `<p>${line || ' '}</p>`).join('')
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export default function NuevoInformeSlide({
   open,
   onClose,
@@ -129,11 +155,36 @@ export default function NuevoInformeSlide({
   const [observaciones, setObservaciones] = useState(informeExistente?.observaciones_profesional ?? '')
 
   const [informeId, setInformeId] = useState(informeExistente?.id ?? '')
-  const [contenido, setContenido] = useState(informeExistente?.contenido_generado ?? '')
+  const [contenido, setContenido] = useState(plainToHtml(informeExistente?.contenido_generado ?? ''))
   const [generating, setGenerating] = useState(false)
   const [signing, setSigning] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [successUrl, setSuccessUrl] = useState('')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Reset all state when slide opens or switches between informes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return
+    const ie = informeExistente
+    setPhase(ie ? 'draft' : 'form')
+    setContenido(plainToHtml(ie?.contenido_generado ?? ''))
+    setInformeId(ie?.id ?? '')
+    setErrorMsg('')
+    setSuccessUrl('')
+    setConfirmingDelete(false)
+    setGenerating(false)
+    setSigning(false)
+    setTipoSolicitud(ie?.tipo_solicitud ?? TIPOS_SOLICITUD[0])
+    setObservaciones(ie?.observaciones_profesional ?? '')
+    setPeriodoDes(ie?.periodo_desde ?? sixMonthsAgo)
+    setPeriodoHas(ie?.periodo_hasta ?? today)
+    const c = ie?.diagnostico_cie10_codigo
+    const d = ie?.diagnostico_cie10_descripcion
+    setCie10Selected(c ? { codigo: c, descripcion: d ?? '' } : null)
+    setCie10Query(c ? `${c} — ${d ?? ''}` : '')
+  }, [open, informeExistente?.id])
 
   const cie10Filtered = cie10Query.length >= 1
     ? CIE10_FRECUENTES.filter(d =>
@@ -163,7 +214,7 @@ export default function NuevoInformeSlide({
       const data = await res.json() as { informe_id?: string; contenido_generado?: string; error?: unknown }
       if (!res.ok) { setErrorMsg(typeof data.error === 'string' ? data.error : 'Error al generar el informe'); return }
       setInformeId(data.informe_id!)
-      setContenido(data.contenido_generado!)
+      setContenido(plainToHtml(data.contenido_generado!))
       setPhase('draft')
     } catch {
       setErrorMsg('Error de conexión')
@@ -179,7 +230,7 @@ export default function NuevoInformeSlide({
       const res = await fetch('/api/informes/firmar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ informe_id: informeId, contenido_final: contenido }),
+        body: JSON.stringify({ informe_id: informeId, contenido_final: stripHtml(contenido) }),
       })
       if (res.headers.get('content-type')?.includes('application/pdf')) {
         const blob = await res.blob()
@@ -204,16 +255,26 @@ export default function NuevoInformeSlide({
     }
   }
 
+  async function handleEliminar() {
+    setDeleting(true)
+    try {
+      await fetch(`/api/informes/${informeId}`, { method: 'DELETE' })
+      onSuccess?.()
+      onClose()
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   function handleClose() {
-    setPhase(informeExistente ? 'draft' : 'form')
     setErrorMsg('')
     setSuccessUrl('')
-    setGenerating(false)
-    setSigning(false)
+    setConfirmingDelete(false)
     onClose()
   }
 
   const tipoFinal = tipoSolicitud === 'Otro' ? tipoOtro : tipoSolicitud
+  const isReadOnly = informeExistente?.estado === 'firmado' || informeExistente?.estado === 'enviado'
 
   return (
     <SlideOver
@@ -345,19 +406,23 @@ export default function NuevoInformeSlide({
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl border" style={{ background: '#fffbeb', borderColor: '#f59e0b' }}>
               <span className="material-symbols-outlined text-base mt-0.5" style={{ color: '#d97706' }}>warning</span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#d97706' }}>Borrador — Generado por IA</p>
-                <p className="text-xs mt-0.5" style={{ color: '#92400e' }}>Revisá el contenido antes de firmar. Podés editar el texto directamente.</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#d97706' }}>
+                  {isReadOnly ? 'Informe firmado — Solo lectura' : 'Borrador — Generado por IA'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#92400e' }}>
+                  {isReadOnly ? 'Este informe ya fue firmado.' : 'Revisá el contenido antes de firmar. Podés editar el texto directamente.'}
+                </p>
               </div>
             </div>
 
             {/* Editable content */}
             <div>
               <label className={labelCls}>Contenido del informe</label>
-              <textarea
+              <RichTextEditor
                 value={contenido}
-                onChange={e => setContenido(e.target.value)}
-                rows={20}
-                className={cn(inputCls, 'resize-y font-mono text-[12px] leading-relaxed')}
+                onChange={setContenido}
+                minHeight="400px"
+                readOnly={isReadOnly}
               />
             </div>
 
@@ -379,32 +444,34 @@ export default function NuevoInformeSlide({
               </div>
             )}
 
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => { setPhase('form'); setContenido(''); setInformeId('') }}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors"
-                style={{ color: 'var(--ink-2)' }}
-              >
-                ← Modificar formulario
-              </button>
-              <button
-                type="button"
-                onClick={handleGenerar}
-                disabled={generating}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors flex items-center gap-2"
-                style={{ color: 'var(--ink-2)' }}
-              >
-                {generating ? (
-                  <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
-                ) : (
-                  <span className="material-symbols-outlined text-sm">refresh</span>
-                )}
-                Regenerar
-              </button>
-            </div>
+            {!isReadOnly && (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setPhase('form'); setContenido(''); setInformeId('') }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors"
+                  style={{ color: 'var(--ink-2)' }}
+                >
+                  ← Modificar formulario
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerar}
+                  disabled={generating}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors flex items-center gap-2"
+                  style={{ color: 'var(--ink-2)' }}
+                >
+                  {generating ? (
+                    <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-sm">refresh</span>
+                  )}
+                  Regenerar
+                </button>
+              </div>
+            )}
 
-            {!successUrl && (
+            {!successUrl && !isReadOnly && (
               <button
                 type="button"
                 onClick={handleFirmar}
@@ -427,6 +494,47 @@ export default function NuevoInformeSlide({
                   </>
                 )}
               </button>
+            )}
+
+            {/* Delete */}
+            {informeId && (
+              <div className="border-t border-outline-variant/15 pt-4">
+                {confirmingDelete ? (
+                  <div className="rounded-xl px-4 py-3 space-y-3 border" style={{ background: '#fef2f2', borderColor: '#fca5a5' }}>
+                    <p className="text-sm font-medium" style={{ color: '#991b1b' }}>
+                      ¿Eliminar este informe? Esta acción no se puede deshacer.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDelete(false)}
+                        className="flex-1 py-2 text-sm font-medium rounded-lg border border-outline-variant/20 hover:bg-surface-container transition-colors"
+                        style={{ color: 'var(--ink-2)' }}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleEliminar}
+                        disabled={deleting}
+                        className="flex-1 py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-60"
+                        style={{ background: '#dc2626' }}
+                      >
+                        {deleting ? 'Eliminando...' : 'Sí, eliminar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Eliminar informe
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}

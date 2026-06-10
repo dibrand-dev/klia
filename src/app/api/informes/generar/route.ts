@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       .select('fecha, contenido')
       .eq('terapeuta_id', user.id)
       .eq('paciente_id', paciente_id)
-      .eq('borrador', false)
+      .not('borrador', 'is', true)
       .gte('fecha', periodo_desde)
       .lte('fecha', periodo_hasta)
       .order('fecha', { ascending: true }),

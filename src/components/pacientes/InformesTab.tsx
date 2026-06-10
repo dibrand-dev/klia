@@ -54,6 +54,8 @@ export default function InformesTab({
   const [loading, setLoading] = useState(true)
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [informeEdit, setInformeEdit] = useState<InformeRow | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
   const dia = turnoRecurrente?.dia_semana !== undefined
@@ -75,6 +77,17 @@ export default function InformesTab({
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  async function handleEliminar(id: string) {
+    setDeleting(true)
+    try {
+      await fetch(`/api/informes/${id}`, { method: 'DELETE' })
+      setConfirmDeleteId(null)
+      fetchInformes()
+    } finally {
+      setDeleting(false)
+    }
   }
 
   async function fetchInformes() {
@@ -206,26 +219,56 @@ export default function InformesTab({
                       </span>
                     </td>
                     <td className="py-3 px-2 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {inf.pdf_drive_url && (
-                          <a
-                            href={inf.pdf_drive_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs underline"
-                            style={{ color: 'var(--accent)' }}
+                      {confirmDeleteId === inf.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs font-medium" style={{ color: '#991b1b' }}>¿Eliminar?</span>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-xs px-2 py-1 rounded-lg border border-outline-variant/20 hover:bg-surface-container transition-colors"
+                            style={{ color: 'var(--ink-2)' }}
                           >
-                            Ver PDF
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => { setInformeEdit(inf); setNuevoOpen(true) }}
-                          className="btn-secondary text-xs py-1 px-2"
-                        >
-                          {inf.estado === 'firmado' ? 'Ver' : 'Editar'}
-                        </button>
-                      </div>
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEliminar(inf.id)}
+                            disabled={deleting}
+                            className="text-xs px-2 py-1 rounded-lg text-white transition-colors disabled:opacity-60"
+                            style={{ background: '#dc2626' }}
+                          >
+                            {deleting ? '...' : 'Sí, eliminar'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          {inf.pdf_drive_url && (
+                            <a
+                              href={inf.pdf_drive_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs underline"
+                              style={{ color: 'var(--accent)' }}
+                            >
+                              Ver PDF
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setInformeEdit(inf); setNuevoOpen(true) }}
+                            className="btn-secondary text-xs py-1 px-2"
+                          >
+                            {inf.estado === 'firmado' ? 'Ver' : 'Editar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(inf.id)}
+                            className="text-xs py-1 px-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
