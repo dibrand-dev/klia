@@ -162,6 +162,8 @@ export default function NuevoInformeSlide({
   const [successUrl, setSuccessUrl] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
 
   // Reset all state when slide opens or switches between informes
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +176,7 @@ export default function NuevoInformeSlide({
     setErrorMsg('')
     setSuccessUrl('')
     setConfirmingDelete(false)
+    setDraftSaved(false)
     setGenerating(false)
     setSigning(false)
     setTipoSolicitud(ie?.tipo_solicitud ?? TIPOS_SOLICITUD[0])
@@ -252,6 +255,24 @@ export default function NuevoInformeSlide({
       setErrorMsg('Error de conexión')
     } finally {
       setSigning(false)
+    }
+  }
+
+  async function handleGuardarBorrador() {
+    if (!informeId) return
+    setSavingDraft(true)
+    setDraftSaved(false)
+    try {
+      await fetch(`/api/informes/${informeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contenido_generado: contenido }),
+      })
+      setDraftSaved(true)
+      setTimeout(() => setDraftSaved(false), 3000)
+      onSuccess?.()
+    } finally {
+      setSavingDraft(false)
     }
   }
 
@@ -425,6 +446,32 @@ export default function NuevoInformeSlide({
                 readOnly={isReadOnly}
               />
             </div>
+
+            {/* Guardar borrador */}
+            {informeId && !isReadOnly && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleGuardarBorrador}
+                  disabled={savingDraft}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium border border-outline-variant/20 hover:bg-surface-container transition-colors disabled:opacity-60"
+                  style={{ color: 'var(--ink-2)' }}
+                >
+                  {savingDraft ? (
+                    <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-sm">save</span>
+                  )}
+                  {savingDraft ? 'Guardando...' : 'Guardar borrador'}
+                </button>
+                {draftSaved && (
+                  <span className="flex items-center gap-1 text-xs font-medium text-green-700">
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    Guardado
+                  </span>
+                )}
+              </div>
+            )}
 
             {errorMsg && (
               <div className="px-4 py-3 rounded-lg text-sm font-medium" style={{ background: 'var(--danger-soft, #fef2f2)', color: 'var(--danger, #dc2626)' }}>
