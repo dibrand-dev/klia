@@ -75,6 +75,7 @@ export default function NuevoTurnoPageForm({
     hora: horaParam,
     duracion: 50,
     costo: '',
+    moneda: 'ARS',
     notas: '',
   })
 
@@ -234,6 +235,7 @@ export default function NuevoTurnoPageForm({
         hora: entrevistaForm.hora,
         duracion: Number(entrevistaForm.duracion),
         costo: entrevistaForm.costo ? Number(entrevistaForm.costo) : null,
+        moneda: entrevistaForm.moneda,
         notas: entrevistaForm.notas.trim() || null,
         estado: 'pendiente',
       })
@@ -443,10 +445,21 @@ export default function NuevoTurnoPageForm({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Costo (ARS) <span className="text-gray-400 font-normal">opcional</span></label>
-            <MontoInput name="costo" value={entrevistaForm.costo}
-              onChange={(raw) => setEntrevistaForm((p) => ({ ...p, costo: raw }))}
-              className="input-field" />
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Costo <span className="text-gray-400 font-normal">opcional</span></label>
+            <div className="flex gap-2">
+              <select
+                value={entrevistaForm.moneda}
+                onChange={(e) => setEntrevistaForm((p) => ({ ...p, moneda: e.target.value }))}
+                className="input-field w-20 px-2"
+              >
+                <option value="ARS">ARS</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+              <MontoInput name="costo" value={entrevistaForm.costo}
+                onChange={(raw) => setEntrevistaForm((p) => ({ ...p, costo: raw }))}
+                className="input-field flex-1" />
+            </div>
           </div>
         </div>
 
