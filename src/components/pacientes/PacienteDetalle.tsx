@@ -155,7 +155,14 @@ export default function PacienteDetalle({
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(initialEdit)
-  const [form, setForm] = useState(() => buildForm(paciente))
+  const [form, setForm] = useState(() => {
+    const base = buildForm(paciente)
+    if (!base.os_config_id && base.obra_social) {
+      const matched = profObrasSociales.find(o => o.nombre === base.obra_social)
+      if (matched) base.os_config_id = matched.id
+    }
+    return base
+  })
   const [medicaciones, setMedicaciones] = useState<MedicacionEdit[]>(() =>
     medicacionesIniciales.map(toMedicacionEdit)
   )
