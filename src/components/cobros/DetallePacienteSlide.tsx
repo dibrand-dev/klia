@@ -106,6 +106,7 @@ export default function DetallePacienteSlide({ open, onClose, pacienteId, pacien
       .eq('terapeuta_id', terapeutaId)
       .eq('estado', 'realizado')
       .in('estado_pago', ['pendiente', 'pago_parcial'])
+      .eq('pagado', false)
       .lte('fecha_hora', new Date().toISOString())
       .order('fecha_hora', { ascending: true })
       .then(({ data }) => { setSesiones((data ?? []) as SesionPendiente[]); setLoading(false) })

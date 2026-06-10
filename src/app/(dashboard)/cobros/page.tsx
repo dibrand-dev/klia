@@ -59,6 +59,7 @@ export default async function CobrosPage() {
     .eq('terapeuta_id', user.id)
     .in('estado', ['realizado', 'no_asistio'])
     .in('estado_pago', ['pendiente', 'pago_parcial', 'bonificado'])
+    .eq('pagado', false)
     .lte('fecha_hora', new Date().toISOString())
     .order('fecha_hora', { ascending: false })
 

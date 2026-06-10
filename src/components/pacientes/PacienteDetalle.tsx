@@ -1243,7 +1243,7 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
     const estadosAMarcar = cobrarInasistencia ? ['realizado', 'no_asistio'] : ['realizado']
     await supabase
       .from('turnos')
-      .update({ pagado: true })
+      .update({ pagado: true, estado_pago: 'pagado' })
       .eq('paciente_id', paciente.id)
       .in('estado', estadosAMarcar)
       .gte('fecha_hora', inicioMes)
