@@ -21,6 +21,12 @@ const AppShell = dynamic(
   }
 )
 
+const OnboardingWizard = dynamic(
+  () => import('@/components/onboarding/OnboardingWizard'),
+  { ssr: false }
+)
+
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -43,5 +49,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/cuenta-bloqueada')
   }
 
-  return <AppShell profile={profile} modulos={modulos}>{children}</AppShell>
+  const showOnboarding = !profile.onboarding_completed && !profile.onboarding_skipped
+
+  return (
+    <>
+      <AppShell profile={profile} modulos={modulos}>{children}</AppShell>
+      {showOnboarding && (
+        <OnboardingWizard
+          nombreProfesional={profile.nombre}
+          initialMatricula={profile.matricula}
+          initialTelefono={profile.telefono}
+          initialProvincia={profile.provincia}
+        />
+      )}
+    </>
+  )
 }
