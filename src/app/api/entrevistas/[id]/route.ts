@@ -49,6 +49,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: `Error al crear paciente: ${pacienteError?.message}` }, { status: 500 })
     }
 
+    await supabase
+      .from('entrevistas')
+      .update({ estado: 'convertida', paciente_id: paciente.id, updated_at: new Date().toISOString() })
+      .eq('id', params.id)
+
     const fechaHora = `${entrevista.fecha}T${entrevista.hora}`
     const hasCosto = entrevista.costo != null && entrevista.costo > 0
 
@@ -89,11 +94,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         notas: 'Entrevista inicial',
       })
     }
-
-    await supabase
-      .from('entrevistas')
-      .update({ estado: 'convertida', paciente_id: paciente.id, updated_at: new Date().toISOString() })
-      .eq('id', params.id)
 
     return NextResponse.json({ ok: true, paciente_id: paciente.id })
   }
