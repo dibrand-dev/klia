@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import './onboarding.css'
 
 const TOTAL_STEPS = 5
@@ -50,6 +51,20 @@ export default function OnboardingWizard({
   const [matricula, setMatricula] = useState(initialMatricula ?? '')
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
+
+  // Hydrate fields from auth user_metadata if profile fields are empty
+  useEffect(() => {
+    async function hydrateFromMetadata() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const meta = user.user_metadata as Record<string, string | undefined>
+      if (!matricula && meta.matricula) setMatricula(meta.matricula)
+      if (!telefono && meta.telefono) setTelefono(meta.telefono)
+      if (!provincia && meta.provincia) setProvincia(meta.provincia)
+    }
+    hydrateFromMetadata()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Step 3
   const [schedule, setSchedule] = useState<ScheduleDay[]>([
@@ -418,7 +433,13 @@ export default function OnboardingWizard({
                         type="text"
                         placeholder="65.000"
                         value={honorario}
-                        onChange={e => setHonorario(e.target.value)}
+                        onChange={e => {
+                          const raw = e.target.value.replace(/\./g, '').replace(/\D/g, '')
+                          if (raw === '') { setHonorario(''); return }
+                          const num = parseInt(raw, 10)
+                          if (isNaN(num)) { setHonorario(''); return }
+                          setHonorario(num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'))
+                        }}
                         inputMode="numeric"
                       />
                     </div>
