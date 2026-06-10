@@ -297,6 +297,92 @@ export default function NuevoInformeSlide({
   const tipoFinal = tipoSolicitud === 'Otro' ? tipoOtro : tipoSolicitud
   const isReadOnly = informeExistente?.estado === 'firmado' || informeExistente?.estado === 'enviado'
 
+  const draftFooter = phase === 'draft' && !isReadOnly ? (
+    <div className="px-6 pb-6 pt-4 border-t border-gray-100 space-y-3">
+      {errorMsg && (
+        <div className="px-4 py-3 rounded-lg text-sm font-medium" style={{ background: 'var(--danger-soft, #fef2f2)', color: 'var(--danger, #dc2626)' }}>
+          {errorMsg}
+        </div>
+      )}
+      {successUrl && (
+        <div className="px-4 py-3 rounded-xl flex items-center gap-3 border" style={{ background: '#f0fdf4', borderColor: '#86efac' }}>
+          <span className="material-symbols-outlined text-base" style={{ color: '#16a34a' }}>check_circle</span>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#15803d' }}>Informe firmado y guardado en Drive</p>
+            <a href={successUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: '#16a34a' }}>
+              Ver en Google Drive
+            </a>
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => { setPhase('form'); setContenido(''); setInformeId('') }}
+          className="py-2.5 px-3 rounded-xl text-sm font-medium border border-outline-variant/20 hover:bg-surface-container transition-colors"
+          style={{ color: 'var(--ink-2)' }}
+        >
+          ← Formulario
+        </button>
+        <button
+          type="button"
+          onClick={handleGenerar}
+          disabled={generating}
+          className="py-2.5 px-3 rounded-xl text-sm font-medium border border-outline-variant/20 hover:bg-surface-container transition-colors flex items-center gap-1.5 disabled:opacity-60"
+          style={{ color: 'var(--ink-2)' }}
+        >
+          {generating
+            ? <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
+            : <span className="material-symbols-outlined text-sm">refresh</span>
+          }
+          Regenerar
+        </button>
+        <div className="flex-1" />
+        {informeId && (
+          <div className="flex items-center gap-2">
+            {draftSaved && (
+              <span className="flex items-center gap-1 text-xs font-medium text-green-700">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                Guardado
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleGuardarBorrador}
+              disabled={savingDraft}
+              className="py-2.5 px-4 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors flex items-center gap-1.5 disabled:opacity-60"
+              style={{ color: 'var(--ink-2)' }}
+            >
+              {savingDraft
+                ? <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
+                : <span className="material-symbols-outlined text-sm">save</span>
+              }
+              {savingDraft ? 'Guardando...' : 'Guardar borrador'}
+            </button>
+          </div>
+        )}
+        {!successUrl && (
+          <button
+            type="button"
+            onClick={handleFirmar}
+            disabled={signing || !contenido.trim()}
+            className={cn(
+              'py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center gap-1.5',
+              'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-container transition-colors',
+              (signing || !contenido.trim()) && 'opacity-60 cursor-not-allowed'
+            )}
+          >
+            {signing
+              ? <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
+              : <span className="material-symbols-outlined text-sm">draw</span>
+            }
+            {signing ? 'Firmando...' : 'Firmar y guardar PDF'}
+          </button>
+        )}
+      </div>
+    </div>
+  ) : undefined
+
   return (
     <SlideOver
       open={open}
@@ -304,6 +390,7 @@ export default function NuevoInformeSlide({
       title={phase === 'form' ? 'Nuevo Informe Médico' : 'Borrador del Informe'}
       subtitle={pacienteNombre}
       width="lg"
+      footer={draftFooter}
     >
       <div className="px-6 py-5 space-y-5">
 
@@ -446,102 +533,6 @@ export default function NuevoInformeSlide({
                 readOnly={isReadOnly}
               />
             </div>
-
-            {/* Guardar borrador */}
-            {informeId && !isReadOnly && (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleGuardarBorrador}
-                  disabled={savingDraft}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium border border-outline-variant/20 hover:bg-surface-container transition-colors disabled:opacity-60"
-                  style={{ color: 'var(--ink-2)' }}
-                >
-                  {savingDraft ? (
-                    <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-sm">save</span>
-                  )}
-                  {savingDraft ? 'Guardando...' : 'Guardar borrador'}
-                </button>
-                {draftSaved && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-green-700">
-                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                    Guardado
-                  </span>
-                )}
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="px-4 py-3 rounded-lg text-sm font-medium" style={{ background: 'var(--danger-soft, #fef2f2)', color: 'var(--danger, #dc2626)' }}>
-                {errorMsg}
-              </div>
-            )}
-
-            {successUrl && (
-              <div className="px-4 py-3 rounded-xl flex items-center gap-3 border" style={{ background: '#f0fdf4', borderColor: '#86efac' }}>
-                <span className="material-symbols-outlined text-base" style={{ color: '#16a34a' }}>check_circle</span>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: '#15803d' }}>Informe firmado y guardado en Drive</p>
-                  <a href={successUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: '#16a34a' }}>
-                    Ver en Google Drive
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {!isReadOnly && (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setPhase('form'); setContenido(''); setInformeId('') }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors"
-                  style={{ color: 'var(--ink-2)' }}
-                >
-                  ← Modificar formulario
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGenerar}
-                  disabled={generating}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-outline-variant/20 hover:bg-surface-container transition-colors flex items-center gap-2"
-                  style={{ color: 'var(--ink-2)' }}
-                >
-                  {generating ? (
-                    <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-sm">refresh</span>
-                  )}
-                  Regenerar
-                </button>
-              </div>
-            )}
-
-            {!successUrl && !isReadOnly && (
-              <button
-                type="button"
-                onClick={handleFirmar}
-                disabled={signing || !contenido.trim()}
-                className={cn(
-                  'w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2',
-                  'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-container transition-colors',
-                  (signing || !contenido.trim()) && 'opacity-60 cursor-not-allowed'
-                )}
-              >
-                {signing ? (
-                  <>
-                    <span className="material-symbols-outlined text-sm animate-spin" style={{ animationDuration: '1s' }}>progress_activity</span>
-                    Firmando...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">draw</span>
-                    Firmar y guardar PDF
-                  </>
-                )}
-              </button>
-            )}
 
             {/* Delete */}
             {informeId && (
