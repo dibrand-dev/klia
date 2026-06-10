@@ -1,5 +1,6 @@
 import { requireAdminUser } from '@/lib/ops/auth'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -50,6 +51,10 @@ function formatMonto(monto: number): string {
 export default async function OpsDashboardPage() {
   await requireAdminUser()
   const supabase = createClient()
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 
   const inicioMes = startOfMonth(new Date()).toISOString()
 
@@ -63,6 +68,7 @@ export default async function OpsDashboardPage() {
     { count: debitosRechazados },
     { count: pendientesDePago },
     { data: ultimasSuscripciones },
+    { count: totalPacientes },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', inicioMes),
@@ -77,6 +83,8 @@ export default async function OpsDashboardPage() {
     supabase.from('suscripciones').select('*', { count: 'exact', head: true }).eq('estado', 'pending'),
     // Últimas suscripciones autorizadas
     supabase.from('suscripciones').select('id, terapeuta_id, plan, modalidad, monto, suscripcion_inicio').eq('estado', 'authorized').order('suscripcion_inicio', { ascending: false }).limit(8),
+    // Total pacientes (service role para bypass RLS)
+    serviceSupabase.from('pacientes').select('*', { count: 'exact', head: true }),
   ])
 
   const ingresosMes = (suscrAutorizadasMes ?? []).reduce((acc, s) => acc + (s.monto ?? 0), 0)
@@ -110,7 +118,7 @@ export default async function OpsDashboardPage() {
         <MetricCard label="Acceso bloqueado" value={accesoBloqueado ?? 0} sub="Pago fallido o cancelado" icon="block" color="text-error" />
         <MetricCard label="Nuevos este mes" value={nuevosEsteMes ?? 0} icon="person_add" color="text-green-600" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
           label="Ingresos del mes"
           value={ingresosMes > 0 ? formatMonto(ingresosMes) : '—'}
@@ -131,6 +139,13 @@ export default async function OpsDashboardPage() {
           sub="Suscripciones sin confirmar"
           icon="pending"
           color="text-amber-500"
+        />
+        <MetricCard
+          label="Total pacientes activos"
+          value={totalPacientes ?? 0}
+          sub="En todas las cuentas"
+          icon="person_heart"
+          color="text-green-600"
         />
       </div>
 
