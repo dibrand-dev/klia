@@ -321,7 +321,7 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
                       {fmtNum(c.monto_cobrado)} {c.moneda}
                     </span>
                     <span style={{ fontSize: '11.5px', color: '#5B6472', padding: '2px 8px', borderRadius: '100px', background: '#F6F7F9' }}>
-                      {MEDIO_LABELS[c.medio_pago] ?? c.medio_pago}
+                      {c.medio_pago ? (MEDIO_LABELS[c.medio_pago] ?? c.medio_pago) : '—'}
                     </span>
                     <button
                       type="button"

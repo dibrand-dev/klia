@@ -54,6 +54,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .update({ estado: 'convertida', paciente_id: paciente.id, updated_at: new Date().toISOString() })
       .eq('id', params.id)
 
+    if (entrevista.costo && entrevista.costo > 0) {
+      await supabase.from('cobros').insert({
+        turno_id: null,
+        terapeuta_id: user.id,
+        paciente_id: paciente.id,
+        monto_cobrado: entrevista.costo,
+        moneda: entrevista.moneda ?? 'ARS',
+        medio_pago: null,
+        fecha_cobro: entrevista.fecha,
+        notas: 'Entrevista inicial',
+      })
+    }
+
     return NextResponse.json({ ok: true, paciente_id: paciente.id })
   }
 

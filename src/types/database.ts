@@ -373,24 +373,24 @@ export type Database = {
       cobros: {
         Row: {
           id: string
-          turno_id: string
+          turno_id: string | null
           terapeuta_id: string
           paciente_id: string
           monto_cobrado: number
           moneda: string
-          medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago'
+          medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago' | null
           fecha_cobro: string
           notas: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          turno_id: string
+          turno_id?: string | null
           terapeuta_id: string
           paciente_id: string
           monto_cobrado: number
           moneda?: string
-          medio_pago: 'efectivo' | 'transferencia' | 'mercado_pago'
+          medio_pago?: 'efectivo' | 'transferencia' | 'mercado_pago' | null
           fecha_cobro?: string
           notas?: string | null
           created_at?: string
