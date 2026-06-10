@@ -146,7 +146,10 @@ export async function POST(req: NextRequest) {
       tratamiento: osConfig?.descripcion_practica ?? osConfig?.nombre ?? '',
       mes: MESES[mes - 1],
       numeroAutorizacion: paciente.numero_autorizacion ?? '',
-      sesiones: [...sesiones, ...sesionesDecl],
+      sesiones: [...sesiones, ...sesionesDecl].sort((a, b) => {
+        const d = parseInt(a.mes) * 100 + parseInt(a.dia) - (parseInt(b.mes) * 100 + parseInt(b.dia))
+        return d !== 0 ? d : a.horaInicio.localeCompare(b.horaInicio)
+      }),
       logoUrl,
     })
   } catch (err) {

@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       mes:                `${MESES[mes - 1]} ${anio}`,
       profesional:        `${profile.apellido}, ${profile.nombre}`.toUpperCase(),
       matricula:          profile.matricula ?? '',
-      sesiones: [...sesiones, ...sesionesDecl],
+      sesiones: [...sesiones, ...sesionesDecl].sort((a, b) => a.dia - b.dia || a.entrada.localeCompare(b.entrada)),
       firmaProfesionalUrl: profile.firma_sello_url ?? undefined,
       dni:                paciente.dni ?? undefined,
     })
