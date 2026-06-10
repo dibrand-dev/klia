@@ -23,9 +23,15 @@ function formatUltimaCita(fecha: string | null): string {
 export default function ListaPacientes({
   pacientes,
   profile,
+  totalCount = 0,
+  currentPage = 1,
+  pageSize = 12,
 }: {
   pacientes: PacienteListado[]
   profile: Profile | null
+  totalCount?: number
+  currentPage?: number
+  pageSize?: number
 }) {
   const [busqueda, setBusqueda] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
@@ -142,8 +148,88 @@ export default function ListaPacientes({
             ))}
           </div>
         )}
+
+        {totalCount > pageSize && (
+          <Paginador
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalCount / pageSize)}
+          />
+        )}
       </div>
     </>
+  )
+}
+
+function Paginador({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+  const router = useRouter()
+
+  function goTo(page: number) {
+    router.push(`/pacientes?page=${page}`)
+  }
+
+  // Build page number list with ellipsis
+  function pageNumbers(): (number | '…')[] {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages: (number | '…')[] = [1]
+    if (currentPage > 3) pages.push('…')
+    for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) {
+      pages.push(p)
+    }
+    if (currentPage < totalPages - 2) pages.push('…')
+    pages.push(totalPages)
+    return pages
+  }
+
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    minWidth: 36, height: 36, borderRadius: 8, border: '1px solid var(--border, #E7E9EE)',
+    background: 'var(--surface, #fff)', color: 'var(--ink-2, #1F2937)',
+    fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+    padding: '0 8px', transition: 'background 0.12s',
+  }
+  const btnActive: React.CSSProperties = {
+    ...btnBase,
+    background: 'var(--accent, #2563EB)', color: '#fff',
+    border: '1px solid transparent', fontWeight: 700,
+  }
+  const btnDisabled: React.CSSProperties = {
+    ...btnBase, opacity: 0.38, cursor: 'not-allowed',
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32, paddingBottom: 8 }}>
+      <button
+        style={currentPage <= 1 ? btnDisabled : btnBase}
+        disabled={currentPage <= 1}
+        onClick={() => goTo(currentPage - 1)}
+        aria-label="Página anterior"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
+      </button>
+
+      {pageNumbers().map((p, i) =>
+        p === '…' ? (
+          <span key={`ell-${i}`} style={{ ...btnBase, border: 'none', background: 'transparent', cursor: 'default', color: 'var(--muted, #5B6472)' }}>…</span>
+        ) : (
+          <button
+            key={p}
+            style={p === currentPage ? btnActive : btnBase}
+            onClick={() => p !== currentPage && goTo(p as number)}
+          >
+            {p}
+          </button>
+        )
+      )}
+
+      <button
+        style={currentPage >= totalPages ? btnDisabled : btnBase}
+        disabled={currentPage >= totalPages}
+        onClick={() => goTo(currentPage + 1)}
+        aria-label="Página siguiente"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
+      </button>
+    </div>
   )
 }
 

@@ -4,17 +4,28 @@ import ListaPacientes from '@/components/pacientes/ListaPacientes'
 
 export const metadata = { title: 'Pacientes — KLIA' }
 
-export default async function PacientesPage() {
+const PAGE_SIZE = 12
+
+export default async function PacientesPage({
+  searchParams,
+}: {
+  searchParams: { page?: string }
+}) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: pacientes }, { data: profile }, { data: turnos }] = await Promise.all([
+  const pageNum = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1)
+  const from = (pageNum - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
+  const [{ data: pacientes, count: totalCount }, { data: profile }, { data: turnos }] = await Promise.all([
     supabase
       .from('pacientes')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('terapeuta_id', user.id)
-      .order('apellido'),
+      .order('apellido')
+      .range(from, to),
     supabase
       .from('profiles')
       .select('*')
@@ -40,5 +51,13 @@ export default async function PacientesPage() {
     ultima_cita: ultimaCitaMap.get(p.id) ?? null,
   }))
 
-  return <ListaPacientes pacientes={pacientesListado} profile={profile} />
+  return (
+    <ListaPacientes
+      pacientes={pacientesListado}
+      profile={profile}
+      totalCount={totalCount ?? 0}
+      currentPage={pageNum}
+      pageSize={PAGE_SIZE}
+    />
+  )
 }
