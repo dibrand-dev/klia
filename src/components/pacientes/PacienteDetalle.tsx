@@ -1144,7 +1144,8 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
 
   const turnosMes = turnos.filter((t) => {
     const d = new Date(t.fecha_hora)
-    return d.getMonth() === mes && d.getFullYear() === anio
+    return d.getMonth() === mes && d.getFullYear() === anio &&
+      ['realizado', 'no_asistio', 'cancelado'].includes(t.estado)
   })
 
   const turnosMesConEstado = turnosMes.map(t => ({
