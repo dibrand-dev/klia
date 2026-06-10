@@ -20,6 +20,20 @@ function fmtFecha(d: string) {
   catch { return d }
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function POST(req: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,6 +71,7 @@ export async function POST(req: NextRequest) {
       .select('fecha, contenido')
       .eq('terapeuta_id', user.id)
       .eq('paciente_id', paciente_id)
+      .eq('borrador', false)
       .gte('fecha', periodo_desde)
       .lte('fecha', periodo_hasta)
       .order('fecha', { ascending: true }),
@@ -67,7 +82,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No hay notas clínicas en el período seleccionado' }, { status: 400 })
   }
 
-  const notasTexto = notas.map(n => `[${n.fecha}] ${n.contenido}`).join('\n\n---\n\n')
+  const notasTexto = notas.map(n => `[${n.fecha}]\n${stripHtml(n.contenido)}`).join('\n\n---\n\n')
 
   const datosHeader = [
     `Paciente: ${paciente.nombre} ${paciente.apellido}`,

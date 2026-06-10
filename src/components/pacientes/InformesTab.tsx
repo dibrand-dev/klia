@@ -112,8 +112,8 @@ export default function InformesTab({
         }),
       })
       if (!res.ok) {
-        const err = await res.json() as { error?: string }
-        showToast(err.error ?? 'Error al generar el PDF', 'error')
+        const err = await res.json() as { error?: unknown }
+        showToast(typeof err.error === 'string' ? err.error : 'Error al generar el PDF', 'error')
         return
       }
       const blob = await res.blob()

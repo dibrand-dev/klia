@@ -160,8 +160,8 @@ export default function NuevoInformeSlide({
           observaciones_profesional: observaciones || null,
         }),
       })
-      const data = await res.json() as { informe_id?: string; contenido_generado?: string; error?: string }
-      if (!res.ok) { setErrorMsg(data.error ?? 'Error al generar el informe'); return }
+      const data = await res.json() as { informe_id?: string; contenido_generado?: string; error?: unknown }
+      if (!res.ok) { setErrorMsg(typeof data.error === 'string' ? data.error : 'Error al generar el informe'); return }
       setInformeId(data.informe_id!)
       setContenido(data.contenido_generado!)
       setPhase('draft')
@@ -192,8 +192,8 @@ export default function NuevoInformeSlide({
         onSuccess?.()
         onClose()
       } else {
-        const data = await res.json() as { pdf_url?: string; error?: string }
-        if (!res.ok) { setErrorMsg(data.error ?? 'Error al firmar'); return }
+        const data = await res.json() as { pdf_url?: string; error?: unknown }
+        if (!res.ok) { setErrorMsg(typeof data.error === 'string' ? data.error : 'Error al firmar'); return }
         setSuccessUrl(data.pdf_url ?? '')
         onSuccess?.()
       }

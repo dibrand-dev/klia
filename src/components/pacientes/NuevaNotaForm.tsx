@@ -52,6 +52,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   // Load existing draft for this patient+turno on mount
   useEffect(() => {
     async function cargarBorrador() {
+      if (!pacienteId) return
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
