@@ -31,9 +31,10 @@ export async function POST(req: NextRequest) {
     mes: number      // 1-12
     anio: number
     os_config_id: string
+    sesiones_declaradas?: { fecha: string; hora_entrada: string; hora_salida: string }[]
   }
 
-  const { paciente_id, mes, anio, os_config_id } = body
+  const { paciente_id, mes, anio, os_config_id, sesiones_declaradas = [] } = body
   if (!paciente_id || !mes || !anio || !os_config_id) {
     return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
   }
@@ -79,7 +80,19 @@ export async function POST(req: NextRequest) {
     .in('estado', ['realizado', 'no_asistio'])
     .order('fecha_hora')
 
-  // 6. Map turnos to SesionPlanilla (convert UTC → Argentina time)
+  // 6. Map turnos + declared sessions to SesionPlanilla
+  const sesionesDecl: SesionPlanilla[] = sesiones_declaradas.map((d) => {
+    const [year, month, day] = d.fecha.split('-')
+    return {
+      dia: day,
+      mes: month,
+      horaInicio: d.hora_entrada,
+      horaFin: d.hora_salida,
+      firmaProfesionalUrl: profile?.firma_sello_url ?? undefined,
+      firmaPacienteUrl: paciente?.firma_paciente_url ?? undefined,
+    }
+  })
+
   const sesiones: SesionPlanilla[] = (turnos ?? []).map((t) => {
     const argDate = new Date(new Date(t.fecha_hora).getTime() - 3 * 60 * 60 * 1000)
     const dia = argDate.getUTCDate().toString().padStart(2, '0')
@@ -133,7 +146,7 @@ export async function POST(req: NextRequest) {
       tratamiento: osConfig?.descripcion_practica ?? osConfig?.nombre ?? '',
       mes: MESES[mes - 1],
       numeroAutorizacion: paciente.numero_autorizacion ?? '',
-      sesiones,
+      sesiones: [...sesiones, ...sesionesDecl],
       logoUrl,
     })
   } catch (err) {

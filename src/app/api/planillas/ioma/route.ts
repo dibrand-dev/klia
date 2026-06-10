@@ -28,8 +28,9 @@ export async function POST(req: NextRequest) {
     mes: number
     anio: number
     os_config_id?: string
+    sesiones_declaradas?: { fecha: string; hora_entrada: string; hora_salida: string }[]
   }
-  const { paciente_id, mes, anio } = body
+  const { paciente_id, mes, anio, sesiones_declaradas = [] } = body
   if (!paciente_id || !mes || !anio) {
     return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
   }
@@ -75,6 +76,11 @@ export async function POST(req: NextRequest) {
     return { dia, entrada, salida }
   })
 
+  const sesionesDecl = sesiones_declaradas.map((d) => {
+    const [, , day] = d.fecha.split('-')
+    return { dia: parseInt(day, 10), entrada: d.hora_entrada, salida: d.hora_salida }
+  })
+
   let pdfBuffer: Buffer
   try {
     pdfBuffer = await generarPlanillaIoma({
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
       mes:                `${MESES[mes - 1]} ${anio}`,
       profesional:        `${profile.apellido}, ${profile.nombre}`.toUpperCase(),
       matricula:          profile.matricula ?? '',
-      sesiones,
+      sesiones: [...sesiones, ...sesionesDecl],
       firmaProfesionalUrl: profile.firma_sello_url ?? undefined,
       dni:                paciente.dni ?? undefined,
     })

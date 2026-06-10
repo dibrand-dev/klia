@@ -7,7 +7,6 @@ import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatNombreCompleto } from '@/lib/utils'
-import { detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 import type { Paciente, MedicacionPaciente, Interconsulta, ProfesionalObraSocial, TurnoRow } from '@/types/database'
 import type { PacienteTabKey } from './PacienteTabs'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
@@ -18,6 +17,7 @@ import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
+import PlanillaOSSlide from './PlanillaOSSlide'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -712,7 +712,7 @@ export default function PacienteDetalle({
   }
 
   if (activeTab === 'facturacion') {
-    return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} />
+    return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} profesionalData={profesionalData} />
   }
 
   if (activeTab === 'informes') {
@@ -1105,7 +1105,7 @@ function fmtNum(n: number): string {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
 }
 
-function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCobrarInasistencias = false }: { paciente: Paciente; turnos: TurnoRow[]; profObrasSociales?: ProfesionalObraSocial[]; profesionalCobrarInasistencias?: boolean }) {
+function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCobrarInasistencias = false, profesionalData = null }: { paciente: Paciente; turnos: TurnoRow[]; profObrasSociales?: ProfesionalObraSocial[]; profesionalCobrarInasistencias?: boolean; profesionalData?: ProfesionalData | null }) {
   const router = useRouter()
   const now = new Date()
   const [mes, setMes] = useState(now.getMonth())
@@ -1114,8 +1114,6 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [pagando, setPagando] = useState(false)
   const [mesPagado, setMesPagado] = useState(false)
   const [planillaOpen, setPlanillaOpen] = useState(false)
-  const [generando, setGenerando] = useState(false)
-  const [planillaError, setPlanillaError] = useState<string | null>(null)
   const [pagoParcialesOpen, setPagoParcialesOpen] = useState(false)
   const [montoParcialInput, setMontoParcialInput] = useState('')
   const [guardandoParcial, setGuardandoParcial] = useState(false)
@@ -1276,48 +1274,6 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
       alert(err instanceof Error ? err.message : 'Error al registrar el pago')
     } finally {
       setGuardandoParcial(false)
-    }
-  }
-
-  async function handleGenerarPlanilla() {
-    if (!paciente.os_config_id) return
-    if (!osConfig) { setPlanillaError('Esta obra social no tiene plantilla configurada. Contactá al soporte de KLIA.'); return }
-
-    const body = JSON.stringify({ paciente_id: paciente.id, mes: mes + 1, anio, os_config_id: paciente.os_config_id })
-    const headers = { 'Content-Type': 'application/json' }
-    const hasTemplate = !!osConfig.planilla_template_id
-    const generadorCustom = detectarGeneradorCustom(osConfig.nombre)
-    const endpoint = hasTemplate
-      ? '/api/planillas/generar'
-      : generadorCustom?.endpoint ?? null
-
-    if (!endpoint) {
-      setPlanillaError('Esta obra social no tiene plantilla configurada. Contactá al soporte de KLIA.')
-      return
-    }
-
-    setGenerando(true)
-    setPlanillaError(null)
-    try {
-      const res = await fetch(endpoint, { method: 'POST', headers, body })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string }
-        throw new Error(data.error ?? 'Error al generar la planilla')
-      }
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Planilla_${paciente.apellido}_${MESES_NOMBRES[mes]}_${anio}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      setPlanillaOpen(false)
-    } catch (err) {
-      setPlanillaError(err instanceof Error ? err.message : 'No se pudo generar la planilla. Intentá de nuevo.')
-    } finally {
-      setGenerando(false)
     }
   }
 
@@ -1735,89 +1691,18 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
         })()}
 
         {/* Planilla SlideOver */}
-        <SlideOver
+        <PlanillaOSSlide
           open={planillaOpen}
-          onClose={() => { setPlanillaOpen(false); setPlanillaError(null) }}
-          title="Planilla de asistencia"
-          subtitle={osConfig?.nombre ?? ''}
-        >
-          <div className="space-y-6">
-            <p className="text-sm text-on-surface-variant">
-              Seleccioná el mes y año para generar la planilla con las sesiones registradas.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Mes</label>
-                <select
-                  value={mes}
-                  onChange={(e) => setMes(Number(e.target.value))}
-                  className="input-field text-sm py-2 w-full"
-                >
-                  {MESES_NOMBRES.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-2">Año</label>
-                <select
-                  value={anio}
-                  onChange={(e) => setAnio(Number(e.target.value))}
-                  className="input-field text-sm py-2 w-full"
-                >
-                  {anios.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-            </div>
-
-          {paciente.numero_afiliado && (
-            <div className="bg-surface-container-lowest rounded-xl p-4 space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">Afiliado</span>
-                <span className="font-medium text-on-surface">{paciente.apellido}, {paciente.nombre}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-on-surface-variant">N° socio</span>
-                <span className="font-medium text-on-surface">{paciente.numero_afiliado}</span>
-              </div>
-              {paciente.numero_autorizacion && (
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">N° autorización</span>
-                  <span className="font-medium text-on-surface">{paciente.numero_autorizacion}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!paciente.numero_afiliado && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-              ⚠️ El paciente no tiene N° de afiliado cargado. Completalo en la pestaña Datos antes de generar la planilla.
-            </div>
-          )}
-
-          {planillaError && (
-            <p className="text-sm text-red-600">{planillaError}</p>
-          )}
-
-          <button
-            type="button"
-            onClick={handleGenerarPlanilla}
-            disabled={generando}
-            className={cn('btn-primary w-full py-3 text-sm flex items-center justify-center gap-2', generando && 'opacity-70')}
-          >
-            {generando ? (
-              <>
-                <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                Generando PDF...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-base">download</span>
-                Descargar planilla {MESES_NOMBRES[mes]} {anio}
-              </>
-            )}
-          </button>
-        </div>
-      </SlideOver>
+          onClose={() => setPlanillaOpen(false)}
+          paciente={paciente}
+          osConfig={osConfig}
+          mes={mes}
+          anio={anio}
+          turnos={turnos}
+          firmaProfesionalUrl={profesionalData?.firma_sello_url ?? undefined}
+          profesionalNombre={profesionalData ? `${profesionalData.nombre} ${profesionalData.apellido}` : undefined}
+          matricula={profesionalData?.matricula ?? undefined}
+        />
 
       {/* RegistrarPagoSlide — cobrar sesión individual */}
       <RegistrarPagoSlide
