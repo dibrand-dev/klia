@@ -1029,6 +1029,59 @@ export type Database = {
         }
         Relationships: []
       }
+      informes_medicos: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          paciente_id: string
+          tipo_solicitud: string
+          diagnostico_cie10_codigo: string | null
+          diagnostico_cie10_descripcion: string | null
+          periodo_desde: string
+          periodo_hasta: string
+          observaciones_profesional: string | null
+          contenido_generado: string
+          estado: string
+          pdf_drive_url: string | null
+          pdf_drive_file_id: string | null
+          created_at: string
+          firmado_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          tipo_solicitud: string
+          diagnostico_cie10_codigo?: string | null
+          diagnostico_cie10_descripcion?: string | null
+          periodo_desde: string
+          periodo_hasta: string
+          observaciones_profesional?: string | null
+          contenido_generado: string
+          estado?: string
+          pdf_drive_url?: string | null
+          pdf_drive_file_id?: string | null
+          created_at?: string
+          firmado_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          tipo_solicitud?: string
+          diagnostico_cie10_codigo?: string | null
+          diagnostico_cie10_descripcion?: string | null
+          periodo_desde?: string
+          periodo_hasta?: string
+          observaciones_profesional?: string | null
+          contenido_generado?: string
+          estado?: string
+          pdf_drive_url?: string | null
+          pdf_drive_file_id?: string | null
+          firmado_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suscripciones: {
         Row: {
           id: string
@@ -1129,6 +1182,7 @@ export type LiquidacionItem = Database['public']['Tables']['liquidacion_items'][
 export type GoogleCalendarToken = Database['public']['Tables']['google_calendar_tokens']['Row']
 export type Entrevista = Database['public']['Tables']['entrevistas']['Row']
 export type ArchivoPaciente = Database['public']['Tables']['archivos_paciente']['Row']
+export type InformeMedico = Database['public']['Tables']['informes_medicos']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]
