@@ -12,7 +12,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: paciente }, { data: notas }, { data: turnos }] = await Promise.all([
+  const [{ data: paciente }, { data: notas }, { data: turnos }, { data: profile }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
@@ -33,6 +33,11 @@ export default async function HistorialPage({ params }: { params: { id: string }
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', user.id)
       .order('fecha_hora', { ascending: true }),
+    supabase
+      .from('profiles')
+      .select('especialidad')
+      .eq('id', user.id)
+      .single(),
   ])
 
   if (!paciente) notFound()
@@ -64,6 +69,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
         pacienteId={paciente.id}
         active="historial"
         historialCount={totalNotas}
+        especialidad={profile?.especialidad}
       />
 
       {totalNotas === 0 ? (

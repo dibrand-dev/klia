@@ -126,6 +126,7 @@ export default async function PacienteDetallePage({
         active={tab}
         historialCount={historialCount}
         tieneDrive={tieneDrive}
+        especialidad={profile?.especialidad}
       />
       <PacienteDetalle
         paciente={paciente}

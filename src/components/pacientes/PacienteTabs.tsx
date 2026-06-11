@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
 export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision'
 
@@ -16,12 +17,16 @@ export default function PacienteTabs({
   active,
   historialCount,
   tieneDrive = false,
+  especialidad,
 }: {
   pacienteId: string
   active: PacienteTabKey
   historialCount?: number
   tieneDrive?: boolean
+  especialidad?: string | null
 }) {
+  const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
+
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
     { key: 'datos', label: 'Datos personales' },
@@ -29,7 +34,7 @@ export default function PacienteTabs({
     { key: 'informes', label: 'Informes' },
     { key: 'documentos', label: 'Documentos' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
-    { key: 'admision', label: 'Admisión' },
+    ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
   ]

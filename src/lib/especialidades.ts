@@ -41,3 +41,14 @@ export const ESPECIALIDADES = [
   'Urología',
   'Otro / No listado',
 ]
+
+export const ESPECIALIDADES_SALUD_MENTAL = [
+  'Acompañamiento Terapéutico',
+  'Musicoterapia',
+  'Neuropsicología',
+  'Psicología',
+  'Psicopedagogía',
+  'Psiquiatría',
+  'Psiquiatría Infanto-Juvenil',
+  'Terapia Ocupacional',
+]
