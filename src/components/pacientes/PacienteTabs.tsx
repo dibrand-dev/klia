@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision'
 
 interface TabDef {
   key: PacienteTabKey
@@ -29,6 +29,7 @@ export default function PacienteTabs({
     { key: 'informes', label: 'Informes' },
     { key: 'documentos', label: 'Documentos' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
+    { key: 'admision', label: 'Admisión' },
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
   ]
@@ -44,6 +45,7 @@ export default function PacienteTabs({
           : tab.key === 'informes' ? `/pacientes/${pacienteId}?tab=informes`
           : tab.key === 'documentos' ? `/pacientes/${pacienteId}?tab=documentos`
           : tab.key === 'archivos' ? `/pacientes/${pacienteId}?tab=archivos`
+          : tab.key === 'admision' ? `/pacientes/${pacienteId}?tab=admision`
           : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
           : `/pacientes/${pacienteId}?tab=interconsultas`
 

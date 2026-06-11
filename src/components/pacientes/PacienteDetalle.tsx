@@ -17,6 +17,7 @@ import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
 import InformesTab from './InformesTab'
+import AdmisionTab from './AdmisionTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
 import PlanillaOSSlide from './PlanillaOSSlide'
 
@@ -727,6 +728,10 @@ export default function PacienteDetalle({
     return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} turnoRecurrente={turnoRecurrente ?? null} />
   }
 
+  if (activeTab === 'admision') {
+    return <AdmisionTab pacienteId={paciente.id} />
+  }
+
   if (activeTab === 'archivos') {
     return <ArchivosTab pacienteId={paciente.id} pacienteNombre={`${paciente.nombre} ${paciente.apellido}`} />
   }
@@ -1086,6 +1091,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
       title: 'Facturación',
       body: 'Historial de pagos y estado de cuenta. Próximamente.',
     },
+    admision: { title: 'Admisión', body: '' },
     interconsultas: { title: 'Interconsultas', body: '' },
     archivos: { title: 'Archivos', body: '' },
   }
