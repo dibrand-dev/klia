@@ -767,7 +767,7 @@ export default function NuevoTurnoPageForm({
               Cancelar
             </button>
             <button type="submit" disabled={loading || (pagoPrevio && !form.monto)} className={cn('btn-primary flex-1 py-3', (loading || (pagoPrevio && !form.monto)) && 'opacity-70')}>
-              {loading ? (pagoPrevio ? 'Enviando link...' : 'Verificando...') : esFijo ? 'Crear serie' : 'Crear turno'}
+              {loading ? (pagoPrevio ? 'Enviando link...' : 'Verificando...') : esFijo ? 'Guardar turnos' : 'Crear turno'}
             </button>
           </div>
         </>
