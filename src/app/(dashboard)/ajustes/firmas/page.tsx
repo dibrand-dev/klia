@@ -58,7 +58,7 @@ export default function FirmasPage() {
           <span className="material-symbols-outlined text-xl">arrow_back</span>
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-on-surface">Firmas digitales</h1>
+          <h1 className="text-xl font-bold text-on-surface">Firma escaneada</h1>
           <p className="text-xs text-on-surface-variant mt-0.5">
             Las firmas se insertan automáticamente en planillas de asistencia y documentos oficiales.
           </p>

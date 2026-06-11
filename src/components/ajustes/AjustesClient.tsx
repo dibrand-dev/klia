@@ -438,7 +438,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'feriados', label: 'Feriados' },
     { id: 'obras', label: 'Obras sociales' },
     { id: 'integraciones', label: 'Integraciones' },
-    { id: 'firmas', label: 'Firmas digitales' },
+    { id: 'firmas', label: 'Firma escaneada' },
     { id: 'link-publico', label: 'Link público' },
     { id: 'sep' },
     { id: 'plan', label: 'Suscripción y plan' },
@@ -933,7 +933,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             <div style={secHdrStyle}>
               <div style={icnStyle('var(--violet-soft)', 'var(--violet)')}>{ICONS.firmas}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Firmas digitales</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Firma escaneada</h2>
                 <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá tu firma y sello para planillas, informes y consentimientos.</p>
               </div>
             </div>
