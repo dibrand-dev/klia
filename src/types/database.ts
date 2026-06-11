@@ -51,6 +51,7 @@ export type Database = {
           horarios_por_dia: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed: boolean
           onboarding_skipped: boolean
+          aviso_deuda_activo: boolean | null
           created_at: string
           updated_at: string
         }
@@ -100,6 +101,7 @@ export type Database = {
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
+          aviso_deuda_activo?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -149,6 +151,7 @@ export type Database = {
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
+          aviso_deuda_activo?: boolean | null
           created_at?: string
           updated_at?: string
         }

@@ -236,6 +236,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [horarioLoading, setHorarioLoading] = useState(false)
   const [horarioSaved, setHorarioSaved] = useState(false)
 
+  // Aviso de deuda state
+  const [avisoDeuda, setAvisoDeuda] = useState<boolean>(
+    (profile as Record<string, unknown>).aviso_deuda_activo as boolean ?? false
+  )
+  const [avisoDeudaLoading, setAvisoDeudaLoading] = useState(false)
+  const [avisoDeudaSaved, setAvisoDeudaSaved] = useState(false)
+
   // Política de cobros state
   const [cobrar, setCobrar] = useState(profile.cobrar_inasistencias ?? false)
   const [cobrarGuardando, setCobrarGuardando] = useState(false)
@@ -398,6 +405,17 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     router.refresh()
   }
 
+  // ── Aviso de deuda toggle ──────────────────────────────────────────
+  async function handleAvisoDeudaToggle(val: boolean) {
+    setAvisoDeudaLoading(true)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ aviso_deuda_activo: val } as never).eq('id', profile.id)
+    setAvisoDeuda(val)
+    setAvisoDeudaLoading(false)
+    setAvisoDeudaSaved(true)
+    setTimeout(() => setAvisoDeudaSaved(false), 2000)
+  }
+
   // ── Política toggle ────────────────────────────────────────────────
   async function handleCobrarToggle() {
     const nuevo = !cobrar
@@ -489,6 +507,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'perfil', label: 'Perfil profesional' },
     { id: 'horarios', label: 'Horarios' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
+    { id: 'aviso-deuda', label: 'Aviso de deuda' },
     { id: 'politica', label: 'Política de cobros' },
     { id: 'feriados', label: 'Feriados' },
     { id: 'obras', label: 'Obras sociales' },
@@ -943,6 +962,32 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 </button>
               </div>
             </form>
+          </section>
+
+          {/* ═══ AVISO DE DEUDA ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'aviso-deuda' ? ' hidden md:block' : ''}`} id="aviso-deuda" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('var(--warn-soft)', '#B45309')}>
+                {icnSvg(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Aviso de deuda</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Notificá automáticamente a pacientes con sesiones realizadas sin pagar.</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Activar aviso automático de deuda</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Se envía al día siguiente a pacientes con sesiones impagas. El email incluye el total histórico pendiente.</div>
+              </div>
+              <Toggle on={avisoDeuda} onChange={() => handleAvisoDeudaToggle(!avisoDeuda)} disabled={avisoDeudaLoading} />
+            </div>
+            {avisoDeudaSaved && (
+              <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                Guardado
+              </span>
+            )}
           </section>
 
           {/* ═══ POLÍTICA DE COBROS ═══ */}
