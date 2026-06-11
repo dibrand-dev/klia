@@ -116,6 +116,8 @@ interface ProfesionalData {
   apellido: string
   especialidad: string | null
   matricula: string | null
+  matricula_tipo: string | null
+  matricula_provincia: string | null
   localidad: string | null
   provincia: string | null
   direccion: string | null
@@ -1716,6 +1718,8 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
           firmaProfesionalUrl={profesionalData?.firma_sello_url ?? undefined}
           profesionalNombre={profesionalData ? `${profesionalData.nombre} ${profesionalData.apellido}` : undefined}
           matricula={profesionalData?.matricula ?? undefined}
+          matriculaTipo={profesionalData?.matricula_tipo ?? undefined}
+          matriculaProvincia={profesionalData?.matricula_provincia ?? undefined}
         />
 
       {/* RegistrarPagoSlide — cobrar sesión individual */}

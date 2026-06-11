@@ -49,6 +49,8 @@ export default function OnboardingWizard({
 
   // Step 2
   const [matricula, setMatricula] = useState(initialMatricula ?? '')
+  const [matriculaTipo, setMatriculaTipo] = useState<'provincial' | 'nacional' | ''>('')
+  const [matriculaProvincia, setMatriculaProvincia] = useState('')
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
 
@@ -130,7 +132,13 @@ export default function OnboardingWizard({
 
   function next(isSkip = false) {
     if (step === 2 && !isSkip) {
-      persistStep({ matricula: matricula || null, telefono: telefono || null, provincia: provincia || null })
+      persistStep({
+        matricula: matricula || null,
+        matricula_tipo: matriculaTipo || null,
+        matricula_provincia: matriculaTipo === 'provincial' ? (matriculaProvincia || null) : null,
+        telefono: telefono || null,
+        provincia: provincia || null,
+      })
     }
     if (step === 3 && !isSkip) {
       const horarios = Object.fromEntries(
@@ -317,10 +325,33 @@ export default function OnboardingWizard({
                 <p className="ob-step-desc">Los pacientes y las planillas usan estos datos.</p>
                 <div className="ob-form">
                   <div className="ob-field">
-                    <label>Matrícula <em>*</em></label>
+                    <label>Tipo de matrícula</label>
+                    <select
+                      value={matriculaTipo}
+                      onChange={e => setMatriculaTipo(e.target.value as 'provincial' | 'nacional' | '')}
+                    >
+                      <option value="">Seleccioná el tipo</option>
+                      <option value="provincial">Provincial</option>
+                      <option value="nacional">Nacional</option>
+                    </select>
+                  </div>
+                  {matriculaTipo === 'provincial' && (
+                    <div className="ob-field">
+                      <label>Provincia de la matrícula</label>
+                      <select
+                        value={matriculaProvincia}
+                        onChange={e => setMatriculaProvincia(e.target.value)}
+                      >
+                        <option value="">Seleccioná la provincia</option>
+                        {PROVINCIAS.map(p => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div className="ob-field">
+                    <label>Número de matrícula <em>*</em></label>
                     <input
                       type="text"
-                      placeholder="MN 12345"
+                      placeholder="Ej: 12345"
                       value={matricula}
                       onChange={e => setMatricula(e.target.value)}
                     />

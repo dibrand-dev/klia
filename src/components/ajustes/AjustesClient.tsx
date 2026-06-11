@@ -185,6 +185,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [perfilForm, setPerfilForm] = useState({
     especialidad: profile.especialidad ?? '',
     matricula: profile.matricula ?? '',
+    matricula_tipo: (profile as Record<string, unknown>).matricula_tipo as string ?? '',
+    matricula_provincia: (profile as Record<string, unknown>).matricula_provincia as string ?? '',
     telefono: profile.telefono ?? '',
     pais: profile.pais ?? 'Argentina',
     provincia: profile.provincia ?? '',
@@ -310,6 +312,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     const { error } = await supabase.from('profiles').update({
       especialidad: perfilForm.especialidad || null,
       matricula: perfilForm.matricula || null,
+      matricula_tipo: perfilForm.matricula_tipo || null,
+      matricula_provincia: perfilForm.matricula_tipo === 'provincial' ? (perfilForm.matricula_provincia || null) : null,
       telefono: perfilForm.telefono || null,
       pais: perfilForm.pais || null,
       provincia: perfilForm.provincia || null,
@@ -619,8 +623,34 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <span style={hintStyle}>Personaliza cómo se llaman los turnos en toda la app.</span>
                 </div>
                 <div style={fieldStyle}>
-                  <label style={labelStyle}>Matrícula profesional</label>
-                  <input style={inputStyle} type="text" placeholder="MP 12345" value={perfilForm.matricula} onChange={e => setPerfilForm(p => ({ ...p, matricula: e.target.value }))} />
+                  <label style={labelStyle}>Tipo de matrícula</label>
+                  <select style={inputStyle} value={perfilForm.matricula_tipo} onChange={e => setPerfilForm(p => ({ ...p, matricula_tipo: e.target.value, matricula_provincia: e.target.value !== 'provincial' ? '' : p.matricula_provincia }))}>
+                    <option value="">Seleccioná el tipo</option>
+                    <option value="provincial">Provincial</option>
+                    <option value="nacional">Nacional</option>
+                  </select>
+                </div>
+                {perfilForm.matricula_tipo === 'provincial' && (
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Provincia de la matrícula</label>
+                    <select style={inputStyle} value={perfilForm.matricula_provincia} onChange={e => setPerfilForm(p => ({ ...p, matricula_provincia: e.target.value }))}>
+                      <option value="">Seleccioná la provincia</option>
+                      {(PAISES_PROVINCIAS['Argentina'] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Número de matrícula</label>
+                  <input style={inputStyle} type="text" placeholder="Ej: 12345" value={perfilForm.matricula} onChange={e => setPerfilForm(p => ({ ...p, matricula: e.target.value }))} />
+                  {perfilForm.matricula && (
+                    <span style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4, display: 'block' }}>
+                      Se mostrará como: {perfilForm.matricula_tipo === 'provincial'
+                        ? `MP ${perfilForm.matricula}${perfilForm.matricula_provincia ? ` (${perfilForm.matricula_provincia})` : ''}`
+                        : perfilForm.matricula_tipo === 'nacional'
+                        ? `MN ${perfilForm.matricula}`
+                        : perfilForm.matricula}
+                    </span>
+                  )}
                 </div>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Teléfono de contacto</label>

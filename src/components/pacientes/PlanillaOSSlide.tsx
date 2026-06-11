@@ -49,6 +49,8 @@ export default function PlanillaOSSlide({
   firmaProfesionalUrl,
   profesionalNombre,
   matricula,
+  matriculaTipo,
+  matriculaProvincia,
 }: {
   open: boolean
   onClose: () => void
@@ -60,6 +62,8 @@ export default function PlanillaOSSlide({
   firmaProfesionalUrl?: string
   profesionalNombre?: string
   matricula?: string
+  matriculaTipo?: string | null
+  matriculaProvincia?: string | null
 }) {
   const [declaradas, setDeclaradas] = useState<SesionDeclarada[]>([])
   const [loadingDecl, setLoadingDecl] = useState(false)
@@ -392,7 +396,7 @@ export default function PlanillaOSSlide({
                   <div className="name">Firma del profesional</div>
                   {profesionalNombre && (
                     <div className="mp">
-                      {profesionalNombre}{matricula ? ` · MP ${matricula}` : ''}
+                      {profesionalNombre}{matricula ? ` · ${matriculaTipo === 'nacional' ? 'MN' : 'MP'} ${matricula}${matriculaTipo === 'provincial' && matriculaProvincia ? ` (${matriculaProvincia})` : ''}` : ''}
                     </div>
                   )}
                 </div>

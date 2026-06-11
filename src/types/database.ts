@@ -8,6 +8,8 @@ export type Database = {
           nombre: string
           apellido: string
           matricula: string | null
+          matricula_tipo: string | null
+          matricula_provincia: string | null
           especialidad: string | null
           telefono: string | null
           domicilio: string | null
@@ -58,6 +60,8 @@ export type Database = {
           nombre: string
           apellido: string
           matricula?: string | null
+          matricula_tipo?: string | null
+          matricula_provincia?: string | null
           especialidad?: string | null
           telefono?: string | null
           direccion?: string | null
@@ -105,6 +109,8 @@ export type Database = {
           nombre?: string
           apellido?: string
           matricula?: string | null
+          matricula_tipo?: string | null
+          matricula_provincia?: string | null
           especialidad?: string | null
           telefono?: string | null
           direccion?: string | null
