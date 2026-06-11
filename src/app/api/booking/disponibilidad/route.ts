@@ -35,7 +35,9 @@ async function getAvailableSlots(
   // Check per-day schedule
   const DIAS_KEY = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
   const diaNombre = DIAS_KEY[new Date(fecha + 'T12:00:00').getDay()]
-  type HorarioDia = { activo: boolean; inicio: number; fin: number }
+  type HorarioDiaViejo = { activo: boolean; inicio: number; fin: number }
+  type FranjaHoraria = { inicio: number; fin: number }
+  type HorarioDia = { activo: boolean; franjas?: FranjaHoraria[] } | HorarioDiaViejo
   const horariosDia = (profile.horarios_por_dia as Record<string, HorarioDia> | null)?.[diaNombre]
   if (horariosDia && !horariosDia.activo) return []
 
@@ -57,17 +59,30 @@ async function getAvailableSlots(
     ? (profile.booking_duracion_sesion ?? 50)
     : (profile.booking_duracion_entrevista ?? 30)
   const buffer: number = profile.booking_tiempo_entre ?? 10
-  const interval = duracion + buffer
   const anticipacion: number = profile.booking_anticipacion_minutos ?? 60
 
-  const startMin = (horariosDia?.inicio ?? profile.agenda_hora_inicio ?? 9) * 60
-  const endMin = (horariosDia?.fin ?? profile.agenda_hora_fin ?? 20) * 60
-
-  // Generate all possible slots
-  const allSlots: string[] = []
-  for (let t = startMin; t + duracion <= endMin; t += interval) {
-    allSlots.push(minToTime(t))
+  // Resolver franjas (nuevo formato o retrocompatibilidad con viejo)
+  let franjas: FranjaHoraria[]
+  const horarioDiaRaw = horariosDia as Record<string, unknown> | undefined
+  if (horarioDiaRaw && Array.isArray(horarioDiaRaw.franjas)) {
+    franjas = horarioDiaRaw.franjas as FranjaHoraria[]
+  } else if (horarioDiaRaw) {
+    franjas = [{ inicio: (horarioDiaRaw.inicio as number) ?? profile.agenda_hora_inicio ?? 9, fin: (horarioDiaRaw.fin as number) ?? profile.agenda_hora_fin ?? 20 }]
+  } else {
+    franjas = [{ inicio: profile.agenda_hora_inicio ?? 9, fin: profile.agenda_hora_fin ?? 20 }]
   }
+
+  // Generate all possible slots across all franjas
+  const allSlotsMin: number[] = []
+  for (const franja of franjas) {
+    let cur = franja.inicio * 60
+    const endMin = franja.fin * 60
+    while (cur + duracion <= endMin) {
+      allSlotsMin.push(cur)
+      cur += duracion + buffer
+    }
+  }
+  const allSlots: string[] = allSlotsMin.map(minToTime)
 
   // Filter past slots (if today)
   const nowMin = (() => {

@@ -163,8 +163,24 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
 const HORAS_INICIO = Array.from({ length: 24 }, (_, i) => i)
 const HORAS_FIN = Array.from({ length: 23 }, (_, i) => i + 1)
 
-type HorarioDia = { activo: boolean; inicio: number; fin: number }
+type Franja = { inicio: number; fin: number }
+type HorarioDia = { activo: boolean; franjas: Franja[] }
 type HorariosPorDia = Record<string, HorarioDia>
+
+function normalizarHorario(raw: Record<string, unknown>): HorariosPorDia {
+  const dias = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo']
+  const resultado: HorariosPorDia = {}
+  for (const dia of dias) {
+    const d = raw[dia] as Record<string, unknown> | undefined
+    if (!d) { resultado[dia] = { activo: false, franjas: [{ inicio: 9, fin: 13 }] }; continue }
+    if (Array.isArray(d.franjas)) { resultado[dia] = d as unknown as HorarioDia; continue }
+    resultado[dia] = {
+      activo: (d.activo as boolean) ?? false,
+      franjas: [{ inicio: (d.inicio as number) ?? 9, fin: (d.fin as number) ?? 18 }],
+    }
+  }
+  return resultado
+}
 
 const DIAS_SEMANA_CONFIG = [
   { key: 'lunes',     label: 'Lunes' },
@@ -203,10 +219,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   // Horarios state
   const [horariosPorDia, setHorariosPorDia] = useState<HorariosPorDia>(() => {
-    if (profile.horarios_por_dia) return profile.horarios_por_dia as HorariosPorDia
+    if (profile.horarios_por_dia)
+      return normalizarHorario(profile.horarios_por_dia as Record<string, unknown>)
     const ini = profile.agenda_hora_inicio ?? 9
     const fin = profile.agenda_hora_fin ?? 18
-    return {
+    return normalizarHorario({
       lunes:     { activo: true,  inicio: ini, fin },
       martes:    { activo: true,  inicio: ini, fin },
       miercoles: { activo: true,  inicio: ini, fin },
@@ -214,7 +231,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       viernes:   { activo: true,  inicio: ini, fin },
       sabado:    { activo: false, inicio: 9,   fin: 13 },
       domingo:   { activo: false, inicio: 9,   fin: 13 },
-    }
+    })
   })
   const [horarioLoading, setHorarioLoading] = useState(false)
   const [horarioSaved, setHorarioSaved] = useState(false)
@@ -325,18 +342,52 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setPerfilSaved(true); setPerfilLoading(false); router.refresh()
   }
 
-  const updateHorarioDia = (dia: string, campo: keyof HorarioDia, valor: boolean | number) => {
-    setHorariosPorDia(prev => ({ ...prev, [dia]: { ...prev[dia], [campo]: valor } }))
-    setHorarioSaved(false)
+  function agregarFranja(dia: string) {
+    setHorariosPorDia(prev => {
+      const d = prev[dia]
+      const ultima = d.franjas[d.franjas.length - 1]
+      const nuevoInicio = Math.min(ultima.fin + 1, 22)
+      return { ...prev, [dia]: { ...d, franjas: [...d.franjas, { inicio: nuevoInicio, fin: Math.min(nuevoInicio + 2, 23) }] } }
+    })
+  }
+
+  function eliminarFranja(dia: string, idx: number) {
+    setHorariosPorDia(prev => {
+      const d = prev[dia]
+      const nuevasFranjas = d.franjas.filter((_, i) => i !== idx)
+      return { ...prev, [dia]: { ...d, franjas: nuevasFranjas.length > 0 ? nuevasFranjas : d.franjas } }
+    })
+  }
+
+  function actualizarFranja(dia: string, idx: number, campo: 'inicio' | 'fin', valor: number) {
+    setHorariosPorDia(prev => {
+      const d = prev[dia]
+      const nuevasFranjas = d.franjas.map((f, i) => i === idx ? { ...f, [campo]: valor } : f)
+      return { ...prev, [dia]: { ...d, franjas: nuevasFranjas } }
+    })
+  }
+
+  function copiarHorario(diaOrigen: string) {
+    setHorariosPorDia(prev => {
+      const origen = prev[diaOrigen]
+      const nuevo: HorariosPorDia = { ...prev }
+      for (const dia of Object.keys(nuevo)) {
+        if (dia !== diaOrigen && nuevo[dia].activo) {
+          nuevo[dia] = { ...nuevo[dia], franjas: [...origen.franjas] }
+        }
+      }
+      return nuevo
+    })
   }
 
   // ── Horario save ───────────────────────────────────────────────────
   async function handleHorarioSave() {
     setHorarioLoading(true)
     const supabase = createClient()
-    const diasActivos = Object.values(horariosPorDia).filter(d => d.activo)
-    const globalInicio = diasActivos.length ? Math.min(...diasActivos.map(d => d.inicio)) : 9
-    const globalFin = diasActivos.length ? Math.max(...diasActivos.map(d => d.fin)) : 18
+    const activos = Object.values(horariosPorDia).filter(d => d.activo)
+    const todasFranjas = activos.flatMap(d => d.franjas)
+    const globalInicio = todasFranjas.length > 0 ? Math.min(...todasFranjas.map(f => f.inicio)) : 9
+    const globalFin = todasFranjas.length > 0 ? Math.max(...todasFranjas.map(f => f.fin)) : 18
     await supabase.from('profiles').update({
       horarios_por_dia: horariosPorDia,
       agenda_hora_inicio: globalInicio,
@@ -711,39 +762,71 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              {DIAS_SEMANA_CONFIG.map((dia, idx) => {
-                const horario = horariosPorDia[dia.key] ?? { activo: false, inicio: 9, fin: 18 }
+              {DIAS_SEMANA_CONFIG.map(({ key, label }, idx) => {
+                const dia = horariosPorDia[key] ?? { activo: false, franjas: [{ inicio: 9, fin: 18 }] }
                 return (
-                  <div key={dia.key} style={{
-                    display: 'flex', alignItems: 'center', gap: 16, padding: '10px 0',
+                  <div key={key} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0',
                     borderBottom: idx < DIAS_SEMANA_CONFIG.length - 1 ? '1px solid var(--border)' : 'none',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: 130, flexShrink: 0 }}>
-                      <Toggle on={horario.activo} onChange={() => updateHorarioDia(dia.key, 'activo', !horario.activo)} />
-                      <span style={{ fontSize: 13.5, fontWeight: horario.activo ? 600 : 400, color: horario.activo ? 'var(--ink)' : 'var(--muted)' }}>
-                        {dia.label}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: 130, flexShrink: 0, paddingTop: 5 }}>
+                      <Toggle
+                        on={dia.activo}
+                        onChange={() => setHorariosPorDia(prev => ({ ...prev, [key]: { ...prev[key], activo: !prev[key].activo } }))}
+                      />
+                      <span style={{ fontSize: 13.5, fontWeight: dia.activo ? 600 : 400, color: dia.activo ? 'var(--ink)' : 'var(--muted)' }}>
+                        {label}
                       </span>
                     </div>
-                    {horario.activo ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <select
-                          style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
-                          value={horario.inicio}
-                          onChange={e => updateHorarioDia(dia.key, 'inicio', Number(e.target.value))}
-                        >
-                          {HORAS_INICIO.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
-                        </select>
-                        <span style={{ fontSize: 13, color: 'var(--muted)' }}>a</span>
-                        <select
-                          style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
-                          value={horario.fin}
-                          onChange={e => updateHorarioDia(dia.key, 'fin', Number(e.target.value))}
-                        >
-                          {HORAS_FIN.filter(h => h > horario.inicio).map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
-                        </select>
-                      </div>
+                    {!dia.activo ? (
+                      <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1, paddingTop: 6 }}>No disponible</span>
                     ) : (
-                      <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>No disponible</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                        {dia.franjas.map((franja, idx2) => (
+                          <div key={idx2} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <select
+                              style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
+                              value={franja.inicio}
+                              onChange={e => actualizarFranja(key, idx2, 'inicio', Number(e.target.value))}
+                            >
+                              {Array.from({ length: 24 }, (_, h) => (
+                                <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                              ))}
+                            </select>
+                            <span style={{ fontSize: 13, color: 'var(--muted)' }}>—</span>
+                            <select
+                              style={{ ...inputStyle, width: 90, height: 34, paddingRight: 8 }}
+                              value={franja.fin}
+                              onChange={e => actualizarFranja(key, idx2, 'fin', Number(e.target.value))}
+                            >
+                              {Array.from({ length: 24 }, (_, h) => (
+                                <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                              ))}
+                            </select>
+                            {dia.franjas.length > 1 && (
+                              <button type="button" onClick={() => eliminarFranja(key, idx2)}
+                                title="Eliminar franja"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-2)', fontSize: 18, lineHeight: 1, padding: '0 4px' }}>
+                                ×
+                              </button>
+                            )}
+                            {idx2 === 0 && (
+                              <>
+                                <button type="button" onClick={() => agregarFranja(key)}
+                                  title="Agregar franja horaria"
+                                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--accent)', fontSize: 16, lineHeight: 1, padding: '2px 7px' }}>
+                                  +
+                                </button>
+                                <button type="button" onClick={() => copiarHorario(key)}
+                                  title="Copiar a todos los días activos"
+                                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--muted-2)', fontSize: 13, padding: '2px 7px' }}>
+                                  ⧉
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )
