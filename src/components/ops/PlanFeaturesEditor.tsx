@@ -11,7 +11,7 @@ type Feature = {
   activo: boolean
 }
 
-export default function PlanFeaturesEditor({ planId }: { planId: string }) {
+export default function PlanFeaturesEditor({ planId, planNombre }: { planId: string; planNombre: string }) {
   const [features, setFeatures] = useState<Feature[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -125,7 +125,7 @@ export default function PlanFeaturesEditor({ planId }: { planId: string }) {
     <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-on-surface">Features de marketing</h2>
+          <h2 className="font-semibold text-on-surface">Features de marketing — Plan {planNombre}</h2>
           <p className="text-xs text-on-surface-variant mt-0.5">Lista visible en /planes y /cuenta-bloqueada</p>
         </div>
         <span className="text-xs text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-full">

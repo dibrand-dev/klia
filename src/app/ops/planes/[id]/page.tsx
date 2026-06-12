@@ -39,7 +39,7 @@ export default async function EditarPlanPage({
       <PlanForm plan={plan as PlanConFuncionalidades} />
 
       <div className="mt-8">
-        <PlanFeaturesEditor planId={plan.nombre.toLowerCase()} />
+        <PlanFeaturesEditor planId={plan.nombre.toLowerCase()} planNombre={plan.nombre} />
       </div>
     </div>
   )
