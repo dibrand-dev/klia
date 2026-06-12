@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import Logo from '@/components/ui/Logo'
+import type { PlanFeature } from '@/types/database'
 
 const CheckoutBrick = dynamic(() => import('@/components/suscripcion/CheckoutBrick'), { ssr: false })
 
@@ -17,7 +18,7 @@ type SelectedPlan = {
   modalidad: Periodo
 }
 
-const PLANES = [
+const PLANES_STATIC = [
   {
     id: 'esencial',
     nombre: 'Esencial',
@@ -26,18 +27,6 @@ const PLANES = [
     anual: 13750,
     color: 'border-outline-variant/30',
     btnCls: 'bg-surface-container text-on-surface hover:bg-surface-container-high',
-    funcionalidades: [
-      { texto: 'Hasta 30 pacientes activos', incluido: true },
-      { texto: 'Agenda y turnos', incluido: true },
-      { texto: 'Historial clínico básico', incluido: true },
-      { texto: 'Notas de sesión', incluido: true },
-      { texto: 'Facturación manual', incluido: true },
-      { texto: 'Turnos recurrentes', incluido: false },
-      { texto: 'Obras sociales', incluido: false },
-      { texto: 'Interconsultas', incluido: false },
-      { texto: 'Informes y estadísticas', incluido: false },
-      { texto: 'Soporte prioritario', incluido: false },
-    ],
   },
   {
     id: 'profesional',
@@ -48,18 +37,6 @@ const PLANES = [
     destacado: true,
     color: 'border-primary',
     btnCls: 'bg-primary text-white hover:bg-primary/90',
-    funcionalidades: [
-      { texto: 'Pacientes ilimitados', incluido: true },
-      { texto: 'Agenda y turnos', incluido: true },
-      { texto: 'Historial clínico completo', incluido: true },
-      { texto: 'Notas de sesión', incluido: true },
-      { texto: 'Facturación manual', incluido: true },
-      { texto: 'Turnos recurrentes', incluido: true },
-      { texto: 'Obras sociales', incluido: true },
-      { texto: 'Interconsultas', incluido: true },
-      { texto: 'Informes y estadísticas', incluido: false },
-      { texto: 'Soporte prioritario', incluido: false },
-    ],
   },
   {
     id: 'premium',
@@ -69,18 +46,6 @@ const PLANES = [
     anual: 38500,
     color: 'border-purple-400',
     btnCls: 'bg-purple-600 text-white hover:bg-purple-700',
-    funcionalidades: [
-      { texto: 'Pacientes ilimitados', incluido: true },
-      { texto: 'Agenda y turnos', incluido: true },
-      { texto: 'Historial clínico completo', incluido: true },
-      { texto: 'Notas de sesión', incluido: true },
-      { texto: 'Facturación manual', incluido: true },
-      { texto: 'Turnos recurrentes', incluido: true },
-      { texto: 'Obras sociales', incluido: true },
-      { texto: 'Interconsultas', incluido: true },
-      { texto: 'Informes y estadísticas', incluido: true },
-      { texto: 'Soporte prioritario', incluido: true },
-    ],
   },
 ]
 
@@ -97,7 +62,13 @@ function Spinner() {
   )
 }
 
-export default function PlanesClient({ mpPublicKey }: { mpPublicKey: string }) {
+export default function PlanesClient({
+  mpPublicKey,
+  features,
+}: {
+  mpPublicKey: string
+  features: PlanFeature[]
+}) {
   const [periodo, setPeriodo] = useState<Periodo>('mensual')
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -186,7 +157,7 @@ export default function PlanesClient({ mpPublicKey }: { mpPublicKey: string }) {
       <div className="max-w-5xl mx-auto px-4 py-12 space-y-10">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-on-surface tracking-tight">Elegí tu plan</h1>
-          <p className="text-on-surface-variant">Sin contratos. Cancelá cuando quieras.</p>
+          <p className="text-on-surface-variant">Sin contratos. Cancelás cuando quieras.</p>
         </div>
 
         <div className="flex items-center justify-center">
@@ -224,16 +195,17 @@ export default function PlanesClient({ mpPublicKey }: { mpPublicKey: string }) {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANES.map((plan) => {
+          {PLANES_STATIC.map((plan) => {
             const precio = periodo === 'mensual' ? plan.mensual : plan.anual
             const isLoading = loading === plan.id
+            const funcionalidades = features.filter(f => f.plan_id === plan.id)
 
             return (
               <div
                 key={plan.id}
                 className={`relative bg-white rounded-2xl border-2 ${plan.color} shadow-sm flex flex-col`}
               >
-                {plan.destacado && (
+                {'destacado' in plan && plan.destacado && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                       Más popular
@@ -259,8 +231,8 @@ export default function PlanesClient({ mpPublicKey }: { mpPublicKey: string }) {
                 </div>
 
                 <div className="px-6 pb-6 flex-1 space-y-2.5">
-                  {plan.funcionalidades.map((f) => (
-                    <div key={f.texto} className="flex items-start gap-2">
+                  {funcionalidades.map((f) => (
+                    <div key={f.id} className="flex items-start gap-2">
                       {f.incluido ? (
                         <span
                           className="material-symbols-outlined text-primary text-base mt-0.5 shrink-0"

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import PlanForm from '@/components/ops/PlanForm'
+import PlanFeaturesEditor from '@/components/ops/PlanFeaturesEditor'
 import type { PlanConFuncionalidades } from '@/types/database'
 
 export const metadata = { title: 'Editar plan — Klia Ops' }
@@ -36,6 +37,10 @@ export default async function EditarPlanPage({
       </div>
 
       <PlanForm plan={plan as PlanConFuncionalidades} />
+
+      <div className="mt-8">
+        <PlanFeaturesEditor planId={plan.nombre.toLowerCase()} />
+      </div>
     </div>
   )
 }

@@ -1187,6 +1187,14 @@ export type ModuloConfig = {
   activo: boolean
 }
 export type PlanFuncionalidad = Database['public']['Tables']['plan_funcionalidades']['Row']
+export type PlanFeature = {
+  id: string
+  plan_id: string
+  texto: string
+  incluido: boolean
+  orden: number
+  activo: boolean
+}
 export type ProfesionalObraSocial = Database['public']['Tables']['profesional_obras_sociales']['Row']
 export type OsHonorariosHistorial = Database['public']['Tables']['os_honorarios_historial']['Row']
 export type Liquidacion = Database['public']['Tables']['liquidaciones']['Row']

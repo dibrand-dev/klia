@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PLANES_KLIA } from '@/lib/mercadopago'
+import type { PlanFeature } from '@/types/database'
 
 function fmt(n: number) {
   return n.toLocaleString('es-AR')
@@ -14,13 +15,19 @@ const CHECK = (
   </svg>
 )
 
+const CROSS = (
+  <svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" strokeWidth="3" fill="none">
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+)
+
 function Spinner() {
   return (
     <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', verticalAlign: 'middle', marginRight: 6 }} />
   )
 }
 
-export default function PlanesSection() {
+export default function PlanesSection({ features }: { features: PlanFeature[] }) {
   const router = useRouter()
   const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
@@ -46,6 +53,8 @@ export default function PlanesSection() {
       setLoadingPlan(null)
     }
   }
+
+  const featuresList = (planId: string) => features.filter(f => f.plan_id === planId)
 
   return (
     <>
@@ -110,10 +119,12 @@ export default function PlanesSection() {
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {['Hasta 30 pacientes activos', 'Agenda + recordatorios por email', 'Historia clínica básica', 'Facturación manual', 'Soporte por email'].map((feat, i) => (
-              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
-                <span>{feat}</span>
+            {featuresList('esencial').map((feat) => (
+              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
+                  {feat.incluido ? CHECK : CROSS}
+                </span>
+                <span>{feat.texto}</span>
               </li>
             ))}
           </ul>
@@ -152,10 +163,12 @@ export default function PlanesSection() {
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {['Hasta 150 pacientes activos', 'Agenda + WhatsApp + email', 'Historia clínica completa', 'Resumen IA por sesión (Gemini)', 'Facturación AFIP integrada', 'Informes clínicos exportables', 'Soporte prioritario'].map((feat, i) => (
-              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
-                <span>{feat}</span>
+            {featuresList('profesional').map((feat) => (
+              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
+                  {feat.incluido ? CHECK : CROSS}
+                </span>
+                <span>{feat.texto}</span>
               </li>
             ))}
           </ul>
@@ -184,10 +197,12 @@ export default function PlanesSection() {
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {['Pacientes ilimitados', 'Multi-profesional (5 cuentas)', 'Todo lo del plan Profesional', 'IA avanzada + interconsultas', 'API y integraciones', 'Backup en la nube cifrado', 'Soporte 24/7 + onboarding'].map((feat, i) => (
-              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: '#1F2937', lineHeight: 1.5 }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#EEF2FF', color: '#4F46E5', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>{CHECK}</span>
-                <span>{feat}</span>
+            {featuresList('premium').map((feat) => (
+              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
+                  {feat.incluido ? CHECK : CROSS}
+                </span>
+                <span>{feat.texto}</span>
               </li>
             ))}
           </ul>
