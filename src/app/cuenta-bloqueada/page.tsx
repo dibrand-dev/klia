@@ -4,7 +4,13 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import PlanesSection from './PlanesSection'
 import LogoutButton from './LogoutButton'
-import type { PlanFeature } from '@/types/database'
+
+type ModuloItem = {
+  modulo_id: string
+  nombre: string
+  descripcion: string | null
+  planes: string[]
+}
 
 export const metadata = { title: 'Acceso pausado — KLIA' }
 
@@ -14,7 +20,7 @@ export default async function CuentaBloqueadaPage() {
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: ultimaSuscripcion }, { data: featuresData }] = await Promise.all([
+  const [{ data: profile }, { data: ultimaSuscripcion }, { data: modulosData }] = await Promise.all([
     supabase.from('profiles')
       .select('plan, estado_cuenta, mp_preapproval_id, trial_fin, nombre')
       .eq('id', user.id)
@@ -25,10 +31,10 @@ export default async function CuentaBloqueadaPage() {
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from('plan_features')
-      .select('id, plan_id, texto, incluido, orden')
+    supabase.from('modulos_config')
+      .select('modulo_id, nombre, descripcion, planes')
       .eq('activo', true)
-      .order('orden', { ascending: true }),
+      .order('modulo_id'),
   ])
 
   if (profile?.estado_cuenta !== 'bloqueada') redirect('/dashboard')
@@ -91,7 +97,7 @@ export default async function CuentaBloqueadaPage() {
               </p>
             </div>
 
-            <PlanesSection features={(featuresData ?? []) as PlanFeature[]} />
+            <PlanesSection modulos={(modulosData ?? []) as ModuloItem[]} />
 
             <div style={{ maxWidth: 720, margin: '36px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' as const, gap: 24, padding: '18px 24px', borderTop: '1px dashed #E7E9EE', borderBottom: '1px dashed #E7E9EE' }}>
               {[

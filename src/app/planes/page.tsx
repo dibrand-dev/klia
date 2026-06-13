@@ -1,19 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import PlanesClient from './PlanesClient'
-import type { PlanFeature } from '@/types/database'
+
+export type ModuloItem = {
+  modulo_id: string
+  nombre: string
+  descripcion: string | null
+  planes: string[]
+}
 
 export default async function PlanesPage() {
   const supabase = createClient()
   const { data } = await supabase
-    .from('plan_features')
-    .select('id, plan_id, texto, incluido, orden')
+    .from('modulos_config')
+    .select('modulo_id, nombre, descripcion, planes')
     .eq('activo', true)
-    .order('orden', { ascending: true })
+    .order('modulo_id')
 
   return (
     <PlanesClient
       mpPublicKey={process.env.MP_PUBLIC_KEY_PROD ?? ''}
-      features={(data ?? []) as PlanFeature[]}
+      modulos={(data ?? []) as ModuloItem[]}
     />
   )
 }

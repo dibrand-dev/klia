@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PLANES_KLIA } from '@/lib/mercadopago'
-import type { PlanFeature } from '@/types/database'
+
+type ModuloItem = {
+  modulo_id: string
+  nombre: string
+  descripcion: string | null
+  planes: string[]
+}
 
 function fmt(n: number) {
   return n.toLocaleString('es-AR')
@@ -27,7 +33,7 @@ function Spinner() {
   )
 }
 
-export default function PlanesSection({ features }: { features: PlanFeature[] }) {
+export default function PlanesSection({ modulos }: { modulos: ModuloItem[] }) {
   const router = useRouter()
   const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
@@ -54,7 +60,18 @@ export default function PlanesSection({ features }: { features: PlanFeature[] })
     }
   }
 
-  const featuresList = (planId: string) => features.filter(f => f.plan_id === planId)
+  const renderModulos = (planId: string) =>
+    modulos.map((m) => {
+      const incluido = m.planes.includes(planId)
+      return (
+        <li key={m.modulo_id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: incluido ? 'none' : 'line-through' }}>
+          <span style={{ width: 18, height: 18, borderRadius: '50%', background: incluido ? '#EEF2FF' : '#F3F4F6', color: incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
+            {incluido ? CHECK : CROSS}
+          </span>
+          <span>{m.nombre}</span>
+        </li>
+      )
+    })
 
   return (
     <>
@@ -119,14 +136,7 @@ export default function PlanesSection({ features }: { features: PlanFeature[] })
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {featuresList('esencial').map((feat) => (
-              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
-                  {feat.incluido ? CHECK : CROSS}
-                </span>
-                <span>{feat.texto}</span>
-              </li>
-            ))}
+            {renderModulos('esencial')}
           </ul>
         </article>
 
@@ -163,14 +173,7 @@ export default function PlanesSection({ features }: { features: PlanFeature[] })
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {featuresList('profesional').map((feat) => (
-              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
-                  {feat.incluido ? CHECK : CROSS}
-                </span>
-                <span>{feat.texto}</span>
-              </li>
-            ))}
+            {renderModulos('profesional')}
           </ul>
         </article>
 
@@ -197,14 +200,7 @@ export default function PlanesSection({ features }: { features: PlanFeature[] })
             </button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid #E7E9EE', paddingTop: 20, flex: 1 }}>
-            {featuresList('premium').map((feat) => (
-              <li key={feat.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13.5, color: feat.incluido ? '#1F2937' : '#AEB5C0', lineHeight: 1.5, textDecoration: feat.incluido ? 'none' : 'line-through' }}>
-                <span style={{ width: 18, height: 18, borderRadius: '50%', background: feat.incluido ? '#EEF2FF' : '#F3F4F6', color: feat.incluido ? '#4F46E5' : '#9CA3AF', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 1 }}>
-                  {feat.incluido ? CHECK : CROSS}
-                </span>
-                <span>{feat.texto}</span>
-              </li>
-            ))}
+            {renderModulos('premium')}
           </ul>
         </article>
 

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import Logo from '@/components/ui/Logo'
-import type { PlanFeature } from '@/types/database'
+import type { ModuloItem } from './page'
 
 const CheckoutBrick = dynamic(() => import('@/components/suscripcion/CheckoutBrick'), { ssr: false })
 
@@ -64,10 +64,10 @@ function Spinner() {
 
 export default function PlanesClient({
   mpPublicKey,
-  features,
+  modulos,
 }: {
   mpPublicKey: string
-  features: PlanFeature[]
+  modulos: ModuloItem[]
 }) {
   const [periodo, setPeriodo] = useState<Periodo>('mensual')
   const [loading, setLoading] = useState<string | null>(null)
@@ -198,7 +198,6 @@ export default function PlanesClient({
           {PLANES_STATIC.map((plan) => {
             const precio = periodo === 'mensual' ? plan.mensual : plan.anual
             const isLoading = loading === plan.id
-            const funcionalidades = features.filter(f => f.plan_id === plan.id)
 
             return (
               <div
@@ -231,25 +230,28 @@ export default function PlanesClient({
                 </div>
 
                 <div className="px-6 pb-6 flex-1 space-y-2.5">
-                  {funcionalidades.map((f) => (
-                    <div key={f.id} className="flex items-start gap-2">
-                      {f.incluido ? (
-                        <span
-                          className="material-symbols-outlined text-primary text-base mt-0.5 shrink-0"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          check_circle
+                  {modulos.map((m) => {
+                    const incluido = m.planes.includes(plan.id)
+                    return (
+                      <div key={m.modulo_id} className="flex items-start gap-2">
+                        {incluido ? (
+                          <span
+                            className="material-symbols-outlined text-primary text-base mt-0.5 shrink-0"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            check_circle
+                          </span>
+                        ) : (
+                          <span className="material-symbols-outlined text-outline-variant text-base mt-0.5 shrink-0">
+                            cancel
+                          </span>
+                        )}
+                        <span className={`text-sm ${incluido ? 'text-on-surface' : 'text-on-surface-variant line-through'}`}>
+                          {m.nombre}
                         </span>
-                      ) : (
-                        <span className="material-symbols-outlined text-outline-variant text-base mt-0.5 shrink-0">
-                          cancel
-                        </span>
-                      )}
-                      <span className={`text-sm ${f.incluido ? 'text-on-surface' : 'text-on-surface-variant line-through'}`}>
-                        {f.texto}
-                      </span>
-                    </div>
-                  ))}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="px-6 pb-6">
