@@ -2,7 +2,6 @@ name: Actualizar CLAUDE.md
 
 on:
   schedule:
-    # 00:00 UTC = 21:00 hora Argentina (ART, UTC-3)
     - cron: '0 0 * * *'
   workflow_dispatch:
 
@@ -18,33 +17,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verificar commits del día
+      - name: Verificar commits del dia
         id: commits
         run: |
           COMMITS=$(git log --since="24 hours ago" --oneline --no-merges)
           if [ -z "$COMMITS" ]; then
-            echo "sin_cambios=true" >> $GITHUB_OUTPUT
+            echo "sin_cambios=true" >> "$GITHUB_OUTPUT"
           else
-            echo "sin_cambios=false" >> $GITHUB_OUTPUT
-            echo "lista<<EOF" >> $GITHUB_OUTPUT
-            echo "$COMMITS" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            echo "sin_cambios=false" >> "$GITHUB_OUTPUT"
+            echo "lista<<LISTA_EOF" >> "$GITHUB_OUTPUT"
+            echo "$COMMITS" >> "$GITHUB_OUTPUT"
+            echo "LISTA_EOF" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Actualizar sección "Últimos cambios" en CLAUDE.md
+      - name: Actualizar seccion Ultimos cambios en CLAUDE.md
         if: steps.commits.outputs.sin_cambios == 'false'
         env:
           COMMITS_LISTA: ${{ steps.commits.outputs.lista }}
         run: |
           FECHA=$(TZ="America/Argentina/Buenos_Aires" date +"%Y-%m-%d")
-          python3 - <<'PYEOF'
-          import re, os
-          content = open('CLAUDE.md').read()
-          content = re.sub(r'\n## Últimos cambios\n.*', '', content, flags=re.DOTALL)
-          open('CLAUDE.md', 'w').write(content)
-          PYEOF
-          printf '\n## Últimos cambios\n_Actualizado automáticamente el %s_\n\n```\n%s\n```\n' \
-            "$FECHA" "$COMMITS_LISTA" >> CLAUDE.md
+          python3 -c "import re, os; c = open('CLAUDE.md').read(); c = re.sub('\n## Ultimos cambios\n.*', '', c, flags=re.DOTALL); open('CLAUDE.md', 'w').write(c)"
+          printf '\n## Ultimos cambios\n_Actualizado el %s_\n\n```\n%s\n```\n' "$FECHA" "$COMMITS_LISTA" >> CLAUDE.md
 
       - name: Commit y push
         if: steps.commits.outputs.sin_cambios == 'false'
@@ -52,5 +45,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add CLAUDE.md
-          git diff --cached --quiet || git commit -m "docs: CLAUDE.md — commits del día $(TZ='America/Argentina/Buenos_Aires' date +'%Y-%m-%d')"
+          git diff --cached --quiet || git commit -m "docs: CLAUDE.md - commits del dia $(TZ='America/Argentina/Buenos_Aires' date +'%Y-%m-%d')"
           git push
