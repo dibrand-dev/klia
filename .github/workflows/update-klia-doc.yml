@@ -1,0 +1,29 @@
+name: Actualizar Doc KLIA en Google Drive
+
+on:
+  schedule:
+    # 00:00 UTC = 21:00 hora Argentina (ART, UTC-3)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-doc:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install google-api-python-client google-auth
+
+      - name: Actualizar Google Doc
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DOC_ID: ${{ secrets.GOOGLE_DOC_ID }}
+        run: python .github/scripts/update_klia_doc.py
