@@ -1,6 +1,11 @@
 name: Actualizar CLAUDE.md
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/update-claude-md.yml'
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
