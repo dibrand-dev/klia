@@ -195,6 +195,10 @@ Custom CSS variables defined in component-level CSS files:
 _Actualizado el 2026-06-13_
 
 ```
+fd5bcd0 test: trigger push temporal para validar fix de pull rebase
+99a0e58 fix: script CLAUDE.md - pull rebase antes del push para evitar non-fast-forward
+ec8b475 chore: quitar trigger push temporal del workflow CLAUDE.md
+23a84d8 docs: CLAUDE.md - commits del dia 2026-06-13
 a16804e fix: agregar trigger push para forzar validacion en GitHub
 95bc863 fix: workflow CLAUDE.md - mover logica a script bash separado
 7e18109 fix: workflow CLAUDE.md - simplificar para compatibilidad con parser de GitHub
