@@ -190,3 +190,19 @@ Custom CSS variables defined in component-level CSS files:
 - Project ID: bdokvwturcbebsjxtbpi
 - RLS enabled on all tables
 - Storage buckets: firmas-profesionales, firmas-pacientes, obras-sociales (logos), archivos-pacientes
+
+## Ultimos cambios
+_Actualizado el 2026-06-13_
+
+```
+a16804e fix: agregar trigger push para forzar validacion en GitHub
+95bc863 fix: workflow CLAUDE.md - mover logica a script bash separado
+7e18109 fix: workflow CLAUDE.md - simplificar para compatibilidad con parser de GitHub
+9083ae5 Update update-claude-md.yml
+23e894b Update update-claude-md.yml
+ba2c891 fix: workflow update-claude-md — corregir error YAML en heredoc
+8d8326a feat: GitHub Action que actualiza Google Doc de módulos KLIA diariamente
+0f6bcde docs: GitHub Action para actualizar CLAUDE.md diariamente
+3505f38 feat: planes consumen modulos_config como fuente única
+347828e fix: PlanFeaturesEditor filtra features por plan_id
+```
