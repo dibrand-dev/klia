@@ -238,20 +238,46 @@ Fuente: repositorio dibrand-dev/klia (rama main)
 """
 
 
+def get_sa_email():
+    try:
+        return json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT_JSON']).get('client_email', '(desconocido)')
+    except Exception:
+        return '(no se pudo leer)'
+
+
 def main():
-    service = get_service()
-    doc_id = os.environ['GOOGLE_DOC_ID']
+    doc_id = os.environ.get('GOOGLE_DOC_ID', '(no definido)')
+    sa_email = get_sa_email()
+    print(f"Service Account: {sa_email}")
+    print(f"Documento destino (GOOGLE_DOC_ID): {doc_id}")
 
-    print("Limpiando documento…")
-    clear_doc(service, doc_id)
+    try:
+        service = get_service()
 
-    print("Generando contenido…")
-    content = generate_content()
+        print("Limpiando documento…")
+        clear_doc(service, doc_id)
 
-    print("Escribiendo en Google Doc…")
-    insert_text(service, doc_id, content)
+        print("Generando contenido…")
+        content = generate_content()
 
-    print("✓ Google Doc actualizado correctamente")
+        print("Escribiendo en Google Doc…")
+        insert_text(service, doc_id, content)
+
+        print("✓ Google Doc actualizado correctamente")
+    except Exception as e:
+        msg = str(e)
+        print("✗ ERROR al actualizar el Google Doc:")
+        print(msg)
+        if '403' in msg or 'permission' in msg.lower() or 'PERMISSION_DENIED' in msg:
+            print("")
+            print("CAUSA PROBABLE: el documento no esta compartido con el Service Account.")
+            print(f"SOLUCION: abri el Doc -> Compartir -> agrega como Editor el email:")
+            print(f"   {sa_email}")
+            print("Ademas verifica que la 'Google Docs API' este habilitada en el proyecto de Cloud Console.")
+        elif '404' in msg or 'not found' in msg.lower():
+            print("")
+            print("CAUSA PROBABLE: el GOOGLE_DOC_ID es incorrecto o el Doc no existe / no es accesible.")
+        raise
 
 
 if __name__ == '__main__':
