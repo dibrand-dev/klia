@@ -66,6 +66,7 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [confirmEliminar, setConfirmEliminar] = useState<Archivo | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -73,7 +74,7 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
     categoria: 'documentos',
     fechaEstudio: '',
     descripcion: '',
-    file: null as File | null,
+    files: [] as File[],
   })
 
   const fetchArchivos = useCallback(async () => {
@@ -89,34 +90,41 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
   useEffect(() => { fetchArchivos() }, [fetchArchivos])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setForm((f) => ({ ...f, file }))
+    const files = Array.from(e.target.files ?? [])
+    setForm((f) => ({ ...f, files }))
   }
 
   async function handleSubir() {
-    if (!form.file) return
+    if (form.files.length === 0) return
     setUploading(true)
     setUploadError(null)
 
-    const fd = new FormData()
-    fd.append('file', form.file)
-    fd.append('pacienteId', pacienteId)
-    fd.append('pacienteNombre', pacienteNombre)
-    fd.append('categoria', form.categoria)
-    if (form.fechaEstudio) fd.append('fechaEstudio', form.fechaEstudio)
-    if (form.descripcion.trim()) fd.append('descripcion', form.descripcion.trim())
+    let ok = 0
+    let fail = 0
+    for (let i = 0; i < form.files.length; i++) {
+      const file = form.files[i]
+      setUploadProgress(form.files.length > 1 ? `Subiendo archivo ${i + 1} de ${form.files.length}...` : 'Subiendo...')
 
-    const res = await fetch('/api/archivos/subir', { method: 'POST', body: fd })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      setUploadError(err.error ?? 'Error al subir el archivo')
-      setUploading(false)
-      return
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('pacienteId', pacienteId)
+      fd.append('pacienteNombre', pacienteNombre)
+      fd.append('categoria', form.categoria)
+      if (form.fechaEstudio) fd.append('fechaEstudio', form.fechaEstudio)
+      if (form.descripcion.trim()) fd.append('descripcion', form.descripcion.trim())
+
+      const res = await fetch('/api/archivos/subir', { method: 'POST', body: fd })
+      if (res.ok) { ok++ } else { fail++ }
     }
 
     setUploading(false)
-    setPanelOpen(false)
-    setForm({ categoria: 'documentos', fechaEstudio: '', descripcion: '', file: null })
+    setUploadProgress(null)
+    if (fail > 0) {
+      setUploadError(`${ok} archivo${ok !== 1 ? 's' : ''} subido${ok !== 1 ? 's' : ''} correctamente, ${fail} fallaron.`)
+    } else {
+      setPanelOpen(false)
+    }
+    setForm({ categoria: 'documentos', fechaEstudio: '', descripcion: '', files: [] })
     if (fileInputRef.current) fileInputRef.current.value = ''
     fetchArchivos()
   }
@@ -249,10 +257,10 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
             </button>
             <button
               onClick={handleSubir}
-              disabled={!form.file || uploading}
-              className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (!form.file || uploading) && 'opacity-50')}
+              disabled={form.files.length === 0 || uploading}
+              className={cn('btn-primary flex-1 py-3 text-sm font-semibold', (form.files.length === 0 || uploading) && 'opacity-50')}
             >
-              {uploading ? 'Subiendo...' : 'Subir'}
+              {uploading ? (uploadProgress ?? 'Subiendo...') : `Subir${form.files.length > 1 ? ` (${form.files.length})` : ''}`}
             </button>
           </div>
         }
@@ -263,30 +271,34 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-on-surface mb-1.5">Archivo</label>
+            <label className="block text-sm font-medium text-on-surface mb-1.5">Archivos</label>
             <div
-              className={cn('border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors', form.file ? 'border-primary/40 bg-primary-container/10' : 'border-outline-variant/40 hover:border-primary/30 hover:bg-surface-container-lowest')}
+              className={cn('border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors', form.files.length > 0 ? 'border-primary/40 bg-primary-container/10' : 'border-outline-variant/40 hover:border-primary/30 hover:bg-surface-container-lowest')}
               onClick={() => fileInputRef.current?.click()}
             >
-              {form.file ? (
-                <div>
-                  <span className="material-symbols-outlined text-primary mb-2 block" style={{ fontSize: 32 }}>
-                    {getMimeIcon(form.file.type)}
-                  </span>
-                  <p className="text-sm font-medium text-on-surface">{form.file.name}</p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{formatBytes(form.file.size)}</p>
+              {form.files.length > 0 ? (
+                <div className="space-y-1.5">
+                  <span className="material-symbols-outlined text-primary mb-1 block" style={{ fontSize: 28 }}>upload_file</span>
+                  {form.files.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-sm px-2">
+                      <span className="font-medium text-on-surface truncate">{f.name}</span>
+                      <span className="text-xs text-on-surface-variant flex-shrink-0">{formatBytes(f.size)}</span>
+                    </div>
+                  ))}
+                  <p className="text-xs text-on-surface-variant/60 pt-1">Hacé clic para cambiar la selección</p>
                 </div>
               ) : (
                 <div>
                   <span className="material-symbols-outlined text-on-surface-variant/40 mb-2 block" style={{ fontSize: 32 }}>upload_file</span>
-                  <p className="text-sm text-on-surface-variant">Hacé clic para seleccionar un archivo</p>
-                  <p className="text-xs text-on-surface-variant/60 mt-1">PDF, imágenes, documentos · máx. 20 MB</p>
+                  <p className="text-sm text-on-surface-variant">Hacé clic para seleccionar uno o más archivos</p>
+                  <p className="text-xs text-on-surface-variant/60 mt-1">PDF, imágenes, documentos · máx. 20 MB por archivo</p>
                 </div>
               )}
             </div>
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               className="hidden"
               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
               onChange={handleFileChange}
