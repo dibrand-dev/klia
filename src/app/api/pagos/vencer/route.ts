@@ -36,18 +36,34 @@ export async function GET(req: NextRequest) {
 
   const ids = vencidos.map(s => s.id)
 
-  // Bulk update sesiones_pago
-  await db.from('sesiones_pago')
-    .update({ estado: 'vencido', updated_at: now })
+  // Bulk update sesiones_pago — critical: if this fails, skip emails to avoid repeat notifications
+  const { error: updateError } = await db.from('sesiones_pago')
+    .update({ estado: 'vencido' })
     .in('id', ids)
 
-  // Bulk update turnos to cancelado
-  const turnoIds = vencidos.map(s => s.turno_id)
-  await db.from('turnos').update({ estado: 'cancelado' }).in('id', turnoIds)
+  if (updateError) {
+    console.error('[vencer] Error al marcar sesiones como vencidas:', updateError)
+    return NextResponse.json({ error: 'No se pudo actualizar sesiones_pago', detail: updateError.message }, { status: 500 })
+  }
 
-  // Send expiry emails
+  // Verify update actually worked — only email sessions that are now vencido
+  const { data: realmenterVencidos } = await db.from('sesiones_pago')
+    .select('id')
+    .eq('estado', 'vencido')
+    .in('id', ids)
+
+  const idsActualizados = new Set((realmenterVencidos ?? []).map(s => s.id))
+  const sesionesANotificar = vencidos.filter(s => idsActualizados.has(s.id))
+
+  // Bulk update turnos to cancelado
+  const turnoIds = sesionesANotificar.map(s => s.turno_id)
+  if (turnoIds.length) {
+    await db.from('turnos').update({ estado: 'cancelado' }).in('id', turnoIds)
+  }
+
+  // Send expiry emails only for sessions successfully marked as vencido
   let emailsSent = 0
-  for (const sesion of vencidos) {
+  for (const sesion of sesionesANotificar) {
     const turno = sesion.turno as Record<string, unknown> | null
     const paciente = (turno?.paciente as Record<string, unknown> | null)
     const profesional = sesion.profesional as Record<string, unknown> | null
@@ -75,5 +91,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, expired: ids.length, emailsSent })
+  return NextResponse.json({ ok: true, expired: ids.length, notificadas: sesionesANotificar.length, emailsSent })
 }
