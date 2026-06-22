@@ -21,22 +21,34 @@ export async function GET(req: NextRequest) {
   }
 
   const db = serviceClient()
-  const now = new Date().toISOString()
 
-  // Find all pending payments that have expired
+  // Cutoff = start of today in Argentina (UTC-3, no DST).
+  // Argentina midnight = 03:00 UTC of the same calendar date.
+  // We only notify sessions that expired BEFORE today (Argentine calendar),
+  // guaranteeing the email goes out the day AFTER the session expired.
+  const nowUTC = new Date()
+  const cutoff = new Date(nowUTC)
+  cutoff.setUTCHours(3, 0, 0, 0)
+  // If current UTC hour < 3 we're still in the previous AR day — go back one day
+  if (nowUTC.getUTCHours() < 3) cutoff.setUTCDate(cutoff.getUTCDate() - 1)
+  const cutoffISO = cutoff.toISOString()
+
+  // Sessions that: are still pending AND expired before today (AR time).
+  // Once a session is marked 'vencido' it never appears here again → exactly 1 email per session.
   const { data: vencidos } = await db
     .from('sesiones_pago')
     .select('*, turno:turnos(fecha_hora, duracion_min, modalidad, paciente:pacientes(nombre, apellido, email)), profesional:profiles!sesiones_pago_terapeuta_id_fkey(nombre, apellido)')
     .eq('estado', 'pendiente')
-    .lt('vence_at', now)
+    .lt('vence_at', cutoffISO)
 
   if (!vencidos?.length) {
-    return NextResponse.json({ ok: true, expired: 0 })
+    return NextResponse.json({ ok: true, expired: 0, cutoff: cutoffISO })
   }
 
   const ids = vencidos.map(s => s.id)
 
-  // Bulk update sesiones_pago — critical: if this fails, skip emails to avoid repeat notifications
+  // Mark as vencido FIRST. If this fails we abort — no email is sent,
+  // preventing duplicate notifications on the next cron run.
   const { error: updateError } = await db.from('sesiones_pago')
     .update({ estado: 'vencido' })
     .in('id', ids)
@@ -46,22 +58,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'No se pudo actualizar sesiones_pago', detail: updateError.message }, { status: 500 })
   }
 
-  // Verify update actually worked — only email sessions that are now vencido
-  const { data: realmenterVencidos } = await db.from('sesiones_pago')
+  // Verify the update actually persisted before sending any email.
+  // Only sessions confirmed as 'vencido' in the DB get notified.
+  const { data: confirmadas } = await db.from('sesiones_pago')
     .select('id')
     .eq('estado', 'vencido')
     .in('id', ids)
 
-  const idsActualizados = new Set((realmenterVencidos ?? []).map(s => s.id))
-  const sesionesANotificar = vencidos.filter(s => idsActualizados.has(s.id))
+  const idsConfirmados = new Set((confirmadas ?? []).map(s => s.id))
+  const sesionesANotificar = vencidos.filter(s => idsConfirmados.has(s.id))
 
-  // Bulk update turnos to cancelado
+  // Cancel the associated turnos
   const turnoIds = sesionesANotificar.map(s => s.turno_id)
   if (turnoIds.length) {
     await db.from('turnos').update({ estado: 'cancelado' }).in('id', turnoIds)
   }
 
-  // Send expiry emails only for sessions successfully marked as vencido
+  // Send exactly 1 email per session, only for confirmed-vencido sessions
   let emailsSent = 0
   for (const sesion of sesionesANotificar) {
     const turno = sesion.turno as Record<string, unknown> | null
@@ -91,5 +104,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, expired: ids.length, notificadas: sesionesANotificar.length, emailsSent })
+  return NextResponse.json({
+    ok: true,
+    cutoff: cutoffISO,
+    encontradas: ids.length,
+    notificadas: sesionesANotificar.length,
+    emailsSent,
+  })
 }
