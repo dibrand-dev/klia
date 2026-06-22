@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
+import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -178,6 +179,10 @@ export async function POST(req: NextRequest) {
   // 5. If no payment required or no MP connected → confirm immediately
   if (!profile.booking_requiere_pago || !precio || !profile.mp_access_token) {
     await db.from('turnos').update({ estado: 'confirmado' }).eq('id', turno.id)
+
+    try {
+      await sincronizarTurnoCreado(turno.id, profile.id)
+    } catch { /* non-critical — GCal sync failure must not break booking */ }
 
     return NextResponse.json({
       hash,
