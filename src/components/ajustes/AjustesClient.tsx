@@ -161,8 +161,14 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
 }
 
 // ── HORAS arrays ──────────────────────────────────────────────────────
-const HORAS_INICIO = Array.from({ length: 24 }, (_, i) => i)
-const HORAS_FIN = Array.from({ length: 23 }, (_, i) => i + 1)
+const HORAS_INICIO = Array.from({ length: 24 * 4 }, (_, i) => i * 0.25)        // 0:00 → 23:45
+const HORAS_FIN    = Array.from({ length: 24 * 4 - 1 }, (_, i) => (i + 1) * 0.25) // 0:15 → 24:00
+
+function formatHora(h: number): string {
+  const hh = Math.floor(h)
+  const mm = Math.round((h - hh) * 60)
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
 
 type Franja = { inicio: number; fin: number }
 type HorarioDia = { activo: boolean; franjas: Franja[] }
@@ -809,8 +815,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                               value={franja.inicio}
                               onChange={e => actualizarFranja(key, idx2, 'inicio', Number(e.target.value))}
                             >
-                              {Array.from({ length: 24 }, (_, h) => (
-                                <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                              {HORAS_INICIO.map((h) => (
+                                <option key={h} value={h}>{formatHora(h)}</option>
                               ))}
                             </select>
                             <span style={{ fontSize: 13, color: 'var(--muted)' }}>—</span>
@@ -819,8 +825,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                               value={franja.fin}
                               onChange={e => actualizarFranja(key, idx2, 'fin', Number(e.target.value))}
                             >
-                              {Array.from({ length: 24 }, (_, h) => (
-                                <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                              {HORAS_FIN.filter(h => h > franja.inicio).map((h) => (
+                                <option key={h} value={h}>{formatHora(h)}</option>
                               ))}
                             </select>
                             {dia.franjas.length > 1 && (

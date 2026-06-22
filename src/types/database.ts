@@ -28,8 +28,8 @@ export type Database = {
           suscripcion_fin: string | null
           mp_subscription_id: string | null
           plan_elegido_registro: string | null
-          agenda_hora_inicio: number
-          agenda_hora_fin: number
+          agenda_hora_inicio: number // numeric(4,2) en DB — soporta cuartos de hora (8.25, 8.5, 8.75)
+          agenda_hora_fin: number   // numeric(4,2) en DB — soporta cuartos de hora
           cobrar_inasistencias: boolean
           email_bloqueada_enviado: boolean
           booking_slug: string | null

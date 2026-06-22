@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types/database'
 
-const HORAS_INICIO = Array.from({ length: 24 }, (_, i) => i)
-const HORAS_FIN = Array.from({ length: 23 }, (_, i) => i + 1)
+const HORAS_INICIO = Array.from({ length: 24 * 4 }, (_, i) => i * 0.25)
+const HORAS_FIN    = Array.from({ length: 24 * 4 - 1 }, (_, i) => (i + 1) * 0.25)
+
+function formatHora(h: number): string {
+  const hh = Math.floor(h)
+  const mm = Math.round((h - hh) * 60)
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
 
 export default function HorarioAgendaConfig({ profile }: { profile: Profile }) {
   const router = useRouter()
@@ -48,7 +54,7 @@ export default function HorarioAgendaConfig({ profile }: { profile: Profile }) {
             className="bg-white border border-outline-variant/20 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
           >
             {HORAS_INICIO.map((h) => (
-              <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+              <option key={h} value={h}>{formatHora(h)}</option>
             ))}
           </select>
         </div>
@@ -62,7 +68,7 @@ export default function HorarioAgendaConfig({ profile }: { profile: Profile }) {
             className="bg-white border border-outline-variant/20 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary"
           >
             {HORAS_FIN.filter((h) => h > horaInicio).map((h) => (
-              <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+              <option key={h} value={h}>{formatHora(h)}</option>
             ))}
           </select>
         </div>
