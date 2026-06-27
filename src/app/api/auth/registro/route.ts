@@ -40,6 +40,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400, headers: CORS_HEADERS })
     }
 
+    // Validación de contraseña en el servidor: 8+ caracteres, una mayúscula y un número.
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (!passwordRegex.test(password)) {
+      console.log('🔵 REGISTRO: contraseña no cumple la política')
+      return NextResponse.json(
+        { error: 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.' },
+        { status: 400, headers: CORS_HEADERS }
+      )
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

@@ -30,8 +30,9 @@ export default function RegisterForm() {
       setError('Las contraseñas no coinciden')
       return
     }
-    if (form.password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres')
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/
+    if (!passwordRegex.test(form.password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.')
       return
     }
 
@@ -55,7 +56,9 @@ export default function RegisterForm() {
         setError(
           body.error === 'already_registered'
             ? 'Ese email ya está registrado. ¿Querés iniciar sesión?'
-            : 'Error al crear la cuenta. Intentá de nuevo.'
+            : body.error && res.status === 400
+              ? body.error
+              : 'Error al crear la cuenta. Intentá de nuevo.'
         )
         return
       }
@@ -153,7 +156,7 @@ export default function RegisterForm() {
         <input
           id="password" name="password" type="password"
           value={form.password} onChange={handleChange}
-          required placeholder="Mínimo 8 caracteres" className="input-field"
+          required placeholder="Mín. 8 caracteres, 1 mayúscula y 1 número" className="input-field"
         />
       </div>
 
