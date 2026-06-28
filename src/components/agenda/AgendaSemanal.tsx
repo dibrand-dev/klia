@@ -461,7 +461,7 @@ export default function AgendaSemanal({
           <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-4 text-xs text-gray-500">
             <ViewSelector />
             <div className="flex items-center gap-4 md:gap-6 overflow-x-auto">
-              <span><strong className="text-gray-700">{turnosSemana.length}</strong> turnos esta semana</span>
+              <span><strong className="text-gray-700">{turnosSemana.length}</strong> {turnosSemana.length === 1 ? 'turno' : 'turnos'} esta semana</span>
               <span><strong className="text-green-600">{turnosSemana.filter(t => t.estado === 'realizado').length}</strong> realizados</span>
               <span><strong className="text-yellow-600">{turnosSemana.filter(t => ['pendiente', 'confirmado'].includes(t.estado)).length}</strong> pendientes</span>
               <span className="hidden md:inline"><strong className="text-red-500">{turnosSemana.filter(t => ['cancelado', 'no_asistio'].includes(t.estado)).length}</strong> cancelados/ausentes</span>

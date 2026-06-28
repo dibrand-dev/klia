@@ -15,8 +15,8 @@ export default function SidebarUserCard({ initials, name, subtitle, avatarUrl }:
           : initials.toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-sm text-primary truncate">{name}</p>
-        <p className="text-xs text-on-surface-variant truncate">{subtitle}</p>
+        <p className="font-bold text-sm text-primary truncate" title={name}>{name}</p>
+        <p className="text-xs text-on-surface-variant truncate" title={subtitle}>{subtitle}</p>
       </div>
     </div>
   )

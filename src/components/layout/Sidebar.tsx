@@ -106,10 +106,10 @@ export default function Sidebar({ profile }: SidebarProps) {
       <div className="p-4 border-t border-gray-200">
         {profile && (
           <div className="mb-3 px-3">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium text-gray-900 truncate" title={`${profile.nombre} ${profile.apellido}`}>
               {profile.nombre} {profile.apellido}
             </p>
-            <p className="text-xs text-gray-500 truncate">{profile.email}</p>
+            <p className="text-xs text-gray-500 truncate" title={profile.email}>{profile.email}</p>
           </div>
         )}
         <button
