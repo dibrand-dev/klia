@@ -10,16 +10,27 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showResendLink, setShowResendLink] = useState(false)
+  const [resending, setResending] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setShowResendLink(false)
 
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
+      // Supabase devuelve este error solo cuando email+password son correctos
+      // pero la cuenta no confirmó el email todavía.
+      if (error.message === 'Email not confirmed' || error.code === 'email_not_confirmed') {
+        setError('Confirmá tu email antes de ingresar. Revisá tu casilla o solicitá un nuevo link.')
+        setShowResendLink(true)
+        setLoading(false)
+        return
+      }
       setError(
         error.message === 'Invalid login credentials'
           ? 'Email o contraseña incorrectos'
@@ -34,11 +45,42 @@ export default function LoginForm() {
     window.location.href = '/auth/redirect'
   }
 
+  async function handleResendConfirmation() {
+    setResending(true)
+    try {
+      const res = await fetch('/api/auth/reenviar-confirmacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (!res.ok) {
+        setError('No pudimos reenviar el email. Intentá de nuevo en unos minutos.')
+        return
+      }
+      setError('Te reenviamos el email de confirmación. Revisá tu casilla.')
+      setShowResendLink(false)
+    } catch {
+      setError('No pudimos reenviar el email. Intentá de nuevo en unos minutos.')
+    } finally {
+      setResending(false)
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
+          {showResendLink && (
+            <button
+              type="button"
+              onClick={handleResendConfirmation}
+              disabled={resending}
+              className="block mt-2 text-primary hover:text-primary-container font-medium underline disabled:opacity-60"
+            >
+              {resending ? 'Reenviando...' : 'Reenviar email de confirmación'}
+            </button>
+          )}
         </div>
       )}
 
