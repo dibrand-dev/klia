@@ -15,9 +15,19 @@ export default function LoginForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError(null)
     setShowResendLink(false)
+
+    if (!email.trim()) {
+      setError('Ingresá tu email.')
+      return
+    }
+    if (!password.trim()) {
+      setError('Ingresá tu contraseña.')
+      return
+    }
+
+    setLoading(true)
 
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
