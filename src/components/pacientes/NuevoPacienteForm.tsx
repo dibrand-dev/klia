@@ -89,6 +89,14 @@ function CurrencyInput({
 type MedicacionForm = { farmaco: string; dosis: string; frecuencia: string; prescriptor: string }
 const EMPTY_MED: MedicacionForm = { farmaco: '', dosis: '', frecuencia: '', prescriptor: '' }
 
+function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
+  return (
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
+      {msg}
+    </div>
+  )
+}
+
 export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], profObrasSociales = [] }: { terapeutaId: string; obrasSociales?: string[]; profObrasSociales?: ProfesionalObraSocial[] }) {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY_FORM)
@@ -96,6 +104,12 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
   const [medicaciones, setMedicaciones] = useState<MedicacionForm[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
+  function showToast(msg: string, type: 'success' | 'error' = 'success') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const planesDisponibles = PLANES_POR_OS[form.obra_social] ?? []
 
@@ -137,86 +151,95 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
     }
     setLoading(true)
     setError(null)
-    const supabase = createClient()
-    const esOtra = form.obra_social === 'Otra'
-    const { data: newPaciente, error: dbError } = await supabase
-      .from('pacientes')
-      .insert({
-        terapeuta_id: terapeutaId,
-        nombre: form.nombre.trim(),
-        apellido: form.apellido.trim(),
-        dni: form.dni || null,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        telefono: form.telefono || null,
-        email: form.email || null,
-        genero: form.genero || null,
-        nacionalidad: form.nacionalidad || null,
-        estado_civil: form.estado_civil || null,
-        domicilio: form.domicilio || null,
-        ocupacion: form.ocupacion || null,
-        contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
-        contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-        obra_social: esOtra ? 'Otra' : (form.obra_social || null),
-        plan_obra_social: esOtra ? null : (form.plan_obra_social || null),
-        os_nombre_libre: esOtra ? (form.os_nombre_libre.trim() || null) : null,
-        os_plan_libre: esOtra ? (form.os_plan_libre.trim() || null) : null,
-        os_pendiente_validacion: esOtra,
-        os_config_id: form.os_config_id && form.os_config_id !== 'otra' ? form.os_config_id : null,
-        numero_afiliado: form.numero_afiliado || null,
-        numero_autorizacion: form.numero_autorizacion || null,
-        autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
-        autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
-        modalidad_tratamiento: form.modalidad_tratamiento || null,
-        frecuencia_sesiones: form.frecuencia_sesiones || null,
-        honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
-        moneda_preferida: monedaPreferida,
-        motivo_consulta: form.motivo_consulta || null,
-        notas: form.notas || null,
-        codigo_diagnostico: form.codigo_diagnostico || null,
-        gravedad_estimada: form.gravedad_estimada || null,
-        activo: true,
-      })
-      .select('id')
-      .single()
 
-    if (dbError || !newPaciente) {
-      console.error('Supabase insert error:', dbError)
-      setError('Error al guardar el paciente. Intentá de nuevo.')
-      setLoading(false)
-      return
-    }
-
-    if (esOtra && form.os_nombre_libre.trim()) {
-      const nombre = form.os_nombre_libre.trim()
-      const { data: existing } = await supabase
-        .from('obras_sociales')
-        .select('id, veces_ingresada')
-        .ilike('nombre', nombre)
-        .maybeSingle()
-      if (existing) {
-        await supabase.from('obras_sociales').update({ veces_ingresada: (existing.veces_ingresada ?? 1) + 1 }).eq('id', existing.id)
-      } else {
-        await supabase.from('obras_sociales').insert({ nombre, plan: form.os_plan_libre.trim() || null, validada: false, veces_ingresada: 1 })
-      }
-    }
-
-
-    const medsFiltradas = medicaciones.filter((m) => m.farmaco.trim())
-    if (medsFiltradas.length > 0) {
-      await supabase.from('medicacion_paciente').insert(
-        medsFiltradas.map((m) => ({
+    try {
+      const supabase = createClient()
+      const esOtra = form.obra_social === 'Otra'
+      const { data: newPaciente, error: dbError } = await supabase
+        .from('pacientes')
+        .insert({
           terapeuta_id: terapeutaId,
-          paciente_id: newPaciente.id,
-          farmaco: m.farmaco.trim(),
-          dosis: m.dosis || null,
-          frecuencia: m.frecuencia || null,
-          prescriptor: m.prescriptor || null,
-        }))
-      )
-    }
+          nombre: form.nombre.trim(),
+          apellido: form.apellido.trim(),
+          dni: form.dni || null,
+          fecha_nacimiento: form.fecha_nacimiento || null,
+          telefono: form.telefono || null,
+          email: form.email || null,
+          genero: form.genero || null,
+          nacionalidad: form.nacionalidad || null,
+          estado_civil: form.estado_civil || null,
+          domicilio: form.domicilio || null,
+          ocupacion: form.ocupacion || null,
+          contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
+          contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
+          obra_social: esOtra ? 'Otra' : (form.obra_social || null),
+          plan_obra_social: esOtra ? null : (form.plan_obra_social || null),
+          os_nombre_libre: esOtra ? (form.os_nombre_libre.trim() || null) : null,
+          os_plan_libre: esOtra ? (form.os_plan_libre.trim() || null) : null,
+          os_pendiente_validacion: esOtra,
+          os_config_id: form.os_config_id && form.os_config_id !== 'otra' ? form.os_config_id : null,
+          numero_afiliado: form.numero_afiliado || null,
+          numero_autorizacion: form.numero_autorizacion || null,
+          autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
+          autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
+          modalidad_tratamiento: form.modalidad_tratamiento || null,
+          frecuencia_sesiones: form.frecuencia_sesiones || null,
+          honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+          moneda_preferida: monedaPreferida,
+          motivo_consulta: form.motivo_consulta || null,
+          notas: form.notas || null,
+          codigo_diagnostico: form.codigo_diagnostico || null,
+          gravedad_estimada: form.gravedad_estimada || null,
+          activo: true,
+        })
+        .select('id')
+        .single()
 
-    router.push('/pacientes')
-    router.refresh()
+      if (dbError || !newPaciente) {
+        console.error('Supabase insert error:', dbError)
+        setError('Error al guardar el paciente. Intentá de nuevo.')
+        setLoading(false)
+        return
+      }
+
+      if (esOtra && form.os_nombre_libre.trim()) {
+        const nombre = form.os_nombre_libre.trim()
+        const { data: existing } = await supabase
+          .from('obras_sociales')
+          .select('id, veces_ingresada')
+          .ilike('nombre', nombre)
+          .maybeSingle()
+        if (existing) {
+          await supabase.from('obras_sociales').update({ veces_ingresada: (existing.veces_ingresada ?? 1) + 1 }).eq('id', existing.id)
+        } else {
+          await supabase.from('obras_sociales').insert({ nombre, plan: form.os_plan_libre.trim() || null, validada: false, veces_ingresada: 1 })
+        }
+      }
+
+      const medsFiltradas = medicaciones.filter((m) => m.farmaco.trim())
+      if (medsFiltradas.length > 0) {
+        await supabase.from('medicacion_paciente').insert(
+          medsFiltradas.map((m) => ({
+            terapeuta_id: terapeutaId,
+            paciente_id: newPaciente.id,
+            farmaco: m.farmaco.trim(),
+            dosis: m.dosis || null,
+            frecuencia: m.frecuencia || null,
+            prescriptor: m.prescriptor || null,
+          }))
+        )
+      }
+
+      showToast('Paciente guardado correctamente')
+      setTimeout(() => {
+        router.refresh()
+        router.push('/pacientes')
+      }, 1200)
+    } catch (err) {
+      console.error('Error al guardar paciente:', err)
+      setError('No se pudo guardar el paciente. Intentá de nuevo.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -560,6 +583,8 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
           )}
         </div>
       </div>
+
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
     </>
   )
 }
