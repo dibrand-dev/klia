@@ -124,6 +124,7 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 
 ## Database — key tables
 - profiles — professional profiles (terminologia, horarios_por_dia, feriados_nacionales, feriados_provinciales, firma_url, firma_sello_url)
+  - `profiles.dni` (text, nullable) — DNI del profesional. Columna existente en producción con GRANTs completos a authenticated/service_role. NO correr ALTER TABLE para crearla. Se captura en el onboarding (step 2, obligatorio) y es editable en Ajustes. Usado para integración SISA/REFEPS (WS020).
 - pacientes — patients (os_config_id FK → profesional_obras_sociales, firma_paciente_url, honorarios, moneda)
 - turnos — appointments (estado: pendiente/confirmado/en_consultorio/realizado/no_asistio/cancelado; estado_pago: pendiente/pagado/pago_parcial/bonificado; recordatorio_enviado)
 - notas_clinicas — clinical notes (rich text HTML)
