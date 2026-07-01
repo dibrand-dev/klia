@@ -207,6 +207,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // Perfil state
   const [perfilForm, setPerfilForm] = useState({
     especialidad: profile.especialidad ?? '',
+    dni: profile.dni ?? '',
     matricula: profile.matricula ?? '',
     matricula_tipo: (profile as Record<string, unknown>).matricula_tipo as string ?? '',
     matricula_provincia: (profile as Record<string, unknown>).matricula_provincia as string ?? '',
@@ -338,9 +339,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // ── Perfil save ────────────────────────────────────────────────────
   async function handlePerfilSave(e: React.FormEvent) {
     e.preventDefault()
-    setPerfilLoading(true); setPerfilError(null); setPerfilSaved(false)
+    setPerfilError(null)
+    if (perfilForm.dni) {
+      const dniClean = perfilForm.dni.replace(/\D/g, '')
+      if (dniClean.length < 7 || dniClean.length > 8) {
+        setPerfilError('El DNI debe tener 7 u 8 dígitos.')
+        return
+      }
+    }
+    setPerfilLoading(true); setPerfilSaved(false)
     const supabase = createClient()
+    const dniClean = perfilForm.dni.replace(/\D/g, '')
     const { error } = await supabase.from('profiles').update({
+      dni: dniClean || null,
       especialidad: perfilForm.especialidad || null,
       matricula: perfilForm.matricula || null,
       matricula_tipo: perfilForm.matricula_tipo || null,
@@ -728,6 +739,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                     <option value="consulta">Consulta</option>
                   </select>
                   <span style={hintStyle}>Personaliza cómo se llaman los turnos en toda la app.</span>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>DNI <span style={{ color: '#DC2626' }}>*</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ej: 27704316"
+                    maxLength={9}
+                    value={perfilForm.dni}
+                    onChange={e => setPerfilForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '') }))}
+                  />
+                  <span style={hintStyle}>Solo dígitos, sin puntos ni espacios.</span>
                 </div>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Tipo de matrícula</label>
