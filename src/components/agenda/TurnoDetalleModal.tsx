@@ -183,6 +183,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     try {
       const supabase = createClient()
       const { crearSerieTurnos } = await import('@/lib/recurrentes')
+      const desdeFecha = turno.fecha_hora
 
       await supabase
         .from('turnos_recurrentes')
@@ -194,13 +195,27 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         .delete()
         .eq('serie_recurrente_id', serieData.id)
         .in('estado', ['pendiente', 'confirmado'])
-        .gte('fecha_hora', new Date().toISOString())
+        .gte('fecha_hora', desdeFecha)
 
       if (fechas.length > 0) {
         await crearSerieTurnos(
           serieData.id, turno.terapeuta_id, turno.paciente_id,
           fechas, serieForm.hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase
         )
+      }
+
+      // Cancelar eventos futuros de Google Calendar y sincronizar los nuevos
+      fetch('/api/google-calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serie_id: serieData.id, desde_fecha: desdeFecha, action: 'delete' }),
+      }).catch(() => {})
+      if (fechas.length > 0) {
+        fetch('/api/google-calendar/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serie_id: serieData.id, action: 'create' }),
+        }).catch(() => {})
       }
 
       setSerieData({ ...serieData, dia_semana: serieForm.diaSemana, hora: serieForm.hora })
@@ -224,7 +239,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       const [yf, mf, df] = serieData.fecha_fin.split('-').map(Number)
       const frecSerie = serieData.frecuencia ?? 'semanal'
       const semSerie = serieData.semana_del_mes ?? undefined
-      const fechas = generarFechasSerie(serieForm.diaSemana, new Date(), new Date(yf, mf - 1, df), frecSerie, semSerie)
+      const fechas = generarFechasSerie(serieForm.diaSemana, parseISO(turno.fecha_hora), new Date(yf, mf - 1, df), frecSerie, semSerie)
       const conf = await detectarConflictosDetallados(
         turno.terapeuta_id, fechas, serieForm.hora, turno.duracion_min, supabase, serieData.id
       )
