@@ -38,7 +38,7 @@ const MODALIDAD_ICON: Record<string, string> = {
   telefonica: '📞',
 }
 
-type Modo = 'ver' | 'editar' | 'cancelando' | 'realizando'
+type Modo = 'ver' | 'editar' | 'eligiendo-edicion' | 'editar-serie' | 'cancelando' | 'realizando'
 
 function ModalShell({ children, open, onClose, title, subtitle }: {
   children: React.ReactNode
@@ -309,6 +309,49 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     setLoading(false)
   }
 
+  // Aplica el cambio de fecha/hora del formulario de edición a toda la serie desde este turno
+  function guardarSerieDesdeEdicion() {
+    const nuevaFecha = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
+    const diaSemana = nuevaFecha.getDay() // 0=Dom … 6=Sab
+    setSerieForm({ diaSemana, hora: editForm.hora })
+    // confirmarCambioSerie usa serieForm, pero el setState es asíncrono;
+    // pasamos los valores directo para no depender del re-render
+    confirmarCambioSerieConValores(diaSemana, editForm.hora)
+  }
+
+  async function confirmarCambioSerieConValores(diaSemana: number, hora: string) {
+    if (!serieData) return
+    setLoadingSerie(true)
+    setErrorSerie(null)
+    try {
+      const { generarFechasSerie, detectarConflictosDetallados } = await import('@/lib/recurrentes')
+      const supabase = createClient()
+      const [yf, mf, df] = serieData.fecha_fin.split('-').map(Number)
+      const frecSerie = serieData.frecuencia ?? 'semanal'
+      const semSerie = serieData.semana_del_mes ?? undefined
+      const fechas = generarFechasSerie(diaSemana, parseISO(turno.fecha_hora), new Date(yf, mf - 1, df), frecSerie, semSerie)
+      const conf = await detectarConflictosDetallados(
+        turno.terapeuta_id, fechas, hora, turno.duracion_min, supabase, serieData.id
+      )
+      const validas = fechas.filter((f) => !conf.some((c) => c.fecha.getTime() === f.getTime()))
+      if (conf.length > 0) {
+        setConflictosSerie(conf)
+        setFechasValidasSerie(validas)
+        setMostrandoConflictosSerie(true)
+        setModo('ver') // volvemos a ver para mostrar el panel de conflictos en el bloque de serie
+        setEditandoSerie(true)
+        setLoadingSerie(false)
+        return
+      }
+      await doAplicarCambioSerie(fechas)
+      setModo('ver')
+    } catch {
+      setErrorSerie('Error al actualizar la serie. Intentá de nuevo.')
+      setModo('ver')
+      setLoadingSerie(false)
+    }
+  }
+
   async function confirmarCancelacion() {
     setLoading(true)
     setError(null)
@@ -362,6 +405,92 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     await supabase.from('turnos').update({ pagado: nuevoPagado }).eq('id', turno.id)
     onTurnoActualizado({ ...turno, pagado: nuevoPagado })
     router.refresh()
+  }
+
+  // ─── Modo eligiendo-edicion ────────────────────────────────────
+  if (modo === 'eligiendo-edicion') {
+    return (
+      <ModalShell open={open} onClose={onClose} title={slTitle} subtitle={slSubtitle}>
+        <div className="p-5 space-y-3">
+          <div>
+            <h3 className="font-semibold text-gray-900">¿Qué querés editar?</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Este turno pertenece a una serie recurrente.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModo('editar')}
+            className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <p className="text-sm font-medium text-gray-900">Solo este turno</p>
+            <p className="text-xs text-gray-500 mt-0.5">La serie continúa sin modificaciones.</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setModo('editar-serie')}
+            className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <p className="text-sm font-medium text-gray-900">Este y todos los siguientes</p>
+            <p className="text-xs text-gray-500 mt-0.5">Cambia el día y horario de la serie desde este turno en adelante.</p>
+          </button>
+          <button onClick={() => setModo('ver')} className="btn-secondary w-full py-3 text-sm">Cancelar</button>
+        </div>
+      </ModalShell>
+    )
+  }
+
+  // ─── Modo editar-serie (fecha/hora aplicada a la serie completa desde este turno) ───
+  if (modo === 'editar-serie') {
+    return (
+      <ModalShell open={open} onClose={onClose} title={slTitle} subtitle={slSubtitle}>
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-900">Editar serie desde este turno</h3>
+          <button onClick={() => setModo('ver')} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {errorSerie && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{errorSerie}</div>}
+          {mostrandoConflictosSerie ? (
+            <ConflictosPanel
+              conflictos={conflictosSerie}
+              onOmitir={() => { setModo('ver'); doAplicarCambioSerie(fechasValidasSerie) }}
+              onCancelar={() => { setMostrandoConflictosSerie(false); setModo('ver') }}
+              loading={loadingSerie}
+              sinFechasValidas={fechasValidasSerie.length === 0}
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nueva fecha</label>
+                  <input type="date" value={editForm.fecha}
+                    onChange={(e) => setEditForm((p) => ({ ...p, fecha: e.target.value }))}
+                    className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nueva hora</label>
+                  <input type="time" value={editForm.hora}
+                    onChange={(e) => setEditForm((p) => ({ ...p, hora: e.target.value }))}
+                    className="input-field" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-400">
+                El día de semana de la fecha elegida se usará como nuevo día fijo de la serie. Los turnos anteriores a este quedan sin cambios.
+              </p>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setModo('ver')} className="btn-secondary flex-1 py-3">Cancelar</button>
+                <button onClick={guardarSerieDesdeEdicion} disabled={loadingSerie}
+                  className={cn('btn-primary flex-1 py-3', loadingSerie && 'opacity-70')}>
+                  {loadingSerie ? 'Verificando...' : 'Aplicar a la serie'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </ModalShell>
+    )
   }
 
   // ─── Modo editar ───────────────────────────────────────────────
@@ -537,7 +666,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         </div>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setModo('editar')}
+            onClick={() => setModo(turno.serie_recurrente_id ? 'eligiendo-edicion' : 'editar')}
             className="p-2 text-gray-400 hover:text-primary hover:bg-primary-fixed/20 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
