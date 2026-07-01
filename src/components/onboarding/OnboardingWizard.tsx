@@ -53,6 +53,8 @@ export default function OnboardingWizard({
   const [matriculaProvincia, setMatriculaProvincia] = useState('')
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
+  const [dni, setDni] = useState('')
+  const [dniError, setDniError] = useState<string | null>(null)
 
   // Hydrate fields from auth user_metadata if profile fields are empty
   useEffect(() => {
@@ -88,23 +90,6 @@ export default function OnboardingWizard({
     setTimeout(() => setVisible(false), 260)
   }, [])
 
-  // Escape key + backdrop click
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { persistSkip(); closeOverlay() }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [closeOverlay]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function persistSkip() {
-    fetch('/api/onboarding', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'skip' }),
-    }).catch(() => {})
-  }
-
   function persistComplete(data?: Record<string, unknown>) {
     fetch('/api/onboarding', {
       method: 'PATCH',
@@ -131,8 +116,15 @@ export default function OnboardingWizard({
   }
 
   function next(isSkip = false) {
-    if (step === 2 && !isSkip) {
+    if (step === 2) {
+      const dniClean = dni.replace(/\D/g, '')
+      if (!dniClean || dniClean.length < 7 || dniClean.length > 8) {
+        setDniError('Ingresá un DNI válido (7 u 8 dígitos).')
+        return
+      }
+      setDniError(null)
       persistStep({
+        dni: dniClean,
         matricula: matricula || null,
         matricula_tipo: matriculaTipo || null,
         matricula_provincia: matriculaTipo === 'provincial' ? (matriculaProvincia || null) : null,
@@ -163,11 +155,6 @@ export default function OnboardingWizard({
 
   function prev() {
     if (step > 1) goTo(step - 1)
-  }
-
-  function skipAll() {
-    persistSkip()
-    closeOverlay()
   }
 
   // Progress dots
@@ -277,13 +264,8 @@ export default function OnboardingWizard({
       <canvas ref={canvasRef} className="ob-confetti-canvas" />
 
       <div className={`ob-overlay${closing ? ' ob-closing' : ''}`}>
-        <div className="ob-backdrop" onClick={() => { persistSkip(); closeOverlay() }} />
+        <div className="ob-backdrop" />
         <div className="ob-container">
-          <button className="ob-close" onClick={() => { persistSkip(); closeOverlay() }} title="Cerrar onboarding">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
 
           <div className="ob-card">
             {renderProgress()}
@@ -314,7 +296,6 @@ export default function OnboardingWizard({
                 <div className="ob-actions">
                   <button className="ob-btn-primary" onClick={() => next()}>Empezar</button>
                 </div>
-                <button className="ob-skip-link" onClick={skipAll}>Saltar por ahora</button>
               </div>
             </div>
 
@@ -324,6 +305,21 @@ export default function OnboardingWizard({
                 <h2 className="ob-step-title">Tu información profesional</h2>
                 <p className="ob-step-desc">Los pacientes y las planillas usan estos datos.</p>
                 <div className="ob-form">
+                  <div className="ob-field">
+                    <label>DNI <em>*</em></label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ej: 27704316"
+                      value={dni}
+                      maxLength={9}
+                      onChange={e => {
+                        setDni(e.target.value.replace(/\D/g, ''))
+                        setDniError(null)
+                      }}
+                    />
+                    {dniError && <span className="ob-field-error">{dniError}</span>}
+                  </div>
                   <div className="ob-field">
                     <label>Tipo de matrícula</label>
                     <select
@@ -384,7 +380,6 @@ export default function OnboardingWizard({
                     Atrás
                   </button>
                   <div className="ob-actions-right">
-                    <button className="ob-skip-step" onClick={() => next(true)}>Saltar este paso</button>
                     <button className="ob-btn-primary" onClick={() => next()}>Continuar</button>
                   </div>
                 </div>

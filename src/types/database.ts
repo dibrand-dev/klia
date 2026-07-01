@@ -7,6 +7,7 @@ export type Database = {
           email: string
           nombre: string
           apellido: string
+          dni: string | null
           matricula: string | null
           matricula_tipo: string | null
           matricula_provincia: string | null
@@ -60,6 +61,7 @@ export type Database = {
           email: string
           nombre: string
           apellido: string
+          dni?: string | null
           matricula?: string | null
           matricula_tipo?: string | null
           matricula_provincia?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           email?: string
           nombre?: string
           apellido?: string
+          dni?: string | null
           matricula?: string | null
           matricula_tipo?: string | null
           matricula_provincia?: string | null

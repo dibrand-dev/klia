@@ -538,6 +538,36 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         </p>
       </header>
 
+      {/* Banner DNI faltante — solo para usuarios que completaron el onboarding antes de que fuera obligatorio */}
+      {!profile.dni && profile.onboarding_completed && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'var(--amber-soft)', border: '1px solid var(--amber)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--amber-ink)', flexShrink: 0 }}>
+            badge
+          </span>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--amber-ink)' }}>
+              Completá tu DNI para habilitar validaciones automáticas de matrícula
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--amber-ink)', opacity: 0.85 }}>
+              Es necesario para la verificación de profesionales en el REFEPS (SISA).
+            </p>
+          </div>
+          <a
+            href="#perfil"
+            style={{
+              fontSize: 12.5, fontWeight: 600, color: 'var(--amber-ink)',
+              textDecoration: 'underline', whiteSpace: 'nowrap', flexShrink: 0,
+            }}
+          >
+            Ir a Perfil →
+          </a>
+        </div>
+      )}
+
       {/* Mobile chip nav — horizontal scroll strip */}
       <div className="md:hidden mb-5">
         <div
