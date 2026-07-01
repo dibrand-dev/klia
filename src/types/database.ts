@@ -21,6 +21,11 @@ export type Database = {
           firma_url: string | null
           firma_sello_url: string | null
           avatar_url: string | null
+          sexo: string | null
+          fecha_nacimiento_profesional: string | null
+          domicilio_consultorio: string | null
+          localidad_consultorio: string | null
+          provincia_consultorio: string | null
           plan: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio: string
@@ -72,6 +77,11 @@ export type Database = {
           localidad?: string | null
           pais?: string | null
           avatar_url?: string | null
+          sexo?: string | null
+          fecha_nacimiento_profesional?: string | null
+          domicilio_consultorio?: string | null
+          localidad_consultorio?: string | null
+          provincia_consultorio?: string | null
           plan?: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio?: string
@@ -123,6 +133,11 @@ export type Database = {
           localidad?: string | null
           pais?: string | null
           avatar_url?: string | null
+          sexo?: string | null
+          fecha_nacimiento_profesional?: string | null
+          domicilio_consultorio?: string | null
+          localidad_consultorio?: string | null
+          provincia_consultorio?: string | null
           plan?: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio?: string

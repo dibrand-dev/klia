@@ -107,6 +107,7 @@ const ICONS: Record<string, React.ReactNode> = {
   'link-publico':  icnSvg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>),
   plan:            icnSvg(<path d="M12 2l3 7 7 .5-5.5 4.5L18 21l-6-4-6 4 1.5-7L2 9.5 9 9z"/>),
   cuenta:          icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
+  recetas:         icnSvg(<><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></>),
 }
 
 // ── Toggle switch ──────────────────────────────────────────────────────
@@ -221,6 +222,18 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [perfilLoading, setPerfilLoading] = useState(false)
   const [perfilSaved, setPerfilSaved] = useState(false)
   const [perfilError, setPerfilError] = useState<string | null>(null)
+
+  // Recetas state
+  const [recetasForm, setRecetasForm] = useState({
+    sexo: profile.sexo ?? '',
+    fecha_nacimiento: profile.fecha_nacimiento_profesional ?? '',
+    domicilio_consultorio: profile.domicilio_consultorio ?? '',
+    localidad_consultorio: profile.localidad_consultorio ?? '',
+    provincia_consultorio: profile.provincia_consultorio ?? '',
+  })
+  const [recetasLoading, setRecetasLoading] = useState(false)
+  const [recetasSaved, setRecetasSaved] = useState(false)
+  const [recetasError, setRecetasError] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url ?? null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -518,11 +531,28 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     await supabase.from('profiles').update({ [campo]: url }).eq('id', profile.id)
   }
 
+  async function handleRecetasSave(e: React.FormEvent) {
+    e.preventDefault()
+    setRecetasLoading(true); setRecetasError(null); setRecetasSaved(false)
+    const supabase = createClient()
+    const { error } = await supabase.from('profiles').update({
+      sexo: recetasForm.sexo || null,
+      fecha_nacimiento_profesional: recetasForm.fecha_nacimiento || null,
+      domicilio_consultorio: recetasForm.domicilio_consultorio || null,
+      localidad_consultorio: recetasForm.localidad_consultorio || null,
+      provincia_consultorio: recetasForm.provincia_consultorio || null,
+    }).eq('id', profile.id)
+    if (error) { setRecetasError('Error al guardar.'); setRecetasLoading(false); return }
+    setRecetasSaved(true); setRecetasLoading(false)
+    setTimeout(() => setRecetasSaved(false), 3000)
+  }
+
   const initials = `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
 
   // ── Sub-nav links ──────────────────────────────────────────────────
   const navItems = [
     { id: 'perfil', label: 'Perfil profesional' },
+    { id: 'recetas', label: 'Recetas electrónicas' },
     { id: 'horarios', label: 'Horarios' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'aviso-deuda', label: 'Aviso de deuda' },
@@ -826,6 +856,87 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 <button type="submit" disabled={perfilLoading}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: perfilLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: perfilLoading ? 0.7 : 1 }}>
                   {perfilLoading ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* ═══ RECETAS ELECTRÓNICAS ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'recetas' ? ' hidden md:block' : ''}`} id="recetas" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.recetas}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Datos para recetas electrónicas</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Información requerida para la emisión de recetas. No es visible para tus pacientes.</p>
+              </div>
+            </div>
+
+            {recetasError && (
+              <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
+                {recetasError}
+              </div>
+            )}
+
+            <form onSubmit={handleRecetasSave}>
+              {/* Fila 1 — Sexo + Fecha de nacimiento */}
+              <div className={`${grid2Class} mb-4`}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Sexo</label>
+                  <select style={inputStyle} value={recetasForm.sexo} onChange={e => setRecetasForm(p => ({ ...p, sexo: e.target.value }))}>
+                    <option value="">Seleccioná</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                  </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Fecha de nacimiento</label>
+                  <input style={inputStyle} type="date" value={recetasForm.fecha_nacimiento} onChange={e => setRecetasForm(p => ({ ...p, fecha_nacimiento: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* Fila 2 — Domicilio del consultorio */}
+              <div className="mb-4">
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Domicilio del consultorio</label>
+                  <input style={inputStyle} type="text" placeholder="Ej: Av. Corrientes 1234, Piso 3, Of. 8" value={recetasForm.domicilio_consultorio} onChange={e => setRecetasForm(p => ({ ...p, domicilio_consultorio: e.target.value }))} />
+                </div>
+              </div>
+
+              {/* Fila 3 — Localidad + Provincia */}
+              <div className={`${grid2Class} mb-4`}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Localidad del consultorio</label>
+                  <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={recetasForm.localidad_consultorio} onChange={e => setRecetasForm(p => ({ ...p, localidad_consultorio: e.target.value }))} />
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Provincia del consultorio</label>
+                  <select style={inputStyle} value={recetasForm.provincia_consultorio} onChange={e => setRecetasForm(p => ({ ...p, provincia_consultorio: e.target.value }))}>
+                    <option value="">Seleccioná la provincia</option>
+                    {['Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'].map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={secFootStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <svg viewBox="0 0 20 20" style={{ width: 14, height: 14, stroke: 'var(--muted-2)', fill: 'none', strokeWidth: 1.6, flexShrink: 0 }}>
+                    <circle cx="10" cy="10" r="7.5"/><path d="M10 7v3M10 13h.01"/>
+                  </svg>
+                  <span style={{ fontSize: 12, color: 'var(--muted-2)', lineHeight: 1.4 }}>
+                    Estos datos se usan exclusivamente para la emisión de recetas electrónicas y no son visibles para tus pacientes.
+                  </span>
+                </div>
+                {recetasSaved && (
+                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                    Cambios guardados
+                  </span>
+                )}
+                <button type="submit" disabled={recetasLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: recetasLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: recetasLoading ? 0.7 : 1 }}>
+                  {recetasLoading ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>
