@@ -192,6 +192,28 @@ Custom CSS variables defined in component-level CSS files:
 - RLS enabled on all tables
 - Storage buckets: firmas-profesionales, firmas-pacientes, obras-sociales (logos), archivos-pacientes
 
+## Cumplimiento Normativo
+
+### Bus de Interoperabilidad — Red Nacional de Salud Digital (T&C vigentes)
+
+Todo endpoint que consuma servicios del Bus de Interoperabilidad (REFEPS, RENAPER, PUCO, etc.) debe cumplir:
+
+- **Logging obligatorio**: registrar cada llamada al Bus en una tabla de auditoría en Supabase (`bus_audit_logs` o similar) con: fecha/hora, usuario autenticado, servicio consultado, IP de origen, y resultado. Conservar por 5 años (Disposición 1/2025, Anexo I).
+- **Rate limiting**: implementar límite de llamadas por usuario/IP en todos los endpoints que consulten el Bus, para detección de comportamiento anómalo.
+- **Notificación de incidentes**: ante cualquier brecha de seguridad o acceso no autorizado a datos del Bus, notificar al Ministerio de Salud (soporte@sisa.msal.gov.ar) y a la AAIP (Resolución AAIP N° 47/2018) sin dilación.
+- **Credenciales**: las credenciales del Bus (Código de dominio, Nombre de aplicación, Password) se almacenan exclusivamente en Vercel Environment Variables. Nunca en código, nunca en logs, nunca en respuestas al cliente.
+- **Uso exclusivo**: las credenciales del Bus son para uso exclusivo de KLIA. No compartir ni delegar a terceros.
+
+### Ley 25.326 — Protección de Datos Personales
+
+Todo módulo que trate datos personales de pacientes o profesionales debe:
+
+- **Consentimiento**: no recolectar datos sin consentimiento explícito del titular.
+- **Finalidad**: usar los datos exclusivamente para el fin declarado al momento de la recolección. Los datos del Bus (matrículas, identidad profesional) solo pueden usarse para validación interna en KLIA, no para otros fines.
+- **Acceso y rectificación**: el profesional puede ver y corregir sus propios datos en Ajustes en todo momento.
+- **Confidencialidad**: los datos personales no se exponen en logs del servidor, respuestas de error al cliente, ni en ningún output visible fuera del contexto autenticado del usuario titular.
+- **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
+
 ## Ultimos cambios
 _Actualizado el 2026-06-13_
 
