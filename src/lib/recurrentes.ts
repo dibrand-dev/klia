@@ -197,8 +197,8 @@ export async function crearSerieTurnos(
   monto: number | null,
   supabase: any,
   moneda = 'ARS'
-): Promise<void> {
-  if (fechas.length === 0) return
+): Promise<string[]> {
+  if (fechas.length === 0) return []
 
   const rows = fechas.map((fecha) => ({
     serie_recurrente_id: recurrenteId,
@@ -214,6 +214,7 @@ export async function crearSerieTurnos(
     recordatorio_enviado: false,
   }))
 
-  const { error } = await supabase.from('turnos').insert(rows)
+  const { data, error } = await supabase.from('turnos').insert(rows).select('id')
   if (error) throw new Error(error.message)
+  return (data ?? []).map((t: { id: string }) => t.id)
 }

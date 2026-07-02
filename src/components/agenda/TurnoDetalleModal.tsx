@@ -188,6 +188,19 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       const { crearSerieTurnos } = await import('@/lib/recurrentes')
       const desdeFecha = turno.fecha_hora
 
+      // Capturar los google_event_id de los turnos que se van a borrar ANTES de
+      // borrarlos — sincronizarSerieCanceladaPorIds ya no depende de que la fila
+      // exista en la tabla para saber qué evento eliminar de GCal.
+      const { data: turnosABorrar } = await supabase
+        .from('turnos')
+        .select('google_event_id')
+        .eq('serie_recurrente_id', serieData.id)
+        .in('estado', ['pendiente', 'confirmado'])
+        .gte('fecha_hora', desdeFecha)
+      const eventIdsABorrar = (turnosABorrar ?? [])
+        .map((t: { google_event_id: string | null }) => t.google_event_id)
+        .filter((id): id is string => !!id)
+
       await supabase
         .from('turnos_recurrentes')
         .update({ dia_semana: diaSemana, hora })
@@ -200,24 +213,31 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         .in('estado', ['pendiente', 'confirmado'])
         .gte('fecha_hora', desdeFecha)
 
+      // Fire-and-forget: ya no depende del estado de la tabla turnos, puede
+      // dispararse apenas tenemos los IDs capturados.
+      if (eventIdsABorrar.length > 0) {
+        fetch('/api/google-calendar/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ google_event_ids: eventIdsABorrar, action: 'delete' }),
+        }).catch(() => {})
+      }
+
+      let idsNuevos: string[] = []
       if (fechas.length > 0) {
-        await crearSerieTurnos(
+        idsNuevos = await crearSerieTurnos(
           serieData.id, turno.terapeuta_id, turno.paciente_id,
           fechas, hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase
         )
       }
 
-      // Cancelar eventos futuros de Google Calendar y sincronizar los nuevos
-      fetch('/api/google-calendar/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serie_id: serieData.id, desde_fecha: desdeFecha, action: 'delete' }),
-      }).catch(() => {})
-      if (fechas.length > 0) {
+      // Sincroniza solo los turnos recién creados — no toda la serie, para no
+      // duplicar eventos de turnos anteriores al corte que no cambiaron.
+      if (idsNuevos.length > 0) {
         fetch('/api/google-calendar/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ serie_id: serieData.id, action: 'create' }),
+          body: JSON.stringify({ turno_ids: idsNuevos, action: 'create' }),
         }).catch(() => {})
       }
 

@@ -106,6 +106,26 @@ export async function sincronizarSerieRecurrente(serieId: string, terapeutaId: s
   await Promise.all(turnos.map((t) => sincronizarTurnoCreado(t.id, terapeutaId)))
 }
 
+// Igual que sincronizarSerieRecurrente pero opera sobre una lista explícita de
+// turno IDs, sin re-derivar por serie_id + fecha — evita crear eventos duplicados
+// para turnos que ya tenían google_event_id y no cambiaron.
+export async function sincronizarSerieRecurrentePorIds(turnoIds: string[], terapeutaId: string) {
+  if (turnoIds.length === 0) return
+
+  const supabase = db()
+
+  const { data: tokens } = await supabase
+    .from('google_calendar_tokens')
+    .select('*')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('sync_enabled', true)
+    .single()
+
+  if (!tokens) return
+
+  await Promise.all(turnoIds.map((id) => sincronizarTurnoCreado(id, terapeutaId)))
+}
+
 export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeutaId: string) {
   const supabase = db()
 
@@ -269,5 +289,32 @@ export async function sincronizarSerieCancelada(
     turnos
       .filter((t) => t.google_event_id)
       .map((t) => eliminarEventoCalendario(calendarClient, t.google_event_id!, tokens.calendar_id || 'primary')),
+  )
+}
+
+// Igual que sincronizarSerieCancelada pero opera sobre IDs de evento ya conocidos,
+// sin consultar turnos — necesario cuando los turnos ya fueron borrados de la DB
+// antes de que este sync se ejecute (ver doAplicarCambioSerie).
+export async function sincronizarSerieCanceladaPorIds(
+  googleEventIds: string[],
+  terapeutaId: string,
+) {
+  if (googleEventIds.length === 0) return
+
+  const supabase = db()
+
+  const { data: tokens } = await supabase
+    .from('google_calendar_tokens')
+    .select('*')
+    .eq('terapeuta_id', terapeutaId)
+    .single()
+
+  if (!tokens) return
+
+  const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
+  await Promise.all(
+    googleEventIds.map((eventId) =>
+      eliminarEventoCalendario(calendarClient, eventId, tokens.calendar_id || 'primary'),
+    ),
   )
 }
