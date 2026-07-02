@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { parseISO, format, addMonths, addDays, differenceInDays } from 'date-fns'
@@ -96,6 +96,9 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   const [loadingHonorario, setLoadingHonorario] = useState(false)
   const [honorarioExito, setHonorarioExito] = useState(false)
 
+  // Valores pendientes de serie cuando viene desde guardarSerieDesdeEdicion
+  const pendingSerieEdit = useRef<{ hora: string; diaSemana: number } | null>(null)
+
   // Renovación de serie
   const [renovandoSerie, setRenovandoSerie] = useState(false)
   const [renovacionExito, setRenovacionExito] = useState(false)
@@ -177,7 +180,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     }
   }
 
-  async function doAplicarCambioSerie(fechas: Date[]) {
+  async function doAplicarCambioSerie(fechas: Date[], hora: string, diaSemana: number) {
     if (!serieData) return
     setLoadingSerie(true)
     try {
@@ -187,7 +190,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
 
       await supabase
         .from('turnos_recurrentes')
-        .update({ dia_semana: serieForm.diaSemana, hora: serieForm.hora })
+        .update({ dia_semana: diaSemana, hora })
         .eq('id', serieData.id)
 
       await supabase
@@ -200,7 +203,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       if (fechas.length > 0) {
         await crearSerieTurnos(
           serieData.id, turno.terapeuta_id, turno.paciente_id,
-          fechas, serieForm.hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase
+          fechas, hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase
         )
       }
 
@@ -218,7 +221,8 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         }).catch(() => {})
       }
 
-      setSerieData({ ...serieData, dia_semana: serieForm.diaSemana, hora: serieForm.hora })
+      setSerieData({ ...serieData, dia_semana: diaSemana, hora })
+      setSerieForm({ diaSemana, hora })
       setEditandoSerie(false)
       setMostrandoConflictosSerie(false)
       router.refresh()
@@ -251,7 +255,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         setLoadingSerie(false)
         return
       }
-      await doAplicarCambioSerie(fechas)
+      await doAplicarCambioSerie(fechas, serieForm.hora, serieForm.diaSemana)
     } catch {
       setErrorSerie('Error al actualizar la serie. Intentá de nuevo.')
       setLoadingSerie(false)
@@ -313,10 +317,10 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   function guardarSerieDesdeEdicion() {
     const nuevaFecha = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
     const diaSemana = nuevaFecha.getDay() // 0=Dom … 6=Sab
-    setSerieForm({ diaSemana, hora: editForm.hora })
-    // confirmarCambioSerie usa serieForm, pero el setState es asíncrono;
-    // pasamos los valores directo para no depender del re-render
-    confirmarCambioSerieConValores(diaSemana, editForm.hora)
+    const hora = editForm.hora
+    pendingSerieEdit.current = { diaSemana, hora }
+    setSerieForm({ diaSemana, hora })
+    confirmarCambioSerieConValores(diaSemana, hora)
   }
 
   async function confirmarCambioSerieConValores(diaSemana: number, hora: string) {
@@ -343,7 +347,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         setLoadingSerie(false)
         return
       }
-      await doAplicarCambioSerie(fechas)
+      await doAplicarCambioSerie(fechas, hora, diaSemana)
       setModo('ver')
     } catch {
       setErrorSerie('Error al actualizar la serie. Intentá de nuevo.')
@@ -455,7 +459,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
           {mostrandoConflictosSerie ? (
             <ConflictosPanel
               conflictos={conflictosSerie}
-              onOmitir={() => { setModo('ver'); doAplicarCambioSerie(fechasValidasSerie) }}
+              onOmitir={() => { setModo('ver'); const p = pendingSerieEdit.current!; doAplicarCambioSerie(fechasValidasSerie, p.hora, p.diaSemana) }}
               onCancelar={() => { setMostrandoConflictosSerie(false); setModo('ver') }}
               loading={loadingSerie}
               sinFechasValidas={fechasValidasSerie.length === 0}
@@ -855,7 +859,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
               mostrandoConflictosSerie ? (
                 <ConflictosPanel
                   conflictos={conflictosSerie}
-                  onOmitir={() => doAplicarCambioSerie(fechasValidasSerie)}
+                  onOmitir={() => doAplicarCambioSerie(fechasValidasSerie, serieForm.hora, serieForm.diaSemana)}
                   onCancelar={() => setMostrandoConflictosSerie(false)}
                   loading={loadingSerie}
                   sinFechasValidas={fechasValidasSerie.length === 0}
