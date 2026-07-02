@@ -113,7 +113,7 @@ export async function detectarConflictosDetallados(
     .lte('fecha_hora', rangeHasta)
 
   if (excludeSerieId) {
-    query = query.neq('serie_recurrente_id', excludeSerieId)
+    query = query.or(`serie_recurrente_id.is.null,serie_recurrente_id.neq.${excludeSerieId}`)
   }
 
   const { data: existentes, error } = await query
