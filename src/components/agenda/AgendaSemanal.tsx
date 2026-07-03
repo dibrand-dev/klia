@@ -266,6 +266,18 @@ export default function AgendaSemanal({
     setTurnoSeleccionado(turnoActualizado)
   }
 
+  // Deuda técnica reconocida: a diferencia de onEliminarFuturos, la escritura a
+  // Supabase para el cambio de serie ocurre dentro de TurnoDetalleModal, no acá.
+  // Este callback solo mantiene sincronizado el useState local con lo que el
+  // modal ya escribió en DB. Consolidar con el patrón de onEliminarFuturos
+  // (padre dueño de la escritura) queda pendiente para una revisión futura.
+  function onSerieActualizada(turnosNuevos: Turno[], turnosBorradosIds: string[]) {
+    setTurnos((prev) => [
+      ...prev.filter((t) => !turnosBorradosIds.includes(t.id)),
+      ...turnosNuevos,
+    ])
+  }
+
   const turnosSemana = turnos.filter((t) => {
     const f = parseISO(t.fecha_hora)
     return !isBefore(f, inicioSemana) && !isAfter(f, finSemana)
@@ -594,6 +606,7 @@ export default function AgendaSemanal({
           turno={turnoSeleccionado}
           onClose={() => setTurnoSeleccionado(null)}
           onTurnoActualizado={actualizarTurno}
+          onSerieActualizada={onSerieActualizada}
           terminologia={terminologia}
           onEliminar={async (id) => {
             fetch('/api/google-calendar/sync', {

@@ -26,6 +26,14 @@ interface TurnoDetalleModalProps {
   onTurnoActualizado: (turno: Turno) => void
   onEliminar: (id: string) => void
   onEliminarFuturos?: (turnoId: string, serieId: string, fechaHora: string) => Promise<void>
+  // Deuda técnica reconocida: a diferencia de onEliminarFuturos (donde el padre
+  // es dueño de la escritura a DB), doAplicarCambioSerie sigue escribiendo a
+  // Supabase directo desde este modal. Este callback solo sincroniza el
+  // useState local del padre después del hecho — no delega la escritura.
+  // Se deja así por alcance (quinta vuelta de fixes sobre este archivo en la
+  // misma sesión); consolidar con el patrón de onEliminarFuturos en una
+  // revisión futura sin la presión de cerrar un caso puntual.
+  onSerieActualizada?: (turnosNuevos: Turno[], turnosBorradosIds: string[]) => void
   terminologia?: 'sesion' | 'consulta'
 }
 
@@ -54,11 +62,15 @@ function ModalShell({ children, open, onClose, title, subtitle }: {
   )
 }
 
-export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, terminologia }: TurnoDetalleModalProps) {
+export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, onSerieActualizada, terminologia }: TurnoDetalleModalProps) {
   const t = getTerminologia(terminologia)
   const router = useRouter()
   const paciente = turno.paciente
-  const fecha = parseISO(turno.fecha_hora)
+  // Si este turno era el punto de corte de un cambio de serie recién aplicado,
+  // fechaHoraOverride refleja la nueva fecha/hora sin esperar a que se cierre
+  // y reabra el modal (la prop `turno` no se actualiza sola).
+  const [fechaHoraOverride, setFechaHoraOverride] = useState<string | null>(null)
+  const fecha = parseISO(fechaHoraOverride ?? turno.fecha_hora)
   const slTitle = paciente ? formatNombreCompleto(paciente.nombre, paciente.apellido) : 'Sin paciente'
   const slSubtitle = format(fecha, "EEEE d 'de' MMMM · HH:mm hs", { locale: es })
 
@@ -188,15 +200,15 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       const { crearSerieTurnos } = await import('@/lib/recurrentes')
       const desdeFecha = turno.fecha_hora
 
-      // Capturar los google_event_id de los turnos que se van a borrar ANTES de
-      // borrarlos — sincronizarSerieCanceladaPorIds ya no depende de que la fila
-      // exista en la tabla para saber qué evento eliminar de GCal.
+      // Capturar los google_event_id (para GCal) y los id (para sincronizar el
+      // useState local del padre) de los turnos a borrar ANTES de borrarlos.
       const { data: turnosABorrar } = await supabase
         .from('turnos')
-        .select('google_event_id')
+        .select('id, google_event_id')
         .eq('serie_recurrente_id', serieData.id)
         .in('estado', ['pendiente', 'confirmado'])
         .gte('fecha_hora', desdeFecha)
+      const idsABorrar = (turnosABorrar ?? []).map((t: { id: string }) => t.id)
       const eventIdsABorrar = (turnosABorrar ?? [])
         .map((t: { google_event_id: string | null }) => t.google_event_id)
         .filter((id): id is string => !!id)
@@ -239,6 +251,28 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ turno_ids: idsNuevos, action: 'create' }),
         }).catch(() => {})
+      }
+
+      // Sincronizar el useState local del padre (AgendaSemanal) — router.refresh()
+      // no alcanza porque el componente ya montado no vuelve a leer turnosIniciales.
+      if (onSerieActualizada) {
+        let turnosNuevosCompletos: Turno[] = []
+        if (idsNuevos.length > 0) {
+          const { data } = await supabase
+            .from('turnos')
+            .select('*, paciente:pacientes(*)')
+            .in('id', idsNuevos)
+          turnosNuevosCompletos = (data ?? []) as Turno[]
+        }
+        onSerieActualizada(turnosNuevosCompletos, idsABorrar)
+      }
+
+      // Si el modal sigue abierto, reflejar la nueva fecha/hora sin esperar a
+      // que se cierre y reabra (la prop `turno` no se actualiza sola).
+      if (fechas.length > 0) {
+        const [yy, mm, dd] = format(fechas[0], 'yyyy-MM-dd').split('-')
+        const nuevaFechaHora = new Date(`${yy}-${mm}-${dd}T${hora}:00-03:00`).toISOString()
+        setFechaHoraOverride(nuevaFechaHora)
       }
 
       setSerieData({ ...serieData, dia_semana: diaSemana, hora })
