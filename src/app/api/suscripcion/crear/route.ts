@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { plan, modalidad } = body as { plan: PlanKlia; modalidad: Modalidad }
 
-  const planInfo = await getPlanInfo(supabase, plan)
+  const planInfo = await getPlanInfo(supabase, plan, user.id)
   if (!planInfo) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
   }

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     [key: string]: unknown
   }
 
-  const planInfo = await getPlanInfo(supabase, plan)
+  const planInfo = await getPlanInfo(supabase, plan, user.id)
   if (!planInfo) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
   }

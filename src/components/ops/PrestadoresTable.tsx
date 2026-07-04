@@ -322,7 +322,9 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 // ─── Main Table ─────────────────────────────────────────────────────────────
 
-export default function PrestadoresTable({ prestadores }: { prestadores: ProfileWithLastSignIn[] }) {
+type ColegioInfo = { colegioNombre: string; porcentaje: number }
+
+export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }: { prestadores: ProfileWithLastSignIn[]; colegioPorProfile?: Record<string, ColegioInfo> }) {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>(prestadores)
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null)
@@ -394,6 +396,7 @@ export default function PrestadoresTable({ prestadores }: { prestadores: Profile
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Profesional</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Especialidad</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Plan</th>
+              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Colegio</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Estado</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Registro</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Último acceso</th>
@@ -412,6 +415,11 @@ export default function PrestadoresTable({ prestadores }: { prestadores: Profile
                 <td className="px-6 py-4 text-on-surface-variant">{p.especialidad ?? '—'}</td>
                 <td className="px-6 py-4">
                   <PlanBadge plan={p.plan} />
+                </td>
+                <td className="px-6 py-4 text-on-surface-variant">
+                  {colegioPorProfile[p.id]
+                    ? <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">{colegioPorProfile[p.id].colegioNombre} · {colegioPorProfile[p.id].porcentaje}%</span>
+                    : '—'}
                 </td>
                 <td className="px-6 py-4">
                   <EstadoBadge row={p} />
@@ -433,7 +441,7 @@ export default function PrestadoresTable({ prestadores }: { prestadores: Profile
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-16 text-center text-on-surface-variant">
+                <td colSpan={8} className="px-6 py-16 text-center text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">search_off</span>
                   <p>No se encontraron prestadores.</p>
                 </td>

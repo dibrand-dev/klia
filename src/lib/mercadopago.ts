@@ -17,13 +17,17 @@ export interface PlanInfo {
   nombre: string
   precio_mensual: number
   precio_anual_mensual: number | null
+  porcentaje_descuento: number | null
 }
 
 // Fuente única de precios: tabla `planes` en Supabase (nunca hardcodear —
 // ver CLAUDE.md). Devuelve null si el slug no existe o está inactivo.
+// Si se pasa profileId y el profesional tiene un código de descuento
+// institucional aplicado, el porcentaje ya viene descontado de los montos.
 export async function getPlanInfo(
   supabase: SupabaseClient<Database>,
   plan: PlanKlia,
+  profileId?: string,
 ): Promise<PlanInfo | null> {
   const { data, error } = await supabase
     .from('planes')
@@ -37,10 +41,31 @@ export async function getPlanInfo(
     return null
   }
 
+  let porcentajeDescuento: number | null = null
+  if (profileId) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('codigo_descuento_id')
+      .eq('id', profileId)
+      .single()
+    if (profileData?.codigo_descuento_id) {
+      const { data: codigoData } = await supabase
+        .from('codigos_descuento')
+        .select('porcentaje_descuento')
+        .eq('id', profileData.codigo_descuento_id)
+        .single()
+      if (codigoData) porcentajeDescuento = Number(codigoData.porcentaje_descuento)
+    }
+  }
+
+  const aplicarDescuento = (precio: number) =>
+    porcentajeDescuento ? Math.round(precio * (1 - porcentajeDescuento / 100)) : precio
+
   return {
     nombre: data.nombre,
-    precio_mensual: Number(data.precio_mensual),
-    precio_anual_mensual: data.precio_anual_mensual != null ? Number(data.precio_anual_mensual) : null,
+    precio_mensual: aplicarDescuento(Number(data.precio_mensual)),
+    precio_anual_mensual: data.precio_anual_mensual != null ? aplicarDescuento(Number(data.precio_anual_mensual)) : null,
+    porcentaje_descuento: porcentajeDescuento,
   }
 }
 
@@ -50,8 +75,9 @@ export async function getMonto(
   supabase: SupabaseClient<Database>,
   plan: PlanKlia,
   modalidad: Modalidad,
+  profileId?: string,
 ): Promise<number | null> {
-  const info = await getPlanInfo(supabase, plan)
+  const info = await getPlanInfo(supabase, plan, profileId)
   if (!info) return null
   if (modalidad === 'mensual') return info.precio_mensual
   if (info.precio_anual_mensual == null) {

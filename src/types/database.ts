@@ -26,6 +26,8 @@ export type Database = {
           domicilio_consultorio: string | null
           localidad_consultorio: string | null
           provincia_consultorio: string | null
+          codigo_descuento_id: string | null
+          codigo_aplicado_fecha: string | null
           plan: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio: string
@@ -82,6 +84,8 @@ export type Database = {
           domicilio_consultorio?: string | null
           localidad_consultorio?: string | null
           provincia_consultorio?: string | null
+          codigo_descuento_id?: string | null
+          codigo_aplicado_fecha?: string | null
           plan?: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio?: string
@@ -138,6 +142,8 @@ export type Database = {
           domicilio_consultorio?: string | null
           localidad_consultorio?: string | null
           provincia_consultorio?: string | null
+          codigo_descuento_id?: string | null
+          codigo_aplicado_fecha?: string | null
           plan?: 'esencial' | 'profesional' | 'premium' | 'bonificado'
           estado_cuenta?: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
           trial_inicio?: string
@@ -742,6 +748,77 @@ export type Database = {
         }
         Relationships: []
       }
+      colegios: {
+        Row: {
+          id: string
+          nombre: string
+          contacto_nombre: string | null
+          contacto_email: string | null
+          fecha_acuerdo: string | null
+          activo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          contacto_nombre?: string | null
+          contacto_email?: string | null
+          fecha_acuerdo?: string | null
+          activo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          contacto_nombre?: string | null
+          contacto_email?: string | null
+          fecha_acuerdo?: string | null
+          activo?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      codigos_descuento: {
+        Row: {
+          id: string
+          colegio_id: string
+          codigo: string
+          porcentaje_descuento: number
+          activo: boolean
+          usos_maximos: number | null
+          usos_actuales: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          colegio_id: string
+          codigo: string
+          porcentaje_descuento: number
+          activo?: boolean
+          usos_maximos?: number | null
+          usos_actuales?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          colegio_id?: string
+          codigo?: string
+          porcentaje_descuento?: number
+          activo?: boolean
+          usos_maximos?: number | null
+          usos_actuales?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'codigos_descuento_colegio_id_fkey'
+            columns: ['colegio_id']
+            isOneToOne: false
+            referencedRelation: 'colegios'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plan_funcionalidades: {
         Row: {
           plan_id: string
@@ -1177,6 +1254,12 @@ export type Database = {
         Args: { p_nombre_original: string; p_nombre_final: string }
         Returns: void
       }
+      aplicar_codigo_descuento: {
+        Args: { p_profile_id: string; p_codigo: string }
+        Returns:
+          | { success: true; porcentaje_descuento: number }
+          | { success: false; error: 'codigo_invalido' | 'usos_agotados' | 'ya_tiene_codigo' }
+      }
     }
     Enums: {
       estado_turno: 'cancelado' | 'confirmado' | 'no_asistio' | 'pendiente' | 'realizado'
@@ -1201,6 +1284,8 @@ export type Configuracion = Database['public']['Tables']['configuracion']['Row']
 export type TurnoRecurrente = Database['public']['Tables']['turnos_recurrentes']['Row']
 export type ObraSocial = Database['public']['Tables']['obras_sociales']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
+export type Colegio = Database['public']['Tables']['colegios']['Row']
+export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
 export type ModuloConfig = {
   modulo_id: string
   nombre: string

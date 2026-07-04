@@ -39,15 +39,42 @@ function formatPrecio(n: number) {
 export default function SuscripcionPortal({
   profile,
   suscripcion,
+  codigoDescuento,
 }: {
   profile: Profile
   suscripcion: Suscripcion
+  codigoDescuento?: { colegioNombre: string; porcentaje: number } | null
 }) {
   const [confirmando, setConfirmando] = useState(false)
   const [cancelando, setCancelando] = useState(false)
   const [cancelado, setCancelado] = useState(false)
   const [accesoHasta, setAccesoHasta] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [codigoInput, setCodigoInput] = useState('')
+  const [codigoLoading, setCodigoLoading] = useState(false)
+  const [codigoError, setCodigoError] = useState<string | null>(null)
+  const [codigoAplicadoLocal, setCodigoAplicadoLocal] = useState<number | null>(null)
+
+  async function handleAplicarCodigo() {
+    if (!codigoInput.trim()) return
+    setCodigoLoading(true)
+    setCodigoError(null)
+    try {
+      const res = await fetch('/api/codigo-descuento/aplicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: codigoInput.trim() }),
+      })
+      const data = await res.json() as { ok?: boolean; porcentaje_descuento?: number; error?: string }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'No se pudo aplicar el código.')
+      setCodigoAplicadoLocal(data.porcentaje_descuento ?? null)
+    } catch (err) {
+      setCodigoError(err instanceof Error ? err.message : 'No se pudo aplicar el código.')
+    } finally {
+      setCodigoLoading(false)
+    }
+  }
 
   async function handleCancelar() {
     setCancelando(true)
@@ -203,6 +230,45 @@ export default function SuscripcionPortal({
         >
           Cambiar plan
         </Link>
+      </div>
+
+      {/* Código de descuento institucional */}
+      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6 space-y-3">
+        <p className="font-semibold text-on-surface">Código de descuento</p>
+        {codigoDescuento ? (
+          <p className="text-sm text-on-surface-variant">
+            Tenés aplicado un descuento del <strong>{codigoDescuento.porcentaje}%</strong> por convenio con{' '}
+            <strong>{codigoDescuento.colegioNombre}</strong>.
+          </p>
+        ) : codigoAplicadoLocal != null ? (
+          <p className="text-sm font-medium text-green-700">
+            ✓ Descuento del {codigoAplicadoLocal}% aplicado. Se reflejará en tu próximo cobro.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-on-surface-variant">
+              Si tu colegio profesional tiene un convenio con KLIA, ingresá el código para aplicar el descuento a tu suscripción.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={codigoInput}
+                onChange={(e) => setCodigoInput(e.target.value)}
+                placeholder="Código de descuento"
+                disabled={codigoLoading}
+                className="flex-1 input-field"
+              />
+              <button
+                onClick={handleAplicarCodigo}
+                disabled={codigoLoading || !codigoInput.trim()}
+                className="px-5 py-2.5 border border-outline-variant text-on-surface rounded-xl text-sm font-semibold hover:bg-surface-container transition-colors disabled:opacity-60"
+              >
+                {codigoLoading ? 'Validando…' : 'Aplicar'}
+              </button>
+            </div>
+            {codigoError && <p className="text-sm text-red-600">{codigoError}</p>}
+          </>
+        )}
       </div>
 
       {/* Método de pago */}

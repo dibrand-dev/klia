@@ -13,7 +13,7 @@ export default async function SuscripcionPage() {
   const [{ data: profile }, { data: suscripcion }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('estado_cuenta, plan, trial_fin, suscripcion_fin')
+      .select('estado_cuenta, plan, trial_fin, suscripcion_fin, codigo_descuento_id')
       .eq('id', user.id)
       .single(),
     supabase
@@ -26,6 +26,23 @@ export default async function SuscripcionPage() {
   ])
 
   if (!profile) redirect('/login')
+
+  let codigoDescuento: { colegioNombre: string; porcentaje: number } | null = null
+  if (profile.codigo_descuento_id) {
+    const { data: codigo } = await supabase
+      .from('codigos_descuento')
+      .select('porcentaje_descuento, colegio_id')
+      .eq('id', profile.codigo_descuento_id)
+      .single()
+    if (codigo) {
+      const { data: colegio } = await supabase
+        .from('colegios')
+        .select('nombre')
+        .eq('id', codigo.colegio_id)
+        .single()
+      codigoDescuento = { colegioNombre: colegio?.nombre ?? 'Colegio profesional', porcentaje: Number(codigo.porcentaje_descuento) }
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-[860px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
@@ -47,6 +64,7 @@ export default async function SuscripcionPage() {
       <SuscripcionPortal
         profile={profile}
         suscripcion={suscripcion ?? null}
+        codigoDescuento={codigoDescuento}
       />
     </div>
   )

@@ -41,6 +41,31 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [codigoInput, setCodigoInput] = useState('')
+  const [codigoLoading, setCodigoLoading] = useState(false)
+  const [codigoError, setCodigoError] = useState<string | null>(null)
+  const [codigoAplicado, setCodigoAplicado] = useState<number | null>(null)
+
+  async function handleAplicarCodigo() {
+    if (!codigoInput.trim()) return
+    setCodigoLoading(true)
+    setCodigoError(null)
+    try {
+      const res = await fetch('/api/codigo-descuento/aplicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: codigoInput.trim() }),
+      })
+      const data = await res.json() as { ok?: boolean; porcentaje_descuento?: number; error?: string }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'No se pudo aplicar el código.')
+      setCodigoAplicado(data.porcentaje_descuento ?? null)
+    } catch (err) {
+      setCodigoError(err instanceof Error ? err.message : 'No se pudo aplicar el código.')
+    } finally {
+      setCodigoLoading(false)
+    }
+  }
+
   const p = (plan: string) =>
     ciclo === 'mensual' ? precios[plan]?.precio_mensual : precios[plan]?.precio_anual_mensual
 
@@ -104,6 +129,38 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
             </span>
           </button>
         </div>
+      </div>
+
+      {/* Código de descuento institucional */}
+      <div style={{ maxWidth: 420, margin: '0 auto 24px' }}>
+        {codigoAplicado != null ? (
+          <div style={{ padding: '10px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10, fontSize: 13, color: '#0E8A5F', textAlign: 'center', fontWeight: 600 }}>
+            ✓ Descuento del {codigoAplicado}% aplicado — se reflejará al confirmar tu plan
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                value={codigoInput}
+                onChange={(e) => setCodigoInput(e.target.value)}
+                placeholder="¿Tenés un código de descuento?"
+                disabled={codigoLoading}
+                style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid #E7E9EE', fontSize: 13.5 }}
+              />
+              <button
+                onClick={handleAplicarCodigo}
+                disabled={codigoLoading || !codigoInput.trim()}
+                style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13.5, fontWeight: 600, border: '1px solid #E7E9EE', background: '#fff', color: '#1F2937', cursor: codigoLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {codigoLoading ? 'Validando…' : 'Aplicar'}
+              </button>
+            </div>
+            {codigoError && (
+              <p style={{ fontSize: 12.5, color: '#BE3144', marginTop: 6, textAlign: 'center' }}>{codigoError}</p>
+            )}
+          </>
+        )}
       </div>
 
       {error && (
