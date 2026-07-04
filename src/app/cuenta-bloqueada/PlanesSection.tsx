@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PLANES_KLIA } from '@/lib/mercadopago'
-
 type ModuloItem = {
   modulo_id: string
   nombre: string
@@ -11,8 +9,10 @@ type ModuloItem = {
   planes: string[]
 }
 
-function fmt(n: number) {
-  return n.toLocaleString('es-AR')
+type PrecioPlan = { precio_mensual: number; precio_anual_mensual: number | null }
+
+function fmt(n: number | null | undefined) {
+  return (n ?? 0).toLocaleString('es-AR')
 }
 
 const CHECK = (
@@ -33,14 +33,14 @@ function Spinner() {
   )
 }
 
-export default function PlanesSection({ modulos }: { modulos: ModuloItem[] }) {
+export default function PlanesSection({ modulos, precios }: { modulos: ModuloItem[]; precios: Record<string, PrecioPlan> }) {
   const router = useRouter()
   const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const p = (plan: keyof typeof PLANES_KLIA) =>
-    ciclo === 'mensual' ? PLANES_KLIA[plan].precio_mensual : PLANES_KLIA[plan].precio_anual_mensual
+  const p = (plan: string) =>
+    ciclo === 'mensual' ? precios[plan]?.precio_mensual : precios[plan]?.precio_anual_mensual
 
   async function handleElegirPlan(plan: string) {
     setLoadingPlan(plan)

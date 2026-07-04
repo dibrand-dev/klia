@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { Payment, PreApproval } from 'mercadopago'
-import { mpClient, PLANES_KLIA, getMonto, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
+import { mpClient, getPlanInfo, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
 import type { Database } from '@/types/database'
 
 function serviceClient() {
@@ -32,12 +32,14 @@ export async function POST(req: NextRequest) {
     [key: string]: unknown
   }
 
-  if (!PLANES_KLIA[plan]) {
+  const planInfo = await getPlanInfo(supabase, plan)
+  if (!planInfo) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
   }
-
-  const monto = getMonto(plan, modalidad)
-  const planInfo = PLANES_KLIA[plan]
+  const monto = modalidad === 'mensual' ? planInfo.precio_mensual : planInfo.precio_anual_mensual
+  if (monto == null) {
+    return NextResponse.json({ error: 'Modalidad no disponible para este plan' }, { status: 400 })
+  }
 
   const paymentClient = new Payment(mpClient)
   const payment = await paymentClient.create({

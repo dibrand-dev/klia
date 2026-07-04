@@ -20,7 +20,7 @@ export default async function CuentaBloqueadaPage() {
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: ultimaSuscripcion }, { data: modulosData }] = await Promise.all([
+  const [{ data: profile }, { data: ultimaSuscripcion }, { data: modulosData }, { data: planesData }] = await Promise.all([
     supabase.from('profiles')
       .select('plan, estado_cuenta, mp_preapproval_id, trial_fin, nombre')
       .eq('id', user.id)
@@ -35,6 +35,10 @@ export default async function CuentaBloqueadaPage() {
       .select('modulo_id, nombre, descripcion, planes')
       .eq('activo', true)
       .order('modulo_id'),
+    supabase.from('planes')
+      .select('slug, precio_mensual, precio_anual_mensual')
+      .eq('activo', true)
+      .not('slug', 'is', null),
   ])
 
   if (profile?.estado_cuenta !== 'bloqueada') redirect('/dashboard')
@@ -97,7 +101,13 @@ export default async function CuentaBloqueadaPage() {
               </p>
             </div>
 
-            <PlanesSection modulos={(modulosData ?? []) as ModuloItem[]} />
+            <PlanesSection
+              modulos={(modulosData ?? []) as ModuloItem[]}
+              precios={(planesData ?? []).reduce((acc, p) => {
+                if (p.slug) acc[p.slug] = { precio_mensual: Number(p.precio_mensual), precio_anual_mensual: p.precio_anual_mensual != null ? Number(p.precio_anual_mensual) : null }
+                return acc
+              }, {} as Record<string, { precio_mensual: number; precio_anual_mensual: number | null }>)}
+            />
 
             <div style={{ maxWidth: 720, margin: '36px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' as const, gap: 24, padding: '18px 24px', borderTop: '1px dashed #E7E9EE', borderBottom: '1px dashed #E7E9EE' }}>
               {[

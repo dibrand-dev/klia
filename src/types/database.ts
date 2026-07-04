@@ -706,9 +706,11 @@ export type Database = {
       planes: {
         Row: {
           id: string
+          slug: string | null
           nombre: string
           descripcion: string | null
           precio_mensual: number
+          precio_anual_mensual: number | null
           es_publico: boolean
           es_ilimitado: boolean
           activo: boolean
@@ -716,9 +718,11 @@ export type Database = {
         }
         Insert: {
           id?: string
+          slug?: string | null
           nombre: string
           descripcion?: string | null
           precio_mensual?: number
+          precio_anual_mensual?: number | null
           es_publico?: boolean
           es_ilimitado?: boolean
           activo?: boolean
@@ -726,9 +730,11 @@ export type Database = {
         }
         Update: {
           id?: string
+          slug?: string | null
           nombre?: string
           descripcion?: string | null
           precio_mensual?: number
+          precio_anual_mensual?: number | null
           es_publico?: boolean
           es_ilimitado?: boolean
           activo?: boolean

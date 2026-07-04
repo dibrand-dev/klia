@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Preference } from 'mercadopago'
-import { mpClient, PLANES_KLIA, getMonto, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
+import { mpClient, getPlanInfo, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -11,12 +11,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { plan, modalidad } = body as { plan: PlanKlia; modalidad: Modalidad }
 
-  if (!PLANES_KLIA[plan]) {
+  const planInfo = await getPlanInfo(supabase, plan)
+  if (!planInfo) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 })
   }
-
-  const monto = getMonto(plan, modalidad)
-  const planInfo = PLANES_KLIA[plan]
+  const monto = modalidad === 'mensual' ? planInfo.precio_mensual : planInfo.precio_anual_mensual
+  if (monto == null) {
+    return NextResponse.json({ error: 'Modalidad no disponible para este plan' }, { status: 400 })
+  }
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 
   const preference = new Preference(mpClient)
