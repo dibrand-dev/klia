@@ -11,8 +11,10 @@ type ModuloItem = {
 
 type PrecioPlan = { precio_mensual: number; precio_anual_mensual: number | null }
 
+// Nunca coercionar null/undefined a 0 — un precio ausente es un bug de datos/RLS
+// que tiene que verse, no esconderse como "$0" (ver diagnóstico del bug del $0).
 function fmt(n: number | null | undefined) {
-  return (n ?? 0).toLocaleString('es-AR')
+  return n == null ? '—' : n.toLocaleString('es-AR')
 }
 
 const CHECK = (
