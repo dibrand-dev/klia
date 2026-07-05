@@ -140,6 +140,29 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 - modulos_config — feature modules per plan
 - plan_funcionalidades — features per plan
 - planes — subscription plans
+- colegios — convenios institucionales con colegios profesionales (nombre, contacto_nombre, contacto_email, fecha_acuerdo, activo)
+- codigos_descuento — códigos de descuento por colegio (colegio_id FK, codigo, porcentaje_descuento, usos_maximos, usos_actuales, activo)
+  - `profiles.codigo_descuento_id` (FK a codigos_descuento, nullable) y `profiles.codigo_aplicado_fecha` — se setean vía RPC `aplicar_codigo_descuento(p_profile_id, p_codigo)`, nunca directo. El RPC hace grandfathering: si el colegio corta el convenio (`codigos_descuento.activo = false`), los profesionales que ya tenían el código aplicado conservan el descuento — no se revalida `activo` en cada cobro, solo al momento de aplicar el código.
+
+## Mercado Pago / Suscripciones — RLS (agregado 2026-07)
+
+Todas las tablas de precios/descuentos tienen RLS habilitado. Patrón de policies que **hay que seguir siempre para nuevas tablas de este tipo**:
+
+- **Bug recurrente ya cazado dos veces**: escribir `admin_users.id = auth.uid()` en el `qual` de una policy de admin. Esto está MAL — `admin_users.id` es la PK propia de esa tabla, no el UUID de Supabase Auth. El patrón correcto, usado en el resto del proyecto (`requireAdminUser()` en `src/lib/ops/auth.ts` matchea por email), es:
+  ```sql
+  EXISTS (SELECT 1 FROM admin_users a WHERE a.email = auth.email() AND a.activo = true)
+  ```
+  Si una tabla nueva de Ops tiene una policy de admin que compara `id = auth.uid()`, es casi seguro un bug — corregir a email antes de shipearla.
+- **`planes`**: policy `authenticated_select_public_active_plans` (`USING (es_publico = true AND activo = true)`) — sin esto, `getPlanInfo`/`getMonto` devuelven precio `null` en silencio para cualquier profesional logueado (bug del "$0 en cuenta-bloqueada").
+- **`codigos_descuento`**: policy `authenticated_select_own_codigo_descuento` — un profesional solo puede leer la fila del código que tiene asignado en su propio perfil (`id IN (SELECT codigo_descuento_id FROM profiles WHERE id = auth.uid())`), no el catálogo completo.
+- **`colegios`**: policy `authenticated_select_own_colegio` — mismo patrón, solo el colegio del código que el profesional tiene aplicado.
+- Ninguna de estas policies quedó como migración en `supabase/migrations/` — se corrieron directo en el SQL Editor de Supabase durante la sesión que las introdujo. Si se necesita reconstruir el schema desde cero, hay que volver a aplicarlas manualmente (no están en el repo).
+
+## Pendiente — Mercado Pago sandbox
+
+`src/lib/mercadopago.ts` y otros 3 call sites (`src/app/api/pagos/webhook/route.ts`, `src/app/checkout/page.tsx`, `src/app/planes/page.tsx`) usan `MP_ACCESS_TOKEN_PROD`/`MP_PUBLIC_KEY_PROD` de forma fija — no hay switch por variable de entorno para usar `MP_ACCESS_TOKEN_TEST`/`MP_PUBLIC_KEY_TEST` en sandbox pese a que `MP_USE_PRODUCTION` está listado en Environment variables. Sin este switch no se puede probar el flujo de cobro (incluidos descuentos institucionales) sin tocar producción real.
+
+`profiles.mp_subscription_id` y `suscripciones.mp_preapproval_id` guardan el mismo dato duplicado en dos tablas (ver `procesar/route.ts` y `webhook/route.ts`) — pendiente de consolidar, cambio de esquema que toca varios call sites, evaluar en un prompt aislado.
 
 ## Plans and access control
 - Esencial: agenda, pacientes, historial, calendar sync
