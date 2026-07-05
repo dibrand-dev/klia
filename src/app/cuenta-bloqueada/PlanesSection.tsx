@@ -69,6 +69,13 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
   const p = (plan: string) =>
     ciclo === 'mensual' ? precios[plan]?.precio_mensual : precios[plan]?.precio_anual_mensual
 
+  // Mismo cálculo que getMonto en src/lib/mercadopago.ts — no reinventar la fórmula.
+  const precioConDescuento = (plan: string) => {
+    const base = p(plan)
+    if (base == null || codigoAplicado == null) return null
+    return Math.round(base * (1 - codigoAplicado / 100))
+  }
+
   async function handleElegirPlan(plan: string) {
     setLoadingPlan(plan)
     setError(null)
@@ -85,6 +92,19 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
       setError(err instanceof Error ? err.message : 'No pudimos conectar con Mercado Pago. Intentá nuevamente.')
       setLoadingPlan(null)
     }
+  }
+
+  const renderPrecio = (plan: string) => {
+    const descontado = precioConDescuento(plan)
+    if (descontado == null) {
+      return <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.025em', color: '#0B1220', lineHeight: 1 }}>{fmt(p(plan))}</span>
+    }
+    return (
+      <>
+        <span style={{ fontSize: 18, fontWeight: 600, color: '#AEB5C0', textDecoration: 'line-through', lineHeight: 1 }}>{fmt(p(plan))}</span>
+        <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.025em', color: '#0E8A5F', lineHeight: 1 }}>{fmt(descontado)}</span>
+      </>
+    )
   }
 
   const renderModulos = (planId: string) =>
@@ -179,7 +199,7 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
           <p style={{ fontSize: 13, color: '#5B6472', marginBottom: 18, minHeight: 36 }}>Para profesionales independientes que recién empiezan a digitalizar.</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
             <span style={{ fontSize: 16, fontWeight: 600, color: '#1F2937' }}>$</span>
-            <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.025em', color: '#0B1220', lineHeight: 1 }}>{fmt(p('esencial'))}</span>
+            {renderPrecio('esencial')}
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
@@ -209,7 +229,7 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
           <p style={{ fontSize: 13, color: '#5B6472', marginBottom: 18, minHeight: 36 }}>Para consultorios que necesitan IA, facturación y reportes clínicos.</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
             <span style={{ fontSize: 16, fontWeight: 600, color: '#1F2937' }}>$</span>
-            <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.025em', color: '#0B1220', lineHeight: 1 }}>{fmt(p('profesional'))}</span>
+            {renderPrecio('profesional')}
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
@@ -243,7 +263,7 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
           <p style={{ fontSize: 13, color: '#5B6472', marginBottom: 18, minHeight: 36 }}>Para centros de salud con varios profesionales y altas exigencias.</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
             <span style={{ fontSize: 16, fontWeight: 600, color: '#1F2937' }}>$</span>
-            <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.025em', color: '#0B1220', lineHeight: 1 }}>{fmt(p('premium'))}</span>
+            {renderPrecio('premium')}
             <span style={{ fontSize: 13.5, color: '#5B6472', fontWeight: 500 }}>/mes</span>
           </div>
           <div style={{ fontSize: 12, color: '#AEB5C0', marginBottom: 20, minHeight: 18 }}>
