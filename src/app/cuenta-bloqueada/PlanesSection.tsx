@@ -35,7 +35,7 @@ function Spinner() {
   )
 }
 
-export default function PlanesSection({ modulos, precios }: { modulos: ModuloItem[]; precios: Record<string, PrecioPlan> }) {
+export default function PlanesSection({ modulos, precios, codigoAplicadoInicial = null, colegioAplicadoNombre = null }: { modulos: ModuloItem[]; precios: Record<string, PrecioPlan>; codigoAplicadoInicial?: number | null; colegioAplicadoNombre?: string | null }) {
   const router = useRouter()
   const [ciclo, setCiclo] = useState<'mensual' | 'anual'>('mensual')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
@@ -44,7 +44,7 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
   const [codigoInput, setCodigoInput] = useState('')
   const [codigoLoading, setCodigoLoading] = useState(false)
   const [codigoError, setCodigoError] = useState<string | null>(null)
-  const [codigoAplicado, setCodigoAplicado] = useState<number | null>(null)
+  const [codigoAplicado, setCodigoAplicado] = useState<number | null>(codigoAplicadoInicial)
 
   async function handleAplicarCodigo() {
     if (!codigoInput.trim()) return
@@ -155,7 +155,8 @@ export default function PlanesSection({ modulos, precios }: { modulos: ModuloIte
       <div style={{ maxWidth: 420, margin: '0 auto 24px' }}>
         {codigoAplicado != null ? (
           <div style={{ padding: '10px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10, fontSize: 13, color: '#0E8A5F', textAlign: 'center', fontWeight: 600 }}>
-            ✓ Descuento del {codigoAplicado}% aplicado — se reflejará al confirmar tu plan
+            ✓ {colegioAplicadoNombre ? `Código de ${colegioAplicadoNombre} aplicado — ` : 'Descuento '}
+            {colegioAplicadoNombre ? `${codigoAplicado}% de descuento` : `del ${codigoAplicado}% aplicado`} — se reflejará al confirmar tu plan
           </div>
         ) : (
           <>

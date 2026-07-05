@@ -22,7 +22,7 @@ export default async function CuentaBloqueadaPage() {
 
   const [{ data: profile }, { data: ultimaSuscripcion }, { data: modulosData }, { data: planesData }] = await Promise.all([
     supabase.from('profiles')
-      .select('plan, estado_cuenta, mp_preapproval_id, trial_fin, nombre')
+      .select('plan, estado_cuenta, mp_preapproval_id, trial_fin, nombre, codigo_descuento_id')
       .eq('id', user.id)
       .single(),
     supabase.from('suscripciones')
@@ -48,6 +48,28 @@ export default async function CuentaBloqueadaPage() {
     : 'pago_fallido'
 
   const nombre = profile?.nombre ?? ''
+
+  // Código de descuento ya aplicado de antes (Ajustes, o una sesión previa de
+  // este mismo flujo) — se hidrata acá para no depender de que el profesional
+  // lo vuelva a aplicar en cada visita a esta pantalla.
+  let codigoAplicadoInicial: number | null = null
+  let colegioAplicadoNombre: string | null = null
+  if (profile.codigo_descuento_id) {
+    const { data: codigo } = await supabase
+      .from('codigos_descuento')
+      .select('porcentaje_descuento, colegio_id')
+      .eq('id', profile.codigo_descuento_id)
+      .single()
+    if (codigo) {
+      codigoAplicadoInicial = Number(codigo.porcentaje_descuento)
+      const { data: colegio } = await supabase
+        .from('colegios')
+        .select('nombre')
+        .eq('id', codigo.colegio_id)
+        .single()
+      colegioAplicadoNombre = colegio?.nombre ?? null
+    }
+  }
 
   return (
     <div style={{
@@ -107,6 +129,8 @@ export default async function CuentaBloqueadaPage() {
                 if (p.slug) acc[p.slug] = { precio_mensual: Number(p.precio_mensual), precio_anual_mensual: p.precio_anual_mensual != null ? Number(p.precio_anual_mensual) : null }
                 return acc
               }, {} as Record<string, { precio_mensual: number; precio_anual_mensual: number | null }>)}
+              codigoAplicadoInicial={codigoAplicadoInicial}
+              colegioAplicadoNombre={colegioAplicadoNombre}
             />
 
             <div style={{ maxWidth: 720, margin: '36px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' as const, gap: 24, padding: '18px 24px', borderTop: '1px dashed #E7E9EE', borderBottom: '1px dashed #E7E9EE' }}>
