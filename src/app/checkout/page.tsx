@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { mpPublicKey } from '@/lib/mercadopago'
 
 export const metadata = { title: 'Checkout — KLIA' }
 
@@ -24,8 +25,6 @@ export default function CheckoutPage({
   const modalidad = (searchParams.modalidad ?? 'mensual') as 'mensual' | 'anual'
 
   if (!preferenceId || !plan || !monto) redirect('/planes')
-
-  const mpPublicKey = process.env.MP_PUBLIC_KEY_PROD ?? ''
 
   const planNombre = PLAN_NOMBRES[plan] ?? plan
 

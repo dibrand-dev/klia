@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { mpPublicKey } from '@/lib/mercadopago'
 import PlanesClient from './PlanesClient'
 
 export type ModuloItem = {
@@ -18,7 +19,7 @@ export default async function PlanesPage() {
 
   return (
     <PlanesClient
-      mpPublicKey={process.env.MP_PUBLIC_KEY_PROD ?? ''}
+      mpPublicKey={mpPublicKey}
       modulos={(data ?? []) as ModuloItem[]}
     />
   )

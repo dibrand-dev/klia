@@ -2,8 +2,21 @@ import { MercadoPagoConfig, PreApprovalPlan, PreApproval } from 'mercadopago'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
+// MP_USE_PRODUCTION controla qué credenciales de Mercado Pago se usan.
+// Default a producción si la variable no está seteada — nunca correr en
+// sandbox por accidente por falta de configuración explícita.
+const usarProduccion = process.env.MP_USE_PRODUCTION !== 'false'
+
+export const mpAccessToken = usarProduccion
+  ? process.env.MP_ACCESS_TOKEN_PROD!
+  : process.env.MP_ACCESS_TOKEN_TEST!
+
+export const mpPublicKey = usarProduccion
+  ? process.env.MP_PUBLIC_KEY_PROD ?? ''
+  : process.env.MP_PUBLIC_KEY_TEST ?? ''
+
 export const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN_PROD!,
+  accessToken: mpAccessToken,
   options: { timeout: 5000 },
 })
 

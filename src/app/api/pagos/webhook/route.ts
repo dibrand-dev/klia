@@ -5,6 +5,7 @@ import { emailPagoSesionConfirmada, emailPagoSesionRechazada } from '@/lib/email
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
+import { mpAccessToken } from '@/lib/mercadopago'
 import crypto from 'crypto'
 
 function serviceClient() {
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
 
   // Try with platform token to get payment data
   const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-    headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}` },
+    headers: { Authorization: `Bearer ${mpAccessToken}` },
   })
 
   if (payRes.ok) {
