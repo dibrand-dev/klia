@@ -271,11 +271,17 @@ export default function AgendaSemanal({
   // Este callback solo mantiene sincronizado el useState local con lo que el
   // modal ya escribió en DB. Consolidar con el patrón de onEliminarFuturos
   // (padre dueño de la escritura) queda pendiente para una revisión futura.
-  function onSerieActualizada(turnosNuevos: Turno[], turnosBorradosIds: string[]) {
+  function onSerieActualizada(turnosNuevos: Turno[], turnosBorradosIds: string[], eventIdsBorrados: string[] = []) {
     setTurnos((prev) => [
       ...prev.filter((t) => !turnosBorradosIds.includes(t.id)),
       ...turnosNuevos,
     ])
+    // Mismo motivo que en onEliminar/onEliminarFuturos: sacar del caché local
+    // los eventos de GCal que la serie recreada ya no usa.
+    if (eventIdsBorrados.length > 0) {
+      setGoogleEvents((prev) => prev.filter((e) => !eventIdsBorrados.includes(e.id)))
+      setGoogleEventsDiaCompleto((prev) => prev.filter((e) => !eventIdsBorrados.includes(e.id)))
+    }
   }
 
   const turnosSemana = turnos.filter((t) => {

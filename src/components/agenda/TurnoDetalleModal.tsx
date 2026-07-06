@@ -33,7 +33,7 @@ interface TurnoDetalleModalProps {
   // Se deja así por alcance (quinta vuelta de fixes sobre este archivo en la
   // misma sesión); consolidar con el patrón de onEliminarFuturos en una
   // revisión futura sin la presión de cerrar un caso puntual.
-  onSerieActualizada?: (turnosNuevos: Turno[], turnosBorradosIds: string[]) => void
+  onSerieActualizada?: (turnosNuevos: Turno[], turnosBorradosIds: string[], eventIdsBorrados: string[]) => void
   terminologia?: 'sesion' | 'consulta'
 }
 
@@ -264,7 +264,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             .in('id', idsNuevos)
           turnosNuevosCompletos = (data ?? []) as Turno[]
         }
-        onSerieActualizada(turnosNuevosCompletos, idsABorrar)
+        onSerieActualizada(turnosNuevosCompletos, idsABorrar, eventIdsABorrar)
       }
 
       // Si el modal sigue abierto, reflejar la nueva fecha/hora sin esperar a
