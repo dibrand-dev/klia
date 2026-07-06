@@ -620,12 +620,30 @@ export default function AgendaSemanal({
             setTurnoSeleccionado(null)
           }}
           onEliminarFuturos={async (turnoId, serieId, fechaHora) => {
-            fetch('/api/google-calendar/sync', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ serie_id: serieId, desde_fecha: fechaHora, action: 'delete' }),
-            }).catch(() => {})
             const supabase = createClient()
+            // Capturar los google_event_id ANTES de borrar — si se dispara el
+            // sync por serie_id+fecha después del delete, la query del lado del
+            // servidor puede correr cuando esas filas ya no existen en la tabla
+            // y no encontrar nada que borrar en Google Calendar (mismo bug ya
+            // resuelto en doAplicarCambioSerie).
+            const { data: turnosABorrar } = await supabase
+              .from('turnos')
+              .select('google_event_id')
+              .eq('serie_recurrente_id', serieId)
+              .gte('fecha_hora', fechaHora)
+              .in('estado', ['pendiente', 'confirmado'])
+            const eventIdsABorrar = (turnosABorrar ?? [])
+              .map((t: { google_event_id: string | null }) => t.google_event_id)
+              .filter((id): id is string => !!id)
+
+            if (eventIdsABorrar.length > 0) {
+              fetch('/api/google-calendar/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ google_event_ids: eventIdsABorrar, action: 'delete' }),
+              }).catch(() => {})
+            }
+
             await supabase
               .from('turnos')
               .delete()
