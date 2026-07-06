@@ -609,14 +609,31 @@ export default function AgendaSemanal({
           onSerieActualizada={onSerieActualizada}
           terminologia={terminologia}
           onEliminar={async (id) => {
-            fetch('/api/google-calendar/sync', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ turno_id: id, action: 'delete' }),
-            }).catch(() => {})
             const supabase = createClient()
+            // Capturar el google_event_id ANTES de borrar — mismo motivo que en
+            // onEliminarFuturos: si el sync corre después del delete, no
+            // encuentra la fila para saber qué evento borrar en GCal.
+            const { data: turnoABorrar } = await supabase
+              .from('turnos')
+              .select('google_event_id')
+              .eq('id', id)
+              .single()
+            const eventIdABorrar = turnoABorrar?.google_event_id ?? null
+
+            if (eventIdABorrar) {
+              fetch('/api/google-calendar/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ google_event_ids: [eventIdABorrar], action: 'delete' }),
+              }).catch(() => {})
+            }
+
             await supabase.from('turnos').delete().eq('id', id)
             setTurnos((prev) => prev.filter((t) => t.id !== id))
+            if (eventIdABorrar) {
+              setGoogleEvents((prev) => prev.filter((e) => e.id !== eventIdABorrar))
+              setGoogleEventsDiaCompleto((prev) => prev.filter((e) => e.id !== eventIdABorrar))
+            }
             setTurnoSeleccionado(null)
           }}
           onEliminarFuturos={async (turnoId, serieId, fechaHora) => {
@@ -664,6 +681,13 @@ export default function AgendaSemanal({
               if (new Date(t.fecha_hora) < new Date(fechaHora)) return true
               return !['pendiente', 'confirmado'].includes(t.estado)
             }))
+            // googleEvents es un caché client-side que solo agrega eventos, nunca
+            // los saca — si no filtramos acá los que acabamos de borrar de GCal,
+            // quedan como fantasmas grises hasta un reload completo de la página.
+            if (eventIdsABorrar.length > 0) {
+              setGoogleEvents((prev) => prev.filter((e) => !eventIdsABorrar.includes(e.id)))
+              setGoogleEventsDiaCompleto((prev) => prev.filter((e) => !eventIdsABorrar.includes(e.id)))
+            }
             setTurnoSeleccionado(null)
           }}
         />
