@@ -103,7 +103,12 @@ export async function sincronizarSerieRecurrente(serieId: string, terapeutaId: s
 
   if (!turnos || turnos.length === 0) return
 
-  await Promise.all(turnos.map((t) => sincronizarTurnoCreado(t.id, terapeutaId)))
+  const resultados = await Promise.allSettled(turnos.map((t) => sincronizarTurnoCreado(t.id, terapeutaId)))
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[GCal] No se pudo crear evento para turno ${turnos[i]?.id}:`, r.reason)
+    }
+  })
 }
 
 // Igual que sincronizarSerieRecurrente pero opera sobre una lista explícita de
@@ -123,7 +128,12 @@ export async function sincronizarSerieRecurrentePorIds(turnoIds: string[], terap
 
   if (!tokens) return
 
-  await Promise.all(turnoIds.map((id) => sincronizarTurnoCreado(id, terapeutaId)))
+  const resultados = await Promise.allSettled(turnoIds.map((id) => sincronizarTurnoCreado(id, terapeutaId)))
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[GCal] No se pudo crear evento para turno ${turnoIds[i]}:`, r.reason)
+    }
+  })
 }
 
 export async function sincronizarEntrevistaCreada(entrevistaId: string, terapeutaId: string) {
@@ -285,11 +295,18 @@ export async function sincronizarSerieCancelada(
   if (!turnos || turnos.length === 0) return
 
   const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
-  await Promise.all(
+  // allSettled, no all: un evento que falle (404 porque ya no existe, timeout
+  // transitorio, etc.) no debe abortar el borrado del resto del lote.
+  const resultados = await Promise.allSettled(
     turnos
       .filter((t) => t.google_event_id)
       .map((t) => eliminarEventoCalendario(calendarClient, t.google_event_id!, tokens.calendar_id || 'primary')),
   )
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[GCal] No se pudo borrar evento ${turnos[i]?.google_event_id}:`, r.reason)
+    }
+  })
 }
 
 // Igual que sincronizarSerieCancelada pero opera sobre IDs de evento ya conocidos,
@@ -312,9 +329,14 @@ export async function sincronizarSerieCanceladaPorIds(
   if (!tokens) return
 
   const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
-  await Promise.all(
+  const resultados = await Promise.allSettled(
     googleEventIds.map((eventId) =>
       eliminarEventoCalendario(calendarClient, eventId, tokens.calendar_id || 'primary'),
     ),
   )
+  resultados.forEach((r, i) => {
+    if (r.status === 'rejected') {
+      console.error(`[GCal] No se pudo borrar evento ${googleEventIds[i]}:`, r.reason)
+    }
+  })
 }
