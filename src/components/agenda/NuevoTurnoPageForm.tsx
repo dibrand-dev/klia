@@ -270,6 +270,14 @@ export default function NuevoTurnoPageForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.paciente_id) { setError('Seleccioná un paciente'); return }
+    if (!form.fecha || !form.hora || isNaN(new Date(`${form.fecha}T${form.hora}:00`).getTime())) {
+      setError('Ingresá una fecha y hora válidas.')
+      return
+    }
+    if (esFijo && (!fechaFin || isNaN(new Date(fechaFin + 'T12:00:00').getTime()))) {
+      setError('Ingresá una fecha de fin válida para la serie.')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -717,11 +725,18 @@ export default function NuevoTurnoPageForm({
                   </div>
                 )}
 
-                {/* Preview */}
+                {/* Preview — fechaFin puede estar vacía/incompleta mientras el usuario
+                    todavía está tipeando, format() tira RangeError con fecha inválida */}
                 <p className="text-xs text-primary/80">
-                  {frecuencia === 'semanal' && <>Todos los {DIAS_SEMANA[diaSemana].toLowerCase()} hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
-                  {frecuencia === 'quincenal' && <>Cada {semanaDelMes === 1 ? '1er y 3er' : '2do y 4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
-                  {frecuencia === 'mensual' && <>Cada {semanaDelMes === 1 ? '1er' : semanaDelMes === 2 ? '2do' : semanaDelMes === 3 ? '3er' : '4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                  {(!fechaFin || isNaN(new Date(fechaFin + 'T12:00:00').getTime())) ? (
+                    'Ingresá una fecha de fin válida para ver el resumen.'
+                  ) : (
+                    <>
+                      {frecuencia === 'semanal' && <>Todos los {DIAS_SEMANA[diaSemana].toLowerCase()} hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                      {frecuencia === 'quincenal' && <>Cada {semanaDelMes === 1 ? '1er y 3er' : '2do y 4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                      {frecuencia === 'mensual' && <>Cada {semanaDelMes === 1 ? '1er' : semanaDelMes === 2 ? '2do' : semanaDelMes === 3 ? '3er' : '4to'} {DIAS_SEMANA[diaSemana].toLowerCase()} del mes hasta el {format(new Date(fechaFin + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}.</>}
+                    </>
+                  )}
                 </p>
               </div>
             )}

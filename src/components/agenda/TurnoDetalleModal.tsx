@@ -335,10 +335,14 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   }
 
   async function guardarEdicion() {
-    setLoading(true)
     setError(null)
-    const supabase = createClient()
     const fechaHora = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
+    if (!editForm.fecha || !editForm.hora || isNaN(fechaHora.getTime())) {
+      setError('Ingresá una fecha y hora válidas.')
+      return
+    }
+    setLoading(true)
+    const supabase = createClient()
     const { error: dbError } = await supabase
       .from('turnos')
       .update({
@@ -370,6 +374,10 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   // Aplica el cambio de fecha/hora del formulario de edición a toda la serie desde este turno
   function guardarSerieDesdeEdicion() {
     const nuevaFecha = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
+    if (!editForm.fecha || !editForm.hora || isNaN(nuevaFecha.getTime())) {
+      setErrorSerie('Ingresá una fecha y hora válidas.')
+      return
+    }
     const diaSemana = nuevaFecha.getDay() // 0=Dom … 6=Sab
     const hora = editForm.hora
     pendingSerieEdit.current = { diaSemana, hora }
