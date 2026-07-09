@@ -7,6 +7,11 @@ import { format } from 'date-fns'
 import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
 
 export const metadata = { title: 'Agenda — KLIA' }
+// Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
+// Next.js por default — un turno eliminado seguía apareciendo incluso en
+// incógnito, sobreviviendo a hard refresh, porque ese caché vive del lado
+// del servidor y no se invalida con router.refresh() ni recarga del browser.
+export const dynamic = 'force-dynamic'
 
 export default async function AgendaPage() {
   const supabase = createClient()
