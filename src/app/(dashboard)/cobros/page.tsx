@@ -5,6 +5,10 @@ import CobrosClient from '@/components/cobros/CobrosClient'
 import type { TurnoDeuda, TopDeudor } from '@/components/cobros/CobrosClient'
 
 export const metadata = { title: 'Cobros — KLIA' }
+// Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
+// Next.js por default — un pago recién registrado podía seguir sin reflejarse
+// tras router.refresh() (mismo bug ya resuelto en /agenda).
+export const dynamic = 'force-dynamic'
 
 export default async function CobrosPage() {
   const supabase = createClient()

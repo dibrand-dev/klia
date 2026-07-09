@@ -196,20 +196,25 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
     return null
   }, [dateFilter])
 
-  const filtered = useMemo(() => turnos.filter(t => {
-    if (tabFilter === 'partic' && t.os_config_id) return false
-    if (tabFilter === 'os' && !t.os_config_id) return false
-    if (!statusFilter.has(t.estado_pago)) return false
-    if (dateBoundaries) {
-      const dt = new Date(t.fecha_hora)
-      if (dt < dateBoundaries.inicio || dt >= dateBoundaries.fin) return false
+  const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    // Con búsqueda activa, ignoramos tab/estado/mes — el buscador tiene que
+    // encontrar al paciente sin importar en qué filtro esté parado el usuario,
+    // no competir en silencio contra ellos.
+    if (q) {
+      return turnos.filter(t => `${t.paciente_nombre} ${t.paciente_apellido}`.toLowerCase().includes(q))
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      if (!`${t.paciente_nombre} ${t.paciente_apellido}`.toLowerCase().includes(q)) return false
-    }
-    return true
-  }), [turnos, tabFilter, statusFilter, dateBoundaries, searchQuery])
+    return turnos.filter(t => {
+      if (tabFilter === 'partic' && t.os_config_id) return false
+      if (tabFilter === 'os' && !t.os_config_id) return false
+      if (!statusFilter.has(t.estado_pago)) return false
+      if (dateBoundaries) {
+        const dt = new Date(t.fecha_hora)
+        if (dt < dateBoundaries.inicio || dt >= dateBoundaries.fin) return false
+      }
+      return true
+    })
+  }, [turnos, tabFilter, statusFilter, dateBoundaries, searchQuery])
 
   const countAll = useMemo(() => turnos.filter(t => statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
   const countPartic = useMemo(() => turnos.filter(t => !t.os_config_id && statusFilter.has(t.estado_pago)).length, [turnos, statusFilter])
