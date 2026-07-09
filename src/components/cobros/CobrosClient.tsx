@@ -704,7 +704,7 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
       </p>
 
       <RegistrarPagoSlide open={!!pagoSlide} onClose={() => setPagoSlide(null)} turno={pagoSlide?.turno ?? null} onSuccess={() => router.refresh()} />
-      <DetallePacienteSlide open={!!detalleSlide} onClose={() => setDetalleSlide(null)} pacienteId={detalleSlide?.paciente_id ?? null} pacienteNombre={detalleSlide?.nombre ?? ''} pacienteApellido={detalleSlide?.apellido ?? ''} osNombre={detalleSlide?.os_nombre ?? null} terapeutaId={terapeutaId} />
+      <DetallePacienteSlide open={!!detalleSlide} onClose={() => setDetalleSlide(null)} pacienteId={detalleSlide?.paciente_id ?? null} pacienteNombre={detalleSlide?.nombre ?? ''} pacienteApellido={detalleSlide?.apellido ?? ''} osNombre={detalleSlide?.os_nombre ?? null} terapeutaId={terapeutaId} onSuccess={() => router.refresh()} />
 
       <ConfirmDialog
         open={!!confirmDelete}
