@@ -56,8 +56,11 @@ export async function POST(req: NextRequest) {
         await sincronizarEntrevistaCancelada(body.entrevista_id, user.id)
       }
     }
-  } catch {
-    // Sync errors are non-fatal — turn data is already in DB
+  } catch (err) {
+    // Sync errors son no-fatales para el request (los datos ya están en DB),
+    // pero necesitamos rastro en los logs de Vercel — antes se descartaban
+    // en silencio y no había forma de diagnosticar sync fallidos a GCal.
+    console.error('[google-calendar/sync] Error procesando sync:', { action: body.action, body }, err)
   }
 
   return NextResponse.json({ ok: true })
