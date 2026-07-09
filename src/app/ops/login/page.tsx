@@ -18,7 +18,15 @@ export default function OpsLoginPage() {
     const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError || !user) {
-      setError('Email o contraseña incorrectos.')
+      // No swallow — loguear el error real de Supabase para poder diagnosticar
+      // (ej. rate limiting devuelve un error distinto a credenciales inválidas,
+      // pero antes se mostraba el mismo mensaje genérico para todo).
+      console.error('[ops/login] signInWithPassword error:', authError)
+      if (authError?.status === 429 || authError?.code === 'over_request_rate_limit') {
+        setError('Demasiados intentos de inicio de sesión. Esperá unos minutos y volvé a intentar.')
+      } else {
+        setError('Email o contraseña incorrectos.')
+      }
       setLoading(false)
       return
     }
