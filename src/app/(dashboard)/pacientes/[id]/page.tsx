@@ -4,8 +4,12 @@ import PacienteDetalle from '@/components/pacientes/PacienteDetalle'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/PacienteTabs'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
+import { calcularDeudaMes, resolverPoliticaInasistencia, sesionGeneraDeuda } from '@/lib/deuda'
 
 export const metadata = { title: 'Paciente — KLIA' }
+// Mismo motivo que /agenda y /cobros — evitar que el Data Cache de Next.js
+// sirva saldo/turnos stale tras registrar un pago o eliminar un turno.
+export const dynamic = 'force-dynamic'
 
 export default async function PacienteDetallePage({
   params,
@@ -76,9 +80,19 @@ export default async function PacienteDetallePage({
   const sesionesRealizadas = turnos.filter((t) => t.estado === 'realizado').length
   const proximaSesion = turnos.find((t) => new Date(t.fecha_hora) >= now && t.estado !== 'cancelado' && t.estado !== 'no_asistio') || null
   const tratamientoDesde = turnos[0]?.fecha_hora ?? paciente.created_at
-  const impagosTurnos = turnos.filter((t) => t.estado === 'realizado' && !t.pagado)
-  const impagos = impagosTurnos.length
-  const montoImpago = impagosTurnos.reduce((sum, t) => sum + (t.monto ?? 0), 0)
+  // Mismo cálculo que Cobros/DetallePacienteSlide (src/lib/deuda.ts) — antes se
+  // sumaba el monto bruto de toda sesión no pagada al 100%, ignorando pagos
+  // parciales ya registrados (monto_pagado), lo que inflaba el saldo mostrado
+  // acá muy por encima del saldo real pendiente.
+  const cobrarInasistencia = resolverPoliticaInasistencia(paciente.cobrar_inasistencias, profile?.cobrar_inasistencias ?? false)
+  const deudaResumen = calcularDeudaMes(turnos, cobrarInasistencia)
+  const montoImpago = Object.values(deudaResumen.montoPendiente).reduce((sum, v) => sum + (v ?? 0), 0)
+  const impagos = turnos.filter((t) => {
+    if (!sesionGeneraDeuda(t.estado, cobrarInasistencia)) return false
+    if (t.pagado) return false
+    const cobrado = Math.min(t.monto_pagado ?? 0, t.monto ?? 0)
+    return (t.monto ?? 0) - cobrado > 0
+  }).length
 
   const summary: SummaryData = {
     sesionesRealizadas,
