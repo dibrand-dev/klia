@@ -49,6 +49,54 @@ function AntropoInput({ label, value, onChange, tabIndex }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         tabIndex={tabIndex}
+        className="antropo-num-input"
+        style={{
+          width: '100%',
+          padding: '10px 12px',
+          fontSize: 15,
+          border: '1px solid var(--border, #E7E9EE)',
+          borderRadius: 'var(--r-md, 8px)',
+          outline: 'none',
+          background: 'var(--surface, #fff)',
+          color: 'var(--ink, #0B1220)',
+        }}
+        onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px var(--accent, #4F46E5)'; e.target.style.borderColor = 'var(--accent, #4F46E5)' }}
+        onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--border, #E7E9EE)' }}
+      />
+      <style jsx>{`
+        .antropo-num-input::-webkit-outer-spin-button,
+        .antropo-num-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .antropo-num-input {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+    </div>
+  )
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontSize: 12,
+          color: 'var(--muted, #5B6472)',
+          opacity: 0.6,
+          fontWeight: 600,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </label>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="0.1"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        tabIndex={tabIndex}
         style={{
           width: '100%',
           padding: '8px 10px',
