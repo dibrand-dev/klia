@@ -195,7 +195,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         supabase.from('profiles').select('especialidad').eq('id', user.id).single(),
         supabase.from('pacientes').select('fecha_nacimiento, genero').eq('id', pacienteId).single(),
       ])
-      if (profile?.especialidad === 'Nutricionista') setEsNutricionista(true)
+      if (profile?.especialidad === 'Nutrición') setEsNutricionista(true)
       if (paciente?.fecha_nacimiento) setEdadPaciente(differenceInYears(new Date(), new Date(paciente.fecha_nacimiento)))
       if (paciente?.genero === 'M' || paciente?.genero === 'F') setSexoPaciente(paciente.genero)
     }
