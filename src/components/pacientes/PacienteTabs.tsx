@@ -26,7 +26,7 @@ export default function PacienteTabs({
   especialidad?: string | null
 }) {
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
-  const showComposicion = especialidad === 'Nutricionista'
+  const showComposicion = especialidad === 'Nutrición'
 
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
