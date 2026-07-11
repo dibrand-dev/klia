@@ -1,14 +1,154 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
+import { format, differenceInYears } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import VoiceRecorder from '@/components/ui/VoiceRecorder'
+import StickyWidgetAntropometria from '@/components/nutricion/StickyWidgetAntropometria'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
+}
+
+function num(v: string): number | null {
+  return v.trim() === '' ? null : Number(v)
+}
+
+const gridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: 12,
+}
+
+function AntropoInput({ label, value, onChange, tabIndex }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  tabIndex: number
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: 'block',
+          fontSize: 12,
+          color: 'var(--muted, #5B6472)',
+          opacity: 0.6,
+          fontWeight: 600,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </label>
+      <input
+        type="number"
+        inputMode="decimal"
+        step="0.1"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        tabIndex={tabIndex}
+        style={{
+          width: '100%',
+          padding: '8px 10px',
+          fontSize: 14,
+          border: '1px solid var(--border, #E7E9EE)',
+          borderRadius: 'var(--r-md, 8px)',
+          outline: 'none',
+          background: 'var(--surface, #fff)',
+          color: 'var(--ink, #0B1220)',
+        }}
+        onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px var(--accent, #4F46E5)'; e.target.style.borderColor = 'var(--accent, #4F46E5)' }}
+        onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--border, #E7E9EE)' }}
+      />
+    </div>
+  )
+}
+
+function AntropometriaSection({ open, onToggle, title, children }: {
+  open: boolean
+  onToggle: () => void
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border, #E7E9EE)',
+        borderRadius: 'var(--r-lg, 12px)',
+        background: 'var(--surface, #fff)',
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 14,
+          fontWeight: 600,
+          color: 'var(--ink, #0B1220)',
+        }}
+      >
+        {title}
+        <span className="material-symbols-outlined" style={{ fontSize: 20, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+          expand_more
+        </span>
+      </button>
+      {open && <div style={{ padding: '0 16px 16px' }}>{children}</div>}
+    </div>
+  )
+}
+
+function StickyWidgetAntropometriaBarraMobile(props: React.ComponentProps<typeof StickyWidgetAntropometria>) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border, #E7E9EE)',
+        borderRadius: 'var(--r-lg, 12px)',
+        background: 'var(--surface, #fff)',
+        marginBottom: 16,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 14px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--ink, #0B1220)',
+        }}
+      >
+        IMC / GEB en vivo
+        <span className="material-symbols-outlined" style={{ fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+          expand_more
+        </span>
+      </button>
+      {open && (
+        <div style={{ padding: '0 14px 14px' }}>
+          <StickyWidgetAntropometria {...props} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface Props {
@@ -31,7 +171,36 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [draftId, setDraftId] = useState<string | null>(null)
   const [draftSaved, setDraftSaved] = useState(false)
 
+  // Antropometría — solo visible para especialidad Nutricionista
+  const [esNutricionista, setEsNutricionista] = useState(false)
+  const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
+  const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
+  const [antropoOpen, setAntropoOpen] = useState(true)
+  const [pliegOpen, setPliegOpen] = useState(false)
+  const [antropo, setAntropo] = useState({
+    peso: '', altura: '', cintura: '', cadera: '',
+    porcentajeGrasa: '', porcentajeMusculo: '',
+    pliegueTricipital: '', pliegueSubescapular: '', pliegueSuprailiaco: '',
+    perimetroBrazo: '', perimetroPierna: '',
+  })
+
   useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
+
+  useEffect(() => {
+    async function fetchContextoNutricion() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const [{ data: profile }, { data: paciente }] = await Promise.all([
+        supabase.from('profiles').select('especialidad').eq('id', user.id).single(),
+        supabase.from('pacientes').select('fecha_nacimiento, genero').eq('id', pacienteId).single(),
+      ])
+      if (profile?.especialidad === 'Nutricionista') setEsNutricionista(true)
+      if (paciente?.fecha_nacimiento) setEdadPaciente(differenceInYears(new Date(), new Date(paciente.fecha_nacimiento)))
+      if (paciente?.genero === 'M' || paciente?.genero === 'F') setSexoPaciente(paciente.genero)
+    }
+    if (pacienteId) fetchContextoNutricion()
+  }, [pacienteId])
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -139,6 +308,33 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
     }
 
+    if (esNutricionista) {
+      const antropoValues = {
+        peso: num(antropo.peso),
+        altura: num(antropo.altura),
+        cintura: num(antropo.cintura),
+        cadera: num(antropo.cadera),
+        porcentaje_grasa: num(antropo.porcentajeGrasa),
+        porcentaje_musculo: num(antropo.porcentajeMusculo),
+        pliegue_tricipital: num(antropo.pliegueTricipital),
+        pliegue_subescapular: num(antropo.pliegueSubescapular),
+        pliegue_suprailiaco: num(antropo.pliegueSuprailiaco),
+        perimetro_brazo: num(antropo.perimetroBrazo),
+        perimetro_pierna: num(antropo.perimetroPierna),
+      }
+      const hayDatos = Object.values(antropoValues).some((v) => v != null)
+      if (hayDatos) {
+        const { error: antropoError } = await supabase.from('registros_antropometricos').insert({
+          terapeuta_id: user.id,
+          paciente_id: pacienteId,
+          turno_id: turnoId ?? null,
+          fecha: fechaFinal,
+          ...antropoValues,
+        } as never)
+        if (antropoError) { setError('La nota se guardó, pero hubo un error al guardar los datos antropométricos.'); setLoading(false); return }
+      }
+    }
+
     onCreada?.()
   }
 
@@ -212,6 +408,65 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
               className="input-field"
             />
           </div>
+
+          {esNutricionista && (
+            <>
+              {/* Barra colapsable de cálculo en vivo — solo mobile */}
+              <div className="md:hidden">
+                <StickyWidgetAntropometriaBarraMobile
+                  pacienteId={pacienteId}
+                  peso={num(antropo.peso)}
+                  altura={num(antropo.altura)}
+                  edad={edadPaciente}
+                  sexo={sexoPaciente}
+                />
+              </div>
+
+              <div className="md:flex md:gap-4 md:items-start">
+                <div className="flex-1 space-y-4">
+                  <AntropometriaSection
+                    open={antropoOpen}
+                    onToggle={() => setAntropoOpen((v) => !v)}
+                    title="Datos antropométricos"
+                  >
+                    <div style={gridStyle}>
+                      <AntropoInput label="Peso (kg)" value={antropo.peso} onChange={(v) => setAntropo((p) => ({ ...p, peso: v }))} tabIndex={1} />
+                      <AntropoInput label="Altura (cm)" value={antropo.altura} onChange={(v) => setAntropo((p) => ({ ...p, altura: v }))} tabIndex={2} />
+                      <AntropoInput label="Cintura (cm)" value={antropo.cintura} onChange={(v) => setAntropo((p) => ({ ...p, cintura: v }))} tabIndex={3} />
+                      <AntropoInput label="Cadera (cm)" value={antropo.cadera} onChange={(v) => setAntropo((p) => ({ ...p, cadera: v }))} tabIndex={4} />
+                      <AntropoInput label="% Grasa" value={antropo.porcentajeGrasa} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeGrasa: v }))} tabIndex={5} />
+                      <AntropoInput label="% Músculo" value={antropo.porcentajeMusculo} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeMusculo: v }))} tabIndex={6} />
+                    </div>
+                  </AntropometriaSection>
+
+                  <AntropometriaSection
+                    open={pliegOpen}
+                    onToggle={() => setPliegOpen((v) => !v)}
+                    title="Pliegues cutáneos y perímetros"
+                  >
+                    <div style={gridStyle}>
+                      <AntropoInput label="Pliegue tricipital (mm)" value={antropo.pliegueTricipital} onChange={(v) => setAntropo((p) => ({ ...p, pliegueTricipital: v }))} tabIndex={7} />
+                      <AntropoInput label="Pliegue subescapular (mm)" value={antropo.pliegueSubescapular} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSubescapular: v }))} tabIndex={8} />
+                      <AntropoInput label="Pliegue suprailíaco (mm)" value={antropo.pliegueSuprailiaco} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSuprailiaco: v }))} tabIndex={9} />
+                      <AntropoInput label="Perímetro de brazo (cm)" value={antropo.perimetroBrazo} onChange={(v) => setAntropo((p) => ({ ...p, perimetroBrazo: v }))} tabIndex={10} />
+                      <AntropoInput label="Perímetro de pierna (cm)" value={antropo.perimetroPierna} onChange={(v) => setAntropo((p) => ({ ...p, perimetroPierna: v }))} tabIndex={11} />
+                    </div>
+                  </AntropometriaSection>
+                </div>
+
+                {/* Widget sticky — solo desktop */}
+                <div className="hidden md:block md:w-64 md:sticky md:top-4 md:flex-shrink-0">
+                  <StickyWidgetAntropometria
+                    pacienteId={pacienteId}
+                    peso={num(antropo.peso)}
+                    altura={num(antropo.altura)}
+                    edad={edadPaciente}
+                    sexo={sexoPaciente}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="card p-4">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión</label>

@@ -748,6 +748,80 @@ export type Database = {
         }
         Relationships: []
       }
+      registros_antropometricos: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          paciente_id: string
+          turno_id: string | null
+          fecha: string
+          peso: number | null
+          altura: number | null
+          cintura: number | null
+          cadera: number | null
+          pliegue_tricipital: number | null
+          pliegue_subescapular: number | null
+          pliegue_suprailiaco: number | null
+          perimetro_brazo: number | null
+          perimetro_pierna: number | null
+          porcentaje_grasa: number | null
+          porcentaje_musculo: number | null
+          notas: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          turno_id?: string | null
+          fecha: string
+          peso?: number | null
+          altura?: number | null
+          cintura?: number | null
+          cadera?: number | null
+          pliegue_tricipital?: number | null
+          pliegue_subescapular?: number | null
+          pliegue_suprailiaco?: number | null
+          perimetro_brazo?: number | null
+          perimetro_pierna?: number | null
+          porcentaje_grasa?: number | null
+          porcentaje_musculo?: number | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          paciente_id?: string
+          turno_id?: string | null
+          fecha?: string
+          peso?: number | null
+          altura?: number | null
+          cintura?: number | null
+          cadera?: number | null
+          pliegue_tricipital?: number | null
+          pliegue_subescapular?: number | null
+          pliegue_suprailiaco?: number | null
+          perimetro_brazo?: number | null
+          perimetro_pierna?: number | null
+          porcentaje_grasa?: number | null
+          porcentaje_musculo?: number | null
+          notas?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'registros_antropometricos_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       colegios: {
         Row: {
           id: string
@@ -1284,6 +1358,7 @@ export type Configuracion = Database['public']['Tables']['configuracion']['Row']
 export type TurnoRecurrente = Database['public']['Tables']['turnos_recurrentes']['Row']
 export type ObraSocial = Database['public']['Tables']['obras_sociales']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
+export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']
 export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
 export type ModuloConfig = {

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion'
 
 interface TabDef {
   key: PacienteTabKey
@@ -26,6 +26,7 @@ export default function PacienteTabs({
   especialidad?: string | null
 }) {
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
+  const showComposicion = especialidad === 'Nutricionista'
 
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
@@ -35,6 +36,7 @@ export default function PacienteTabs({
     { key: 'documentos', label: 'Documentos' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
+    ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Composición Corporal y Nutrición' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
   ]
@@ -51,6 +53,7 @@ export default function PacienteTabs({
           : tab.key === 'documentos' ? `/pacientes/${pacienteId}?tab=documentos`
           : tab.key === 'archivos' ? `/pacientes/${pacienteId}?tab=archivos`
           : tab.key === 'admision' ? `/pacientes/${pacienteId}?tab=admision`
+          : tab.key === 'composicion' ? `/pacientes/${pacienteId}?tab=composicion`
           : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
           : `/pacientes/${pacienteId}?tab=interconsultas`
 

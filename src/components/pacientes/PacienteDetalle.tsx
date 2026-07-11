@@ -20,6 +20,7 @@ import InformesTab from './InformesTab'
 import AdmisionTab from './AdmisionTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
 import PlanillaOSSlide from './PlanillaOSSlide'
+import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -738,6 +739,10 @@ export default function PacienteDetalle({
     return <ArchivosTab pacienteId={paciente.id} pacienteNombre={`${paciente.nombre} ${paciente.apellido}`} />
   }
 
+  if (activeTab === 'composicion') {
+    return <TabComposicionCorporal pacienteId={paciente.id} />
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <TabEmptyState tab={activeTab} />
   }
@@ -1096,6 +1101,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
     admision: { title: 'Admisión', body: '' },
     interconsultas: { title: 'Interconsultas', body: '' },
     archivos: { title: 'Archivos', body: '' },
+    composicion: { title: 'Composición Corporal y Nutrición', body: '' },
   }
   const c = config[tab]
   return (
