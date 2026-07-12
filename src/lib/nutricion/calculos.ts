@@ -43,3 +43,47 @@ export function calcularGEB(
     ? 88.362 + 13.397 * peso + 4.799 * alturaCm - 5.677 * edad
     : 447.593 + 9.247 * peso + 3.098 * alturaCm - 4.330 * edad
 }
+
+export interface MacrosPct {
+  cho: number
+  prot: number
+  gra: number
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v))
+}
+
+// Ajusta un macro y redistribuye los otros dos proporcionalmente a su ratio actual,
+// manteniendo la suma siempre en 100. Parte siempre de `current` (el último estado
+// consolidado), nunca acumula — así arrastrar el mismo slider muchas veces seguidas
+// no genera drift de redondeo progresivo.
+export function redistribuirMacros(current: MacrosPct, key: keyof MacrosPct, rawVal: number): MacrosPct {
+  const keys: (keyof MacrosPct)[] = ['cho', 'prot', 'gra']
+  const others = keys.filter((k) => k !== key)
+  const [k1, k2] = others
+  const newVal = clamp(Math.round(rawVal), 0, 100)
+  const sumOthersOld = current[k1] + current[k2]
+  const newSumOthers = 100 - newVal
+
+  const next: MacrosPct = { ...current, [key]: newVal }
+  if (sumOthersOld <= 0) {
+    next[k1] = Math.round(newSumOthers / 2)
+    next[k2] = newSumOthers - next[k1]
+  } else {
+    const ratio1 = current[k1] / sumOthersOld
+    next[k1] = Math.round(ratio1 * newSumOthers)
+    next[k2] = newSumOthers - next[k1]
+  }
+
+  // Corrección de redondeo — nunca mostrar error al usuario, se ajusta el segmento tocado
+  const total = next.cho + next.prot + next.gra
+  if (total !== 100) next[key] += (100 - total)
+
+  return next
+}
+
+export function gramosDesdeMacro(kcalObjetivo: number | null, pct: number, kcalPorGramo: 4 | 9): number {
+  if (!kcalObjetivo) return 0
+  return Math.round((kcalObjetivo * pct) / 100 / kcalPorGramo)
+}

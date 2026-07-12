@@ -822,6 +822,88 @@ export type Database = {
           },
         ]
       }
+      menu_semanal: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          paciente_id: string
+          semana_inicio: string
+          dia: string
+          comida: string
+          descripcion: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          semana_inicio: string
+          dia: string
+          comida: string
+          descripcion?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          paciente_id?: string
+          semana_inicio?: string
+          dia?: string
+          comida?: string
+          descripcion?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'menu_semanal_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      distribucion_macros: {
+        Row: {
+          paciente_id: string
+          terapeuta_id: string
+          porcentaje_carbohidratos: number
+          porcentaje_proteinas: number
+          porcentaje_grasas: number
+          kcal_objetivo: number | null
+          updated_at: string
+        }
+        Insert: {
+          paciente_id: string
+          terapeuta_id: string
+          porcentaje_carbohidratos?: number
+          porcentaje_proteinas?: number
+          porcentaje_grasas?: number
+          kcal_objetivo?: number | null
+          updated_at?: string
+        }
+        Update: {
+          paciente_id?: string
+          terapeuta_id?: string
+          porcentaje_carbohidratos?: number
+          porcentaje_proteinas?: number
+          porcentaje_grasas?: number
+          kcal_objetivo?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'distribucion_macros_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: true
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       colegios: {
         Row: {
           id: string
@@ -1387,6 +1469,8 @@ export type GoogleCalendarToken = Database['public']['Tables']['google_calendar_
 export type Entrevista = Database['public']['Tables']['entrevistas']['Row']
 export type ArchivoPaciente = Database['public']['Tables']['archivos_paciente']['Row']
 export type InformeMedico = Database['public']['Tables']['informes_medicos']['Row']
+export type MenuSemanalItem = Database['public']['Tables']['menu_semanal']['Row']
+export type DistribucionMacros = Database['public']['Tables']['distribucion_macros']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]

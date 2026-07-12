@@ -1,12 +1,34 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import type { RegistroAntropometrico } from '@/types/database'
+import type { RegistroAntropometrico, MenuSemanalItem, DistribucionMacros } from '@/types/database'
 import RegistroAntropometricoEditSlide from './RegistroAntropometricoEditSlide'
+import SlideOverMenuSemanal from './SlideOverMenuSemanal'
+import SlideOverMacros from './SlideOverMacros'
+import { gramosDesdeMacro } from '@/lib/nutricion/calculos'
+
+const MACRO_DEFS_PREVIEW: { key: 'porcentaje_carbohidratos' | 'porcentaje_proteinas' | 'porcentaje_grasas'; name: string; color: string; kcalPorGramo: 4 | 9 }[] = [
+  { key: 'porcentaje_carbohidratos', name: 'Carbohidratos', color: 'var(--macro-cho, var(--accent, #1F4FD9))', kcalPorGramo: 4 },
+  { key: 'porcentaje_proteinas', name: 'Proteínas', color: 'var(--macro-prot, var(--violet, #5B3DC9))', kcalPorGramo: 4 },
+  { key: 'porcentaje_grasas', name: 'Grasas', color: 'var(--macro-gra, var(--warn, #A65A06))', kcalPorGramo: 9 },
+]
+
+const DIAS_CORTO = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const DIAS_NOMBRE = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+
+function mondayOf(d: Date): Date {
+  const date = new Date(d)
+  const day = date.getDay()
+  const diff = (day === 0 ? -6 : 1) - day
+  date.setDate(date.getDate() + diff)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
 
 type Rango = '3m' | '6m' | '1a' | 'todo'
 
@@ -35,11 +57,37 @@ const cardStyle: React.CSSProperties = {
 }
 
 export default function TabComposicionCorporal({ pacienteId }: { pacienteId: string }) {
+  const router = useRouter()
   const [rango, setRango] = useState<Rango>('6m')
   const [registros, setRegistros] = useState<RegistroAntropometrico[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [editando, setEditando] = useState<RegistroAntropometrico | null>(null)
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [macrosOpen, setMacrosOpen] = useState(false)
+  const [diasConMenu, setDiasConMenu] = useState<Set<string>>(new Set())
+  const [macrosPreview, setMacrosPreview] = useState<DistribucionMacros | null>(null)
+  const [loadingWidgets, setLoadingWidgets] = useState(true)
+
+  useEffect(() => {
+    let cancelado = false
+    async function fetchWidgets() {
+      setLoadingWidgets(true)
+      const supabase = createClient()
+      const semanaActual = mondayOf(new Date()).toISOString().slice(0, 10)
+      const [{ data: menuRows }, { data: macros }] = await Promise.all([
+        supabase.from('menu_semanal').select('dia').eq('paciente_id', pacienteId).eq('semana_inicio', semanaActual),
+        supabase.from('distribucion_macros').select('*').eq('paciente_id', pacienteId).maybeSingle(),
+      ])
+      if (cancelado) return
+      setDiasConMenu(new Set(((menuRows as MenuSemanalItem[]) ?? []).map((r) => r.dia)))
+      setMacrosPreview((macros as DistribucionMacros) ?? null)
+      setLoadingWidgets(false)
+    }
+    fetchWidgets()
+    return () => { cancelado = true }
+  }, [pacienteId, menuOpen, macrosOpen])
 
   useEffect(() => {
     let cancelado = false
@@ -199,23 +247,77 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
         )}
       </div>
 
-      {/* Widgets resumen — placeholders hasta contar con schema de menu_semanal/distribucion_macros */}
+      {/* Widgets resumen — Menú Semanal y Distribución de Macros */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div style={cardStyle}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #0B1220)', marginBottom: 8 }}>Menú Semanal</h3>
-          <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>
-            Todavía no hay un menú semanal cargado para este paciente.
-          </p>
-          <button type="button" className="btn-secondary" style={{ fontSize: 13 }} disabled>
+          {loadingWidgets ? (
+            <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>Cargando...</p>
+          ) : diasConMenu.size === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>
+              Todavía no hay un menú semanal cargado para esta semana.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                {DIAS_NOMBRE.map((dia, i) => (
+                  <span
+                    key={dia}
+                    title={dia}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                      fontSize: 11, fontWeight: 700,
+                      background: diasConMenu.has(dia) ? 'var(--accent-soft, #EAF0FE)' : 'var(--surface-2, #F6F7F9)',
+                      color: diasConMenu.has(dia) ? 'var(--accent, #1F4FD9)' : 'var(--muted-3, #AEB5C0)',
+                    }}
+                  >
+                    {DIAS_CORTO[i]}
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>
+                {diasConMenu.size} de 7 días con comidas cargadas esta semana.
+              </p>
+            </>
+          )}
+          <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setMenuOpen(true)}>
             Editar menú semanal
           </button>
         </div>
+
         <div style={cardStyle}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink, #0B1220)', marginBottom: 8 }}>Distribución de Macronutrientes</h3>
-          <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>
-            Todavía no hay una distribución de macros configurada.
-          </p>
-          <button type="button" className="btn-secondary" style={{ fontSize: 13 }} disabled>
+          {loadingWidgets ? (
+            <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>Cargando...</p>
+          ) : !macrosPreview ? (
+            <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)', marginBottom: 16 }}>
+              Todavía no hay una distribución de macros configurada.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', marginBottom: 10 }}>
+                {MACRO_DEFS_PREVIEW.map((m) => (
+                  <span key={m.key} style={{ width: `${Number(macrosPreview[m.key])}%`, background: m.color }} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 16 }}>
+                {MACRO_DEFS_PREVIEW.map((m) => (
+                  <span key={m.key} style={{ fontSize: 12, color: 'var(--muted, #5B6472)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, display: 'inline-block' }} />
+                    {m.name} · {Number(macrosPreview[m.key])}%
+                  </span>
+                ))}
+              </div>
+              {macrosPreview.kcal_objetivo != null && (
+                <p style={{ fontSize: 12, color: 'var(--muted-2, #8A93A1)', marginTop: -8, marginBottom: 16 }}>
+                  {macrosPreview.kcal_objetivo.toLocaleString('es-AR')} kcal/día objetivo
+                  {' · '}
+                  {MACRO_DEFS_PREVIEW.map((m) => `${gramosDesdeMacro(macrosPreview.kcal_objetivo, Number(macrosPreview[m.key]), m.kcalPorGramo)}g`).join(' / ')}
+                </p>
+              )}
+            </>
+          )}
+          <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setMacrosOpen(true)}>
             Ajustar macros
           </button>
         </div>
@@ -225,6 +327,17 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
         registro={editando}
         open={!!editando}
         onClose={() => setEditando(null)}
+      />
+
+      <SlideOverMenuSemanal
+        pacienteId={pacienteId}
+        open={menuOpen}
+        onClose={() => { setMenuOpen(false); router.refresh() }}
+      />
+      <SlideOverMacros
+        pacienteId={pacienteId}
+        open={macrosOpen}
+        onClose={() => { setMacrosOpen(false); router.refresh() }}
       />
     </div>
   )
