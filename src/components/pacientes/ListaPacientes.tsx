@@ -36,15 +36,60 @@ export default function ListaPacientes({
   const [busqueda, setBusqueda] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
   const [ordenFilter, setOrdenFilter] = useState('')
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<PacienteListado[] | null>(null)
+  const [buscando, setBuscando] = useState(false)
 
-  const filtrados = pacientes.filter((p) => {
-    const texto = `${p.nombre} ${p.apellido} ${p.dni ?? ''} ${p.obra_social ?? ''}`.toLowerCase()
-    const matchBusqueda = texto.includes(busqueda.toLowerCase())
+  useEffect(() => {
+    const texto = busqueda.trim()
+    if (!texto) {
+      setResultadosBusqueda(null)
+      setBuscando(false)
+      return
+    }
+
+    let cancelado = false
+    setBuscando(true)
+    const timer = setTimeout(async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelado) return
+      const { data } = await supabase
+        .from('pacientes')
+        .select('*')
+        .eq('terapeuta_id', user.id)
+        .or(`nombre.ilike.%${texto}%,apellido.ilike.%${texto}%,dni.ilike.%${texto}%`)
+        .order('apellido')
+        .limit(50)
+      if (cancelado) return
+      const encontrados = data ?? []
+      let ultimaCitaMap = new Map<string, string>()
+      if (encontrados.length > 0) {
+        const { data: turnos } = await supabase
+          .from('turnos')
+          .select('paciente_id, fecha_hora')
+          .eq('terapeuta_id', user.id)
+          .eq('estado', 'realizado')
+          .in('paciente_id', encontrados.map((p) => p.id))
+          .order('fecha_hora', { ascending: false })
+        for (const t of turnos ?? []) {
+          if (!ultimaCitaMap.has(t.paciente_id)) ultimaCitaMap.set(t.paciente_id, t.fecha_hora)
+        }
+      }
+      if (cancelado) return
+      setResultadosBusqueda(encontrados.map((p) => ({ ...p, ultima_cita: ultimaCitaMap.get(p.id) ?? null })) as PacienteListado[])
+      setBuscando(false)
+    }, 300)
+
+    return () => { cancelado = true; clearTimeout(timer) }
+  }, [busqueda])
+
+  const baseList = resultadosBusqueda ?? pacientes
+  const filtrados = baseList.filter((p) => {
     const matchEstado =
       estadoFilter === '' ||
       (estadoFilter === 'activo' && p.activo) ||
       (estadoFilter === 'inactivo' && !p.activo)
-    return matchBusqueda && matchEstado
+    return matchEstado
   })
 
   const initials = profile
@@ -79,8 +124,8 @@ export default function ListaPacientes({
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(0,26,72,0.03)] border border-outline-variant/15">
           <div className="relative w-full md:w-96">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
-              search
+            <span className={`material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant ${buscando ? 'animate-spin' : ''}`}>
+              {buscando ? 'progress_activity' : 'search'}
             </span>
             <input
               type="text"
@@ -149,7 +194,7 @@ export default function ListaPacientes({
           </div>
         )}
 
-        {totalCount > pageSize && (
+        {!resultadosBusqueda && totalCount > pageSize && (
           <Paginador
             currentPage={currentPage}
             totalPages={Math.ceil(totalCount / pageSize)}
