@@ -1097,7 +1097,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
     admision: { title: 'Admisión', body: '' },
     interconsultas: { title: 'Interconsultas', body: '' },
     archivos: { title: 'Archivos', body: '' },
-    composicion: { title: 'Composición Corporal y Nutrición', body: '' },
+    composicion: { title: 'Antropometría', body: '' },
   }
   const c = config[tab]
   return (

@@ -129,7 +129,7 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
     <div className="space-y-6">
       {/* Header + selector de rango */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-on-surface">Composición Corporal y Nutrición</h2>
+        <h2 className="text-lg font-bold text-on-surface">Antropometría</h2>
         <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2, #F6F7F9)', borderRadius: 999, padding: 3 }}>
           {(Object.keys(RANGO_LABELS) as Rango[]).map((r) => (
             <button

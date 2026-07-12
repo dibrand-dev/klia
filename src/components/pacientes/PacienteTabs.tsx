@@ -35,7 +35,7 @@ export default function PacienteTabs({
     { key: 'informes', label: 'Informes' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
-    ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Composición Corporal y Nutrición' }] : []),
+    ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
   ]
