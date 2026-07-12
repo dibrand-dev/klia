@@ -124,8 +124,10 @@ export default function ListaPacientes({
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(0,26,72,0.03)] border border-outline-variant/15">
           <div className="relative w-full md:w-96">
-            <span className={`material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant ${buscando ? 'animate-spin' : ''}`}>
-              {buscando ? 'progress_activity' : 'search'}
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-on-surface-variant">
+              <span className={`material-symbols-outlined text-[20px] leading-none ${buscando ? 'animate-spin' : ''}`}>
+                {buscando ? 'progress_activity' : 'search'}
+              </span>
             </span>
             <input
               type="text"
