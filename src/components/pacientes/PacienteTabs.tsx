@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'documentos' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion'
 
 interface TabDef {
   key: PacienteTabKey
@@ -33,7 +33,6 @@ export default function PacienteTabs({
     { key: 'datos', label: 'Datos personales' },
     { key: 'historial', label: 'Historial clínico', badge: historialCount },
     { key: 'informes', label: 'Informes' },
-    { key: 'documentos', label: 'Documentos' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
     ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Composición Corporal y Nutrición' }] : []),
@@ -50,7 +49,6 @@ export default function PacienteTabs({
           : tab.key === 'datos' ? `/pacientes/${pacienteId}?tab=datos`
           : tab.key === 'historial' ? `/pacientes/${pacienteId}/historial`
           : tab.key === 'informes' ? `/pacientes/${pacienteId}?tab=informes`
-          : tab.key === 'documentos' ? `/pacientes/${pacienteId}?tab=documentos`
           : tab.key === 'archivos' ? `/pacientes/${pacienteId}?tab=archivos`
           : tab.key === 'admision' ? `/pacientes/${pacienteId}?tab=admision`
           : tab.key === 'composicion' ? `/pacientes/${pacienteId}?tab=composicion`

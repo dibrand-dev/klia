@@ -1090,10 +1090,6 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
       title: 'Informes',
       body: 'Los informes clínicos del paciente aparecerán aquí. Próximamente.',
     },
-    documentos: {
-      title: 'Documentos y adjuntos',
-      body: 'Consentimientos informados, estudios, informes. Próximamente.',
-    },
     facturacion: {
       title: 'Facturación',
       body: 'Historial de pagos y estado de cuenta. Próximamente.',
