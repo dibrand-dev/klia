@@ -171,6 +171,7 @@ export default function AppShell({
         open={nuevaNotaOpen}
         onClose={() => setNuevaNotaOpen(false)}
         title="Nueva nota clínica"
+        width="lg"
       >
         <NuevaNotaForm
           key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}-${notaModo}` : 'closed'}

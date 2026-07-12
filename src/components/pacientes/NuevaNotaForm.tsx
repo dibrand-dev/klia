@@ -18,7 +18,7 @@ function num(v: string): number | null {
 
 const gridStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
   gap: 12,
 }
 
@@ -422,8 +422,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
           {esNutricionista && (
             <>
-              {/* Barra colapsable de cálculo en vivo — solo mobile */}
-              <div className="md:hidden">
+              {/* Barra colapsable de cálculo en vivo — solo mobile/tablet */}
+              <div className="lg:hidden">
                 <StickyWidgetAntropometriaBarraMobile
                   pacienteId={pacienteId}
                   peso={num(antropo.peso)}
@@ -433,7 +433,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
                 />
               </div>
 
-              <div className="md:flex md:gap-4 md:items-start">
+              <div className="lg:flex lg:gap-4 lg:items-start">
                 <div className="flex-1 space-y-4">
                   <AntropometriaSection
                     open={antropoOpen}
@@ -465,8 +465,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
                   </AntropometriaSection>
                 </div>
 
-                {/* Widget sticky — solo desktop */}
-                <div className="hidden md:block md:w-64 md:sticky md:top-4 md:flex-shrink-0">
+                {/* Widget sticky — solo desktop ancho */}
+                <div className="hidden lg:block lg:w-64 lg:sticky lg:top-4 lg:flex-shrink-0">
                   <StickyWidgetAntropometria
                     pacienteId={pacienteId}
                     peso={num(antropo.peso)}
