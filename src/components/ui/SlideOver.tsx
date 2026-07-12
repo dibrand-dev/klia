@@ -9,7 +9,7 @@ interface SlideOverProps {
   title: string
   subtitle?: string
   children: React.ReactNode
-  width?: 'sm' | 'md' | 'lg'
+  width?: 'sm' | 'md' | 'lg' | 'xl'
   header?: React.ReactNode
   footer?: React.ReactNode
   noPadding?: boolean
@@ -19,6 +19,7 @@ const WIDTH_MAP = {
   sm: 'sm:max-w-md',
   md: 'sm:max-w-lg',
   lg: 'sm:max-w-2xl',
+  xl: 'sm:max-w-[760px]',
 }
 
 export default function SlideOver({
