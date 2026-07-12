@@ -77,7 +77,7 @@ function AntropoInput({ label, value, onChange, tabIndex }: {
   )
 }
 
-  function AntropometriaSection({ open, onToggle, title, children }: {
+function AntropometriaSection({ open, onToggle, title, children }: {
   open: boolean
   onToggle: () => void
   title: string
