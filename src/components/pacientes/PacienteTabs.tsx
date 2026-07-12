@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
@@ -25,6 +26,7 @@ export default function PacienteTabs({
   tieneDrive?: boolean
   especialidad?: string | null
 }) {
+  const router = useRouter()
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
   const showComposicion = especialidad === 'Nutrición'
 
@@ -59,6 +61,7 @@ export default function PacienteTabs({
           <Link
             key={tab.key}
             href={href}
+            onClick={() => router.refresh()}
             className={cn(
               'pb-4 font-bold text-sm transition-colors flex items-center gap-2 flex-shrink-0',
               isActive
