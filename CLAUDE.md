@@ -177,6 +177,28 @@ Todas las tablas de precios/descuentos tienen RLS habilitado. Patrón de policie
 - Medical specialties → 'consulta'; therapeutic → 'sesion'
 - getTerminologia() hook in src/hooks/useTerminologia.ts
 
+## Módulo de nutrición (antropometría) — agregado 2026-07
+
+Feature visible solo para profesionales con `profiles.especialidad === 'Nutrición'` (string exacto de `src/lib/especialidades.ts` — **nunca** `'Nutricionista'`, ese valor no existe en el sistema y fue la causa de un bug donde toda la feature quedaba invisible).
+
+- **`src/lib/nutricion/calculos.ts`** — funciones puras sin dependencias de React/Supabase:
+  - `calcularIMC(peso, altura)` — normaliza altura a metros automáticamente (si `altura > 3` asume que vino en cm).
+  - `clasificarIMC(imc)` — devuelve `{ label, status }` con status `'info' | 'success' | 'warning' | 'danger'` (Bajo peso / Normal / Sobrepeso / Obesidad).
+  - `calcularGEB(peso, altura, edad, sexo, formula)` — soporta `'mifflin'` (Mifflin-St Jeor) y `'harris'` (Harris-Benedict 1984).
+
+- **`src/components/nutricion/StickyWidgetAntropometria.tsx`** — widget client-side con 3 cards: IMC (badge de color según clasificación), GEB (toggle Mifflin/Harris-Benedict), y variación de peso vs. el último `registros_antropometricos` guardado (excluye el registro en edición vía `registroEnEdicionId`).
+
+- **SlideOver "Nueva nota clínica" (`src/components/pacientes/NuevaNotaForm.tsx`)** — si `esNutricionista`, muestra una sección de antropometría (peso, altura, cintura, cadera, %grasa, %músculo + sección colapsable de pliegues cutáneos/perímetros) antes de la nota de sesión. Al guardar, si hay algún dato cargado, inserta también en `registros_antropometricos`.
+  - Layout: el SlideOver usa `width="lg"` (672px, seteado en `AppShell.tsx`) porque con el ancho default (`md`, 512px) el widget sticky lateral dejaba los inputs con ~200px para 3 columnas — quedaban inusables.
+  - El grid de inputs usa `gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))'` (no columnas fijas) para adaptarse al espacio disponible.
+  - El layout de dos columnas (inputs + widget sticky) solo se activa en `lg:` (1024px+); por debajo se usa una barra colapsable mobile (`StickyWidgetAntropometriaBarraMobile`) a todo el ancho. Con breakpoint `md:` (768px) el widget lateral apretaba los inputs en pantallas medianas/tablet.
+  - Inputs numéricos (`AntropoInput`) ocultan el spinner nativo del navegador vía `<style jsx>` con `::-webkit-outer/inner-spin-button` y `-moz-appearance: textfield` — sin esto las flechas nativas hacían el campo muy angosto para escribir.
+
+- **Tab "Composición Corporal y Nutrición" en ficha de paciente** (`src/components/pacientes/PacienteTabs.tsx`, `PacienteDetalle.tsx`) — visible con la misma condición `especialidad === 'Nutrición'`. Renderiza `src/components/nutricion/TabComposicionCorporal.tsx` (gráfico Recharts de evolución de %grasa/%músculo + tabla histórica paginada) y `RegistroAntropometricoEditSlide.tsx` (edición de un registro puntual al clickear una fila).
+  - Los widgets de "menú semanal" y "distribución de macros" quedaron como placeholders estáticos — las tablas `menu_semanal`/`distribucion_macros` nunca se confirmaron con el usuario, pendiente de definir esquema.
+
+- **Tabla `registros_antropometricos`** — columnas: `id, terapeuta_id, paciente_id, turno_id (nullable), fecha, peso, altura, cintura, cadera, pliegue_tricipital, pliegue_subescapular, pliegue_suprailiaco, perimetro_brazo, perimetro_pierna, porcentaje_grasa, porcentaje_musculo, notas, created_at, updated_at`.
+
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
 - profiles.feriados_nacionales, profiles.feriados_provinciales (boolean toggles)
