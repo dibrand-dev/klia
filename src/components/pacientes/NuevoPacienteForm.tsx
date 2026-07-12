@@ -232,8 +232,11 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
 
       showToast('Paciente guardado correctamente')
       setTimeout(() => {
-        router.refresh()
+        // Orden importa: refresh() invalida el cache de la ruta actual, no la de destino.
+        // Hay que navegar primero y refrescar después para que /pacientes (Router Cache
+        // del cliente) no sirva la lista stale sin el paciente recién creado.
         router.push('/pacientes')
+        router.refresh()
       }, 1200)
     } catch (err) {
       console.error('Error al guardar paciente:', err)

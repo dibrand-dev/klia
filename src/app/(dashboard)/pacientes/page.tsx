@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import ListaPacientes from '@/components/pacientes/ListaPacientes'
 
 export const metadata = { title: 'Pacientes — KLIA' }
+// Evitar que el Data Cache de Next.js sirva la lista stale tras crear/editar un paciente
+// (mismo motivo que /agenda, /cobros y /pacientes/[id]).
+export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
 
