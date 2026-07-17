@@ -194,10 +194,27 @@ Feature visible solo para profesionales con `profiles.especialidad === 'Nutrici�
   - El layout de dos columnas (inputs + widget sticky) solo se activa en `lg:` (1024px+); por debajo se usa una barra colapsable mobile (`StickyWidgetAntropometriaBarraMobile`) a todo el ancho. Con breakpoint `md:` (768px) el widget lateral apretaba los inputs en pantallas medianas/tablet.
   - Inputs numéricos (`AntropoInput`) ocultan el spinner nativo del navegador vía `<style jsx>` con `::-webkit-outer/inner-spin-button` y `-moz-appearance: textfield` — sin esto las flechas nativas hacían el campo muy angosto para escribir.
 
-- **Tab "Composición Corporal y Nutrición" en ficha de paciente** (`src/components/pacientes/PacienteTabs.tsx`, `PacienteDetalle.tsx`) — visible con la misma condición `especialidad === 'Nutrición'`. Renderiza `src/components/nutricion/TabComposicionCorporal.tsx` (gráfico Recharts de evolución de %grasa/%músculo + tabla histórica paginada) y `RegistroAntropometricoEditSlide.tsx` (edición de un registro puntual al clickear una fila).
-  - Los widgets de "menú semanal" y "distribución de macros" quedaron como placeholders estáticos — las tablas `menu_semanal`/`distribucion_macros` nunca se confirmaron con el usuario, pendiente de definir esquema.
+- **Tab "Antropometría" en ficha de paciente** (`src/components/pacientes/PacienteTabs.tsx`, `PacienteDetalle.tsx`) — visible con la misma condición `especialidad === 'Nutrición'`. Se llamó "Composición Corporal y Nutrición" originalmente, renombrada a "Antropometría" (más corto, término técnico correcto, los profesionales de la app son quienes la ven — no los pacientes). Renderiza `src/components/nutricion/TabComposicionCorporal.tsx` (gráfico Recharts de evolución de %grasa/%músculo + tabla histórica paginada) y `RegistroAntropometricoEditSlide.tsx` (edición de un registro puntual al clickear una fila).
+  - Los widgets de "Menú Semanal" y "Distribución de Macronutrientes" ya NO son placeholders — tienen datos reales y abren SlideOvers propios: `SlideOverMenuSemanal.tsx` (grid 7 días x 4 comidas, guardado por celda al blur, botón "Duplicar semana anterior", acordeón mobile bajo 720px) y `SlideOverMacros.tsx` (input de kcal objetivo, 3 sliders custom acoplados que redistribuyen proporcionalmente vía `redistribuirMacros()` en `src/lib/nutricion/calculos.ts`, barra de macros con gramaje). Ambos con guardado automático (upsert), sin botón "Guardar" explícito.
+  - `SlideOver.tsx` (componente reutilizable) tiene una variante `xl` (760px) agregada para el de menú semanal — las variantes previas (`sm`/`md`/`lg`, hasta 672px) no alcanzaban para el grid de 7 columnas.
 
 - **Tabla `registros_antropometricos`** — columnas: `id, terapeuta_id, paciente_id, turno_id (nullable), fecha, peso, altura, cintura, cadera, pliegue_tricipital, pliegue_subescapular, pliegue_suprailiaco, perimetro_brazo, perimetro_pierna, porcentaje_grasa, porcentaje_musculo, notas, created_at, updated_at`.
+
+- **Tabla `menu_semanal`** — columnas: `id, terapeuta_id, paciente_id, semana_inicio (date, lunes de la semana), dia (text: 'Lunes'..'Domingo'), comida (text: 'Desayuno'/'Almuerzo'/'Merienda'/'Cena'), descripcion, created_at, updated_at`. Constraint único: `(paciente_id, semana_inicio, dia, comida)`.
+
+- **Tabla `distribucion_macros`** — columnas: `paciente_id (PK), terapeuta_id, porcentaje_carbohidratos (default 45), porcentaje_proteinas (default 30), porcentaje_grasas (default 25), kcal_objetivo (nullable), updated_at`. Un solo registro por paciente (no histórico).
+
+- **Solapa "Documentos" eliminada** de la ficha de paciente (era un placeholder "Próximamente" sin componente propio, nunca se implementó — duplicaba a "Archivos", que sí funciona con Google Drive).
+
+## CRITICAL — Next.js Client Router Cache: `force-dynamic` NO alcanza para mutación + navegación (agregado 2026-07)
+
+Bug de fondo cazado dos veces (tabs de paciente vía `?tab=`, y alta de paciente redirigiendo a `/pacientes`): `export const dynamic = 'force-dynamic'` en una page.tsx solo desactiva el **Data Cache del servidor** — Next.js 14 sigue sirviendo desde el **Client-side Router Cache** del navegador (`staleTimes.dynamic`, default 30s) al navegar con `<Link>` o `router.push()`, aunque la página de destino sea `force-dynamic`. Síntoma: la URL cambia pero el contenido y los estados visuales (ej. clase de tab activo) no se actualizan, como si el click no hubiera hecho nada.
+
+**Patrón correcto:**
+- Navegación por `<Link href="?param=X">` repetida sobre la misma ruta (ej. tabs): agregar `onClick={() => router.refresh()}` al Link, preservando el `href` normal — no reemplazar por botón.
+- Mutación (POST/insert) seguida de `router.push(destino)`: el orden importa. `router.refresh()` invalida el cache de la ruta **actual**, no la de destino — hay que hacer `router.push(destino)` primero y `router.refresh()` inmediatamente después, nunca al revés.
+- No usar `staleTimes: { dynamic: 0 }` en `next.config.js` como fix global salvo que se evalúe explícitamente el impacto en toda la app (más fetches a Supabase en cada navegación) — se prefirió el fix quirúrgico por componente.
+- Antes de asumir que un "no se ve reflejado tras guardar" es este bug: confirmar contra el síntoma real. Si el registro nunca aparece ni esperando ni con hard refresh/incógnito, probablemente NO es cache — puede ser un problema real de query (paginación, orden, filtro, RLS). Ya pasó una vez: se asumió cache sin verificar y la causa real era paginación alfabética + un buscador que solo filtraba el array de la página cargada en vez de consultar Supabase (ver fix en `ListaPacientes.tsx` — búsqueda con debounce 300ms + `ilike` contra la base).
 
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
@@ -260,21 +277,27 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-06-13_
+_Actualizado el 2026-07-14_
 
 ```
-fd5bcd0 test: trigger push temporal para validar fix de pull rebase
-99a0e58 fix: script CLAUDE.md - pull rebase antes del push para evitar non-fast-forward
-ec8b475 chore: quitar trigger push temporal del workflow CLAUDE.md
-23a84d8 docs: CLAUDE.md - commits del dia 2026-06-13
-a16804e fix: agregar trigger push para forzar validacion en GitHub
-95bc863 fix: workflow CLAUDE.md - mover logica a script bash separado
-7e18109 fix: workflow CLAUDE.md - simplificar para compatibilidad con parser de GitHub
-9083ae5 Update update-claude-md.yml
-23e894b Update update-claude-md.yml
-ba2c891 fix: workflow update-claude-md — corregir error YAML en heredoc
-8d8326a feat: GitHub Action que actualiza Google Doc de módulos KLIA diariamente
-0f6bcde docs: GitHub Action para actualizar CLAUDE.md diariamente
-3505f38 feat: planes consumen modulos_config como fuente única
-347828e fix: PlanFeaturesEditor filtra features por plan_id
+b488d92 fix: cambia horario de cron del doc de Google Drive para evitar congestion de GitHub Actions a la hora en punto
+7823025 fix: corrige efecto de rebote visual del icono de carga en buscador de pacientes
+7a08b11 fix: busqueda de pacientes ahora consulta supabase en vez de filtrar solo la pagina actual
+27ba53c fix: evita lista de pacientes stale tras alta (force-dynamic + orden correcto push/refresh)
+97bfb4e fix: agrega router.refresh() a navegacion por tabs via query param para evitar router cache stale de nextjs
+6743c01 chore: renombra solapa a Antropometria (mas corto y termino tecnico correcto)
+c8ec029 fix: elimina solapa Documentos de ficha de paciente (placeholder sin funcionalidad, duplicaba Archivos)
+8c897d8 feat: agrega slideovers de menu semanal y distribucion de macros
+01d971e feat: agrega variante xl (760px) a SlideOver reutilizable
+06d1ee6 docs: documentar modulo de nutricion/antropometria en CLAUDE.md
+bf09b4c fix: mejorar layout del SlideOver de antropometria (ancho lg, grid flexible, breakpoint lg)
+5435420 chore: corrige indentacion de AntropometriaSection tras edicion manual
+8c1a7b9 Commit and push
+68d04ad Enhance input styling in NuevaNotaForm component
+ca17165 Change profile specialization check from 'Nutricionista' to 'Nutrición'
+b937bee Change 'Nutricionista' to 'Nutrición' in PacienteTabs
+3b99d72 fix: restaura logo.svg eliminado accidentalmente
+23b1510 chore: elimina patch temporal
+4e3b064 feat: agrega antropometria, calculo en vivo de IMC/GEB y tab de composicion corporal
+6171107 fix: corregir calculo de monto pendiente en ficha de paciente para descontar pagos parciales
 ```
