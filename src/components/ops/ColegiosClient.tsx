@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import SlideOver from '@/components/ui/SlideOver'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import type { Colegio, CodigoDescuento } from '@/types/database'
 
@@ -216,11 +217,52 @@ export default function ColegiosClient({ colegiosIniciales, codigosIniciales }: 
   const [codigoEditando, setCodigoEditando] = useState<CodigoDescuento | null>(null)
   const [creandoCodigo, setCreandoCodigo] = useState(false)
 
+  const [codigoEliminando, setCodigoEliminando] = useState<CodigoDescuento | null>(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [eliminarError, setEliminarError] = useState<string | null>(null)
+
   function refetch() {
     setColegioEditando(null)
     setCreandoColegio(false)
     setCodigoEditando(null)
     setCreandoCodigo(false)
+    router.refresh()
+  }
+
+  function abrirEliminarCodigo(cod: CodigoDescuento) {
+    setCodigoEliminando(cod)
+    setEliminarError(null)
+  }
+
+  async function confirmarEliminarCodigo() {
+    if (!codigoEliminando) return
+    setEliminando(true)
+    setEliminarError(null)
+    const res = await fetch(`/api/ops/codigos-descuento/${codigoEliminando.id}`, { method: 'DELETE' })
+    const data = await res.json().catch(() => ({}))
+    setEliminando(false)
+    if (!res.ok) {
+      setEliminarError(data.error ?? 'No se pudo eliminar el código.')
+      return
+    }
+    setCodigoEliminando(null)
+    router.refresh()
+  }
+
+  async function desactivarCodigoEnLugarDeEliminar() {
+    if (!codigoEliminando) return
+    setEliminando(true)
+    const res = await fetch(`/api/ops/codigos-descuento/${codigoEliminando.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: false }),
+    })
+    setEliminando(false)
+    if (!res.ok) {
+      setEliminarError('No se pudo desactivar el código.')
+      return
+    }
+    setCodigoEliminando(null)
     router.refresh()
   }
 
@@ -320,7 +362,22 @@ export default function ColegiosClient({ colegiosIniciales, codigosIniciales }: 
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => setCodigoEditando(cod)} className="text-primary hover:underline text-sm font-medium">Editar</button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setCodigoEditando(cod)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors"
+                        title="Editar"
+                      >
+                        <span className="material-symbols-outlined text-base">edit</span>
+                      </button>
+                      <button
+                        onClick={() => abrirEliminarCodigo(cod)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Eliminar"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -346,6 +403,35 @@ export default function ColegiosClient({ colegiosIniciales, codigosIniciales }: 
           onClose={() => { setCreandoCodigo(false); setCodigoEditando(null) }}
           onSaved={refetch}
         />
+      )}
+
+      {codigoEliminando && (
+        codigoEliminando.usos_actuales > 0 ? (
+          <ConfirmDialog
+            open={true}
+            title={`No se puede eliminar "${codigoEliminando.codigo}"`}
+            message={
+              eliminarError
+                ?? `Este código ya fue usado por ${codigoEliminando.usos_actuales} profesional(es), no se puede eliminar — desactivalo en su lugar.`
+            }
+            confirmLabel={eliminando ? 'Desactivando...' : 'Desactivar en su lugar'}
+            cancelLabel="Cancelar"
+            variant="warning"
+            onConfirm={desactivarCodigoEnLugarDeEliminar}
+            onCancel={() => setCodigoEliminando(null)}
+          />
+        ) : (
+          <ConfirmDialog
+            open={true}
+            title={`Eliminar código "${codigoEliminando.codigo}"`}
+            message={eliminarError ?? `¿Confirmás que querés eliminar este código de descuento? Esta acción no se puede deshacer.`}
+            confirmLabel={eliminando ? 'Eliminando...' : 'Eliminar'}
+            cancelLabel="Cancelar"
+            variant="danger"
+            onConfirm={confirmarEliminarCodigo}
+            onCancel={() => setCodigoEliminando(null)}
+          />
+        )
       )}
     </div>
   )

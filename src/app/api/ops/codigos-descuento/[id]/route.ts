@@ -47,3 +47,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const supabase = serviceClient()
+
+  const { data: codigo, error: fetchError } = await supabase
+    .from('codigos_descuento')
+    .select('id, codigo, usos_actuales')
+    .eq('id', params.id)
+    .single()
+
+  if (fetchError || !codigo) {
+    return NextResponse.json({ error: 'Código no encontrado' }, { status: 404 })
+  }
+
+  if (codigo.usos_actuales > 0) {
+    return NextResponse.json(
+      { error: `Este código ya fue usado por ${codigo.usos_actuales} profesional(es), no se puede eliminar — desactivalo en su lugar` },
+      { status: 409 },
+    )
+  }
+
+  const { error } = await supabase.from('codigos_descuento').delete().eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
