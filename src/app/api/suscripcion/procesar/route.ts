@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { Payment, PreApproval } from 'mercadopago'
+import { PreApproval } from 'mercadopago'
 import { mpClient, getPlanInfo, type PlanKlia, type Modalidad } from '@/lib/mercadopago'
 import type { Database } from '@/types/database'
 
@@ -41,38 +41,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Modalidad no disponible para este plan' }, { status: 400 })
   }
 
-  const paymentClient = new Payment(mpClient)
-  const payment = await paymentClient.create({
-    body: {
-      transaction_amount: monto,
-      token: formData.token as string | undefined,
-      payment_method_id: formData.payment_method_id as string | undefined,
-      issuer_id: formData.issuer_id != null ? Number(formData.issuer_id) : undefined,
-      installments: (formData.installments as number | undefined) ?? 1,
-      payer: {
-        email: (formData.payer as { email?: string } | undefined)?.email ?? user.email!,
-        identification: (formData.payer as { identification?: { type: string; number: string } } | undefined)?.identification,
-      },
-      description: `${planInfo.nombre} — ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
-    },
-  })
-
-  const paymentStatus = payment.status
-  if (paymentStatus !== 'approved' && paymentStatus !== 'in_process') {
-    return NextResponse.json(
-      { error: `Pago ${paymentStatus ?? 'rechazado'}. Verificá los datos de tu tarjeta.` },
-      { status: 422 },
-    )
-  }
-
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
-  let preapprovalId: string | undefined
 
+  const preApprovalClient = new PreApproval(mpClient)
+
+  let sub
   try {
-    const preApprovalClient = new PreApproval(mpClient)
-    const sub = await preApprovalClient.create({
+    sub = await preApprovalClient.create({
       body: {
         reason: `${planInfo.nombre} — ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
+        payer_email: (formData.payer as { email?: string } | undefined)?.email ?? user.email!,
+        card_token_id: formData.token as string | undefined,
         auto_recurring: {
           frequency: 1,
           frequency_type: 'months',
@@ -80,14 +59,23 @@ export async function POST(req: NextRequest) {
           currency_id: 'ARS',
         },
         back_url: `${appUrl}/suscripcion/resultado`,
-        payer_email: (formData.payer as { email?: string } | undefined)?.email ?? user.email!,
         status: 'authorized',
-        card_token_id: formData.token as string | undefined,
       },
     })
-    preapprovalId = sub.id
-  } catch {
-    // PreApproval may fail for non-card payment methods; proceed without it
+  } catch (err) {
+    console.error('[procesar] PreApproval.create falló:', err)
+    return NextResponse.json(
+      { error: 'No pudimos procesar el pago. Verificá los datos de la tarjeta e intentá de nuevo.' },
+      { status: 422 },
+    )
+  }
+
+  if (sub.status !== 'authorized') {
+    console.error('[procesar] PreApproval creado pero no autorizado:', sub.status, sub.id)
+    return NextResponse.json(
+      { error: `El pago no pudo autorizarse (estado: ${sub.status}).` },
+      { status: 422 },
+    )
   }
 
   const db = serviceClient()
@@ -96,23 +84,21 @@ export async function POST(req: NextRequest) {
     terapeuta_id: user.id,
     plan,
     modalidad,
-    mp_preapproval_id: preapprovalId ?? null,
-    estado: paymentStatus === 'approved' ? 'authorized' : 'pending',
+    mp_preapproval_id: sub.id,
+    estado: 'authorized',
     monto,
     suscripcion_inicio: new Date().toISOString(),
   })
 
-  if (paymentStatus === 'approved') {
-    await db
-      .from('profiles')
-      .update({
-        estado_cuenta: 'activa',
-        plan: plan as 'esencial' | 'profesional' | 'premium',
-        suscripcion_inicio: new Date().toISOString(),
-        mp_subscription_id: preapprovalId ?? null,
-      })
-      .eq('id', user.id)
-  }
+  await db
+    .from('profiles')
+    .update({
+      estado_cuenta: 'activa',
+      plan: plan as 'esencial' | 'profesional' | 'premium',
+      suscripcion_inicio: new Date().toISOString(),
+      mp_subscription_id: sub.id,
+    })
+    .eq('id', user.id)
 
-  return NextResponse.json({ ok: true, status: paymentStatus })
+  return NextResponse.json({ ok: true, status: sub.status })
 }

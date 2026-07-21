@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.type !== 'subscription_preapproval') {
+      console.log('[webhook suscripcion] notificacion no manejada:', body.type, dataId)
       return NextResponse.json({ ok: true })
     }
 
