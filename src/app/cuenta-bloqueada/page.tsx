@@ -41,11 +41,13 @@ export default async function CuentaBloqueadaPage() {
       .not('slug', 'is', null),
   ])
 
-  if (profile?.estado_cuenta !== 'bloqueada') redirect('/dashboard')
+  if (profile?.estado_cuenta !== 'bloqueada' && profile?.estado_cuenta !== 'cancelada') redirect('/dashboard')
 
-  const motivoBloqueo = (!profile.mp_preapproval_id || !ultimaSuscripcion)
-    ? 'trial_vencido'
-    : 'pago_fallido'
+  const motivoBloqueo = profile.estado_cuenta === 'cancelada'
+    ? 'cancelada'
+    : (!profile.mp_preapproval_id || !ultimaSuscripcion)
+      ? 'trial_vencido'
+      : 'pago_fallido'
 
   const nombre = profile?.nombre ?? ''
 
@@ -144,6 +146,58 @@ export default async function CuentaBloqueadaPage() {
                 </div>
               ))}
             </div>
+
+            <div style={{ maxWidth: 720, margin: '28px auto 0', textAlign: 'center', fontSize: 13.5, color: '#5B6472' }}>
+              ¿Tenés dudas?{' '}
+              <a href="mailto:hola@klia.com.ar" style={{ color: '#1F2937', fontWeight: 600, textDecoration: 'none' }}>
+                Hablá con nuestro equipo
+              </a>
+              <span style={{ display: 'inline-block', width: 3, height: 3, borderRadius: '50%', background: '#AEB5C0', verticalAlign: 'middle', margin: '0 10px' }} />
+              <Link href="/planes" style={{ color: '#1F2937', fontWeight: 600, textDecoration: 'none' }}>
+                Comparar planes en detalle
+              </Link>
+            </div>
+          </>
+        )}
+
+        {/* ======================== SUSCRIPCIÓN CANCELADA ======================== */}
+        {motivoBloqueo === 'cancelada' && (
+          <>
+            <div style={{ maxWidth: 640, margin: '0 auto 36px', textAlign: 'center' }}>
+              <div style={{
+                width: 64, height: 64, margin: '0 auto 18px', borderRadius: 18,
+                display: 'grid', placeItems: 'center', position: 'relative',
+                background: 'linear-gradient(145deg, #E9EAFB 0%, #C7C9F5 100%)',
+                color: '#4F46E5',
+                boxShadow: '0 8px 22px rgba(79,70,229,0.16), inset 0 1px 0 rgba(255,255,255,0.4)',
+              }}>
+                <svg viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" strokeWidth="1.7" fill="none">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, color: '#5B6472', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4F46E5', display: 'inline-block' }} />
+                Suscripción cancelada
+              </div>
+              <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.025em', margin: '0 0 12px', lineHeight: 1.1 }}>
+                Tu suscripción fue cancelada
+              </h1>
+              <p style={{ fontSize: 16, color: '#5B6472', margin: 0, lineHeight: 1.6 }}>
+                {nombre && <><b style={{ color: '#1F2937', fontWeight: 600 }}>{nombre}</b>, </>}
+                podés reactivarla eligiendo un plan cuando quieras — tus datos, pacientes e historial clínico siguen guardados.
+              </p>
+            </div>
+
+            <PlanesSection
+              modulos={(modulosData ?? []) as ModuloItem[]}
+              precios={(planesData ?? []).reduce((acc, p) => {
+                if (p.slug) acc[p.slug] = { precio_mensual: Number(p.precio_mensual), precio_anual_mensual: p.precio_anual_mensual != null ? Number(p.precio_anual_mensual) : null }
+                return acc
+              }, {} as Record<string, { precio_mensual: number; precio_anual_mensual: number | null }>)}
+              codigoAplicadoInicial={codigoAplicadoInicial}
+              colegioAplicadoNombre={colegioAplicadoNombre}
+            />
 
             <div style={{ maxWidth: 720, margin: '28px auto 0', textAlign: 'center', fontSize: 13.5, color: '#5B6472' }}>
               ¿Tenés dudas?{' '}
