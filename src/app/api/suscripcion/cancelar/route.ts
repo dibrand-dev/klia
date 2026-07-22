@@ -31,15 +31,24 @@ export async function PATCH() {
     return NextResponse.json({ error: 'No se encontró suscripción activa' }, { status: 404 })
   }
 
-  if (sub.mp_preapproval_id) {
-    try {
-      await preApproval.update({
-        id: sub.mp_preapproval_id,
-        body: { status: 'cancelled' },
-      })
-    } catch {
-      // Continuar aunque MP falle — actualizamos la DB de todas formas
-    }
+  if (!sub.mp_preapproval_id) {
+    return NextResponse.json(
+      { error: 'Esta suscripción no tiene una suscripción de Mercado Pago asociada. Contactá a soporte.' },
+      { status: 422 },
+    )
+  }
+
+  try {
+    await preApproval.update({
+      id: sub.mp_preapproval_id,
+      body: { status: 'cancelled' },
+    })
+  } catch (err) {
+    console.error('[cancelar] preApproval.update falló:', err)
+    return NextResponse.json(
+      { error: 'No pudimos cancelar tu suscripción en Mercado Pago. Intentá de nuevo o contactá a soporte.' },
+      { status: 502 },
+    )
   }
 
   const db = serviceClient()
