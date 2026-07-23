@@ -904,6 +904,48 @@ export type Database = {
           },
         ]
       }
+      testimonios: {
+        Row: {
+          id: string
+          quote: string
+          nombre: string
+          rol: string
+          avatar_url: string | null
+          color_bg: string | null
+          iniciales: string | null
+          orden: number
+          activo: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          quote: string
+          nombre: string
+          rol: string
+          avatar_url?: string | null
+          color_bg?: string | null
+          iniciales?: string | null
+          orden?: number
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          quote?: string
+          nombre?: string
+          rol?: string
+          avatar_url?: string | null
+          color_bg?: string | null
+          iniciales?: string | null
+          orden?: number
+          activo?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       colegios: {
         Row: {
           id: string
@@ -1471,6 +1513,7 @@ export type ArchivoPaciente = Database['public']['Tables']['archivos_paciente'][
 export type InformeMedico = Database['public']['Tables']['informes_medicos']['Row']
 export type MenuSemanalItem = Database['public']['Tables']['menu_semanal']['Row']
 export type DistribucionMacros = Database['public']['Tables']['distribucion_macros']['Row']
+export type Testimonio = Database['public']['Tables']['testimonios']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]
