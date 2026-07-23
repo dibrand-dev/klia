@@ -158,11 +158,15 @@ Todas las tablas de precios/descuentos tienen RLS habilitado. Patrón de policie
 - **`colegios`**: policy `authenticated_select_own_colegio` — mismo patrón, solo el colegio del código que el profesional tiene aplicado.
 - Ninguna de estas policies quedó como migración en `supabase/migrations/` — se corrieron directo en el SQL Editor de Supabase durante la sesión que las introdujo. Si se necesita reconstruir el schema desde cero, hay que volver a aplicarlas manualmente (no están en el repo).
 
-## Pendiente — Mercado Pago sandbox
+## Suscripciones / Mercado Pago — flujo de cobro (agregado/corregido 2026-07)
 
-`src/lib/mercadopago.ts` y otros 3 call sites (`src/app/api/pagos/webhook/route.ts`, `src/app/checkout/page.tsx`, `src/app/planes/page.tsx`) usan `MP_ACCESS_TOKEN_PROD`/`MP_PUBLIC_KEY_PROD` de forma fija — no hay switch por variable de entorno para usar `MP_ACCESS_TOKEN_TEST`/`MP_PUBLIC_KEY_TEST` en sandbox pese a que `MP_USE_PRODUCTION` está listado en Environment variables. Sin este switch no se puede probar el flujo de cobro (incluidos descuentos institucionales) sin tocar producción real.
-
-`profiles.mp_subscription_id` y `suscripciones.mp_preapproval_id` guardan el mismo dato duplicado en dos tablas (ver `procesar/route.ts` y `webhook/route.ts`) — pendiente de consolidar, cambio de esquema que toca varios call sites, evaluar en un prompt aislado.
+- **Switch sandbox/producción resuelto** en `src/lib/mercadopago.ts`: `usarProduccion = process.env.MP_USE_PRODUCTION !== 'false'` (default producción si no está seteada — nunca cae en sandbox por accidente). Exporta `mpClient`, `mpAccessToken` y `mpPublicKey` ya resueltos; todo el resto del código (backend y frontend) importa estos valores en vez de leer `MP_ACCESS_TOKEN_PROD`/`TEST` directo. El Payment Brick (`src/components/suscripcion/CheckoutBrick.tsx`) recibe `mpPublicKey` como prop desde un server component (`checkout/page.tsx`, `planes/page.tsx`) — no hay `NEXT_PUBLIC_*` involucrada, así que no hay riesgo de valor congelado en build time (ambas rutas son `ƒ` dinámicas, confirmado en build output).
+- **`src/app/api/suscripcion/procesar/route.ts`** — creación de suscripción con **una sola llamada** a `PreApproval.create({ status: 'authorized', card_token_id })`. Antes hacía `Payment.create()` + `PreApproval.create()` reusando el mismo token de tarjeta para las dos llamadas (los tokens de MP son de un solo uso) — la segunda llamada fallaba silenciosamente dentro de un `try/catch` vacío, dejando `mp_preapproval_id: null` en `suscripciones` pese a que el cobro sí se había hecho. Ahora: si `PreApproval.create()` falla o `sub.status !== 'authorized'`, se loggea con `console.error` y se devuelve 422 — nunca se inserta una fila con estado inconsistente.
+- **`src/app/api/suscripcion/webhook/route.ts`** — solo maneja `type === 'subscription_preapproval'`; cualquier otro `type` (ej. `payment`) se loggea (`console.log`) antes de descartarse, en vez de un `return` mudo — para que si aparece un patrón de notificaciones no manejadas, quede rastro.
+- **`src/app/api/suscripcion/cancelar/route.ts`** — si `preApproval.update()` (cancelación real en MP) falla, ya NO se marca `estado: 'cancelled'` en la base ni se muestra éxito al usuario — devuelve 502 con mensaje claro, loggeando el error completo. Si `mp_preapproval_id` es `null` (fila inconsistente), devuelve 422 explicando que no hay suscripción de MP asociada, en vez de "cancelar" en silencio sin tocar nada del lado real de Mercado Pago.
+- **Fuente única para el ID de suscripción de MP: `suscripciones.mp_preapproval_id`** (ya no `profiles.mp_subscription_id`, que se escribía en 2 lugares y nunca se leía en ningún otro — eliminado). **Ojo con la trampa**: `profiles` tiene su propia columna `mp_preapproval_id` (confirmado que existe en el schema real), pero es de una feature totalmente distinta y no relacionada — el cluster `mp_access_token`/`mp_refresh_token`/`mp_token_expiry`/`mp_email`/`mp_nombre`/`mp_public_key`/`mp_user_id`/`mp_preapproval_id` en `profiles` pertenece al OAuth de "cada profesional conecta su propia cuenta de MP" (para cobrar a sus pacientes), no a la suscripción de KLIA. Nada en el código escribe nunca esa columna de `profiles` — si algo la lee esperando el dato de la suscripción de KLIA, va a estar siempre `null` (bug ya cazado y corregido en `cuenta-bloqueada/page.tsx`, que leía mal esa columna).
+- **`src/app/cuenta-bloqueada/page.tsx`** — gate de acceso: acepta `estado_cuenta === 'bloqueada'` (trial vencido / pago fallido) **y** `'cancelada'` (antes solo `'bloqueada'`, lo que generaba un loop infinito de redirects entre este archivo y `(dashboard)/layout.tsx` para cuentas canceladas — los dos archivos decidían de forma contradictoria si `'cancelada'` era válida acá). Muestra 3 mensajes distintos según `motivoBloqueo` (`trial_vencido` / `pago_fallido` / `cancelada`) — el de cancelada NO tiene tono de "período de prueba" (ya fue cliente pagando), ofrece reactivar eligiendo un plan.
+- Endpoint temporal `/api/ops/diagnostico-precio` (usado para validar cálculo de descuento institucional en producción) ya cumplió su función y fue eliminado.
 
 ## Plans and access control
 - Esencial: agenda, pacientes, historial, calendar sync
@@ -277,9 +281,17 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-07-14_
+_Actualizado el 2026-07-23_
 
 ```
+a0b0ba1 chore: commit vacio para verificar disparo de webhook de deploy en Vercel
+deb0db9 chore: eliminar campo mp_subscription_id sin uso, corregir lectura de mp_preapproval_id en cuenta-bloqueada
+e112887 chore: eliminar endpoint temporal de diagnóstico de precios, ya cumplió su función
+18bcd94 fix: eliminar loop de redirects para cuentas canceladas, mostrar mensaje diferenciado de reactivacion
+e9ca176 fix: no marcar suscripcion como cancelada si la llamada a preApproval.update falla, evita estado desincronizado con MP
+b410893 fix: unificar creacion de suscripcion en una sola llamada a PreApproval con status authorized, elimina reuso de token
+a68aad5 feat: reemplazar link Editar por iconos y agregar eliminacion de codigos de descuento con proteccion de uso
+a880b68 docs: actualiza CLAUDE.md con modulo de nutricion completo, fix de router cache, y ultimos cambios
 b488d92 fix: cambia horario de cron del doc de Google Drive para evitar congestion de GitHub Actions a la hora en punto
 7823025 fix: corrige efecto de rebote visual del icono de carga en buscador de pacientes
 7a08b11 fix: busqueda de pacientes ahora consulta supabase en vez de filtrar solo la pagina actual
@@ -292,12 +304,4 @@ c8ec029 fix: elimina solapa Documentos de ficha de paciente (placeholder sin fun
 06d1ee6 docs: documentar modulo de nutricion/antropometria en CLAUDE.md
 bf09b4c fix: mejorar layout del SlideOver de antropometria (ancho lg, grid flexible, breakpoint lg)
 5435420 chore: corrige indentacion de AntropometriaSection tras edicion manual
-8c1a7b9 Commit and push
-68d04ad Enhance input styling in NuevaNotaForm component
-ca17165 Change profile specialization check from 'Nutricionista' to 'Nutrición'
-b937bee Change 'Nutricionista' to 'Nutrición' in PacienteTabs
-3b99d72 fix: restaura logo.svg eliminado accidentalmente
-23b1510 chore: elimina patch temporal
-4e3b064 feat: agrega antropometria, calculo en vivo de IMC/GEB y tab de composicion corporal
-6171107 fix: corregir calculo de monto pendiente en ficha de paciente para descontar pagos parciales
 ```
