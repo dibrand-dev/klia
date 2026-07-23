@@ -86,9 +86,9 @@ export default async function PrestadorDetallePage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
         {/* Datos del perfil */}
-        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
+        <div className="md:col-span-3 bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
           <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Datos profesionales</h2>
           <dl className="kv">
             <dt>Email</dt><dd>{profile.email}</dd>
@@ -101,7 +101,7 @@ export default async function PrestadorDetallePage({
         </div>
 
         {/* Métricas de actividad */}
-        <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
+        <div className="md:col-span-2 bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6">
           <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Actividad</h2>
           <div className="grid grid-cols-2 gap-4">
             {[
