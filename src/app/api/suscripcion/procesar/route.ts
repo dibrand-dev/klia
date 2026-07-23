@@ -96,7 +96,6 @@ export async function POST(req: NextRequest) {
       estado_cuenta: 'activa',
       plan: plan as 'esencial' | 'profesional' | 'premium',
       suscripcion_inicio: new Date().toISOString(),
-      mp_subscription_id: sub.id,
     })
     .eq('id', user.id)
 

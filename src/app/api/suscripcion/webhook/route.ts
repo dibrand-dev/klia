@@ -93,7 +93,6 @@ export async function POST(req: NextRequest) {
             plan: sub.plan as 'esencial' | 'profesional' | 'premium',
             suscripcion_inicio: new Date().toISOString(),
             suscripcion_fin: detail.next_payment_date ?? null,
-            mp_subscription_id: preapprovalId,
           })
           .eq('id', sub.terapeuta_id)
 

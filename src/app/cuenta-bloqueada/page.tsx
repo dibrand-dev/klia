@@ -22,11 +22,11 @@ export default async function CuentaBloqueadaPage() {
 
   const [{ data: profile }, { data: ultimaSuscripcion }, { data: modulosData }, { data: planesData }] = await Promise.all([
     supabase.from('profiles')
-      .select('plan, estado_cuenta, mp_preapproval_id, trial_fin, nombre, codigo_descuento_id')
+      .select('plan, estado_cuenta, trial_fin, nombre, codigo_descuento_id')
       .eq('id', user.id)
       .single(),
     supabase.from('suscripciones')
-      .select('estado, updated_at')
+      .select('estado, updated_at, mp_preapproval_id')
       .eq('terapeuta_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -45,7 +45,7 @@ export default async function CuentaBloqueadaPage() {
 
   const motivoBloqueo = profile.estado_cuenta === 'cancelada'
     ? 'cancelada'
-    : (!profile.mp_preapproval_id || !ultimaSuscripcion)
+    : (!ultimaSuscripcion?.mp_preapproval_id || !ultimaSuscripcion)
       ? 'trial_vencido'
       : 'pago_fallido'
 
