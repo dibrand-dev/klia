@@ -70,6 +70,13 @@ export default function PlanForm({ plan }: Props) {
       if (err) { setError(err.message); setLoading(false); return }
     }
 
+    try {
+      await fetch('/api/ops/revalidate-landing', { method: 'POST' })
+    } catch (err) {
+      console.error('No se pudo revalidar el landing:', err)
+      // No bloquea el flujo — el guardado del precio ya se hizo, esto es best-effort
+    }
+
     router.push('/ops/planes')
     router.refresh()
   }
