@@ -1,0 +1,65 @@
+/* Drawer de detalle de nota clínica — calcado de #drawer del diseño Claude Design (Fase 2b) */
+
+.drawer-hdr {
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-hdr .t { font-size: 13px; color: var(--muted); }
+.drawer-hdr .t b { color: var(--ink); font-weight: 600; }
+.drawer-hdr .d-close {
+  margin-left: auto;
+  width: 30px; height: 30px; display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); cursor: pointer; flex: none;
+}
+.drawer-hdr .d-close:hover { background: var(--surface-2); }
+.drawer-hdr .d-close svg { width: 15px; height: 15px; stroke: var(--ink-2); stroke-width: 1.8; fill: none; }
+
+.drawer-body { padding: 22px 24px; }
+.drawer-body h2 {
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.drawer-body .d-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.drawer-sec { padding: 16px 0; border-top: 1px solid var(--border); }
+.drawer-sec:first-of-type { border-top: none; padding-top: 0; }
+.drawer-sec h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-2);
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.drawer-sec .contenido {
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.drawer-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+}
+.drawer-foot .df-meta { margin-left: auto; font-size: 12px; color: var(--muted-2); }
+.drawer-foot .df-danger { color: var(--danger); border-color: var(--danger-soft); }
+.drawer-foot .df-danger:hover { background: var(--danger-soft); }

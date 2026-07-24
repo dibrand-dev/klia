@@ -1,5 +1,6 @@
 'use client'
 
+import './paciente-tabs.css'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -43,7 +44,7 @@ export default function PacienteTabs({
   ]
 
   return (
-    <div className="flex items-center gap-6 md:gap-8 mb-8 border-b border-outline-variant/30 overflow-x-auto whitespace-nowrap">
+    <div className="tabs">
       {tabs.map((tab) => {
         const isActive = tab.key === active
         const href =
@@ -62,25 +63,11 @@ export default function PacienteTabs({
             key={tab.key}
             href={href}
             onClick={() => router.refresh()}
-            className={cn(
-              'pb-4 font-bold text-sm transition-colors flex items-center gap-2 flex-shrink-0',
-              isActive
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-slate-400 hover:text-slate-600',
-            )}
+            className={cn('tab', isActive && 'active')}
           >
             {tab.label}
             {tab.badge !== undefined && tab.badge > 0 && (
-              <span
-                className={cn(
-                  'text-[10px] px-2 py-0.5 rounded-full font-bold',
-                  isActive
-                    ? 'bg-primary-container text-white'
-                    : 'bg-surface-container text-on-surface-variant',
-                )}
-              >
-                {tab.badge}
-              </span>
+              <span className="badge">{tab.badge}</span>
             )}
           </Link>
         )

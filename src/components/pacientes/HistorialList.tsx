@@ -1,13 +1,16 @@
 'use client'
 
+import './historial-list.css'
+import './nota-drawer.css'
 import { useState, useEffect } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 import type { NotaClinica, TurnoRow } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
-import NotaDetalleEditor from './NotaDetalleEditor'
+import NotaContenido, { isHtmlEmpty } from './NotaContenido'
 
 function stripHtmlAndMarkdown(texto: string): string {
   return texto
@@ -49,6 +52,10 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
   const [selectedNota, setSelectedNota] = useState<NotaClinica | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editando, setEditando] = useState(false)
+  const [contenido, setContenido] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [guardarError, setGuardarError] = useState<string | null>(null)
 
   useEffect(() => {
     setLocalNotas(notas)
@@ -64,6 +71,32 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localNotas])
 
+  function abrirNota(nota: NotaClinica) {
+    setSelectedNota(nota)
+    setEditando(false)
+    setContenido(nota.contenido)
+    setGuardarError(null)
+    setConfirmDeleteId(null)
+  }
+
+  function cerrarDrawer() {
+    setSelectedNota(null)
+    setEditando(false)
+    setConfirmDeleteId(null)
+  }
+
+  async function handleGuardar() {
+    if (!selectedNota || isHtmlEmpty(contenido)) return
+    setGuardando(true)
+    setGuardarError(null)
+    const supabase = createClient()
+    const { error } = await supabase.from('notas_clinicas').update({ contenido }).eq('id', selectedNota.id)
+    if (error) { setGuardarError('Error al guardar. Intentá de nuevo.'); setGuardando(false); return }
+    setEditando(false)
+    setGuardando(false)
+    router.refresh()
+  }
+
   async function handleDelete(notaId: string) {
     setDeletingId(notaId)
     const supabase = createClient()
@@ -74,7 +107,7 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
       return
     }
     setLocalNotas((prev) => prev.filter((n) => n.id !== notaId))
-    if (selectedNota?.id === notaId) setSelectedNota(null)
+    if (selectedNota?.id === notaId) cerrarDrawer()
     setConfirmDeleteId(null)
     setDeletingId(null)
     router.refresh()
@@ -89,6 +122,25 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
   const sessionNoMap = new Map<string, number>()
   chronological.forEach((n, idx) => sessionNoMap.set(n.id, idx + 1))
 
+  function sesionMeta(nota: NotaClinica) {
+    const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
+    const modalidad = turno?.modalidad
+    const modalidadLabel =
+      modalidad === 'videollamada' ? 'Virtual'
+      : modalidad === 'telefonica' ? 'Telefónica'
+      : modalidad === 'presencial' ? 'Presencial'
+      : null
+    const modalidadChipClass = modalidad === 'videollamada' ? 'online' : modalidad === 'presencial' ? 'in-person' : 'neutral'
+    const duracionLabel = turno?.duracion_min ? `${turno.duracion_min} min` : null
+    const isCompletada = turno?.estado === 'realizado'
+    const isCancelada = turno?.estado === 'cancelado'
+    const isNoAsistio = turno?.estado === 'no_asistio'
+    const statusLabel = isCompletada ? 'Completada' : isCancelada ? 'Cancelada' : isNoAsistio ? 'No asistió' : null
+    const statusChipClass = isCompletada ? 'ok' : isCancelada ? 'danger' : isNoAsistio ? 'warn' : 'neutral'
+    const sessionNo = sessionNoMap.get(nota.id) ?? 0
+    return { modalidadLabel, modalidadChipClass, duracionLabel, statusLabel, statusChipClass, sessionNo }
+  }
+
   const grouped: Record<string, NotaClinica[]> = {}
   for (const nota of localNotas) {
     const key = format(parseISO(nota.fecha), 'yyyy-MM')
@@ -97,190 +149,89 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
   }
   const sortedMonths = Object.keys(grouped).sort().reverse()
 
-  const slTitle = selectedNota
-    ? format(parseISO(selectedNota.fecha), "EEEE d 'de' MMMM 'de' yyyy", { locale: es })
+  const selMeta = selectedNota ? sesionMeta(selectedNota) : null
+  const selFecha = selectedNota ? parseISO(selectedNota.fecha) : null
+  const selDiaHoraStr = selectedNota
+    ? `${format(selFecha!, "EEEE d MMM yyyy", { locale: es })} · ${format(parseISO(selectedNota.created_at), 'HH:mm')}`
     : ''
-  const slSubtitle = selectedNota
-    ? `${format(parseISO(selectedNota.created_at), 'HH:mm')} hs`
-    : undefined
+  const selTitulo = selectedNota
+    ? (selMeta!.sessionNo > 0 ? `Sesión Individual #${selMeta!.sessionNo}` : format(selFecha!, "d 'de' MMMM", { locale: es }))
+    : ''
+  const ultimaEdicionStr = selectedNota && selectedNota.updated_at !== selectedNota.created_at
+    ? `Última edición: ${format(parseISO(selectedNota.updated_at), "d MMM, HH:mm", { locale: es })}`
+    : null
 
   return (
     <>
-      <div className="space-y-12 pt-5">
+      <div className="history">
         {sortedMonths.map((monthKey) => {
           const [year, mm] = monthKey.split('-')
           const monthLabel = `${MONTH_FULL[mm]} ${year}`
           const monthNotas = grouped[monthKey]
           return (
-            <div key={monthKey}>
-              <h2 className="text-[11px] font-extrabold text-slate-300 tracking-[0.2em] uppercase mb-6 flex items-center gap-4">
-                {monthLabel}
-                <span className="h-[1px] flex-1 bg-outline-variant/20" />
-              </h2>
+            <div key={monthKey} className="month-group">
+              <div className="month-hdr">
+                <span className="m-name">{monthLabel}</span>
+                <span className="m-count">{monthNotas.length} sesión{monthNotas.length !== 1 ? 'es' : ''}</span>
+                <span className="m-line" />
+              </div>
 
-              {monthNotas.map((nota) => {
-                const fecha = parseISO(nota.fecha)
-                const day = format(fecha, 'd')
-                const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
-                const yearShort = format(fecha, 'yy')
-                const time = format(parseISO(nota.created_at), 'HH:mm')
-                const excerpt = previewContenido(nota.contenido)
-                const tags = extraerTags(nota.contenido)
-                const sessionNo = sessionNoMap.get(nota.id) ?? 0
+              <div className="sessions">
+                {monthNotas.map((nota) => {
+                  const fecha = parseISO(nota.fecha)
+                  const day = format(fecha, 'd')
+                  const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
+                  const yearShort = format(fecha, 'yy')
+                  const time = format(parseISO(nota.created_at), 'HH:mm')
+                  const excerpt = previewContenido(nota.contenido)
+                  const tags = extraerTags(nota.contenido)
+                  const meta = sesionMeta(nota)
 
-                const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
-                const modalidad = turno?.modalidad
-                const modalidadLabel =
-                  modalidad === 'videollamada' ? 'Virtual'
-                  : modalidad === 'telefonica' ? 'Telefónica'
-                  : modalidad === 'presencial' ? 'Presencial'
-                  : null
-                const duracionLabel = turno?.duracion_min ? `${turno.duracion_min} min` : null
-                const isCompletada = turno?.estado === 'realizado'
-                const isCancelada = turno?.estado === 'cancelado'
-                const isNoAsistio = turno?.estado === 'no_asistio'
-
-                return (
-                  <div
-                    key={nota.id}
-                    className="block group mb-6 w-full"
-                  >
+                  return (
                     <article
-                      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-outline-variant/10 flex flex-col md:flex-row group-hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedNota(nota)}
+                      key={nota.id}
+                      className="scard"
+                      onClick={() => abrirNota(nota)}
                     >
-                      {/* Date column */}
-                      <div className="md:w-32 bg-surface-container-low/30 p-6 flex md:flex-col items-center justify-between md:justify-center border-b md:border-b-0 md:border-r border-outline-variant/10">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">{monthShort} / {yearShort}</span>
-                          <span className="text-4xl font-extrabold text-primary my-1">{day}</span>
-                        </div>
-                        <span className="text-xs font-bold text-slate-500">{time} HS</span>
+                      <div className="s-date">
+                        <div className="s-day">{day}</div>
+                        <div className="s-month-year">{monthShort} · {yearShort}</div>
+                        <div className="s-time">{time} hs</div>
                       </div>
 
-                      {/* Content */}
-                      <div className="flex-1 p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
-                              <h3 className="text-lg font-extrabold text-primary">
-                                {sessionNo > 0 ? `Sesión Individual #${sessionNo}` : format(fecha, "d 'de' MMMM", { locale: es })}
-                              </h3>
-                              <div className="flex gap-2">
-                                {modalidadLabel && (
-                                  <span className="px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded uppercase">
-                                    {modalidadLabel}
-                                  </span>
-                                )}
-                                {duracionLabel && (
-                                  <span className="px-2 py-0.5 bg-primary-fixed text-primary text-[10px] font-bold rounded uppercase">
-                                    {duracionLabel}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {isCompletada && (
-                            <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
-                              <span className="material-symbols-outlined text-on-tertiary-container">check_circle</span>
-                              <span className="text-[10px] font-bold text-on-tertiary-container uppercase tracking-wider">Completada</span>
-                            </div>
-                          )}
-                          {isCancelada && (
-                            <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
-                              <span className="material-symbols-outlined text-error">cancel</span>
-                              <span className="text-[10px] font-bold text-error uppercase tracking-wider">Cancelada</span>
-                            </div>
-                          )}
-                          {isNoAsistio && (
-                            <div className="hidden sm:flex items-center gap-2 flex-none ml-4">
-                              <span className="material-symbols-outlined text-on-surface-variant">person_off</span>
-                              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">No asistió</span>
-                            </div>
-                          )}
+                      <div className="s-body">
+                        <div className="s-title-row">
+                          <span className="s-title">
+                            {meta.sessionNo > 0 ? `Sesión Individual #${meta.sessionNo}` : format(fecha, "d 'de' MMMM", { locale: es })}
+                          </span>
+                          {meta.sessionNo > 0 && <span className="s-session-no">#{meta.sessionNo.toString().padStart(3, '0')}</span>}
+                          {meta.modalidadLabel && <span className={`chip ${meta.modalidadChipClass}`}>{meta.modalidadLabel}</span>}
+                          {meta.duracionLabel && <span className="chip neutral">{meta.duracionLabel}</span>}
+                          {meta.statusLabel && <span className={`chip ${meta.statusChipClass}`}>{meta.statusLabel}</span>}
                         </div>
 
-                        <div className="bg-surface-container-low/40 p-4 rounded-xl border-l-4 border-primary/20 mb-4">
-                          <p
-                            className="text-sm text-on-surface-variant leading-relaxed overflow-hidden"
-                            style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                            } as React.CSSProperties}
-                          >
-                            {excerpt}
-                          </p>
-                        </div>
+                        <p className="s-excerpt">{excerpt}</p>
 
                         {tags.length > 0 && (
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="s-tags">
                             {tags.map((t) => (
-                              <span key={t} className="bg-slate-100 text-slate-500 px-2 py-1 rounded text-[10px] font-bold">
-                                #{t}
-                              </span>
+                              <span key={t} className="s-tag">{t}</span>
                             ))}
                           </div>
                         )}
                       </div>
-
-                      {/* Right panel — stopPropagation so clicks here don't open the SlideOver */}
-                      <div
-                        className="md:w-48 p-6 bg-surface-container-lowest flex flex-col justify-end gap-2 border-t md:border-t-0 md:border-l border-outline-variant/10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNota(nota)}
-                          className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-primary-fixed/30 group-hover:bg-primary-fixed text-primary font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider"
-                        >
-                          <span className="material-symbols-outlined text-[14px] leading-none flex-none">visibility</span>
-                          Ver nota completa
-                        </button>
-
-                        {confirmDeleteId === nota.id ? (
-                          <div className="flex gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(nota.id)}
-                              disabled={deletingId === nota.id}
-                              className="flex-1 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-[11px] rounded-lg transition-colors uppercase disabled:opacity-50"
-                            >
-                              {deletingId === nota.id ? '...' : 'Confirmar'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[11px] rounded-lg transition-colors uppercase"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(nota.id)}
-                            className="flex items-center justify-center gap-2 w-full py-2.5 md:py-2 bg-red-50 hover:bg-red-100 text-red-500 font-bold text-[11px] rounded-lg transition-colors uppercase tracking-wider"
-                          >
-                            <span className="material-symbols-outlined text-[14px] leading-none flex-none">delete</span>
-                            Eliminar
-                          </button>
-                        )}
-                      </div>
-
                     </article>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )
         })}
 
         <div className="flex justify-center py-8">
           <button
+            className="history-new-btn"
             onClick={() => window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId } }))}
-            className="px-6 py-2 border border-outline-variant text-slate-500 font-bold text-xs rounded-full hover:bg-white hover:text-primary transition-all"
           >
             + Nueva nota manual
           </button>
@@ -289,22 +240,88 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
 
       <SlideOver
         open={selectedNota !== null}
-        onClose={() => setSelectedNota(null)}
-        title={slTitle}
-        subtitle={slSubtitle}
+        onClose={cerrarDrawer}
+        title={selTitulo}
         width="lg"
+        noPadding
+        header={
+          <div className="drawer-hdr">
+            <span className="t">
+              {selMeta && selMeta.sessionNo > 0 ? <>Sesión <b>#{selMeta.sessionNo}</b> · {selDiaHoraStr}</> : selDiaHoraStr}
+            </span>
+            <button className="d-close" title="Cerrar" onClick={cerrarDrawer}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 6l12 12M18 6l-12 12" /></svg>
+            </button>
+          </div>
+        }
+        footer={
+          selectedNota && (
+            <div className="drawer-foot">
+              {editando ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => { setContenido(selectedNota.contenido); setEditando(false); setGuardarError(null) }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={handleGuardar}
+                    disabled={guardando || isHtmlEmpty(contenido)}
+                  >
+                    {guardando ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn" onClick={() => setEditando(true)}>
+                    <svg viewBox="0 0 24 24"><path d="M12 20h9M16 3l5 5-11 11H5v-5z" /></svg>
+                    Editar
+                  </button>
+                  {confirmDeleteId === selectedNota.id ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn df-danger"
+                        onClick={() => handleDelete(selectedNota.id)}
+                        disabled={deletingId === selectedNota.id}
+                      >
+                        {deletingId === selectedNota.id ? '...' : 'Confirmar eliminación'}
+                      </button>
+                      <button type="button" className="btn" onClick={() => setConfirmDeleteId(null)}>Cancelar</button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn df-danger" onClick={() => setConfirmDeleteId(selectedNota.id)}>
+                      <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7" /></svg>
+                      Eliminar
+                    </button>
+                  )}
+                  {ultimaEdicionStr && <span className="df-meta">{ultimaEdicionStr}</span>}
+                </>
+              )}
+            </div>
+          )
+        }
       >
-        {selectedNota && (
-          <NotaDetalleEditor
-            nota={selectedNota}
-            pacienteId={pacienteId}
-            onSaved={() => setSelectedNota(null)}
-            onDeleted={() => {
-              setLocalNotas((prev) => prev.filter((n) => n.id !== selectedNota.id))
-              setSelectedNota(null)
-              router.refresh()
-            }}
-          />
+        {selectedNota && selMeta && (
+          <div className="drawer-body">
+            <h2>{selTitulo}</h2>
+            <div className="d-sub">
+              {selMeta.modalidadLabel && <span className={`chip ${selMeta.modalidadChipClass}`}>{selMeta.modalidadLabel}</span>}
+              {selMeta.duracionLabel && <span className="chip neutral">{selMeta.duracionLabel}</span>}
+              {selMeta.statusLabel && <span className={cn('chip', selMeta.statusChipClass)}>{selMeta.statusLabel}</span>}
+            </div>
+            <NotaContenido
+              nota={selectedNota}
+              editando={editando}
+              contenido={contenido}
+              onContenidoChange={setContenido}
+              error={guardarError}
+            />
+          </div>
         )}
       </SlideOver>
     </>

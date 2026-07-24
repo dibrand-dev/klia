@@ -1,0 +1,42 @@
+/* Patient tabs bar — calcado del diseño Claude Design (Fase 2) */
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 28px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.tab {
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: -1px;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: color .12s ease, border-color .12s ease;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+.tab .badge {
+  font-size: 11px;
+  background: var(--surface-3);
+  color: var(--muted);
+  padding: 1px 6px;
+  border-radius: 100px;
+  font-weight: 500;
+}
+.tab.active .badge { background: var(--ink); color: white; }
+
+@media (max-width: 720px) {
+  .tabs { flex-wrap: nowrap; }
+}
