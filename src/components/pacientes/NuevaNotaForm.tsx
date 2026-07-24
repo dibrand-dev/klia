@@ -166,12 +166,13 @@ interface Props {
   pacienteId: string
   turnoId?: string
   modoInicial?: 'texto' | 'voz'
+  especialidad?: string | null
   tieneVoz?: boolean
   onCreada?: () => void
   onClose?: () => void
 }
 
-export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', tieneVoz = false, onCreada, onClose }: Props) {
+export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, onCreada, onClose }: Props) {
   const [modo, setModo] = useState<'texto' | 'voz'>(modoInicial)
   const [contenido, setContenido] = useState('')
   const [fecha, setFecha] = useState('')
@@ -183,7 +184,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [draftSaved, setDraftSaved] = useState(false)
 
   // Antropometría — solo visible para especialidad Nutricionista
-  const [esNutricionista, setEsNutricionista] = useState(false)
+  const esNutricionista = especialidad === 'Nutrición'
   const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
   const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
   const [antropoOpen, setAntropoOpen] = useState(true)
@@ -198,20 +199,18 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
 
   useEffect(() => {
-    async function fetchContextoNutricion() {
+    async function fetchDatosPaciente() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const [{ data: profile }, { data: paciente }] = await Promise.all([
-        supabase.from('profiles').select('especialidad').eq('id', user.id).single(),
-        supabase.from('pacientes').select('fecha_nacimiento, genero').eq('id', pacienteId).single(),
-      ])
-      if (profile?.especialidad === 'Nutrición') setEsNutricionista(true)
+      const { data: paciente } = await supabase
+        .from('pacientes')
+        .select('fecha_nacimiento, genero')
+        .eq('id', pacienteId)
+        .single()
       if (paciente?.fecha_nacimiento) setEdadPaciente(differenceInYears(new Date(), new Date(paciente.fecha_nacimiento)))
       if (paciente?.genero === 'M' || paciente?.genero === 'F') setSexoPaciente(paciente.genero)
     }
-    if (pacienteId) fetchContextoNutricion()
-  }, [pacienteId])
+    if (pacienteId && esNutricionista) fetchDatosPaciente()
+  }, [pacienteId, esNutricionista])
 
   useEffect(() => {
     const fetchConfig = async () => {

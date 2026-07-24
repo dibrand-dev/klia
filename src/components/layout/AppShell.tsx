@@ -178,6 +178,7 @@ export default function AppShell({
           pacienteId={notaPacienteId}
           turnoId={notaTurnoId ?? undefined}
           modoInicial={notaModo}
+          especialidad={profile?.especialidad}
           tieneVoz={puedeAcceder('nota_voz', profile?.plan ?? '', modulos)}
           onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
           onClose={() => setNuevaNotaOpen(false)}
