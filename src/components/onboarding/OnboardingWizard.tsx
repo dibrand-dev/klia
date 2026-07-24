@@ -27,11 +27,13 @@ export default function OnboardingWizard({
   initialMatricula,
   initialTelefono,
   initialProvincia,
+  initialMaxStepReached,
 }: {
   nombreProfesional: string
   initialMatricula?: string | null
   initialTelefono?: string | null
   initialProvincia?: string | null
+  initialMaxStepReached?: number | null
 }) {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -39,7 +41,7 @@ export default function OnboardingWizard({
   const [visible, setVisible] = useState(true)
   const [closing, setClosing] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const maxStepReachedRef = useRef(1)
+  const maxStepReachedRef = useRef(initialMaxStepReached ?? 1)
 
   // Step 2
   const [matricula, setMatricula] = useState(initialMatricula ?? '')
