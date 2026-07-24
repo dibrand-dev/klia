@@ -10,13 +10,6 @@ const TOTAL_STEPS = 5
 const DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const
 const DAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-const PROVINCIAS = [
-  'Buenos Aires', 'CABA', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán',
-  'Entre Ríos', 'Salta', 'Misiones', 'Chaco', 'Corrientes', 'Santiago del Estero',
-  'San Juan', 'Jujuy', 'Río Negro', 'Neuquén', 'Formosa', 'Chubut',
-  'San Luis', 'Catamarca', 'La Rioja', 'La Pampa', 'Santa Cruz', 'Tierra del Fuego',
-]
-
 const MONEDA_OPTIONS = [
   { value: 'ARS', label: 'ARS — Peso argentino' },
   { value: 'USD', label: 'USD — Dólar estadounidense' },
@@ -46,15 +39,12 @@ export default function OnboardingWizard({
   const [visible, setVisible] = useState(true)
   const [closing, setClosing] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const maxStepReachedRef = useRef(1)
 
   // Step 2
   const [matricula, setMatricula] = useState(initialMatricula ?? '')
-  const [matriculaTipo, setMatriculaTipo] = useState<'provincial' | 'nacional' | ''>('')
-  const [matriculaProvincia, setMatriculaProvincia] = useState('')
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
-  const [dni, setDni] = useState('')
-  const [dniError, setDniError] = useState<string | null>(null)
 
   // Hydrate fields from auth user_metadata if profile fields are empty
   useEffect(() => {
@@ -110,6 +100,12 @@ export default function OnboardingWizard({
     if (newStep < 1 || newStep > TOTAL_STEPS || newStep === step) return
     if (isSkip) setSkippedSteps(prev => new Set(prev).add(step))
     setStep(newStep)
+    // onboarding_max_step_reached trackea el avance real del wizard, no solo completed/skipped —
+    // solo se persiste cuando newStep supera el máximo ya alcanzado (nunca baja al volver atrás).
+    if (newStep > maxStepReachedRef.current) {
+      maxStepReachedRef.current = newStep
+      persistStep({ onboarding_max_step_reached: newStep })
+    }
     if (newStep === TOTAL_STEPS) {
       setTimeout(() => fireConfetti(), 200)
     }
@@ -117,19 +113,9 @@ export default function OnboardingWizard({
 
   function next(isSkip = false) {
     if (step === 2) {
-      const dniClean = dni.replace(/\D/g, '')
-      if (!dniClean || dniClean.length < 7 || dniClean.length > 8) {
-        setDniError('Ingresá un DNI válido (7 u 8 dígitos).')
-        return
-      }
-      setDniError(null)
       persistStep({
-        dni: dniClean,
         matricula: matricula || null,
-        matricula_tipo: matriculaTipo || null,
-        matricula_provincia: matriculaTipo === 'provincial' ? (matriculaProvincia || null) : null,
         telefono: telefono || null,
-        provincia: provincia || null,
       })
     }
     if (step === 3 && !isSkip) {
@@ -176,7 +162,7 @@ export default function OnboardingWizard({
     return (
       <div className="ob-progress">
         <div className="prog-dots">{dots}</div>
-        <span className="prog-label">Paso {Math.min(step, 4)} de 4</span>
+        <span className="prog-label">Paso {Math.min(step, TOTAL_STEPS - 1)} de {TOTAL_STEPS - 1}</span>
       </div>
     )
   }
@@ -306,45 +292,7 @@ export default function OnboardingWizard({
                 <p className="ob-step-desc">Los pacientes y las planillas usan estos datos.</p>
                 <div className="ob-form">
                   <div className="ob-field">
-                    <label>DNI <em>*</em></label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="Ej: 27704316"
-                      value={dni}
-                      maxLength={9}
-                      onChange={e => {
-                        setDni(e.target.value.replace(/\D/g, ''))
-                        setDniError(null)
-                      }}
-                    />
-                    {dniError && <span className="ob-field-error">{dniError}</span>}
-                  </div>
-                  <div className="ob-field">
-                    <label>Tipo de matrícula</label>
-                    <select
-                      value={matriculaTipo}
-                      onChange={e => setMatriculaTipo(e.target.value as 'provincial' | 'nacional' | '')}
-                    >
-                      <option value="">Seleccioná el tipo</option>
-                      <option value="provincial">Provincial</option>
-                      <option value="nacional">Nacional</option>
-                    </select>
-                  </div>
-                  {matriculaTipo === 'provincial' && (
-                    <div className="ob-field">
-                      <label>Provincia de la matrícula</label>
-                      <select
-                        value={matriculaProvincia}
-                        onChange={e => setMatriculaProvincia(e.target.value)}
-                      >
-                        <option value="">Seleccioná la provincia</option>
-                        {PROVINCIAS.map(p => <option key={p}>{p}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  <div className="ob-field">
-                    <label>Número de matrícula <em>*</em></label>
+                    <label>Matrícula</label>
                     <input
                       type="text"
                       placeholder="Ej: 12345"
@@ -363,13 +311,6 @@ export default function OnboardingWizard({
                         onChange={e => setTelefono(e.target.value)}
                       />
                     </div>
-                  </div>
-                  <div className="ob-field">
-                    <label>Provincia</label>
-                    <select value={provincia} onChange={e => setProvincia(e.target.value)}>
-                      <option value="">Seleccionar</option>
-                      {PROVINCIAS.map(p => <option key={p}>{p}</option>)}
-                    </select>
                   </div>
                 </div>
                 <div className="ob-actions-row">

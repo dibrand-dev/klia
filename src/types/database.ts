@@ -59,6 +59,7 @@ export type Database = {
           horarios_por_dia: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed: boolean
           onboarding_skipped: boolean
+          onboarding_max_step_reached: number
           aviso_deuda_activo: boolean | null
           created_at: string
           updated_at: string
@@ -117,6 +118,7 @@ export type Database = {
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
+          onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
           created_at?: string
           updated_at?: string
@@ -175,6 +177,7 @@ export type Database = {
           horarios_por_dia?: Record<string, { activo: boolean; inicio: number; fin: number }> | null
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
+          onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
           created_at?: string
           updated_at?: string
@@ -1547,4 +1550,6 @@ export type ProfileWithLastSignIn = {
   estado_cuenta: 'trial' | 'activa' | 'bloqueada' | 'cancelada'
   trial_fin: string
   suscripcion_fin: string | null
+  onboarding_skipped: boolean
+  onboarding_max_step_reached: number
 }

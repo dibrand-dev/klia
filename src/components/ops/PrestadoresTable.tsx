@@ -39,6 +39,17 @@ function EstadoBadge({ row }: { row: Row }) {
   }
 }
 
+function OnboardingBadge({ row }: { row: Row }) {
+  if (row.onboarding_skipped) {
+    return <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">Salteado</span>
+  }
+  const pct = Math.round(((row.onboarding_max_step_reached - 1) / 4) * 100)
+  if (pct >= 100) {
+    return <span className="text-xs px-2.5 py-1 rounded-full bg-green-50 text-green-700 font-semibold">100%</span>
+  }
+  return <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">{pct}%</span>
+}
+
 function PlanBadge({ plan }: { plan: Plan }) {
   const styles: Record<Plan, string> = {
     esencial: 'bg-surface-container text-on-surface-variant',
@@ -397,6 +408,7 @@ export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Especialidad</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Plan</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Colegio</th>
+              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Onboarding</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Estado</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Registro</th>
               <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Último acceso</th>
@@ -422,6 +434,9 @@ export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }
                     : '—'}
                 </td>
                 <td className="px-6 py-4">
+                  <OnboardingBadge row={p} />
+                </td>
+                <td className="px-6 py-4">
                   <EstadoBadge row={p} />
                 </td>
                 <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">
@@ -441,7 +456,7 @@ export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-6 py-16 text-center text-on-surface-variant">
+                <td colSpan={9} className="px-6 py-16 text-center text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">search_off</span>
                   <p>No se encontraron prestadores.</p>
                 </td>
