@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ESPECIALIDADES } from '@/lib/especialidades'
 import './onboarding.css'
 
 const TOTAL_STEPS = 5
@@ -28,12 +29,14 @@ export default function OnboardingWizard({
   initialTelefono,
   initialProvincia,
   initialMaxStepReached,
+  initialEspecialidad,
 }: {
   nombreProfesional: string
   initialMatricula?: string | null
   initialTelefono?: string | null
   initialProvincia?: string | null
   initialMaxStepReached?: number | null
+  initialEspecialidad?: string | null
 }) {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -44,6 +47,8 @@ export default function OnboardingWizard({
   const maxStepReachedRef = useRef(initialMaxStepReached ?? 1)
 
   // Step 2
+  const [especialidad, setEspecialidad] = useState(initialEspecialidad ?? '')
+  const [especialidadError, setEspecialidadError] = useState<string | null>(null)
   const [matricula, setMatricula] = useState(initialMatricula ?? '')
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
@@ -55,6 +60,7 @@ export default function OnboardingWizard({
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const meta = user.user_metadata as Record<string, string | undefined>
+      if (!especialidad && meta.especialidad) setEspecialidad(meta.especialidad)
       if (!matricula && meta.matricula) setMatricula(meta.matricula)
       if (!telefono && meta.telefono) setTelefono(meta.telefono)
       if (!provincia && meta.provincia) setProvincia(meta.provincia)
@@ -115,7 +121,13 @@ export default function OnboardingWizard({
 
   function next(isSkip = false) {
     if (step === 2) {
+      if (!especialidad) {
+        setEspecialidadError('Seleccioná tu profesión.')
+        return
+      }
+      setEspecialidadError(null)
       persistStep({
+        especialidad,
         matricula: matricula || null,
         telefono: telefono || null,
       })
@@ -293,6 +305,20 @@ export default function OnboardingWizard({
                 <h2 className="ob-step-title">Tu información profesional</h2>
                 <p className="ob-step-desc">Los pacientes y las planillas usan estos datos.</p>
                 <div className="ob-form">
+                  <div className="ob-field">
+                    <label>Profesión <em>*</em></label>
+                    <select
+                      value={especialidad}
+                      onChange={e => {
+                        setEspecialidad(e.target.value)
+                        setEspecialidadError(null)
+                      }}
+                    >
+                      <option value="">Seleccioná tu profesión</option>
+                      {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                    {especialidadError && <span className="ob-field-error">{especialidadError}</span>}
+                  </div>
                   <div className="ob-field">
                     <label>Matrícula</label>
                     <input

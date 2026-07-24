@@ -61,6 +61,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           initialTelefono={profile.telefono}
           initialProvincia={profile.provincia}
           initialMaxStepReached={profile.onboarding_max_step_reached}
+          initialEspecialidad={profile.especialidad}
         />
       )}
     </>
