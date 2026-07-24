@@ -312,11 +312,13 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
       >
         {selectedNota && selMeta && (
           <div className="drawer-body">
-            <div className="d-sub">
-              {selMeta.modalidadLabel && <span className={`chip ${selMeta.modalidadChipClass}`}>{selMeta.modalidadLabel}</span>}
-              {selMeta.duracionLabel && <span className="chip neutral">{selMeta.duracionLabel}</span>}
-              {selMeta.statusLabel && <span className={cn('chip', selMeta.statusChipClass)}>{selMeta.statusLabel}</span>}
-            </div>
+            {(selMeta.modalidadLabel || selMeta.duracionLabel || selMeta.statusLabel) && (
+              <div className="d-sub">
+                {selMeta.modalidadLabel && <span className={`chip ${selMeta.modalidadChipClass}`}>{selMeta.modalidadLabel}</span>}
+                {selMeta.duracionLabel && <span className="chip neutral">{selMeta.duracionLabel}</span>}
+                {selMeta.statusLabel && <span className={cn('chip', selMeta.statusChipClass)}>{selMeta.statusLabel}</span>}
+              </div>
+            )}
             <NotaContenido
               nota={selectedNota}
               editando={editando}

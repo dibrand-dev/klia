@@ -36,8 +36,9 @@
   align-items: center;
 }
 
-.drawer-sec { padding: 16px 0; border-top: 1px solid var(--border); }
-.drawer-sec:first-of-type { border-top: none; padding-top: 0; }
+.drawer-sec { padding: 16px 0; }
+.drawer-sec ~ .drawer-sec { border-top: 1px solid var(--border); }
+.drawer-sec:first-child { padding-top: 0; }
 .drawer-sec h3 {
   font-size: 11px;
   text-transform: uppercase;
