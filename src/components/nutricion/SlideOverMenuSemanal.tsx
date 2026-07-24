@@ -11,8 +11,17 @@ interface Props {
   onClose: () => void
 }
 
-const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-const COMIDAS = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena']
+// Valores tal cual los exige el CHECK constraint de la tabla (menu_semanal_dia_check /
+// menu_semanal_comida_check): minúsculas y sin tildes. Los labels visibles se mapean aparte.
+const DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+const DIA_LABEL: Record<string, string> = {
+  lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves',
+  viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo',
+}
+const COMIDAS = ['desayuno', 'almuerzo', 'merienda', 'cena']
+const COMIDA_LABEL: Record<string, string> = {
+  desayuno: 'Desayuno', almuerzo: 'Almuerzo', merienda: 'Merienda', cena: 'Cena',
+}
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 function mondayOf(d: Date): Date {
@@ -230,7 +239,7 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
             <div style={mgHeadStyle} />
             {DIAS.map((dia, i) => (
               <div key={dia} style={mgHeadStyle}>
-                <span style={{ display: 'block' }}>{dia}</span>
+                <span style={{ display: 'block' }}>{DIA_LABEL[dia]}</span>
                 <span style={{ display: 'block', fontSize: 10, fontWeight: 500, color: 'var(--muted-3, #AEB5C0)', marginTop: 1 }}>
                   {addDays(weekStart, i).getDate()}
                 </span>
@@ -307,7 +316,7 @@ function RowComida({
           borderRight: '1px solid var(--border, #E7E9EE)', borderBottom: '1px solid var(--border, #E7E9EE)',
         }}
       >
-        {comida}
+        {COMIDA_LABEL[comida]}
       </div>
       {dias.map((dia) => (
         <CeldaMenu
@@ -398,7 +407,7 @@ function DayAccordionItem({
         onClick={() => setOpen((v) => !v)}
         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', cursor: 'pointer', userSelect: 'none', background: 'var(--surface-2, #F6F7F9)' }}
       >
-        <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink, #0B1220)', flex: 1 }}>{dia}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink, #0B1220)', flex: 1 }}>{DIA_LABEL[dia]}</span>
         <span style={{ fontSize: 11.5, color: 'var(--muted-2, #8A93A1)' }}>{dateNum} de {mes}</span>
         <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 2, fill: 'none', transition: 'transform .15s ease', transform: open ? 'rotate(180deg)' : 'none' }}>
           <path d="M6 9l6 6 6-6" />
@@ -408,7 +417,7 @@ function DayAccordionItem({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 14px 14px' }}>
           {COMIDAS.map((comida) => (
             <div key={comida} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2, #8A93A1)', textTransform: 'uppercase', letterSpacing: '.05em' }}>{comida}</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2, #8A93A1)', textTransform: 'uppercase', letterSpacing: '.05em' }}>{COMIDA_LABEL[comida]}</label>
               <CeldaMenu
                 dia={dia}
                 comida={comida}

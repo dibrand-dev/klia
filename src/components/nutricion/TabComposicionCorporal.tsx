@@ -20,6 +20,9 @@ const MACRO_DEFS_PREVIEW: { key: 'porcentaje_carbohidratos' | 'porcentaje_protei
 
 const DIAS_CORTO = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const DIAS_NOMBRE = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+// menu_semanal.dia se guarda en minúsculas y sin tildes (CHECK constraint menu_semanal_dia_check) —
+// DIAS_NOMBRE es solo para mostrar, esta lista es la que hay que usar para comparar contra los datos reales.
+const DIAS_VALUE = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 
 function mondayOf(d: Date): Date {
   const date = new Date(d)
@@ -267,8 +270,8 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
                     style={{
                       width: 22, height: 22, borderRadius: '50%', display: 'grid', placeItems: 'center',
                       fontSize: 11, fontWeight: 700,
-                      background: diasConMenu.has(dia) ? 'var(--accent-soft, #EAF0FE)' : 'var(--surface-2, #F6F7F9)',
-                      color: diasConMenu.has(dia) ? 'var(--accent, #1F4FD9)' : 'var(--muted-3, #AEB5C0)',
+                      background: diasConMenu.has(DIAS_VALUE[i]) ? 'var(--accent-soft, #EAF0FE)' : 'var(--surface-2, #F6F7F9)',
+                      color: diasConMenu.has(DIAS_VALUE[i]) ? 'var(--accent, #1F4FD9)' : 'var(--muted-3, #AEB5C0)',
                     }}
                   >
                     {DIAS_CORTO[i]}
