@@ -16,53 +16,86 @@ function num(v: string): number | null {
   return v.trim() === '' ? null : Number(v)
 }
 
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-  gap: 12,
+function AntropoGrid({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="anthro-grid">
+      {children}
+      <style jsx>{`
+        .anthro-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px 14px;
+        }
+        @media (max-width: 460px) {
+          .anthro-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      `}</style>
+    </div>
+  )
 }
 
-function AntropoInput({ label, value, onChange, tabIndex }: {
+function AntropoInput({ label, unit, value, onChange, tabIndex }: {
   label: string
+  unit: string
   value: string
   onChange: (v: string) => void
   tabIndex: number
 }) {
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <label
         style={{
-          display: 'block',
           fontSize: 12,
-          color: 'var(--muted, #5B6472)',
+          color: 'var(--ink, #0B1220)',
           opacity: 0.6,
-          fontWeight: 600,
-          marginBottom: 4,
+          fontWeight: 500,
         }}
       >
         {label}
       </label>
-      <input
-        type="number"
-        inputMode="decimal"
-        step="0.1"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        tabIndex={tabIndex}
-        className="antropo-num-input"
-        style={{
-          width: '100%',
-          padding: '10px 12px',
-          fontSize: 15,
-          border: '1px solid var(--border, #E7E9EE)',
-          borderRadius: 'var(--r-md, 8px)',
-          outline: 'none',
-          background: 'var(--surface, #fff)',
-          color: 'var(--ink, #0B1220)',
-        }}
-        onFocus={(e) => { e.target.style.boxShadow = '0 0 0 2px var(--accent, #4F46E5)'; e.target.style.borderColor = 'var(--accent, #4F46E5)' }}
-        onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--border, #E7E9EE)' }}
-      />
+      <div style={{ position: 'relative' }}>
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          placeholder="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          tabIndex={tabIndex}
+          className="antropo-num-input"
+          style={{
+            width: '100%',
+            height: 36,
+            padding: '0 30px 0 10px',
+            fontSize: 13.5,
+            border: '1px solid var(--border, #E7E9EE)',
+            borderRadius: 'var(--r-md, 8px)',
+            outline: 'none',
+            background: 'var(--surface, #fff)',
+            color: 'var(--ink, #0B1220)',
+            fontVariantNumeric: 'tabular-nums',
+            transition: 'border-color .12s ease, box-shadow .12s ease',
+          }}
+          onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px var(--accent-soft, #EAF0FE)'; e.target.style.borderColor = 'var(--accent, #1F4FD9)' }}
+          onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--border, #E7E9EE)' }}
+        />
+        <span
+          style={{
+            position: 'absolute',
+            right: 9,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: 11,
+            color: 'var(--muted-2, #8A93A1)',
+            fontWeight: 500,
+            pointerEvents: 'none',
+          }}
+        >
+          {unit}
+        </span>
+      </div>
       <style jsx>{`
         .antropo-num-input::-webkit-outer-spin-button,
         .antropo-num-input::-webkit-inner-spin-button {
@@ -77,18 +110,19 @@ function AntropoInput({ label, value, onChange, tabIndex }: {
   )
 }
 
-function AntropometriaSection({ open, onToggle, title, children }: {
+function AntropometriaSection({ open, onToggle, title, children, nested }: {
   open: boolean
   onToggle: () => void
   title: string
   children: React.ReactNode
+  nested?: boolean
 }) {
   return (
     <div
       style={{
         border: '1px solid var(--border, #E7E9EE)',
         borderRadius: 'var(--r-lg, 12px)',
-        background: 'var(--surface, #fff)',
+        background: nested ? 'var(--surface-2, #F6F7F9)' : 'var(--surface, #fff)',
         overflow: 'hidden',
       }}
     >
@@ -99,22 +133,39 @@ function AntropometriaSection({ open, onToggle, title, children }: {
           width: '100%',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: 'transparent',
+          gap: 10,
+          padding: nested ? '10px 14px' : '13px 16px',
+          background: nested ? 'transparent' : 'var(--surface-2, #F6F7F9)',
           border: 'none',
           cursor: 'pointer',
-          fontSize: 14,
+          fontSize: 13.5,
           fontWeight: 600,
           color: 'var(--ink, #0B1220)',
+          textAlign: 'left',
         }}
       >
-        {title}
-        <span className="material-symbols-outlined" style={{ fontSize: 20, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
-          expand_more
-        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>{title}</span>
+        <svg
+          viewBox="0 0 24 24"
+          style={{
+            width: 16,
+            height: 16,
+            stroke: 'var(--muted-2, #8A93A1)',
+            strokeWidth: 2,
+            fill: 'none',
+            flex: 'none',
+            transform: open ? 'rotate(180deg)' : 'none',
+            transition: 'transform .15s ease',
+          }}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
-      {open && <div style={{ padding: '0 16px 16px' }}>{children}</div>}
+      {open && (
+        <div style={{ padding: 16, background: nested ? 'var(--surface, #fff)' : 'transparent' }}>
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -439,27 +490,30 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
                     onToggle={() => setAntropoOpen((v) => !v)}
                     title="Datos antropométricos"
                   >
-                    <div style={gridStyle}>
-                      <AntropoInput label="Peso (kg)" value={antropo.peso} onChange={(v) => setAntropo((p) => ({ ...p, peso: v }))} tabIndex={1} />
-                      <AntropoInput label="Altura (cm)" value={antropo.altura} onChange={(v) => setAntropo((p) => ({ ...p, altura: v }))} tabIndex={2} />
-                      <AntropoInput label="Cintura (cm)" value={antropo.cintura} onChange={(v) => setAntropo((p) => ({ ...p, cintura: v }))} tabIndex={3} />
-                      <AntropoInput label="Cadera (cm)" value={antropo.cadera} onChange={(v) => setAntropo((p) => ({ ...p, cadera: v }))} tabIndex={4} />
-                      <AntropoInput label="% Grasa" value={antropo.porcentajeGrasa} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeGrasa: v }))} tabIndex={5} />
-                      <AntropoInput label="% Músculo" value={antropo.porcentajeMusculo} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeMusculo: v }))} tabIndex={6} />
-                    </div>
-                  </AntropometriaSection>
+                    <AntropoGrid>
+                      <AntropoInput label="Peso" unit="kg" value={antropo.peso} onChange={(v) => setAntropo((p) => ({ ...p, peso: v }))} tabIndex={1} />
+                      <AntropoInput label="Altura" unit="cm" value={antropo.altura} onChange={(v) => setAntropo((p) => ({ ...p, altura: v }))} tabIndex={2} />
+                      <AntropoInput label="Cintura" unit="cm" value={antropo.cintura} onChange={(v) => setAntropo((p) => ({ ...p, cintura: v }))} tabIndex={3} />
+                      <AntropoInput label="Cadera" unit="cm" value={antropo.cadera} onChange={(v) => setAntropo((p) => ({ ...p, cadera: v }))} tabIndex={4} />
+                      <AntropoInput label="% Grasa" unit="%" value={antropo.porcentajeGrasa} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeGrasa: v }))} tabIndex={5} />
+                      <AntropoInput label="% Músculo" unit="%" value={antropo.porcentajeMusculo} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeMusculo: v }))} tabIndex={6} />
+                    </AntropoGrid>
 
-                  <AntropometriaSection
-                    open={pliegOpen}
-                    onToggle={() => setPliegOpen((v) => !v)}
-                    title="Pliegues cutáneos y perímetros"
-                  >
-                    <div style={gridStyle}>
-                      <AntropoInput label="Pliegue tricipital (mm)" value={antropo.pliegueTricipital} onChange={(v) => setAntropo((p) => ({ ...p, pliegueTricipital: v }))} tabIndex={7} />
-                      <AntropoInput label="Pliegue subescapular (mm)" value={antropo.pliegueSubescapular} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSubescapular: v }))} tabIndex={8} />
-                      <AntropoInput label="Pliegue suprailíaco (mm)" value={antropo.pliegueSuprailiaco} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSuprailiaco: v }))} tabIndex={9} />
-                      <AntropoInput label="Perímetro de brazo (cm)" value={antropo.perimetroBrazo} onChange={(v) => setAntropo((p) => ({ ...p, perimetroBrazo: v }))} tabIndex={10} />
-                      <AntropoInput label="Perímetro de pierna (cm)" value={antropo.perimetroPierna} onChange={(v) => setAntropo((p) => ({ ...p, perimetroPierna: v }))} tabIndex={11} />
+                    <div style={{ marginTop: 14 }}>
+                      <AntropometriaSection
+                        open={pliegOpen}
+                        onToggle={() => setPliegOpen((v) => !v)}
+                        title="Pliegues cutáneos y perímetros"
+                        nested
+                      >
+                        <AntropoGrid>
+                          <AntropoInput label="Pliegue tricipital" unit="mm" value={antropo.pliegueTricipital} onChange={(v) => setAntropo((p) => ({ ...p, pliegueTricipital: v }))} tabIndex={7} />
+                          <AntropoInput label="Pliegue subescapular" unit="mm" value={antropo.pliegueSubescapular} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSubescapular: v }))} tabIndex={8} />
+                          <AntropoInput label="Pliegue suprailíaco" unit="mm" value={antropo.pliegueSuprailiaco} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSuprailiaco: v }))} tabIndex={9} />
+                          <AntropoInput label="Perímetro de brazo" unit="cm" value={antropo.perimetroBrazo} onChange={(v) => setAntropo((p) => ({ ...p, perimetroBrazo: v }))} tabIndex={10} />
+                          <AntropoInput label="Perímetro de pierna" unit="cm" value={antropo.perimetroPierna} onChange={(v) => setAntropo((p) => ({ ...p, perimetroPierna: v }))} tabIndex={11} />
+                        </AntropoGrid>
+                      </AntropometriaSection>
                     </div>
                   </AntropometriaSection>
                 </div>

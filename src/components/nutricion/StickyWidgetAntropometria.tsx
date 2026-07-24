@@ -14,32 +14,32 @@ interface Props {
 }
 
 const STATUS_COLORS: Record<IMCStatus, { bg: string; fg: string }> = {
-  info: { bg: 'var(--blue-soft, #E8F0FE)', fg: 'var(--blue, #3B6FD6)' },
-  success: { bg: 'var(--ok-soft, #E6F6EE)', fg: 'var(--ok, #16A34A)' },
-  warning: { bg: 'var(--amber-soft, #FEF3E2)', fg: 'var(--amber-ink, #B45309)' },
-  danger: { bg: 'var(--danger-soft, #FDECEC)', fg: 'var(--danger, #DC2626)' },
+  info: { bg: 'var(--status-info-soft, #EAF0FE)', fg: 'var(--status-info, #1F4FD9)' },
+  success: { bg: 'var(--status-success-soft, #E7F5EE)', fg: 'var(--status-success, #0E8A5F)' },
+  warning: { bg: 'var(--status-warning-soft, #FBF1E2)', fg: '#B45309' },
+  danger: { bg: 'var(--status-danger-soft, #FBECEA)', fg: 'var(--status-danger, #B42318)' },
 }
 
 const cardStyle: React.CSSProperties = {
   background: 'var(--surface, #fff)',
   border: '1px solid var(--border, #E7E9EE)',
-  borderRadius: 'var(--r-lg, 12px)',
-  padding: '16px',
+  borderRadius: 'var(--r-md, 10px)',
+  padding: '12px 14px',
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--muted, #5B6472)',
-  opacity: 0.6,
-  fontWeight: 600,
+  fontSize: 10.5,
+  color: 'var(--muted-2, #8A93A1)',
+  fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '0.04em',
+  letterSpacing: '0.07em',
   marginBottom: 6,
 }
 
 const placeholderStyle: React.CSSProperties = {
-  fontSize: 13,
-  color: 'var(--muted, #8A93A1)',
+  fontSize: 12.5,
+  color: 'var(--muted-2, #8A93A1)',
+  fontStyle: 'italic',
 }
 
 export default function StickyWidgetAntropometria({ pacienteId, peso, altura, edad, sexo, registroEnEdicionId }: Props) {
@@ -74,29 +74,35 @@ export default function StickyWidgetAntropometria({ pacienteId, peso, altura, ed
 
   const diffPeso = peso != null && ultimoRegistro?.peso != null ? peso - ultimoRegistro.peso : null
 
+  const diffIconVariant = diffPeso == null || diffPeso === 0 ? 'flat' : diffPeso > 0 ? 'up' : 'down'
+  const DIFF_ICON_COLORS: Record<'up' | 'down' | 'flat', { bg: string; fg: string }> = {
+    up: { bg: 'var(--status-danger-soft, #FBECEA)', fg: 'var(--status-danger, #B42318)' },
+    down: { bg: 'var(--status-success-soft, #E7F5EE)', fg: 'var(--status-success, #0E8A5F)' },
+    flat: { bg: 'var(--surface-3, #F1F3F6)', fg: 'var(--muted, #5B6472)' },
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* IMC */}
       <div style={cardStyle}>
         <div style={labelStyle}>IMC</div>
         {imc == null ? (
           <p style={placeholderStyle}>Completá peso y altura</p>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--ink, #0B1220)', lineHeight: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink, #0B1220)', fontVariantNumeric: 'tabular-nums' }}>
               {imc.toFixed(1)}
             </span>
             {imcInfo && (
               <span
                 style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: '3px 10px',
-                  borderRadius: 999,
+                  display: 'inline-flex', alignItems: 'center', gap: 5, flex: 'none',
+                  fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap',
                   background: STATUS_COLORS[imcInfo.status].bg,
                   color: STATUS_COLORS[imcInfo.status].fg,
                 }}
               >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor' }} />
                 {imcInfo.label}
               </span>
             )}
@@ -106,47 +112,47 @@ export default function StickyWidgetAntropometria({ pacienteId, peso, altura, ed
 
       {/* GEB */}
       <div style={cardStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ ...labelStyle, marginBottom: 0 }}>GEB</div>
-          <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2, #F6F7F9)', borderRadius: 999, padding: 2 }}>
-            <button
-              type="button"
-              onClick={() => setFormula('mifflin')}
-              style={{
-                fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                background: formula === 'mifflin' ? 'var(--surface, #fff)' : 'transparent',
-                color: formula === 'mifflin' ? 'var(--ink, #0B1220)' : 'var(--muted, #8A93A1)',
-                boxShadow: formula === 'mifflin' ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-              }}
-            >
-              Mifflin
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormula('harris')}
-              style={{
-                fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                background: formula === 'harris' ? 'var(--surface, #fff)' : 'transparent',
-                color: formula === 'harris' ? 'var(--ink, #0B1220)' : 'var(--muted, #8A93A1)',
-                boxShadow: formula === 'harris' ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-              }}
-            >
-              Harris-Benedict
-            </button>
-          </div>
+        <div style={labelStyle}>Gasto energético basal (GEB)</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          {geb == null ? (
+            <p style={placeholderStyle}>Completá peso, altura, edad y sexo</p>
+          ) : (
+            <span style={{ fontSize: 21, fontWeight: 700, color: 'var(--ink, #0B1220)', letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(geb).toLocaleString('es-AR')} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted-2, #8A93A1)', marginLeft: 3 }}>kcal/día</span>
+            </span>
+          )}
         </div>
-        {geb == null ? (
-          <p style={placeholderStyle}>Completá peso, altura, edad y sexo</p>
-        ) : (
-          <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--ink, #0B1220)' }}>
-            {Math.round(geb).toLocaleString('es-AR')} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted, #5B6472)' }}>kcal/día</span>
-          </span>
-        )}
+        <div style={{ display: 'inline-flex', marginTop: 9, padding: 2, width: '100%', background: 'var(--surface-2, #F6F7F9)', border: '1px solid var(--border, #E7E9EE)', borderRadius: 7, gap: 2 }}>
+          <button
+            type="button"
+            onClick={() => setFormula('mifflin')}
+            style={{
+              flex: 1, fontSize: 10.5, fontWeight: 600, padding: '5px 6px', borderRadius: 5, border: 'none', cursor: 'pointer',
+              background: formula === 'mifflin' ? 'var(--ink, #0B1220)' : 'transparent',
+              color: formula === 'mifflin' ? '#fff' : 'var(--muted, #5B6472)',
+              transition: 'all .12s ease',
+            }}
+          >
+            Mifflin-St Jeor
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormula('harris')}
+            style={{
+              flex: 1, fontSize: 10.5, fontWeight: 600, padding: '5px 6px', borderRadius: 5, border: 'none', cursor: 'pointer',
+              background: formula === 'harris' ? 'var(--ink, #0B1220)' : 'transparent',
+              color: formula === 'harris' ? '#fff' : 'var(--muted, #5B6472)',
+              transition: 'all .12s ease',
+            }}
+          >
+            Harris-Benedict
+          </button>
+        </div>
       </div>
 
       {/* Diferencia de peso */}
       <div style={cardStyle}>
-        <div style={labelStyle}>Variación de peso</div>
+        <div style={labelStyle}>Peso vs. última consulta</div>
         {loadingUltimo ? (
           <p style={placeholderStyle}>Cargando...</p>
         ) : !ultimoRegistro ? (
@@ -154,16 +160,28 @@ export default function StickyWidgetAntropometria({ pacienteId, peso, altura, ed
         ) : peso == null ? (
           <p style={placeholderStyle}>Completá el peso actual para comparar</p>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 22 }}>
-              {diffPeso === 0 ? '→' : diffPeso! > 0 ? '↑' : '↓'}
-            </span>
-            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink, #0B1220)' }}>
-              {Math.abs(diffPeso ?? 0).toFixed(1)} kg
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--muted, #8A93A1)' }}>
-              vs. {new Date(ultimoRegistro.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 30, height: 30, borderRadius: 8, flex: 'none', display: 'grid', placeItems: 'center',
+                background: DIFF_ICON_COLORS[diffIconVariant].bg,
+                color: DIFF_ICON_COLORS[diffIconVariant].fg,
+              }}
+            >
+              <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, strokeWidth: 2.2, fill: 'none', stroke: 'currentColor' }}>
+                {diffIconVariant === 'flat' && <path d="M5 12h14" />}
+                {diffIconVariant === 'up' && <path d="M12 19V5M5 12l7-7 7 7" />}
+                {diffIconVariant === 'down' && <path d="M12 5v14M5 12l7 7 7-7" />}
+              </svg>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink, #0B1220)', fontVariantNumeric: 'tabular-nums' }}>
+                {diffPeso === 0 ? '→' : diffPeso! > 0 ? '↑' : '↓'} {Math.abs(diffPeso ?? 0).toFixed(1)} kg
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--muted-2, #8A93A1)', marginTop: 1 }}>
+                vs. {new Date(ultimoRegistro.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </div>
+            </div>
           </div>
         )}
       </div>
