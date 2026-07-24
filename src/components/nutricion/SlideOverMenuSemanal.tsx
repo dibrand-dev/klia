@@ -53,6 +53,7 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
   const [loading, setLoading] = useState(true)
   const [duplicando, setDuplicando] = useState(false)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -82,7 +83,7 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('menu_semanal').upsert({
+    const { error } = await supabase.from('menu_semanal').upsert({
       terapeuta_id: user.id,
       paciente_id: pacienteId,
       semana_inicio: toDateKey(weekStart),
@@ -91,6 +92,12 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
       descripcion: valor || null,
       updated_at: new Date().toISOString(),
     } as never, { onConflict: 'paciente_id,semana_inicio,dia,comida' })
+    if (error) {
+      console.error('[menu_semanal upsert]', error)
+      setErrorGuardado(`Error al guardar: ${error.message}`)
+      return
+    }
+    setErrorGuardado(null)
     if (checkEl) {
       checkEl.classList.add('show')
       window.setTimeout(() => checkEl.classList.remove('show'), 1000)
@@ -124,7 +131,14 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
       descripcion: f.descripcion,
       updated_at: new Date().toISOString(),
     }))
-    await supabase.from('menu_semanal').upsert(inserts as never, { onConflict: 'paciente_id,semana_inicio,dia,comida' })
+    const { error } = await supabase.from('menu_semanal').upsert(inserts as never, { onConflict: 'paciente_id,semana_inicio,dia,comida' })
+    if (error) {
+      console.error('[menu_semanal upsert]', error)
+      setErrorGuardado(`Error al guardar: ${error.message}`)
+      setDuplicando(false)
+      return
+    }
+    setErrorGuardado(null)
     const s = semanaVacia()
     filas.forEach((f) => {
       if (!s[f.dia]) s[f.dia] = {}
@@ -184,6 +198,12 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
           <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--ink-2, #1F2937)', strokeWidth: 2, fill: 'none' }}><path d="M9 6l6 6-6 6" /></svg>
         </button>
       </div>
+
+      {errorGuardado && (
+        <div style={{ fontSize: 12.5, color: 'var(--danger, #B42318)', background: 'var(--danger-soft, #FBECEA)', border: '1px solid var(--danger, #B42318)', borderRadius: 'var(--r-md, 8px)', padding: '8px 12px', marginBottom: 12 }}>
+          {errorGuardado}
+        </div>
+      )}
 
       {aviso && (
         <div style={{ fontSize: 12.5, color: 'var(--warn, #A65A06)', background: 'var(--warn-soft, #FBF1E2)', border: '1px solid var(--warn, #A65A06)', borderRadius: 'var(--r-md, 8px)', padding: '8px 12px', marginBottom: 12 }}>

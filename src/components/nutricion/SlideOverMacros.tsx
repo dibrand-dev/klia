@@ -24,6 +24,7 @@ export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
   const [kcal, setKcal] = useState<number | null>(1850)
   const [loading, setLoading] = useState(true)
   const [checkKey, setCheckKey] = useState<string | null>(null)
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -63,7 +64,7 @@ export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('distribucion_macros').upsert({
+    const { error } = await supabase.from('distribucion_macros').upsert({
       paciente_id: pacienteId,
       terapeuta_id: user.id,
       porcentaje_carbohidratos: nuevosMacros.cho,
@@ -72,6 +73,12 @@ export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
       kcal_objetivo: nuevoKcal,
       updated_at: new Date().toISOString(),
     } as never, { onConflict: 'paciente_id' })
+    if (error) {
+      console.error('[distribucion_macros upsert]', error)
+      setErrorGuardado(`Error al guardar: ${error.message}`)
+      return
+    }
+    setErrorGuardado(null)
     mostrarCheck(checkKeyId)
   }
 
@@ -115,6 +122,12 @@ export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
         </div>
       }
     >
+      {errorGuardado && (
+        <div style={{ fontSize: 12.5, color: 'var(--danger, #B42318)', background: 'var(--danger-soft, #FBECEA)', border: '1px solid var(--danger, #B42318)', borderRadius: 'var(--r-md, 8px)', padding: '8px 12px', marginBottom: 16 }}>
+          {errorGuardado}
+        </div>
+      )}
+
       {loading ? (
         <p style={{ fontSize: 13, color: 'var(--muted, #8A93A1)' }}>Cargando...</p>
       ) : (
