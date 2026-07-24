@@ -30,6 +30,18 @@
   --violet:         #5B3DC9;
   --violet-soft:    #EEEAFB;
 
+  --status-success:      var(--ok);
+  --status-success-soft: var(--ok-soft);
+  --status-warning:      var(--warn);
+  --status-warning-soft: var(--warn-soft);
+  --status-danger:       var(--danger);
+  --status-danger-soft:  var(--danger-soft);
+  --status-info:         var(--accent);
+  --status-info-soft:    var(--accent-soft);
+  --macro-cho:            var(--accent);
+  --macro-prot:           var(--violet);
+  --macro-gra:            var(--warn);
+
   --r-sm:  6px;
   --r-md:  8px;
   --r-lg:  12px;

@@ -133,7 +133,7 @@ export default async function PacienteDetallePage({
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
-      <PacienteHeader paciente={paciente} summary={summary} />
+      <PacienteHeader paciente={paciente} summary={summary} turnoRecurrente={turnoRecurrente ?? null} />
       <PacienteTabs
         pacienteId={paciente.id}
         active={tab}

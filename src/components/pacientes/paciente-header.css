@@ -1,0 +1,113 @@
+/* Patient header — calcado del diseño Claude Design (Fase 1) */
+
+.patient-hdr { padding: 24px 0 20px; }
+.patient-top { display: flex; align-items: flex-start; gap: 18px; }
+.avatar {
+  width: 64px; height: 64px; border-radius: 14px; flex: none;
+  background: linear-gradient(145deg, #E3E9F6, #C9D3E9);
+  color: #16389F; display: grid; place-items: center;
+  font-weight: 600; font-size: 22px;
+  font-family: 'Inter', sans-serif; letter-spacing: -0.02em;
+  box-shadow: inset 0 0 0 1px rgba(31,79,217,0.10);
+}
+.patient-id-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-2); margin-bottom: 2px; }
+.patient-id-row .mono { font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+.pill-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px; border-radius: 100px;
+  background: var(--ok-soft); color: var(--ok);
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;
+}
+.pill-status.inactivo { background: var(--surface-3); color: var(--muted); }
+.pill-status .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); }
+.pill-status.inactivo .dot { background: var(--muted); }
+
+.patient-name {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 28px; line-height: 1.15; letter-spacing: -0.02em;
+  font-weight: 600; color: var(--ink);
+  margin: 0 0 6px;
+}
+.patient-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0; color: var(--muted); font-size: 13px; }
+.patient-meta > span { display: inline-flex; align-items: center; gap: 5px; }
+.patient-meta > span + span::before {
+  content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%;
+  background: var(--muted-3); margin: 0 10px;
+}
+.patient-meta .icn { width: 13px; height: 13px; stroke: var(--muted-2); stroke-width: 1.7; fill: none; margin-right: 1px; }
+
+.patient-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Dropdown menu */
+.more-wrap { position: relative; }
+.ph-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  min-width: 220px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  padding: 6px; z-index: 30;
+  opacity: 0; transform: translateY(-4px); pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.ph-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.ph-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; border: none; background: transparent;
+  border-radius: 6px; font-size: 13.5px; color: var(--ink-2);
+  cursor: pointer; text-align: left;
+}
+.ph-menu-item:hover { background: var(--surface-2); }
+.ph-menu-item svg { width: 15px; height: 15px; stroke: var(--muted); stroke-width: 1.7; fill: none; flex: none; }
+.ph-menu-item.danger { color: var(--danger); }
+.ph-menu-item.danger svg { stroke: var(--danger); }
+.ph-menu-item.danger:hover { background: var(--danger-soft); }
+.ph-menu-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+.ph-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink-2);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+.ph-btn:hover { background: var(--surface-2); }
+.ph-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.ph-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
+.ph-btn.primary:hover { background: #000; }
+.ph-btn.primary svg { stroke: white; }
+.ph-btn.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.ph-btn.ghost:hover { background: var(--surface-2); }
+
+/* Summary chips strip */
+.summary-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  margin-top: 24px;
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--surface); overflow: hidden;
+}
+.sum-cell { padding: 14px 16px; border-right: 1px solid var(--border); }
+.sum-cell:last-child { border-right: none; }
+.sum-k { font-size: 11px; font-weight: 500; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.sum-k svg { width: 12px; height: 12px; stroke: var(--muted-2); stroke-width: 1.8; fill: none; }
+.sum-v { font-size: 15px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; }
+.sum-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.sum-v .light { color: var(--muted); font-weight: 400; }
+
+/* Responsive — mismos breakpoints que el diseño original */
+@media (max-width: 1100px) {
+  .summary-strip { grid-template-columns: repeat(2, 1fr); }
+  .sum-cell:nth-child(2) { border-right: none; }
+  .sum-cell:nth-child(1), .sum-cell:nth-child(2) { border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 960px) {
+  .patient-top { flex-wrap: wrap; }
+  .patient-actions { order: 3; width: 100%; margin-left: 0; justify-content: flex-end; margin-top: 4px; }
+  .patient-name { font-size: 24px; }
+}
+@media (max-width: 720px) {
+  .patient-name { font-size: 22px; }
+  .summary-strip { grid-template-columns: 1fr; }
+  .sum-cell { border-right: none; border-bottom: 1px solid var(--border); }
+  .sum-cell:last-child { border-bottom: none; }
+}
