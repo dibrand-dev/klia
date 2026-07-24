@@ -85,7 +85,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
           </Link>
         </div>
       ) : (
-        <HistorialList notas={notasList} turnos={turnosList} pacienteId={params.id} />
+        <HistorialList notas={notasList} turnos={turnosList} pacienteId={params.id} proximaSesion={proximaSesion} />
       )}
     </div>
   )

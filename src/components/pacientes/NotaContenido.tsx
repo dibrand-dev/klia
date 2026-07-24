@@ -30,7 +30,7 @@ export default function NotaContenido({
 }) {
   return (
     <div className="drawer-sec">
-      <h3>Nota clínica</h3>
+      <h3>Observaciones clínicas</h3>
       {editando ? (
         <>
           {error && (

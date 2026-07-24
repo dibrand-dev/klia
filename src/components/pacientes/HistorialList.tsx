@@ -44,9 +44,10 @@ type Props = {
   notas: NotaClinica[]
   turnos: TurnoRow[]
   pacienteId: string
+  proximaSesion?: TurnoRow | null
 }
 
-export default function HistorialList({ notas, turnos, pacienteId }: Props) {
+export default function HistorialList({ notas, turnos, pacienteId, proximaSesion = null }: Props) {
   const router = useRouter()
   const [localNotas, setLocalNotas] = useState<NotaClinica[]>(notas)
   const [selectedNota, setSelectedNota] = useState<NotaClinica | null>(null)
@@ -160,6 +161,9 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
   const ultimaEdicionStr = selectedNota && selectedNota.updated_at !== selectedNota.created_at
     ? `Última edición: ${format(parseISO(selectedNota.updated_at), "d MMM, HH:mm", { locale: es })}`
     : null
+  const proximaCitaStr = proximaSesion
+    ? `${format(parseISO(proximaSesion.fecha_hora), "EEEE d MMM yyyy", { locale: es })} · ${format(parseISO(proximaSesion.fecha_hora), 'HH:mm')}`
+    : 'No tiene sesión agendada'
 
   return (
     <>
@@ -308,7 +312,6 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
       >
         {selectedNota && selMeta && (
           <div className="drawer-body">
-            <h2>{selTitulo}</h2>
             <div className="d-sub">
               {selMeta.modalidadLabel && <span className={`chip ${selMeta.modalidadChipClass}`}>{selMeta.modalidadLabel}</span>}
               {selMeta.duracionLabel && <span className="chip neutral">{selMeta.duracionLabel}</span>}
@@ -321,6 +324,10 @@ export default function HistorialList({ notas, turnos, pacienteId }: Props) {
               onContenidoChange={setContenido}
               error={guardarError}
             />
+            <div className="drawer-sec">
+              <h3>Próxima cita</h3>
+              <p className="contenido">{proximaCitaStr}</p>
+            </div>
           </div>
         )}
       </SlideOver>
