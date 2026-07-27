@@ -80,5 +80,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/bienvenida', origin))
   }
 
+  const { error: resetFlagError } = await supabase
+    .from('profiles')
+    .update({ email_inactividad_enviado_at: null })
+    .eq('id', session.user.id)
+  if (resetFlagError) {
+    console.error('🔵 CALLBACK error reseteando email_inactividad_enviado_at:', resetFlagError.message)
+  }
+
   return NextResponse.redirect(new URL('/dashboard', origin))
 }

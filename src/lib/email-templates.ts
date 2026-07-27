@@ -169,6 +169,18 @@ export function emailTrialDia20(nombre: string): string {
   `, 'Mañana vence tu prueba — KLIA')
 }
 
+export function emailInactividadTrial(nombre: string): string {
+  return baseTemplate(`
+    ${icon('👋', '#eff6ff')}
+    ${h1('¿Necesitás una mano con KLIA?')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, notamos que hace unos días no entrás a tu cuenta.`)}
+    ${para('Sabemos que armar el consultorio online lleva su tiempo — si te trabaste en algo o tenés alguna duda, queremos ayudarte a resolverlo, no venderte nada.')}
+    ${infoBox('💬&nbsp; Coordiná una llamada corta con nosotros, o escribinos directo por WhatsApp — te acompañamos a terminar de configurar tu cuenta.', '#eff6ff', '#2563EB', '#1e3a8a')}
+    ${cta('Agendar una llamada &rarr;', 'https://calendar.app.google/o1NGMJwLDPSpNrmH9')}
+    ${help('¿Preferís WhatsApp? Escribinos a <a href="https://wa.me/5491165939115" style="color:#2563EB;text-decoration:none;font-weight:600;">+54 9 11 6593-9115</a>')}
+  `, '¿Necesitás una mano con KLIA? — KLIA')
+}
+
 export function emailCuentaBloqueada(nombre: string): string {
   return baseTemplate(`
     ${icon('🔒', '#fef2f2')}

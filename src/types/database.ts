@@ -40,6 +40,7 @@ export type Database = {
           agenda_hora_fin: number   // numeric(4,2) en DB — soporta cuartos de hora
           cobrar_inasistencias: boolean
           email_bloqueada_enviado: boolean
+          email_inactividad_enviado_at: string | null
           booking_slug: string | null
           booking_bio: string | null
           booking_duracion_sesion: number
@@ -99,6 +100,7 @@ export type Database = {
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
+          email_inactividad_enviado_at?: string | null
           booking_slug?: string | null
           booking_bio?: string | null
           booking_duracion_sesion?: number
@@ -158,6 +160,7 @@ export type Database = {
           agenda_hora_fin?: number
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
+          email_inactividad_enviado_at?: string | null
           booking_slug?: string | null
           booking_bio?: string | null
           booking_duracion_sesion?: number
@@ -1450,6 +1453,10 @@ export type Database = {
       admin_get_last_sign_in: {
         Args: { p_id: string }
         Returns: string | null
+      }
+      get_inactive_trial_profiles: {
+        Args: Record<string, never>
+        Returns: { id: string; nombre: string; email: string }[]
       }
       admin_validar_pacientes_obra_social: {
         Args: { p_nombre_original: string; p_nombre_final: string }
