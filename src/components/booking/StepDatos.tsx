@@ -281,12 +281,18 @@ export default function StepDatos({
               marginTop: 12, paddingTop: 12, borderTop: '1px solid #EFF4FF',
               display: 'flex', alignItems: 'baseline', gap: 4,
             }}>
-              <span style={{ fontSize: 12, color: '#5B6472', fontWeight: 500 }}>Total</span>
-              <span style={{ fontSize: 19, fontWeight: 700, color: '#0B1220', marginLeft: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{sym}</span>
-                {precio.toLocaleString('es-AR')}
-              </span>
-              <span style={{ fontSize: 12, color: '#8A93A1', fontWeight: 500 }}>{profile.booking_moneda}</span>
+              {form.coberturaId === '' || form.coberturaId === 'particular' ? (
+                <>
+                  <span style={{ fontSize: 12, color: '#5B6472', fontWeight: 500 }}>Total</span>
+                  <span style={{ fontSize: 19, fontWeight: 700, color: '#0B1220', marginLeft: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{sym}</span>
+                    {precio.toLocaleString('es-AR')}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#8A93A1', fontWeight: 500 }}>{profile.booking_moneda}</span>
+                </>
+              ) : (
+                <span style={{ fontSize: 12.5, color: '#5B6472', fontWeight: 500 }}>Este costo lo cubre tu obra social</span>
+              )}
             </div>
           )}
         </div>
