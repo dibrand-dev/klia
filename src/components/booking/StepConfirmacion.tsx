@@ -92,7 +92,11 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
           ¡Reserva confirmada!
         </h1>
         <p style={{ fontSize: 14, color: '#5B6472', margin: '0 0 24px', lineHeight: 1.6 }}>
-          Tu {tipoLabel.toLowerCase()} fue agendada y el pago procesado.<br />
+          {confirmacion.mp_payment_id ? (
+            <>Tu {tipoLabel.toLowerCase()} fue agendada y el pago procesado.<br /></>
+          ) : (
+            <>Tu {tipoLabel.toLowerCase()} fue agendada.<br /></>
+          )}
           Te enviamos la confirmación a tu email.
         </p>
 
@@ -138,7 +142,7 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
             Agregar a Google Calendar
           </a>
-          {confirmacion.referencia && (
+          {confirmacion.mp_payment_id && (
             <a
               href={`/api/booking/comprobante?ref=${confirmacion.referencia}`}
               target="_blank"
@@ -167,7 +171,7 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
         </div>
 
         {/* Reference */}
-        {(confirmacion.mp_payment_id || confirmacion.referencia) && (
+        {confirmacion.mp_payment_id && (
           <div style={{
             marginTop: 20,
             padding: '12px 14px',
