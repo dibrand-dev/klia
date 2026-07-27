@@ -29,6 +29,7 @@ export type ProfileData = {
   booking_requiere_pago: boolean
   mp_conectado: boolean
   terminologia: 'sesion' | 'consulta'
+  obrasSociales: { id: string; nombre: string }[]
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
@@ -56,6 +57,13 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
 
   console.log('🔵 BOOKING: profile encontrado: sí')
 
+  const { data: obrasSociales } = await supabase
+    .from('profesional_obras_sociales')
+    .select('id, nombre')
+    .eq('terapeuta_id', data.id)
+    .eq('activa', true)
+    .order('nombre')
+
   return {
     id: data.id,
     nombre: data.nombre ?? '',
@@ -76,6 +84,7 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     booking_requiere_pago: data.booking_requiere_pago ?? true,
     mp_conectado: !!(data.mp_access_token),
     terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
+    obrasSociales: obrasSociales ?? [],
   }
 }
 

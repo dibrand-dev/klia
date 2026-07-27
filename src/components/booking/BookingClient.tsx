@@ -42,6 +42,7 @@ export default function BookingClient({ profile }: Props) {
     apellido: '',
     email: '',
     telefono: '',
+    coberturaId: '',
   })
   const [confirmacion, setConfirmacion] = useState<ConfirmacionData | null>(null)
 

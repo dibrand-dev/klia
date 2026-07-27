@@ -24,6 +24,7 @@ interface DatosForm {
   apellido: string
   email: string
   telefono: string
+  coberturaId: string
 }
 
 interface Props {
@@ -243,6 +244,7 @@ export default function StepPago({
             apellido: datosForm.apellido,
             email: datosForm.email,
             telefono: datosForm.telefono || undefined,
+            cobertura_id: datosForm.coberturaId,
           }),
         })
 

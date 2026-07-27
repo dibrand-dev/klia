@@ -7,6 +7,7 @@ interface FormData {
   apellido: string
   email: string
   telefono: string
+  coberturaId: string
 }
 
 interface Props {
@@ -142,7 +143,7 @@ export default function StepDatos({
     : profile.booking_precio_entrevista
 
   const fechaFmt = formatFecha(fecha)
-  const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim()
+  const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
 
   function setField(k: keyof FormData, v: string) {
     onForm({ ...form, [k]: v })
@@ -210,6 +211,43 @@ export default function StepDatos({
           placeholder="11 1234-5678"
           prefix="+54"
         />
+
+        <div style={{ marginBottom: 16 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#374151',
+              marginBottom: 6,
+              letterSpacing: '0.01em',
+            }}
+          >
+            ¿Cómo vas a abonar?
+            <span style={{ color: '#2563EB', marginLeft: 2 }}>*</span>
+          </label>
+          <select
+            value={form.coberturaId}
+            onChange={(e) => setField('coberturaId', e.target.value)}
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              border: '1.5px solid #E7E9EE',
+              borderRadius: 10,
+              fontSize: 14,
+              color: '#0B1220',
+              background: '#fff',
+              outline: 'none',
+              fontFamily: 'Inter, system-ui, sans-serif',
+            }}
+          >
+            <option value="" disabled>Seleccioná una opción</option>
+            <option value="particular">Particular</option>
+            {profile.obrasSociales.map((os) => (
+              <option key={os.id} value={os.id}>{os.nombre}</option>
+            ))}
+          </select>
+        </div>
 
         {/* Summary inside form-card */}
         <div style={{

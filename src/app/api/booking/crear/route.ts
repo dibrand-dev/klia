@@ -77,9 +77,10 @@ export async function POST(req: NextRequest) {
     apellido?: string
     email?: string
     telefono?: string
+    cobertura_id?: string
   }
 
-  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono } = body
+  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId } = body
 
   if (!slug || !fecha || !hora || !tipo || !nombre || !apellido || !email) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -114,18 +115,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'slot_taken' }, { status: 409 })
   }
 
+  // 2b. Obra social elegida — si no matchea una obra social activa del profesional, se trata como particular
+  let osEncontrada: { id: string; nombre: string } | null = null
+  if (coberturaId && coberturaId !== 'particular') {
+    const { data: os } = await db
+      .from('profesional_obras_sociales')
+      .select('id, nombre')
+      .eq('id', coberturaId)
+      .eq('terapeuta_id', profile.id)
+      .eq('activa', true)
+      .maybeSingle()
+    osEncontrada = os ?? null
+  }
+  const esParticular = !osEncontrada
+
   // 3. Find or create paciente
   let pacienteId: string
 
   const { data: existing } = await db
     .from('pacientes')
-    .select('id')
+    .select('id, obra_social')
     .eq('terapeuta_id', profile.id)
     .eq('email', email)
     .maybeSingle()
 
   if (existing) {
     pacienteId = existing.id
+    // No pisar una obra social ya cargada a mano por el profesional en la ficha del paciente.
+    if (!esParticular && osEncontrada && !existing.obra_social) {
+      await db
+        .from('pacientes')
+        .update({ obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id })
+        .eq('id', pacienteId)
+    }
   } else {
     const { data: newPaciente, error: pacErr } = await db
       .from('pacientes')
@@ -137,6 +159,7 @@ export async function POST(req: NextRequest) {
         telefono: telefono ?? null,
         activo: true,
         motivo_consulta: tipo === 'entrevista' ? 'Entrevista inicial (reserva online)' : null,
+        ...(!esParticular && osEncontrada ? { obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id } : {}),
       })
       .select('id')
       .single()
@@ -176,8 +199,8 @@ export async function POST(req: NextRequest) {
 
   const hash = shortId()
 
-  // 5. If no payment required or no MP connected → confirm immediately
-  if (!profile.booking_requiere_pago || !precio || !profile.mp_access_token) {
+  // 5. If no payment required, no MP connected, or paciente eligió obra social → confirm immediately
+  if (!profile.booking_requiere_pago || !precio || !profile.mp_access_token || !esParticular) {
     await db.from('turnos').update({ estado: 'confirmado' }).eq('id', turno.id)
 
     try {
