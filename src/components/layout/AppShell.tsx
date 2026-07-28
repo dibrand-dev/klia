@@ -157,14 +157,17 @@ export default function AppShell({
         <GlobalFooter />
       </main>
 
-      {/* Mobile FAB */}
-      <button
-        onClick={() => abrirNuevoTurno()}
-        className="fixed bottom-8 right-8 h-14 w-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 md:hidden"
-        aria-label="Nueva sesión"
-      >
-        <span className="material-symbols-outlined">add</span>
-      </button>
+      {/* Mobile FAB — oculto en /pacientes/nuevo, que ya tiene su propia action-bar fija
+          (Guardar/Cancelar) y el FAB se superpondría con ella */}
+      {pathname !== '/pacientes/nuevo' && (
+        <button
+          onClick={() => abrirNuevoTurno()}
+          className="fixed bottom-8 right-8 h-14 w-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50 md:hidden"
+          aria-label="Nueva sesión"
+        >
+          <span className="material-symbols-outlined">add</span>
+        </button>
+      )}
 
       {/* SlideOver global de nueva nota clínica */}
       <SlideOver

@@ -12,9 +12,27 @@ interface MonedaSelectorProps {
   value: Moneda
   onChange: (moneda: Moneda) => void
   className?: string
+  variant?: 'select' | 'toggle'
 }
 
-export default function MonedaSelector({ value, onChange, className = '' }: MonedaSelectorProps) {
+export default function MonedaSelector({ value, onChange, className = '', variant = 'select' }: MonedaSelectorProps) {
+  if (variant === 'toggle') {
+    return (
+      <div className={`currency-toggle ${className}`}>
+        {MONEDAS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={m === value ? 'active' : ''}
+            onClick={() => onChange(m)}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <select
       value={value}

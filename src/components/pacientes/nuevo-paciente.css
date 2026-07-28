@@ -1,0 +1,272 @@
+/* Alta de Paciente — rediseño mobile-first (Claude Design).
+   Todos los tokens y selectores quedan aislados bajo .npf-scope: la paleta de este
+   diseño (--klia, --ink #0E1430, etc.) es distinta a la del resto de KLIA
+   (--accent, --ink #0B1220 en globals.css) y varias clases (.card, .btn, .field,
+   .grid) ya existen globalmente — sin este scope pisarían el resto de la app.
+
+   NOTA — Instrument Serif: el token --font-serif del diseño original NO se cargó acá.
+   No se usa en ningún elemento de esta pantalla, y en la sesión de diseño se definió
+   como acento puntual para el nombre del paciente en el header (no implementado en
+   este rediseño). Tampoco está disponible vía next/font/google en esta versión de
+   Next (14.2.35). Si se retoma el design system completo y se necesita ese acento,
+   falta cargarla — no está resuelto en ningún lado del proyecto todavía. */
+
+.npf-scope {
+  /* ── Brand: Klia Blue ────────────────────────────────── */
+  --klia-50:  #F4F6FC;
+  --klia-100: #E8ECF8;
+  --klia-500: #5A6CB8;
+  --klia-600: #3F519E;
+  --klia-700: #2F3F82;
+  --klia:     #3F519E;
+
+  /* ── Accent: Coral ───────────────────────────────────── */
+  --coral:       #FF7A66;
+  --coral-hover: #E55A45;
+  --coral-bg:    #FFD3CC;
+
+  /* ── Accent: Purple ──────────────────────────────────── */
+  --purple:    #8C6ED8;
+  --purple-bg: #E8DAFF;
+
+  /* ── Accent: Amber / Warning ─────────────────────────── */
+  --amber:    #F4B860;
+  --amber-bg: #FFF1D6;
+
+  /* ── Neutrals ────────────────────────────────────────── */
+  --ink:     #0E1430;
+  --ink-2:   #2A2F4A;
+  --slate:   #5A607A;
+  --slate-2: #8990AA;
+  --line:    #E5E7EF;
+  --line-2:  #EFF1F7;
+
+  /* ── Surfaces ────────────────────────────────────────── */
+  --bg:      #FFFFFF;
+  --bg-alt:  #F7F8FB;
+
+  /* ── Fonts ───────────────────────────────────────────── */
+  --font-display: var(--font-geist-sans, 'Geist'), system-ui, -apple-system, sans-serif;
+  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    var(--font-geist-mono, 'Geist Mono'), ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ── Radii / shadow / transitions ────────────────────── */
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 2px rgba(14,20,48,.04), 0 1px 1px rgba(14,20,48,.03);
+  --ease-out: cubic-bezier(.2,.8,.2,1);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-alt);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.npf-scope h1,
+.npf-scope h2,
+.npf-scope h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+}
+.npf-scope button { font: inherit; color: inherit; }
+
+/* ===== HEADER ===== */
+.npf-scope .topbar {
+  position: sticky; top: 0; z-index: 20;
+  height: 56px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.npf-scope .icon-btn {
+  width: 40px; height: 40px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; border: none; background: transparent; color: var(--ink-2);
+  cursor: pointer; transition: background .15s ease;
+}
+.npf-scope .icon-btn:hover { background: var(--bg-alt); }
+.npf-scope .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.npf-scope .topbar h1 {
+  flex: 1; min-width: 0;
+  font-size: 17px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.npf-scope .topbar-actions { display: none; align-items: center; gap: 8px; flex: none; }
+
+.npf-scope .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 999px; border: none; cursor: pointer;
+  font-family: var(--font-body); font-weight: 500; font-size: 15px;
+  padding: 12px 20px; white-space: nowrap;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.npf-scope .btn:active { transform: scale(.98); }
+.npf-scope .btn:disabled { opacity: .6; cursor: not-allowed; }
+.npf-scope .btn.primary { background: var(--klia); color: #fff; box-shadow: 0 6px 18px rgba(63,81,158,.30); }
+.npf-scope .btn.primary:hover { background: var(--klia-700); }
+.npf-scope .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.npf-scope .btn.ghost:hover { background: var(--bg-alt); border-color: var(--ink-2); }
+
+/* ===== SCROLL AREA ===== */
+.npf-scope .form-scroll { flex: 1; padding: 16px 16px 0; }
+.npf-scope .container { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.npf-scope .bottom-spacer { height: 84px; }
+
+/* ===== CARDS / SECTIONS ===== */
+.npf-scope .card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.npf-scope .sec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.npf-scope .sec-head h2 { font-size: 15px; }
+.npf-scope .tag-clinico {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .02em;
+  color: var(--purple); background: var(--purple-bg);
+  border: 1px solid #D4C0F5; padding: 6px 12px; border-radius: 999px; line-height: 1; white-space: nowrap;
+}
+
+/* ===== GRID ===== */
+.npf-scope .grid { display: grid; grid-template-columns: 1fr; gap: 16px 12px; }
+.npf-scope .span-2 { grid-column: 1/-1; }
+
+/* ===== FIELDS ===== */
+.npf-scope .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.npf-scope .field label { font-size: 13px; font-weight: 500; color: var(--slate); }
+.npf-scope .field label em { color: var(--coral); font-style: normal; margin-left: 2px; }
+.npf-scope .field input[type=text],
+.npf-scope .field input[type=tel],
+.npf-scope .field input[type=email],
+.npf-scope .field input[type=date],
+.npf-scope .field input[type=number],
+.npf-scope .field select,
+.npf-scope .field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  appearance: none;
+}
+.npf-scope .field input.mono,
+.npf-scope .field input[type=number] { font-family: var(--font-mono); }
+.npf-scope .field textarea { resize: vertical; font-family: var(--font-body); line-height: 1.5; }
+.npf-scope .field textarea.tall { min-height: 140px; }
+.npf-scope .field textarea.short { min-height: 88px; }
+.npf-scope .field input:focus,
+.npf-scope .field select:focus,
+.npf-scope .field textarea:focus {
+  border-color: var(--klia); box-shadow: 0 0 0 3px rgba(63,81,158,.12);
+}
+.npf-scope .field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235A607A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px;
+}
+.npf-scope .hint { font-size: 12px; color: var(--slate); }
+.npf-scope .hint.warn { color: var(--amber); display: flex; align-items: center; gap: 6px; }
+.npf-scope .hint.warn svg { width: 14px; height: 14px; stroke: var(--amber); flex: none; }
+
+/* condicionales: colapso animado sin salto brusco */
+.npf-scope .collapsible { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .22s var(--ease-out), opacity .22s var(--ease-out); }
+.npf-scope .collapsible.open { grid-template-rows: 1fr; opacity: 1; }
+.npf-scope .collapsible > .collapsible-inner { overflow: hidden; }
+.npf-scope .collapsible .grid { padding-top: 16px; }
+
+/* subsección contacto de emergencia */
+.npf-scope .subblock { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.npf-scope .subblock-title { font-size: 12px; font-weight: 500; color: var(--slate); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 12px; }
+
+/* ===== MEDICACION ===== */
+.npf-scope .med-list { display: flex; flex-direction: column; gap: 12px; }
+.npf-scope .med-row { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--bg-alt); position: relative; }
+.npf-scope .med-row-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.npf-scope .med-row-top .field { flex: 1; }
+.npf-scope .med-del {
+  flex: none; width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--coral); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.npf-scope .med-del:hover { background: #FFF4F2; border-color: var(--coral); }
+.npf-scope .med-del svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.npf-scope .med-row-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.npf-scope .med-empty {
+  border: 1px dashed var(--line); border-radius: 14px; padding: 32px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--slate);
+}
+.npf-scope .med-empty svg { width: 28px; height: 28px; stroke: var(--slate-2); stroke-width: 1.4; fill: none; }
+.npf-scope .med-empty span { font-size: 13px; }
+.npf-scope .btn-add {
+  width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--klia);
+  background: var(--klia-50); color: var(--klia); font-weight: 500; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; margin-top: 12px;
+  transition: background .15s ease;
+}
+.npf-scope .btn-add:hover { background: var(--klia-100); }
+.npf-scope .btn-add svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* moneda selector custom (variant="toggle" de MonedaSelector) */
+.npf-scope .currency-toggle { display: flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; flex: none; height: 44px; align-items: center; width: fit-content; }
+.npf-scope .currency-toggle button {
+  border: none; background: transparent; padding: 0 12px; height: 36px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--slate); cursor: pointer;
+}
+.npf-scope .currency-toggle button.active { background: var(--klia); color: #fff; }
+
+/* ===== BOTTOM ACTION BAR (mobile) ===== */
+.npf-scope .action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255,255,255,.96); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  transition: bottom .1s ease;
+}
+.npf-scope .action-bar .btn.primary { flex: 2; }
+.npf-scope .action-bar .btn.ghost { flex: 1; }
+
+/* ≥600px: 2-col grids */
+@media (min-width: 600px) {
+  .npf-scope .form-scroll { padding: 24px 24px 0; }
+  .npf-scope .card { padding: 24px; }
+  .npf-scope .grid { grid-template-columns: 1fr 1fr; }
+  .npf-scope .med-row-bottom { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ≥768px: action bar moves into header */
+@media (min-width: 768px) {
+  .npf-scope .topbar { height: 72px; padding: 0 32px; }
+  .npf-scope .topbar h1 { font-size: 20px; }
+  .npf-scope .topbar-actions { display: flex; }
+  .npf-scope .action-bar { display: none; }
+  .npf-scope .bottom-spacer { height: 0; }
+  .npf-scope .form-scroll { padding: 32px 32px 48px; }
+  .npf-scope .container { max-width: 900px; }
+  .npf-scope .card { box-shadow: var(--shadow-sm); }
+}
+
+/* ≥1024px: 3-col grids, fuller cards */
+@media (min-width: 1024px) {
+  .npf-scope .container { max-width: 1040px; }
+  .npf-scope .card { padding: 32px; border-radius: var(--radius-xl); }
+  .npf-scope #sec-identidad .grid,
+  .npf-scope #sec-personal .grid { grid-template-columns: 1fr 1fr 1fr; }
+  .npf-scope .med-row-bottom { grid-template-columns: 2fr 1fr 1fr; }
+}

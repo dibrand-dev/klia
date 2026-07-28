@@ -1,17 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import type { ProfesionalObraSocial } from '@/types/database'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import type { Moneda } from '@/lib/monedas'
-
-const inputCls =
-  'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
-const labelCls =
-  'block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-2'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import './nuevo-paciente.css'
 
 const EMPTY_FORM = {
   nombre: '',
@@ -91,7 +89,9 @@ const EMPTY_MED: MedicacionForm = { farmaco: '', dosis: '', frecuencia: '', pres
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
-    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
+    // bottom-24 (no bottom-6) por debajo de md: la action-bar fija de esta pantalla ocupa esa
+    // franja en mobile — con bottom-6 el toast quedaba superpuesto arriba de Cancelar/Guardar.
+    <div className={`fixed bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${type === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
       {msg}
     </div>
   )
@@ -105,6 +105,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const actionBarRef = useRef<HTMLDivElement>(null)
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type })
@@ -245,34 +246,46 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
     }
   }
 
+  // Action bar vs. teclado virtual (mobile). Con <meta interactive-widget="resizes-content">
+  // Chrome/Android redimensiona el viewport al abrir el teclado, así que `bottom:0` reacomoda
+  // solo. iOS Safari NO soporta ese meta tag: el layout viewport no cambia, solo el
+  // visualViewport, y una barra fixed puede quedar flotando sobre el teclado en vez de pegada
+  // arriba de él. Mitigación: escuchamos visualViewport.resize/scroll y reposicionamos la barra
+  // con un `bottom` calculado igual al borde inferior visible, en vez de confiar en bottom:0.
+  // LIMITACIÓN CONOCIDA: validar en Safari iOS real (el simulator no siempre lo reproduce
+  // fiel); si persiste flicker, evaluar escuchar focusin/focusout en los inputs para ocultar
+  // la barra mientras el campo activo tiene foco.
+  useEffect(() => {
+    const actionBar = actionBarRef.current
+    if (!actionBar || !window.visualViewport) return
+    const vv = window.visualViewport
+    function reposition() {
+      const offsetBottom = window.innerHeight - (vv!.height + vv!.offsetTop)
+      actionBar!.style.bottom = Math.max(0, offsetBottom) + 'px'
+    }
+    vv.addEventListener('resize', reposition)
+    vv.addEventListener('scroll', reposition)
+    reposition()
+    return () => {
+      vv.removeEventListener('resize', reposition)
+      vv.removeEventListener('scroll', reposition)
+    }
+  }, [])
+
+  const mostrarOtra = form.obra_social === 'Otra'
+  const mostrarDatosOS = form.obra_social !== '' && form.obra_social !== 'Otra'
+
   return (
-    <>
-      {/* TopAppBar */}
-      <header className="flex items-center justify-between px-8 h-16 bg-[#f7f9fb] sticky top-0 z-30 border-b border-[#e8eaf0]">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant transition-colors"
-          >
-            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
-          </button>
-          <h2 className="font-bold text-lg text-[#001a48]">Alta de Paciente</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-5 py-2 text-sm font-medium bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg shadow-[0_8px_24px_rgba(0,26,72,0.06)] hover:opacity-90 transition-opacity disabled:opacity-60"
-          >
+    <div className={`npf-scope ${GeistSans.variable} ${GeistMono.variable}`}>
+      {/* Header */}
+      <header className="topbar">
+        <button type="button" className="icon-btn" aria-label="Volver" onClick={() => router.back()}>
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+        <h1>Alta de Paciente</h1>
+        <div className="topbar-actions">
+          <button type="button" className="btn ghost" onClick={() => router.back()}>Cancelar</button>
+          <button type="button" className="btn primary" onClick={handleSubmit} disabled={loading}>
             {loading ? 'Guardando...' : 'Guardar Paciente'}
           </button>
         </div>
@@ -286,308 +299,291 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
         {planesDisponibles.map((p) => <option key={p} value={p} />)}
       </datalist>
 
-      {/* Form canvas */}
-      <div className="p-8 max-w-5xl mx-auto w-full flex flex-col gap-8 pb-24">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+      <main className="form-scroll">
+        <div className="container">
+          {error && (
+            <div style={{ background: '#FFF4F2', border: '1px solid var(--coral-bg)', color: 'var(--coral-hover)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', fontSize: 14 }}>
+              {error}
+            </div>
+          )}
 
-        {/* Card 0 — Datos de identidad */}
-        <div className="bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(0,26,72,0.06)]">
-          <h3 className="font-semibold text-on-surface mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">badge</span>
-            Datos de Identidad
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <label className={labelCls}>
-                Nombre <span className="text-error">*</span>
-              </label>
-              <input name="nombre" type="text" value={form.nombre} onChange={handleChange} placeholder="María" className={inputCls} />
+          {/* Sección 1 — Datos de Identidad */}
+          <section className="card" id="sec-identidad">
+            <div className="sec-head"><h2>Datos de Identidad</h2></div>
+            <div className="grid">
+              <div className="field">
+                <label>Nombre<em>*</em></label>
+                <input name="nombre" type="text" value={form.nombre} onChange={handleChange} placeholder="María" />
+              </div>
+              <div className="field">
+                <label>Apellido<em>*</em></label>
+                <input name="apellido" type="text" value={form.apellido} onChange={handleChange} placeholder="García" />
+              </div>
+              <div className="field">
+                <label>DNI</label>
+                <input name="dni" type="text" className="mono" value={form.dni} onChange={handleChange} placeholder="12.345.678" />
+              </div>
+              <div className="field">
+                <label>Fecha de Nacimiento</label>
+                <input name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} />
+              </div>
+              <div className="field">
+                <label>Teléfono</label>
+                <input name="telefono" type="tel" className="mono" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" />
+              </div>
+              <div className="field">
+                <label>Email</label>
+                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" />
+                {!form.email && (
+                  <span className="hint warn">
+                    <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.6 1.6 0 0 0 1.4 2.4h15.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z" /></svg>
+                    Sin email no se envían recordatorios automáticos de turnos
+                  </span>
+                )}
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>
-                Apellido <span className="text-error">*</span>
-              </label>
-              <input name="apellido" type="text" value={form.apellido} onChange={handleChange} placeholder="García" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>DNI</label>
-              <input name="dni" type="text" value={form.dni} onChange={handleChange} placeholder="12.345.678" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Fecha de Nacimiento</label>
-              <input name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Teléfono</label>
-              <input name="telefono" type="tel" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Email</label>
-              <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" className={inputCls} />
-              {!form.email && (
-                <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
-                  Sin email no se envían recordatorios automáticos de turnos.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Card 1 — Información Personal */}
-        <div className="bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(0,26,72,0.06)]">
-          <h3 className="font-semibold text-on-surface mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">person</span>
-            Información Personal
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <label className={labelCls}>Género</label>
-              <select name="genero" value={form.genero} onChange={handleChange} className={inputCls}>
-                <option value="">Seleccionar...</option>
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-                <option value="NB">No Binario</option>
-                <option value="Otro">Otro</option>
-              </select>
+          {/* Sección 2 — Información Personal */}
+          <section className="card" id="sec-personal">
+            <div className="sec-head"><h2>Información Personal</h2></div>
+            <div className="grid">
+              <div className="field">
+                <label>Género</label>
+                <select name="genero" value={form.genero} onChange={handleChange}>
+                  <option value="">Seleccionar...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="NB">No Binario</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Nacionalidad</label>
+                <input name="nacionalidad" type="text" value={form.nacionalidad} onChange={handleChange} placeholder="Argentina" list="npf-paises" autoComplete="off" />
+              </div>
+              <div className="field">
+                <label>Estado Civil</label>
+                <select name="estado_civil" value={form.estado_civil} onChange={handleChange}>
+                  <option value="">Seleccionar...</option>
+                  <option value="Soltero/a">Soltero/a</option>
+                  <option value="Casado/a">Casado/a</option>
+                  <option value="Divorciado/a">Divorciado/a</option>
+                  <option value="Viudo/a">Viudo/a</option>
+                  <option value="En pareja">En pareja</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Ocupación</label>
+                <input name="ocupacion" type="text" value={form.ocupacion} onChange={handleChange} placeholder="Docente, ingeniero..." />
+              </div>
+              <div className="field span-2">
+                <label>Domicilio</label>
+                <input name="domicilio" type="text" value={form.domicilio} onChange={handleChange} placeholder="Av. Corrientes 1234, CABA" />
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>Nacionalidad</label>
-              <input
-                name="nacionalidad"
-                type="text"
-                value={form.nacionalidad}
-                onChange={handleChange}
-                placeholder="Argentina"
-                list="npf-paises"
-                className={inputCls}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Estado Civil</label>
-              <select name="estado_civil" value={form.estado_civil} onChange={handleChange} className={inputCls}>
-                <option value="">Seleccionar...</option>
-                <option value="Soltero/a">Soltero/a</option>
-                <option value="Casado/a">Casado/a</option>
-                <option value="Divorciado/a">Divorciado/a</option>
-                <option value="Viudo/a">Viudo/a</option>
-                <option value="En pareja">En pareja</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Ocupación</label>
-              <input name="ocupacion" type="text" value={form.ocupacion} onChange={handleChange} placeholder="Docente, ingeniero..." className={inputCls} />
-            </div>
-            <div className="col-span-1 md:col-span-2">
-              <label className={labelCls}>Domicilio</label>
-              <input name="domicilio" type="text" value={form.domicilio} onChange={handleChange} placeholder="Av. Corrientes 1234, CABA" className={inputCls} />
-            </div>
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 pt-4 border-t border-outline-variant/20">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-4">
-                Contacto de emergencia
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={labelCls}>Nombre Completo</label>
-                  <input name="contacto_emergencia_nombre" type="text" value={form.contacto_emergencia_nombre} onChange={handleChange} placeholder="Juan García" className={inputCls} />
+            <div className="subblock">
+              <div className="subblock-title">Contacto de emergencia</div>
+              <div className="grid">
+                <div className="field">
+                  <label>Nombre Completo</label>
+                  <input name="contacto_emergencia_nombre" type="text" value={form.contacto_emergencia_nombre} onChange={handleChange} placeholder="Juan García" />
                 </div>
-                <div>
-                  <label className={labelCls}>Teléfono</label>
-                  <input name="contacto_emergencia_telefono" type="tel" value={form.contacto_emergencia_telefono} onChange={handleChange} placeholder="+54 11 1234-5678" className={inputCls} />
+                <div className="field">
+                  <label>Teléfono</label>
+                  <input name="contacto_emergencia_telefono" type="tel" className="mono" value={form.contacto_emergencia_telefono} onChange={handleChange} placeholder="+54 11 1234-5678" />
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Card 2 — Obra Social y Tratamiento */}
-        <div className="bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(0,26,72,0.06)]">
-          <h3 className="font-semibold text-on-surface mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">health_and_safety</span>
-            Obra Social y Tratamiento
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className={labelCls}>Obra Social / Prepaga</label>
-              <select name="obra_social" value={form.obra_social} onChange={handleObraChange} className={inputCls}>
-                <option value="">Sin obra social / Particular</option>
-                {obrasSociales.map((o) => <option key={o} value={o}>{o}</option>)}
-                <option value="Otra">Otra (no figura en la lista)</option>
-              </select>
+          {/* Sección 3 — Obra Social y Tratamiento */}
+          <section className="card" id="sec-obra">
+            <div className="sec-head"><h2>Obra Social y Tratamiento</h2></div>
+            <div className="grid">
+              <div className="field span-2">
+                <label>Obra Social / Prepaga</label>
+                <select name="obra_social" value={form.obra_social} onChange={handleObraChange}>
+                  <option value="">Sin obra social / Particular</option>
+                  {obrasSociales.map((o) => <option key={o} value={o}>{o}</option>)}
+                  <option value="Otra">Otra (no figura en la lista)</option>
+                </select>
+              </div>
             </div>
-            {form.obra_social === 'Otra' ? (
-              <>
-                <div>
-                  <label className={labelCls}>Nombre de la obra social <span className="text-error">*</span></label>
-                  <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Plan <span className="text-on-surface-variant font-normal">(opcional)</span></label>
-                  <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Plan 310, Básico..." className={inputCls} />
-                </div>
-              </>
-            ) : form.obra_social ? (
-              <>
-                <div>
-                  <label className={labelCls}>Plan</label>
-                  <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="npf-planes" className={inputCls} autoComplete="off" />
-                </div>
-                <div>
-                  <label className={labelCls}>N° de Afiliado</label>
-                  <input name="numero_afiliado" type="text" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>N° de Autorización</label>
-                  <input name="numero_autorizacion" type="text" value={form.numero_autorizacion} onChange={handleChange} placeholder="5917639" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Vigencia desde</label>
-                  <input name="autorizacion_vigencia_desde" type="date" value={form.autorizacion_vigencia_desde} onChange={handleChange} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Vigencia hasta</label>
-                  <input name="autorizacion_vigencia_hasta" type="date" value={form.autorizacion_vigencia_hasta} onChange={handleChange} className={inputCls} />
-                </div>
-              </>
-            ) : null}
-            <div>
-              <label className={labelCls}>Modalidad</label>
-              <select name="modalidad_tratamiento" value={form.modalidad_tratamiento} onChange={handleChange} className={inputCls}>
-                <option value="">Seleccionar...</option>
-                <option value="presencial">Presencial</option>
-                <option value="videollamada">Videollamada</option>
-                <option value="telefonica">Telefónica</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Frecuencia</label>
-              <select name="frecuencia_sesiones" value={form.frecuencia_sesiones} onChange={handleChange} className={inputCls}>
-                <option value="">Seleccionar...</option>
-                <option value="semanal">Semanal</option>
-                <option value="quincenal">Quincenal</option>
-                <option value="mensual">Mensual</option>
-                <option value="a_demanda">A demanda</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Honorarios por sesión</label>
-              <CurrencyInput
-                value={form.honorarios}
-                onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Moneda de cobro preferida</label>
-              <MonedaSelector value={monedaPreferida} onChange={setMonedaPreferida} className="w-full" />
-            </div>
-          </div>
-        </div>
 
-        {/* Card 3 — Resumen Clínico */}
-        <div className="bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(0,26,72,0.06)]">
-          <h3 className="font-semibold text-on-surface mb-6 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">clinical_notes</span>
-            Resumen Clínico
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="col-span-1 md:col-span-2">
-              <label className={labelCls}>Motivo de Consulta</label>
-              <textarea
-                name="motivo_consulta"
-                value={form.motivo_consulta}
-                onChange={handleChange}
-                rows={4}
-                placeholder="¿Por qué consulta? Motivo de derivación, problemática principal..."
-                className={`${inputCls} resize-none min-h-[100px]`}
-              />
+            <div className={`collapsible ${mostrarOtra ? 'open' : ''}`}>
+              <div className="collapsible-inner">
+                <div className="grid">
+                  <div className="field">
+                    <label>Nombre de la obra social<em>*</em></label>
+                    <input name="os_nombre_libre" type="text" value={form.os_nombre_libre} onChange={handleChange} placeholder="Ej: OSJERA, IOSE Regional..." />
+                  </div>
+                  <div className="field">
+                    <label>Plan</label>
+                    <input name="os_plan_libre" type="text" value={form.os_plan_libre} onChange={handleChange} placeholder="Plan 310, Básico... (opcional)" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="col-span-1 md:col-span-2">
-              <label className={labelCls}>Notas de Evolución</label>
-              <textarea
-                name="notas"
-                value={form.notas}
-                onChange={handleChange}
-                rows={6}
-                placeholder="Evolución del tratamiento, observaciones generales..."
-                className={`${inputCls} resize-none min-h-[150px]`}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Código Diagnóstico CIE / DSM</label>
-              <input name="codigo_diagnostico" type="text" value={form.codigo_diagnostico} onChange={handleChange} placeholder="F41.1, 300.02..." className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>Gravedad Estimada</label>
-              <select name="gravedad_estimada" value={form.gravedad_estimada} onChange={handleChange} className={inputCls}>
-                <option value="">Seleccionar...</option>
-                <option value="leve">Leve</option>
-                <option value="moderada">Moderada</option>
-                <option value="grave">Grave</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 4 — Medicación */}
-        <div className="bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(0,26,72,0.06)]">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">medication</span>
-              Medicación
-            </h3>
-            <button
-              type="button"
-              onClick={addMedicacion}
-              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>
+            <div className={`collapsible ${mostrarDatosOS ? 'open' : ''}`}>
+              <div className="collapsible-inner">
+                <div className="grid">
+                  <div className="field">
+                    <label>Plan</label>
+                    <input name="plan_obra_social" type="text" value={form.plan_obra_social} onChange={handleChange} placeholder={planesDisponibles.length ? 'Seleccionar o escribir...' : '310, Bronce, Gold...'} list="npf-planes" autoComplete="off" />
+                  </div>
+                  <div className="field">
+                    <label>N° de Afiliado</label>
+                    <input name="numero_afiliado" type="text" className="mono" value={form.numero_afiliado} onChange={handleChange} placeholder="123456789" />
+                  </div>
+                  <div className="field">
+                    <label>N° de Autorización</label>
+                    <input name="numero_autorizacion" type="text" className="mono" value={form.numero_autorizacion} onChange={handleChange} placeholder="5917639" />
+                  </div>
+                  <div className="field">
+                    <label>Vigencia desde</label>
+                    <input name="autorizacion_vigencia_desde" type="date" value={form.autorizacion_vigencia_desde} onChange={handleChange} />
+                  </div>
+                  <div className="field">
+                    <label>Vigencia hasta</label>
+                    <input name="autorizacion_vigencia_hasta" type="date" value={form.autorizacion_vigencia_hasta} onChange={handleChange} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid" style={{ marginTop: 16 }}>
+              <div className="field">
+                <label>Modalidad</label>
+                <select name="modalidad_tratamiento" value={form.modalidad_tratamiento} onChange={handleChange}>
+                  <option value="">Seleccionar...</option>
+                  <option value="presencial">Presencial</option>
+                  <option value="videollamada">Videollamada</option>
+                  <option value="telefonica">Telefónica</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Frecuencia</label>
+                <select name="frecuencia_sesiones" value={form.frecuencia_sesiones} onChange={handleChange}>
+                  <option value="">Seleccionar...</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="quincenal">Quincenal</option>
+                  <option value="mensual">Mensual</option>
+                  <option value="a_demanda">A demanda</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Honorarios por sesión</label>
+                <CurrencyInput
+                  value={form.honorarios}
+                  onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
+                  className="mono"
+                />
+              </div>
+              <div className="field">
+                <label>Moneda de cobro preferida</label>
+                <MonedaSelector value={monedaPreferida} onChange={setMonedaPreferida} variant="toggle" />
+              </div>
+            </div>
+          </section>
+
+          {/* Sección 4 — Resumen Clínico */}
+          <section className="card" id="sec-clinico">
+            <div className="sec-head"><h2>Resumen Clínico</h2><span className="tag-clinico">Clínico</span></div>
+            <div className="grid">
+              <div className="field span-2">
+                <label>Motivo de Consulta</label>
+                <textarea
+                  name="motivo_consulta"
+                  className="short"
+                  value={form.motivo_consulta}
+                  onChange={handleChange}
+                  rows={4}
+                  placeholder="¿Por qué consulta? Motivo de derivación, problemática principal..."
+                />
+              </div>
+              <div className="field span-2">
+                <label>Notas de Evolución</label>
+                <textarea
+                  name="notas"
+                  className="tall"
+                  value={form.notas}
+                  onChange={handleChange}
+                  rows={6}
+                  placeholder="Evolución del tratamiento, observaciones generales..."
+                />
+              </div>
+              <div className="field">
+                <label>Código Diagnóstico CIE / DSM</label>
+                <input name="codigo_diagnostico" type="text" className="mono" value={form.codigo_diagnostico} onChange={handleChange} placeholder="F41.1, 300.02..." />
+              </div>
+              <div className="field">
+                <label>Gravedad Estimada</label>
+                <select name="gravedad_estimada" value={form.gravedad_estimada} onChange={handleChange}>
+                  <option value="">Seleccionar...</option>
+                  <option value="leve">Leve</option>
+                  <option value="moderada">Moderada</option>
+                  <option value="grave">Grave</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          {/* Sección 5 — Medicación */}
+          <section className="card" id="sec-medicacion">
+            <div className="sec-head"><h2>Medicación</h2><span className="tag-clinico">Clínico</span></div>
+
+            <div className="med-list">
+              {medicaciones.length === 0 ? (
+                <div className="med-empty">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(45 12 12)" /><path d="M8 8l8 8" /></svg>
+                  <span>No hay medicación cargada</span>
+                </div>
+              ) : (
+                medicaciones.map((med, idx) => (
+                  <div key={idx} className="med-row">
+                    <div className="med-row-top">
+                      <div className="field">
+                        <label>Fármaco<em>*</em></label>
+                        <input type="text" value={med.farmaco} onChange={(e) => updateMedicacion(idx, 'farmaco', e.target.value)} placeholder="Fluoxetina" />
+                      </div>
+                      <button type="button" className="med-del" aria-label="Eliminar medicamento" onClick={() => removeMedicacion(idx)}>
+                        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+                      </button>
+                    </div>
+                    <div className="med-row-bottom">
+                      <div className="field">
+                        <label>Dosis</label>
+                        <input type="text" className="mono" value={med.dosis} onChange={(e) => updateMedicacion(idx, 'dosis', e.target.value)} placeholder="20mg" />
+                      </div>
+                      <div className="field">
+                        <label>Frecuencia</label>
+                        <input type="text" value={med.frecuencia} onChange={(e) => updateMedicacion(idx, 'frecuencia', e.target.value)} placeholder="1 vez al día" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button type="button" className="btn-add" onClick={addMedicacion}>
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
               Agregar medicamento
             </button>
-          </div>
-
-          {medicaciones.length === 0 ? (
-            <div className="text-center py-8 text-on-surface-variant">
-              <span className="material-symbols-outlined text-4xl mb-2 block opacity-25">medication</span>
-              <p className="text-sm">Sin medicación registrada</p>
-              <p className="text-xs opacity-70 mt-1">Hacé clic en &quot;Agregar medicamento&quot; para sumar uno</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {medicaciones.map((med, idx) => (
-                <div key={idx} className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 border border-outline-variant/20 rounded-lg bg-surface-container-high/30">
-                  <button
-                    type="button"
-                    onClick={() => removeMedicacion(idx)}
-                    className="absolute top-3 right-3 p-1 text-on-surface-variant hover:text-error hover:bg-red-50 rounded-full transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                  </button>
-                  <div>
-                    <label className={labelCls}>Fármaco <span className="text-error">*</span></label>
-                    <input type="text" value={med.farmaco} onChange={(e) => updateMedicacion(idx, 'farmaco', e.target.value)} placeholder="Fluoxetina" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Dosis</label>
-                    <input type="text" value={med.dosis} onChange={(e) => updateMedicacion(idx, 'dosis', e.target.value)} placeholder="20mg" className={inputCls} />
-                  </div>
-                  <div className="pr-8">
-                    <label className={labelCls}>Frecuencia</label>
-                    <input type="text" value={med.frecuencia} onChange={(e) => updateMedicacion(idx, 'frecuencia', e.target.value)} placeholder="1 vez al día" className={inputCls} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          </section>
         </div>
+        <div className="bottom-spacer" />
+      </main>
+
+      {/* Action bar fija (mobile) — reposicionada con visualViewport, ver useEffect arriba */}
+      <div className="action-bar" ref={actionBarRef}>
+        <button type="button" className="btn ghost" onClick={() => router.back()}>Cancelar</button>
+        <button type="button" className="btn primary" onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Guardando...' : 'Guardar Paciente'}
+        </button>
       </div>
 
       {toast && <Toast msg={toast.msg} type={toast.type} />}
-    </>
+    </div>
   )
 }
