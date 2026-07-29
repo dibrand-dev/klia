@@ -220,6 +220,15 @@ Bug de fondo cazado dos veces (tabs de paciente vía `?tab=`, y alta de paciente
 - No usar `staleTimes: { dynamic: 0 }` en `next.config.js` como fix global salvo que se evalúe explícitamente el impacto en toda la app (más fetches a Supabase en cada navegación) — se prefirió el fix quirúrgico por componente.
 - Antes de asumir que un "no se ve reflejado tras guardar" es este bug: confirmar contra el síntoma real. Si el registro nunca aparece ni esperando ni con hard refresh/incógnito, probablemente NO es cache — puede ser un problema real de query (paginación, orden, filtro, RLS). Ya pasó una vez: se asumió cache sin verificar y la causa real era paginación alfabética + un buscador que solo filtraba el array de la página cargada en vez de consultar Supabase (ver fix en `ListaPacientes.tsx` — búsqueda con debounce 300ms + `ilike` contra la base).
 
+## Catálogo CIE-10 completo (campo Código Diagnóstico) — agregado 2026-07
+
+Campo `codigo_diagnostico` (Alta de Paciente y Ficha del paciente) usa un `<datalist>` alimentado por el catálogo CIE-10 completo (8.899 códigos, nivel 4 dígitos/asignable, formato `F41.0`, fuente `github.com/verasativa/CIE-10`), **no** por `CIE10_FRECUENTES` (lista curada de ~50 entradas usada aparte).
+
+- **`public/data/cie10.json`** — asset estático (~825KB), servido directo por Vercel, nunca importado en un componente ni bundleado en el JS de la app.
+- **`src/lib/hooks/useCie10.ts`** — hook `useCie10()` con carga perezosa: el fetch a `/data/cie10.json` se dispara recién en el primer `onFocus` del input (no en el mount del componente), y se cachea a nivel de módulo (`let cie10Cache`/`cie10Promise`, no `useState`) para que una segunda pantalla en la misma sesión (ej. pasar de Alta a Ficha) no vuelva a pedir el archivo. Si el fetch falla, el `.catch()` resetea `cie10Promise = null` para permitir reintento en el próximo `onFocus` — el campo sigue funcionando como texto libre sin romper la UI ni dejar un unhandled rejection.
+- Wiring en `NuevoPacienteForm.tsx` (`datalist id="npf-cie10"`) y `PacienteDetalle.tsx` (`id="pd-cie10"`), mismo patrón que `nacionalidad`/`plan_obra_social` (`list=` + `autoComplete="off"`). El `<option value={codigo}>` inserta solo el código en el input (no código + descripción), preservando el formato que ya tenía el campo antes (usado tal cual en Ficha y en los PDFs de planillas).
+- **`NuevoInformeSlide.tsx`** (Informes IA) es una feature aparte, no tocada — sigue con `CIE10_FRECUENTES` inline y su propia UI de búsqueda custom, no consume el catálogo completo.
+
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
 - profiles.feriados_nacionales, profiles.feriados_provinciales (boolean toggles)
@@ -281,9 +290,11 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-07-23_
+_Actualizado el 2026-07-29_
 
 ```
+8a9e5d4 feat: catálogo completo CIE-10 (8899 códigos) para campo de diagnóstico, carga perezosa
+3ea4806 feat: rediseño mobile-first de pantalla Alta de Paciente
 a0b0ba1 chore: commit vacio para verificar disparo de webhook de deploy en Vercel
 deb0db9 chore: eliminar campo mp_subscription_id sin uso, corregir lectura de mp_preapproval_id en cuenta-bloqueada
 e112887 chore: eliminar endpoint temporal de diagnóstico de precios, ya cumplió su función
