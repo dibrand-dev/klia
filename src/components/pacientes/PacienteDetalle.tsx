@@ -10,6 +10,7 @@ import { cn, formatNombreCompleto } from '@/lib/utils'
 import type { Paciente, MedicacionPaciente, Interconsulta, ProfesionalObraSocial, TurnoRow } from '@/types/database'
 import type { PacienteTabKey } from './PacienteTabs'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
+import { useCie10 } from '@/lib/hooks/useCie10'
 import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
@@ -159,6 +160,7 @@ export default function PacienteDetalle({
   tieneDrive?: boolean
 }) {
   const router = useRouter()
+  const { cie10, cargarCie10 } = useCie10()
   const [editando, setEditando] = useState(initialEdit)
   const [form, setForm] = useState(() => {
     const base = buildForm(paciente)
@@ -363,6 +365,9 @@ export default function PacienteDetalle({
       <>
         <datalist id="pd-paises">
           {PAISES.map((p) => <option key={p} value={p} />)}
+        </datalist>
+        <datalist id="pd-cie10">
+          {cie10.map((c) => <option key={c.codigo} value={c.codigo}>{c.descripcion}</option>)}
         </datalist>
         <datalist id="pd-planes">
           {planesDisponibles.map((p) => <option key={p} value={p} />)}
@@ -592,7 +597,7 @@ export default function PacienteDetalle({
             </div>
             <div>
               <label className={labelCls}>Código Diagnóstico CIE / DSM</label>
-              <input name="codigo_diagnostico" type="text" value={form.codigo_diagnostico} onChange={handleChange} placeholder="F41.1, 300.02..." className={inputCls} />
+              <input name="codigo_diagnostico" type="text" value={form.codigo_diagnostico} onChange={handleChange} onFocus={cargarCie10} placeholder="F41.1, 300.02..." list="pd-cie10" autoComplete="off" className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>Gravedad Estimada</label>

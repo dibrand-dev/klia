@@ -9,6 +9,7 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import type { Moneda } from '@/lib/monedas'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+import { useCie10 } from '@/lib/hooks/useCie10'
 import './nuevo-paciente.css'
 
 const EMPTY_FORM = {
@@ -106,6 +107,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const actionBarRef = useRef<HTMLDivElement>(null)
+  const { cie10, cargarCie10 } = useCie10()
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type })
@@ -297,6 +299,9 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
       </datalist>
       <datalist id="npf-planes">
         {planesDisponibles.map((p) => <option key={p} value={p} />)}
+      </datalist>
+      <datalist id="npf-cie10">
+        {cie10.map((c) => <option key={c.codigo} value={c.codigo}>{c.descripcion}</option>)}
       </datalist>
 
       <main className="form-scroll">
@@ -516,7 +521,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>Código Diagnóstico CIE / DSM</label>
-                <input name="codigo_diagnostico" type="text" className="mono" value={form.codigo_diagnostico} onChange={handleChange} placeholder="F41.1, 300.02..." />
+                <input name="codigo_diagnostico" type="text" className="mono" value={form.codigo_diagnostico} onChange={handleChange} onFocus={cargarCie10} placeholder="F41.1, 300.02..." list="npf-cie10" autoComplete="off" />
               </div>
               <div className="field">
                 <label>Gravedad Estimada</label>
