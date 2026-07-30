@@ -1,259 +1,294 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { RegistroRefraccion } from '@/types/database'
-import { recetaCompleta, formatearDioptrias } from '@/lib/oftalmologia/refraccion'
+import { recetaCompleta as recetaCompletaUtil, formatearDioptrias } from '@/lib/oftalmologia/refraccion'
+import './rx-grid.css'
 
 type Variant = 'standalone' | 'embebida'
+type Eye = 'od' | 'oi'
+type FieldKey = 'sph' | 'cyl' | 'axis' | 'add' | 'av'
+type FieldType = 'signed' | 'int' | 'text'
+
+const FIELDS: { key: FieldKey; label: string; type: FieldType }[] = [
+  { key: 'sph', label: 'SPH', type: 'signed' },
+  { key: 'cyl', label: 'CYL', type: 'signed' },
+  { key: 'axis', label: 'AXIS', type: 'int' },
+  { key: 'add', label: 'ADD', type: 'signed' },
+  { key: 'av', label: 'AV', type: 'text' },
+]
+
+type Draft = {
+  id: string | null
+  created_at: string
+  sph_od: number | null; cyl_od: number | null; axis_od: number | null; add_od: number | null; av_od: string | null
+  sph_oi: number | null; cyl_oi: number | null; axis_oi: number | null; add_oi: number | null; av_oi: string | null
+}
+
+const EMPTY_DRAFT: Omit<Draft, 'id' | 'created_at'> = {
+  sph_od: null, cyl_od: null, axis_od: null, add_od: null, av_od: null,
+  sph_oi: null, cyl_oi: null, axis_oi: null, add_oi: null, av_oi: null,
+}
+
+function toDraft(r: RegistroRefraccion): Draft {
+  return { id: r.id, created_at: r.created_at, sph_od: r.sph_od, cyl_od: r.cyl_od, axis_od: r.axis_od, add_od: r.add_od, av_od: r.av_od, sph_oi: r.sph_oi, cyl_oi: r.cyl_oi, axis_oi: r.axis_oi, add_oi: r.add_oi, av_oi: r.av_oi }
+}
+
+function getVal(d: Draft, eye: Eye, key: FieldKey): number | string | null {
+  return (d as unknown as Record<string, number | string | null>)[`${key}_${eye}`]
+}
+
+function fmtValue(type: FieldType, value: number | string | null): { text: string; empty: boolean } {
+  if (value === null || value === undefined || value === '') return { text: '—', empty: true }
+  if (type === 'signed') return { text: formatearDioptrias(Number(value)), empty: false }
+  if (type === 'int') return { text: `${value}°`, empty: false }
+  return { text: String(value), empty: false }
+}
+
+function fmtFecha(iso: string): string {
+  return format(parseISO(iso), 'd MMM yyyy', { locale: es })
+}
 
 interface Props {
   pacienteId: string
   variant?: Variant
 }
 
-type FormState = {
-  sphOd: string; cylOd: string; axisOd: string; addOd: string; avOd: string
-  sphOi: string; cylOi: string; axisOi: string; addOi: string; avOi: string
-}
-
-const EMPTY_FORM: FormState = {
-  sphOd: '', cylOd: '', axisOd: '', addOd: '', avOd: '',
-  sphOi: '', cylOi: '', axisOi: '', addOi: '', avOi: '',
-}
-
-function num(v: string): number | null {
-  return v.trim() === '' ? null : Number(v)
-}
-
-function Celda({ valor, esDioptria }: { valor: string | number | null; esDioptria?: boolean }) {
-  if (valor === null || valor === '') {
-    return <span style={{ color: 'var(--muted-3, #AEB5C0)' }}>—</span>
-  }
-  const display = esDioptria ? formatearDioptrias(Number(valor)) : String(valor)
-  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{display}</span>
-}
-
-function RxInput({ value, onChange, placeholder, width = 64 }: { value: string; onChange: (v: string) => void; placeholder?: string; width?: number }) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      inputMode="decimal"
-      style={{
-        width,
-        fontVariantNumeric: 'tabular-nums',
-        textAlign: 'center',
-        padding: '8px 6px',
-        borderRadius: 8,
-        border: '1px solid var(--border, #E2E5EA)',
-        background: 'var(--surface, #fff)',
-        color: 'var(--ink, #0B1220)',
-        fontSize: 13,
-      }}
-    />
-  )
-}
-
 export default function RxGrid({ pacienteId, variant = 'standalone' }: Props) {
-  const [recetas, setRecetas] = useState<RegistroRefraccion[]>([])
+  const [recetas, setRecetas] = useState<Draft[]>([])
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [guardando, setGuardando] = useState(false)
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const [histOpen, setHistOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(variant === 'embebida')
-  const [historialIdx, setHistorialIdx] = useState(0)
+  const [editingCell, setEditingCell] = useState<{ eye: Eye; key: FieldKey } | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const histRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch(`/api/refraccion/listar?pacienteId=${pacienteId}`)
       .then((res) => res.json())
-      .then((data) => setRecetas(data.recetas ?? []))
+      .then((data) => setRecetas((data.recetas ?? []).map(toDraft)))
       .finally(() => setLoading(false))
   }, [pacienteId])
 
-  async function handleGuardar() {
-    setGuardando(true)
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (histRef.current && !histRef.current.contains(e.target as Node)) setHistOpen(false)
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  function handleNuevaReceta() {
+    const draft: Draft = { id: null, created_at: new Date().toISOString(), ...EMPTY_DRAFT }
+    setRecetas((prev) => [draft, ...prev])
+    setSelectedIdx(0)
+  }
+
+  async function commitField(eye: Eye, key: FieldKey, rawValue: string) {
+    const top = recetas[0]
+    const type = FIELDS.find((f) => f.key === key)!.type
+    let parsed: number | string | null
+    if (rawValue.trim() === '') parsed = null
+    else if (type === 'signed' || type === 'int') parsed = Number(rawValue)
+    else parsed = rawValue.trim()
+
+    const merged: Omit<Draft, 'id' | 'created_at'> = {
+      sph_od: top.sph_od, cyl_od: top.cyl_od, axis_od: top.axis_od, add_od: top.add_od, av_od: top.av_od,
+      sph_oi: top.sph_oi, cyl_oi: top.cyl_oi, axis_oi: top.axis_oi, add_oi: top.add_oi, av_oi: top.av_oi,
+    }
+    ;(merged as unknown as Record<string, number | string | null>)[`${key}_${eye}`] = parsed
+
     const res = await fetch('/api/refraccion/crear', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pacienteId,
-        sphOd: num(form.sphOd), cylOd: num(form.cylOd), axisOd: num(form.axisOd), addOd: num(form.addOd), avOd: form.avOd || null,
-        sphOi: num(form.sphOi), cylOi: num(form.cylOi), axisOi: num(form.axisOi), addOi: num(form.addOi), avOi: form.avOi || null,
+        sphOd: merged.sph_od, cylOd: merged.cyl_od, axisOd: merged.axis_od, addOd: merged.add_od, avOd: merged.av_od,
+        sphOi: merged.sph_oi, cylOi: merged.cyl_oi, axisOi: merged.axis_oi, addOi: merged.add_oi, avOi: merged.av_oi,
       }),
     })
-    if (res.ok) {
-      const { receta } = await res.json()
-      setRecetas((prev) => [receta, ...prev])
-      setForm(EMPTY_FORM)
-      setHistorialIdx(0)
-    }
-    setGuardando(false)
+    if (!res.ok) return
+    const { receta } = await res.json()
+    const nuevo = toDraft(receta)
+
+    setRecetas((prev) => {
+      if (top.id === null) {
+        return [nuevo, ...prev.slice(1)]
+      }
+      return [nuevo, ...prev]
+    })
   }
 
-  const recetaSeleccionada = recetas[historialIdx] ?? null
-  const esMasReciente = historialIdx === 0
+  function startEdit(eye: Eye, key: FieldKey, current: number | string | null) {
+    setEditingCell({ eye, key })
+    setEditValue(current === null || current === undefined ? '' : String(current))
+  }
 
-  const contenido = (
-    <div className="space-y-4">
-      {recetas.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
+  async function handleCommit() {
+    if (!editingCell) return
+    const { eye, key } = editingCell
+    setEditingCell(null)
+    await commitField(eye, key, editValue)
+  }
+
+  const receta = recetas[selectedIdx] ?? null
+  const editable = selectedIdx === 0
+  const completa = receta ? recetaCompletaUtil({
+    sph_od: receta.sph_od, cyl_od: receta.cyl_od, axis_od: receta.axis_od, add_od: receta.add_od, av_od: receta.av_od,
+    sph_oi: receta.sph_oi, cyl_oi: receta.cyl_oi, axis_oi: receta.axis_oi, add_oi: receta.add_oi, av_oi: receta.av_oi,
+  }) : false
+
+  function renderCell(eye: Eye, key: FieldKey, type: FieldType, extraClass: 'rx-cell' | 'rx-mfield') {
+    if (!receta) return null
+    const value = getVal(receta, eye, key)
+    const isEditing = editable && editingCell?.eye === eye && editingCell?.key === key
+    const { text, empty } = fmtValue(type, value)
+
+    if (extraClass === 'rx-mfield') {
+      return (
+        <div
+          key={key}
+          className={`rx-mfield ${editable ? 'editable' : ''}`}
+          onClick={() => editable && !isEditing && startEdit(eye, key, value)}
+        >
+          <span className="lbl">{FIELDS.find((f) => f.key === key)!.label}</span>
+          {isEditing ? (
+            <input
+              autoFocus
+              type={type === 'text' ? 'text' : 'number'}
+              step={type === 'signed' ? 0.25 : undefined}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                if (e.key === 'Escape') setEditingCell(null)
+              }}
+            />
+          ) : (
+            <span className={`val ${empty ? 'empty' : ''}`}>{text}</span>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div
+        key={key}
+        className={`rx-cell ${editable ? 'editable' : 'readonly'} ${empty ? 'empty' : ''}`}
+        onClick={() => editable && !isEditing && startEdit(eye, key, value)}
+      >
+        {isEditing ? (
+          <input
+            autoFocus
+            type={type === 'text' ? 'text' : 'number'}
+            step={type === 'signed' ? 0.25 : undefined}
+            min={type === 'int' ? 0 : undefined}
+            max={type === 'int' ? 180 : undefined}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleCommit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') setEditingCell(null)
+            }}
+          />
+        ) : text}
+      </div>
+    )
+  }
+
+  const cuerpo = loading ? (
+    <p style={{ fontSize: 13, color: 'var(--muted-2)' }}>Cargando...</p>
+  ) : recetas.length === 0 ? (
+    <div className="rx-empty">
+      <span className="ttl">Todavía no hay recetas de refracción</span>
+      <p>Cargá la primera receta para empezar a registrar la agudeza visual y los valores de esfera, cilindro y eje de este paciente.</p>
+      <button className="rx-newbtn" onClick={handleNuevaReceta}>
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>
+        Cargar primera receta
+      </button>
+    </div>
+  ) : (
+    <>
+      {!editable && (
+        <div className="rx-readonly-note">
+          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>lock</span>
+          Registro histórico — no editable. Para modificar valores, cargá una nueva receta.
+        </div>
+      )}
+      <div className="rx-card">
+        <div className="rx-grid-wrap">
+          <div className="rx-grid">
+            <div />
+            {FIELDS.map((f) => <div key={f.key} className="rx-col-hdr">{f.label}</div>)}
+            <div className="rx-eye-label">OD</div>
+            {FIELDS.map((f) => renderCell('od', f.key, f.type, 'rx-cell'))}
+            <div className="rx-divider" />
+            <div className="rx-eye-label">OI</div>
+            {FIELDS.map((f) => renderCell('oi', f.key, f.type, 'rx-cell'))}
+          </div>
+        </div>
+
+        <div className="rx-mobile-wrap" style={{ display: 'none' }}>
+          {(['od', 'oi'] as Eye[]).map((eye) => (
+            <div key={eye} className="rx-eye-card">
+              <div className="rx-eye-hdr">{eye.toUpperCase()}</div>
+              <div className="rx-mfield-grid">
+                {FIELDS.map((f) => renderCell(eye, f.key, f.type, 'rx-mfield'))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  const header = recetas.length > 0 && (
+    <div className="rx-hist" ref={histRef}>
+      <button className="rx-hist-btn" onClick={() => setHistOpen((v) => !v)}>
+        <span>{fmtFecha(receta!.created_at)}{selectedIdx === 0 ? ' · Actual' : ''}</span>
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>expand_more</span>
+      </button>
+      {histOpen && (
+        <div className="rx-hist-menu">
           {recetas.map((r, i) => {
-            const completa = recetaCompleta(r)
+            const rCompleta = recetaCompletaUtil({
+              sph_od: r.sph_od, cyl_od: r.cyl_od, axis_od: r.axis_od, add_od: r.add_od, av_od: r.av_od,
+              sph_oi: r.sph_oi, cyl_oi: r.cyl_oi, axis_oi: r.axis_oi, add_oi: r.add_oi, av_oi: r.av_oi,
+            })
             return (
               <button
-                key={r.id}
-                onClick={() => setHistorialIdx(i)}
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: '5px 10px',
-                  borderRadius: 999,
-                  border: `1px solid ${i === historialIdx ? 'var(--accent, #1F4FD9)' : 'var(--border, #E2E5EA)'}`,
-                  background: i === historialIdx ? 'var(--accent, #1F4FD9)' : 'var(--surface, #fff)',
-                  color: i === historialIdx ? '#fff' : 'var(--ink-2, #4A5468)',
-                }}
+                key={r.id ?? 'draft'}
+                className={`rx-hist-item ${i === selectedIdx ? 'active' : ''}`}
+                onClick={() => { setSelectedIdx(i); setHistOpen(false) }}
               >
-                {format(parseISO(r.created_at), 'd MMM yyyy', { locale: es })} · {completa ? 'Completa' : 'Incompleta'}
+                <div className="d">
+                  <div className="date">{fmtFecha(r.created_at)}{i === 0 ? ' · Actual' : ''}</div>
+                </div>
+                <span className={`rx-chip ${rCompleta ? 'ok' : 'warn'}`}>{rCompleta ? 'Completa' : 'Incompleta'}</span>
               </button>
             )
           })}
         </div>
       )}
-
-      {recetaSeleccionada && !esMasReciente && (
-        <div style={{ fontSize: 12.5, color: 'var(--muted-2, #7C8698)', background: 'var(--surface-2, #F5F6F8)', border: '1px solid var(--border, #E2E5EA)', borderRadius: 8, padding: '8px 12px' }}>
-          Registro histórico — no editable. Para modificar valores, cargá una nueva receta.
-        </div>
-      )}
-
-      {recetaSeleccionada ? (
-        <>
-          <div className="rx-desktop-table" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ color: 'var(--muted-2, #7C8698)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ textAlign: 'left', padding: '6px 8px' }}></th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>SPH</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>CYL</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>AXIS</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>ADD</th>
-                  <th style={{ textAlign: 'center', padding: '6px 8px' }}>AV</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderTop: '1px solid var(--border, #E2E5EA)' }}>
-                  <td style={{ padding: '8px', fontWeight: 600, color: 'var(--ink, #0B1220)' }}>OD</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.sph_od} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.cyl_od} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.axis_od} /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.add_od} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.av_od} /></td>
-                </tr>
-                <tr style={{ borderTop: '1px solid var(--border, #E2E5EA)' }}>
-                  <td style={{ padding: '8px', fontWeight: 600, color: 'var(--ink, #0B1220)' }}>OI</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.sph_oi} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.cyl_oi} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.axis_oi} /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.add_oi} esDioptria /></td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}><Celda valor={recetaSeleccionada.av_oi} /></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div className="rx-mobile-cards" style={{ display: 'none', gap: 10, flexDirection: 'column' }}>
-            {([
-              { label: 'OD', sph: recetaSeleccionada.sph_od, cyl: recetaSeleccionada.cyl_od, axis: recetaSeleccionada.axis_od, add: recetaSeleccionada.add_od, av: recetaSeleccionada.av_od },
-              { label: 'OI', sph: recetaSeleccionada.sph_oi, cyl: recetaSeleccionada.cyl_oi, axis: recetaSeleccionada.axis_oi, add: recetaSeleccionada.add_oi, av: recetaSeleccionada.av_oi },
-            ] as const).map((ojo) => (
-              <div key={ojo.label} style={{ border: '1px solid var(--border, #E2E5EA)', borderRadius: 10, padding: 12 }}>
-                <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink, #0B1220)', marginBottom: 8 }}>{ojo.label}</p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 12.5 }}>
-                  <div><span style={{ color: 'var(--muted-2, #7C8698)' }}>SPH </span><Celda valor={ojo.sph} esDioptria /></div>
-                  <div><span style={{ color: 'var(--muted-2, #7C8698)' }}>CYL </span><Celda valor={ojo.cyl} esDioptria /></div>
-                  <div><span style={{ color: 'var(--muted-2, #7C8698)' }}>AXIS </span><Celda valor={ojo.axis} /></div>
-                  <div><span style={{ color: 'var(--muted-2, #7C8698)' }}>ADD </span><Celda valor={ojo.add} esDioptria /></div>
-                  <div><span style={{ color: 'var(--muted-2, #7C8698)' }}>AV </span><Celda valor={ojo.av} /></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : !loading && (
-        <p style={{ fontSize: 13, color: 'var(--muted-2, #7C8698)' }}>Sin recetas cargadas todavía.</p>
-      )}
-
-      <div>
-        <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink, #0B1220)', marginBottom: 8 }}>Nueva receta</p>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ color: 'var(--muted-2, #7C8698)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ textAlign: 'left', padding: '6px 8px' }}></th>
-                <th style={{ textAlign: 'center', padding: '6px 8px' }}>SPH</th>
-                <th style={{ textAlign: 'center', padding: '6px 8px' }}>CYL</th>
-                <th style={{ textAlign: 'center', padding: '6px 8px' }}>AXIS</th>
-                <th style={{ textAlign: 'center', padding: '6px 8px' }}>ADD</th>
-                <th style={{ textAlign: 'center', padding: '6px 8px' }}>AV</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ padding: '6px 8px', fontWeight: 600 }}>OD</td>
-                <td style={{ padding: '6px' }}><RxInput value={form.sphOd} onChange={(v) => setForm((f) => ({ ...f, sphOd: v }))} placeholder="+0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.cylOd} onChange={(v) => setForm((f) => ({ ...f, cylOd: v }))} placeholder="-0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.axisOd} onChange={(v) => setForm((f) => ({ ...f, axisOd: v }))} placeholder="0°" width={52} /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.addOd} onChange={(v) => setForm((f) => ({ ...f, addOd: v }))} placeholder="+0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.avOd} onChange={(v) => setForm((f) => ({ ...f, avOd: v }))} placeholder="10/10" width={56} /></td>
-              </tr>
-              <tr>
-                <td style={{ padding: '6px 8px', fontWeight: 600 }}>OI</td>
-                <td style={{ padding: '6px' }}><RxInput value={form.sphOi} onChange={(v) => setForm((f) => ({ ...f, sphOi: v }))} placeholder="+0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.cylOi} onChange={(v) => setForm((f) => ({ ...f, cylOi: v }))} placeholder="-0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.axisOi} onChange={(v) => setForm((f) => ({ ...f, axisOi: v }))} placeholder="0°" width={52} /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.addOi} onChange={(v) => setForm((f) => ({ ...f, addOi: v }))} placeholder="+0.00" /></td>
-                <td style={{ padding: '6px' }}><RxInput value={form.avOi} onChange={(v) => setForm((f) => ({ ...f, avOi: v }))} placeholder="10/10" width={56} /></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <button
-          onClick={handleGuardar}
-          disabled={guardando}
-          className="btn-primary"
-          style={{ marginTop: 10, fontSize: 13, padding: '8px 16px', opacity: guardando ? 0.6 : 1 }}
-        >
-          {guardando ? 'Guardando...' : 'Guardar receta'}
-        </button>
-      </div>
     </div>
   )
 
   if (variant === 'embebida') {
     return (
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: 'var(--ink, #0B1220)',
-          }}
-        >
-          Refracción
-          <span className="material-symbols-outlined" style={{ fontSize: 18, transform: collapsed ? 'none' : 'rotate(180deg)' }}>expand_more</span>
-        </button>
+        <div className="rx-embed-hdr" onClick={() => setCollapsed((v) => !v)}>
+          <span>Refracción</span>
+          <svg viewBox="0 0 24 24" style={{ transform: collapsed ? 'none' : 'rotate(180deg)' }}><path d="M6 9l6 6 6-6" stroke="currentColor" fill="none" strokeWidth={2} /></svg>
+        </div>
         {!collapsed && (
-          <div style={{ padding: '0 16px 16px', maxWidth: 520 }}>
-            {loading ? <p style={{ fontSize: 13, color: 'var(--muted-2, #7C8698)' }}>Cargando...</p> : contenido}
+          <div className="rx-embed-body" style={{ maxWidth: 520 }}>
+            {recetas.length > 0 && <div style={{ marginBottom: 12 }}>{header}</div>}
+            {cuerpo}
           </div>
         )}
       </div>
@@ -261,18 +296,25 @@ export default function RxGrid({ pacienteId, variant = 'standalone' }: Props) {
   }
 
   return (
-    <div className="card p-5 rx-standalone">
-      {loading ? <p style={{ fontSize: 13, color: 'var(--muted-2, #7C8698)' }}>Cargando...</p> : contenido}
-      <style jsx>{`
-        @media (max-width: 460px) {
-          .rx-standalone :global(.rx-desktop-table) {
-            display: none;
-          }
-          .rx-standalone :global(.rx-mobile-cards) {
-            display: flex !important;
-          }
-        }
-      `}</style>
+    <div className="rx-standalone">
+      <div className="rx-tabhdr">
+        <div>
+          <h2>Refracción</h2>
+          <div className="sub">
+            {loading ? '—' : recetas.length === 0 ? 'Sin recetas cargadas' : `${recetas.length} receta${recetas.length === 1 ? '' : 's'} cargada${recetas.length === 1 ? '' : 's'} · viendo ${fmtFecha(receta!.created_at)}${editable ? ' (editable)' : ' (histórico)'}`}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {header}
+          {recetas.length > 0 && (
+            <button className="rx-newbtn" onClick={handleNuevaReceta}>
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>
+              Nueva receta
+            </button>
+          )}
+        </div>
+      </div>
+      {cuerpo}
     </div>
   )
 }

@@ -1,0 +1,63 @@
+.rx-tabhdr { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.rx-tabhdr h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); }
+.rx-tabhdr .sub { font-size: 12px; color: var(--muted-2); margin-top: 3px; }
+
+.rx-hist { display: flex; align-items: center; gap: 8px; position: relative; }
+.rx-hist-btn { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer; }
+.rx-hist-btn:hover { background: var(--surface-2); }
+.rx-hist-btn svg { width: 14px; height: 14px; stroke: var(--muted-2); stroke-width: 1.8; fill: none; }
+.rx-hist-menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 290px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md); padding: 6px; z-index: 30; }
+.rx-hist-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: none; background: transparent; border-radius: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; text-align: left; }
+.rx-hist-item:hover { background: var(--surface-2); }
+.rx-hist-item.active { background: var(--accent-soft); }
+.rx-hist-item .d { flex: 1; min-width: 0; }
+.rx-hist-item .date { font-weight: 600; color: var(--ink); font-size: 13px; }
+.rx-hist-item .prof { font-size: 11.5px; color: var(--muted-2); margin-top: 1px; }
+.rx-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 100px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; flex: none; }
+.rx-chip.ok { background: var(--ok-soft); color: var(--ok); }
+.rx-chip.warn { background: var(--warn-soft); color: var(--warn); }
+
+.rx-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; }
+.rx-readonly-note { font-size: 12px; color: var(--muted-2); display: flex; align-items: center; gap: 7px; margin-bottom: 16px; padding: 9px 12px; background: var(--surface-2); border-radius: var(--r-sm); }
+.rx-readonly-note svg { width: 14px; height: 14px; stroke: var(--muted-2); stroke-width: 1.8; fill: none; flex: none; }
+
+.rx-grid { display: grid; grid-template-columns: 56px repeat(5, 1fr); gap: 4px 10px; }
+.rx-col-hdr { font-size: 10.5px; font-weight: 700; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.07em; text-align: center; padding-bottom: 10px; }
+.rx-eye-label { display: flex; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--ink); padding: 0 4px; }
+.rx-divider { grid-column: 1 / -1; height: 1px; background: var(--border); margin: 6px 0 8px; }
+.rx-cell { height: 46px; border: 1px solid transparent; border-radius: var(--r-sm); display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; font-size: 14.5px; font-weight: 600; color: var(--ink); position: relative; }
+.rx-cell.editable { cursor: pointer; }
+.rx-cell.editable:hover { background: var(--surface-2); border-color: var(--border); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.rx-cell.readonly { cursor: default; color: var(--ink-2); }
+.rx-cell.empty { color: var(--muted-3); font-weight: 500; }
+.rx-cell input { width: 100%; height: 38px; border: 1px solid var(--accent); border-radius: var(--r-sm); text-align: center; outline: none; box-shadow: 0 0 0 3px var(--accent-soft); font: inherit; font-variant-numeric: tabular-nums; color: var(--ink); background: var(--surface); }
+
+.rx-empty { border: 1px dashed var(--border); border-radius: var(--r-lg); padding: 44px 32px; text-align: center; color: var(--muted); background: var(--surface); }
+.rx-empty .ttl { font-size: 17px; font-weight: 600; color: var(--ink); display: block; margin-bottom: 6px; letter-spacing: -0.01em; }
+.rx-empty p { margin: 0 0 18px; font-size: 13.5px; line-height: 1.6; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+.rx-newbtn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 7px; border: 1px solid var(--ink); background: var(--ink); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
+.rx-newbtn:hover { background: #000; }
+.rx-newbtn svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 1.9; fill: none; }
+
+.rx-eye-card { border: 1px solid var(--border); border-radius: var(--r-lg); padding: 14px 16px; background: var(--surface); }
+.rx-eye-card + .rx-eye-card { margin-top: 10px; }
+.rx-eye-card .rx-eye-hdr { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 10px; letter-spacing: 0.01em; }
+.rx-mfield-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.rx-mfield { display: flex; flex-direction: column; gap: 4px; border: 1px solid transparent; border-radius: var(--r-sm); padding: 6px 8px; }
+.rx-mfield.editable { cursor: pointer; }
+.rx-mfield.editable:hover { background: var(--surface-2); border-color: var(--border); }
+.rx-mfield .lbl { font-size: 10.5px; font-weight: 700; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.07em; }
+.rx-mfield .val { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rx-mfield .val.empty { color: var(--muted-3); font-weight: 500; }
+.rx-mfield input { width: 100%; height: 32px; border: 1px solid var(--accent); border-radius: 6px; padding: 0 8px; outline: none; box-shadow: 0 0 0 3px var(--accent-soft); font: inherit; font-size: 14px; color: var(--ink); }
+
+.rx-embed-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface-2); cursor: pointer; }
+.rx-embed-hdr span { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink); }
+.rx-embed-hdr svg { width: 15px; height: 15px; stroke: var(--muted-2); stroke-width: 2; fill: none; transition: transform 0.15s ease; }
+.rx-embed-body { padding: 14px; }
+
+@media (max-width: 460px) {
+  .rx-standalone .rx-grid-wrap { display: none; }
+  .rx-standalone .rx-mobile-wrap { display: block !important; }
+}
