@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion' | 'refraccion'
 
 interface TabDef {
   key: PacienteTabKey
@@ -30,6 +30,7 @@ export default function PacienteTabs({
   const router = useRouter()
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
   const showComposicion = especialidad === 'Nutrición'
+  const showRefraccion = especialidad === 'Oftalmología'
 
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
@@ -39,6 +40,7 @@ export default function PacienteTabs({
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
     ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
+    ...(showRefraccion ? [{ key: 'refraccion' as PacienteTabKey, label: 'Refracción' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
   ]
@@ -55,6 +57,7 @@ export default function PacienteTabs({
           : tab.key === 'archivos' ? `/pacientes/${pacienteId}?tab=archivos`
           : tab.key === 'admision' ? `/pacientes/${pacienteId}?tab=admision`
           : tab.key === 'composicion' ? `/pacientes/${pacienteId}?tab=composicion`
+          : tab.key === 'refraccion' ? `/pacientes/${pacienteId}?tab=refraccion`
           : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
           : `/pacientes/${pacienteId}?tab=interconsultas`
 

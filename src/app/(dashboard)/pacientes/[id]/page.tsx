@@ -113,6 +113,7 @@ export default async function PacienteDetallePage({
     (searchParams.tab === 'archivos' && tieneDrive) ||
     searchParams.tab === 'admision' ||
     searchParams.tab === 'composicion' ||
+    searchParams.tab === 'refraccion' ||
     searchParams.tab === 'facturacion' ||
     searchParams.tab === 'interconsultas'
       ? (searchParams.tab as PacienteTabKey)

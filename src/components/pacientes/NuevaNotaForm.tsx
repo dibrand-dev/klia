@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import VoiceRecorder from '@/components/ui/VoiceRecorder'
 import StickyWidgetAntropometria from '@/components/nutricion/StickyWidgetAntropometria'
+import RxGrid from '@/components/oftalmologia/RxGrid'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -236,6 +237,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
   // Antropometría — solo visible para especialidad Nutricionista
   const esNutricionista = especialidad === 'Nutrición'
+  const esOftalmologo = especialidad === 'Oftalmología'
   const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
   const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
   const [antropoOpen, setAntropoOpen] = useState(true)
@@ -530,6 +532,10 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
                 </div>
               </div>
             </>
+          )}
+
+          {esOftalmologo && (
+            <RxGrid pacienteId={pacienteId} variant="embebida" />
           )}
 
           <div className="card p-4">

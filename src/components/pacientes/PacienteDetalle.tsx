@@ -22,6 +22,7 @@ import AdmisionTab from './AdmisionTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
 import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
+import RxGrid from '@/components/oftalmologia/RxGrid'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -748,6 +749,10 @@ export default function PacienteDetalle({
     return <TabComposicionCorporal pacienteId={paciente.id} />
   }
 
+  if (activeTab === 'refraccion') {
+    return <RxGrid pacienteId={paciente.id} variant="standalone" />
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <TabEmptyState tab={activeTab} />
   }
@@ -1100,6 +1105,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
       body: 'Historial de pagos y estado de cuenta. Próximamente.',
     },
     admision: { title: 'Admisión', body: '' },
+    refraccion: { title: 'Refracción', body: '' },
     interconsultas: { title: 'Interconsultas', body: '' },
     archivos: { title: 'Archivos', body: '' },
     composicion: { title: 'Antropometría', body: '' },

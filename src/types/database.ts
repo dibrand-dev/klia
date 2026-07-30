@@ -828,6 +828,68 @@ export type Database = {
           },
         ]
       }
+      registros_refraccion: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          turno_id: string | null
+          sph_od: number | null
+          cyl_od: number | null
+          axis_od: number | null
+          add_od: number | null
+          av_od: string | null
+          sph_oi: number | null
+          cyl_oi: number | null
+          axis_oi: number | null
+          add_oi: number | null
+          av_oi: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          turno_id?: string | null
+          sph_od?: number | null
+          cyl_od?: number | null
+          axis_od?: number | null
+          add_od?: number | null
+          av_od?: string | null
+          sph_oi?: number | null
+          cyl_oi?: number | null
+          axis_oi?: number | null
+          add_oi?: number | null
+          av_oi?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          turno_id?: string | null
+          sph_od?: number | null
+          cyl_od?: number | null
+          axis_od?: number | null
+          add_od?: number | null
+          av_od?: string | null
+          sph_oi?: number | null
+          cyl_oi?: number | null
+          axis_oi?: number | null
+          add_oi?: number | null
+          av_oi?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'registros_refraccion_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       menu_semanal: {
         Row: {
           id: string
@@ -1493,6 +1555,7 @@ export type TurnoRecurrente = Database['public']['Tables']['turnos_recurrentes']
 export type ObraSocial = Database['public']['Tables']['obras_sociales']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
 export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
+export type RegistroRefraccion = Database['public']['Tables']['registros_refraccion']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']
 export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
 export type ModuloConfig = {
