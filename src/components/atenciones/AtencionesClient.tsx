@@ -31,21 +31,35 @@ type Props = {
 }
 
 const ESTADO_LABEL: Record<string, string> = {
-  pendiente: 'En Espera',
+  pendiente: 'Pendiente',
   confirmado: 'Confirmado',
-  en_consultorio: 'En Consultorio',
   realizado: 'Atendido',
   no_asistio: 'Ausente',
   cancelado: 'Cancelado',
 }
 
 const ESTADO_STYLE: Record<string, string> = {
-  pendiente:      'bg-blue-50 text-blue-700 border-blue-100',
-  confirmado:     'bg-green-50 text-green-700 border-green-100',
+  pendiente:  'bg-blue-50 text-blue-700 border-blue-100',
+  confirmado: 'bg-green-50 text-green-700 border-green-100',
+  realizado:  'bg-gray-100 text-gray-500 border-gray-200',
+  no_asistio: 'bg-red-50 text-red-600 border-red-100',
+  cancelado:  'bg-gray-100 text-gray-400 border-gray-200 line-through',
+}
+
+const ESTADO_ATENCION_LABEL: Record<string, string> = {
+  en_preparacion: 'En Preparación',
+  en_espera: 'En Espera',
+  en_consultorio: 'En Consultorio',
+  atendido: 'Atendido',
+  ausente: 'Ausente',
+}
+
+const ESTADO_ATENCION_STYLE: Record<string, string> = {
+  en_preparacion: 'bg-purple-50 text-purple-700 border-purple-100',
+  en_espera:      'bg-blue-50 text-blue-700 border-blue-100',
   en_consultorio: 'bg-amber-50 text-amber-700 border-amber-100',
-  realizado:      'bg-gray-100 text-gray-500 border-gray-200',
-  no_asistio:     'bg-red-50 text-red-600 border-red-100',
-  cancelado:      'bg-gray-100 text-gray-400 border-gray-200 line-through',
+  atendido:       'bg-gray-100 text-gray-500 border-gray-200',
+  ausente:        'bg-red-50 text-red-600 border-red-100',
 }
 
 function calcEdad(fechaNac: string | null): string {
@@ -76,7 +90,8 @@ function avColor(id: string) {
   return AV_COLORS[h % AV_COLORS.length]
 }
 
-export default function AtencionesClient({ turnos, hoyArgStr }: Props) {
+export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }: Props) {
+  const [turnos, setTurnos] = useState(turnosIniciales)
   const [filtro, setFiltro] = useState<'all' | 'pendientes' | 'atendidos'>('all')
   const [busqueda, setBusqueda] = useState('')
   const [slideOver, setSlideOver] = useState<Turno | null>(null)
@@ -85,19 +100,40 @@ export default function AtencionesClient({ turnos, hoyArgStr }: Props) {
     weekday: 'long', day: 'numeric', month: 'long',
   })
 
+  async function actualizarEstadoAtencion(turnoId: string, estadoAtencion: string) {
+    const res = await fetch('/api/turnos/estado-atencion', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno_id: turnoId, estado_atencion: estadoAtencion }),
+    })
+    if (!res.ok) return
+    setTurnos(prev => prev.map(t => t.id === turnoId ? { ...t, estado_atencion: estadoAtencion } : t))
+    setSlideOver(prev => prev && prev.id === turnoId ? { ...prev, estado_atencion: estadoAtencion } : prev)
+  }
+
   const stats = useMemo(() => ({
     total: turnos.length,
     confirmados: turnos.filter(t => t.estado === 'confirmado').length,
-    enEspera: turnos.filter(t => t.estado === 'pendiente').length,
-    atendidos: turnos.filter(t => t.estado === 'realizado').length,
-    ausentes: turnos.filter(t => t.estado === 'no_asistio').length,
-    enConsultorio: turnos.filter(t => t.estado === 'en_consultorio').length,
+    enEspera: turnos.filter(t => t.estado_atencion === 'en_espera').length,
+    atendidos: turnos.filter(t => t.estado === 'realizado' || t.estado_atencion === 'atendido').length,
+    ausentes: turnos.filter(t => t.estado === 'no_asistio' || t.estado_atencion === 'ausente').length,
+    enConsultorio: turnos.filter(t => t.estado_atencion === 'en_consultorio').length,
   }), [turnos])
 
   const filtrados = useMemo(() => {
     let lista = turnos
-    if (filtro === 'pendientes') lista = lista.filter(t => ['pendiente', 'confirmado', 'en_consultorio'].includes(t.estado))
-    if (filtro === 'atendidos') lista = lista.filter(t => ['realizado', 'no_asistio'].includes(t.estado))
+    if (filtro === 'pendientes') {
+      lista = lista.filter(t =>
+        ['pendiente', 'confirmado'].includes(t.estado) &&
+        !['atendido', 'ausente'].includes(t.estado_atencion ?? '')
+      )
+    }
+    if (filtro === 'atendidos') {
+      lista = lista.filter(t =>
+        ['realizado', 'no_asistio'].includes(t.estado) ||
+        ['atendido', 'ausente'].includes(t.estado_atencion ?? '')
+      )
+    }
     if (busqueda) {
       const q = busqueda.toLowerCase()
       lista = lista.filter(t => {
@@ -255,17 +291,47 @@ export default function AtencionesClient({ turnos, hoyArgStr }: Props) {
 
                   {/* Estado */}
                   <td className="px-4 py-3.5">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-semibold border ${ESTADO_STYLE[turno.estado] ?? 'bg-gray-100 text-gray-500'}`}>
-                      {turno.estado === 'en_consultorio' && (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-semibold border ${(turno.estado_atencion ? ESTADO_ATENCION_STYLE[turno.estado_atencion] : ESTADO_STYLE[turno.estado]) ?? 'bg-gray-100 text-gray-500'}`}>
+                      {turno.estado_atencion === 'en_consultorio' && (
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                       )}
-                      {ESTADO_LABEL[turno.estado] ?? turno.estado}
+                      {turno.estado_atencion ? (ESTADO_ATENCION_LABEL[turno.estado_atencion] ?? turno.estado_atencion) : (ESTADO_LABEL[turno.estado] ?? turno.estado)}
                     </span>
                   </td>
 
                   {/* Acciones */}
                   <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-1.5 justify-end">
+                      {(!turno.estado_atencion || turno.estado_atencion === 'en_preparacion') && (
+                        <button
+                          onClick={() => actualizarEstadoAtencion(turno.id, 'en_espera')}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container"
+                          title="Marcar en espera"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">schedule</span>
+                          En espera
+                        </button>
+                      )}
+                      {turno.estado_atencion === 'en_espera' && (
+                        <button
+                          onClick={() => actualizarEstadoAtencion(turno.id, 'en_consultorio')}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container"
+                          title="Pasar a consultorio"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">meeting_room</span>
+                          A consultorio
+                        </button>
+                      )}
+                      {turno.estado_atencion === 'en_consultorio' && (
+                        <button
+                          onClick={() => actualizarEstadoAtencion(turno.id, 'atendido')}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container"
+                          title="Marcar atendido"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                          Atendido
+                        </button>
+                      )}
                       <button
                         onClick={() => setSlideOver(turno)}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white relative"
