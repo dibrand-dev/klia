@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import SlideOver from '@/components/ui/SlideOver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import ImagenLightbox from './ImagenLightbox'
 import { cn } from '@/lib/utils'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -65,6 +66,7 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todas')
   const [panelOpen, setPanelOpen] = useState(false)
   const [confirmEliminar, setConfirmEliminar] = useState<Archivo | null>(null)
+  const [lightboxArchivo, setLightboxArchivo] = useState<Archivo | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -200,7 +202,11 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <a href={archivo.google_drive_url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate">{archivo.nombre}</a>
+                {archivo.mime_type.startsWith('image/') ? (
+                  <button onClick={() => setLightboxArchivo(archivo)} className="text-sm font-semibold text-primary hover:underline truncate text-left">{archivo.nombre}</button>
+                ) : (
+                  <a href={archivo.google_drive_url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline truncate">{archivo.nombre}</a>
+                )}
                 <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-2 flex-wrap">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{CATEGORIA_ICONS[archivo.categoria]}</span>
@@ -355,6 +361,14 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
         onConfirm={() => confirmEliminar && handleEliminar(confirmEliminar)}
         onCancel={() => setConfirmEliminar(null)}
       />
+
+      {lightboxArchivo && (
+        <ImagenLightbox
+          src={`/api/archivos/${lightboxArchivo.id}/contenido`}
+          nombre={lightboxArchivo.nombre}
+          onClose={() => setLightboxArchivo(null)}
+        />
+      )}
     </div>
   )
 }
