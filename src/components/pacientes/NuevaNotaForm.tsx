@@ -8,6 +8,7 @@ import RichTextEditor from '@/components/ui/RichTextEditor'
 import VoiceRecorder from '@/components/ui/VoiceRecorder'
 import StickyWidgetAntropometria from '@/components/nutricion/StickyWidgetAntropometria'
 import RxGrid from '@/components/oftalmologia/RxGrid'
+import StickyWidgetPIO from '@/components/oftalmologia/StickyWidgetPIO'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -214,6 +215,49 @@ function StickyWidgetAntropometriaBarraMobile(props: React.ComponentProps<typeof
   )
 }
 
+function StickyWidgetPIOBarraMobile(props: React.ComponentProps<typeof StickyWidgetPIO>) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div
+      style={{
+        border: '1px solid var(--border, #E7E9EE)',
+        borderRadius: 'var(--r-lg, 12px)',
+        background: 'var(--surface, #fff)',
+        marginBottom: 16,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 14px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--ink, #0B1220)',
+        }}
+      >
+        PIO en vivo
+        <span className="material-symbols-outlined" style={{ fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+          expand_more
+        </span>
+      </button>
+      {open && (
+        <div style={{ padding: '0 14px 14px' }}>
+          <StickyWidgetPIO {...props} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   pacienteId: string
   turnoId?: string
@@ -247,6 +291,9 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     porcentajeGrasa: '', porcentajeMusculo: '',
     pliegueTricipital: '', pliegueSubescapular: '', pliegueSuprailiaco: '',
     perimetroBrazo: '', perimetroPierna: '',
+  })
+  const [pio, setPio] = useState({
+    pioMedidaOd: '', paquimetriaOd: '', pioMedidaOi: '', paquimetriaOi: '',
   })
 
   useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
@@ -398,6 +445,26 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       }
     }
 
+    if (esOftalmologo) {
+      const pioValues = {
+        pio_medida_od: num(pio.pioMedidaOd),
+        paquimetria_od: num(pio.paquimetriaOd),
+        pio_medida_oi: num(pio.pioMedidaOi),
+        paquimetria_oi: num(pio.paquimetriaOi),
+      }
+      const hayDatosPio = Object.values(pioValues).some((v) => v != null)
+      if (hayDatosPio) {
+        const { error: pioError } = await supabase.from('registros_pio').insert({
+          terapeuta_id: user.id,
+          paciente_id: pacienteId,
+          turno_id: turnoId ?? null,
+          fecha: fechaFinal,
+          ...pioValues,
+        } as never)
+        if (pioError) { setError('La nota se guardó, pero hubo un error al guardar el registro de PIO.'); setLoading(false); return }
+      }
+    }
+
     onCreada?.()
   }
 
@@ -535,7 +602,41 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
           )}
 
           {esOftalmologo && (
-            <RxGrid pacienteId={pacienteId} variant="embebida" />
+            <>
+              <RxGrid pacienteId={pacienteId} variant="embebida" />
+
+              <div className="lg:hidden">
+                <StickyWidgetPIOBarraMobile
+                  pioMedidaOd={num(pio.pioMedidaOd)}
+                  paquimetriaOd={num(pio.paquimetriaOd)}
+                  pioMedidaOi={num(pio.pioMedidaOi)}
+                  paquimetriaOi={num(pio.paquimetriaOi)}
+                />
+              </div>
+
+              <div className="lg:flex lg:gap-4 lg:items-start">
+                <div className="flex-1 space-y-4">
+                  <div className="card p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Presión intraocular</label>
+                    <AntropoGrid>
+                      <AntropoInput label="PIO OD" unit="mmHg" value={pio.pioMedidaOd} onChange={(v) => setPio((p) => ({ ...p, pioMedidaOd: v }))} tabIndex={1} />
+                      <AntropoInput label="Paquimetría OD" unit="µm" value={pio.paquimetriaOd} onChange={(v) => setPio((p) => ({ ...p, paquimetriaOd: v }))} tabIndex={2} />
+                      <AntropoInput label="PIO OI" unit="mmHg" value={pio.pioMedidaOi} onChange={(v) => setPio((p) => ({ ...p, pioMedidaOi: v }))} tabIndex={3} />
+                      <AntropoInput label="Paquimetría OI" unit="µm" value={pio.paquimetriaOi} onChange={(v) => setPio((p) => ({ ...p, paquimetriaOi: v }))} tabIndex={4} />
+                    </AntropoGrid>
+                  </div>
+                </div>
+
+                <div className="hidden lg:block lg:w-64 lg:sticky lg:top-4 lg:flex-shrink-0">
+                  <StickyWidgetPIO
+                    pioMedidaOd={num(pio.pioMedidaOd)}
+                    paquimetriaOd={num(pio.paquimetriaOd)}
+                    pioMedidaOi={num(pio.pioMedidaOi)}
+                    paquimetriaOi={num(pio.paquimetriaOi)}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           <div className="card p-4">

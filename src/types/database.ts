@@ -828,6 +828,53 @@ export type Database = {
           },
         ]
       }
+      registros_pio: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          turno_id: string | null
+          fecha: string
+          pio_medida_od: number | null
+          paquimetria_od: number | null
+          pio_medida_oi: number | null
+          paquimetria_oi: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          turno_id?: string | null
+          fecha: string
+          pio_medida_od?: number | null
+          paquimetria_od?: number | null
+          pio_medida_oi?: number | null
+          paquimetria_oi?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          turno_id?: string | null
+          fecha?: string
+          pio_medida_od?: number | null
+          paquimetria_od?: number | null
+          pio_medida_oi?: number | null
+          paquimetria_oi?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'registros_pio_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       registros_refraccion: {
         Row: {
           id: string
@@ -1556,6 +1603,7 @@ export type ObraSocial = Database['public']['Tables']['obras_sociales']['Row']
 export type Plan = Database['public']['Tables']['planes']['Row']
 export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
 export type RegistroRefraccion = Database['public']['Tables']['registros_refraccion']['Row']
+export type RegistroPIO = Database['public']['Tables']['registros_pio']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']
 export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
 export type ModuloConfig = {
