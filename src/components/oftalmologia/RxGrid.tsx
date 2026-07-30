@@ -101,25 +101,28 @@ export default function RxGrid({ pacienteId, variant = 'standalone' }: Props) {
     }
     ;(merged as unknown as Record<string, number | string | null>)[`${key}_${eye}`] = parsed
 
-    const res = await fetch('/api/refraccion/crear', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pacienteId,
-        sphOd: merged.sph_od, cylOd: merged.cyl_od, axisOd: merged.axis_od, addOd: merged.add_od, avOd: merged.av_od,
-        sphOi: merged.sph_oi, cylOi: merged.cyl_oi, axisOi: merged.axis_oi, addOi: merged.add_oi, avOi: merged.av_oi,
-      }),
-    })
+    const camposComunes = {
+      sphOd: merged.sph_od, cylOd: merged.cyl_od, axisOd: merged.axis_od, addOd: merged.add_od, avOd: merged.av_od,
+      sphOi: merged.sph_oi, cylOi: merged.cyl_oi, axisOi: merged.axis_oi, addOi: merged.add_oi, avOi: merged.av_oi,
+    }
+
+    const res = top.id === null
+      ? await fetch('/api/refraccion/crear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pacienteId, ...camposComunes }),
+        })
+      : await fetch('/api/refraccion/actualizar', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: top.id, ...camposComunes }),
+        })
+
     if (!res.ok) return
     const { receta } = await res.json()
     const nuevo = toDraft(receta)
 
-    setRecetas((prev) => {
-      if (top.id === null) {
-        return [nuevo, ...prev.slice(1)]
-      }
-      return [nuevo, ...prev]
-    })
+    setRecetas((prev) => [nuevo, ...prev.slice(1)])
   }
 
   function startEdit(eye: Eye, key: FieldKey, current: number | string | null) {
