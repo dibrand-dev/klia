@@ -15,6 +15,12 @@ export default function BienvenidaClient({
   const [seconds, setSeconds] = useState(5)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.fbq) {
+      window.fbq('track', 'CompleteRegistration', { content_name: 'trial_signup' })
+    }
+  }, [])
+
+  useEffect(() => {
     if (seconds <= 0) {
       router.push('/dashboard')
       return
