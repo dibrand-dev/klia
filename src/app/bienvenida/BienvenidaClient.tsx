@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 export default function BienvenidaClient({
   nombre,
@@ -15,9 +16,21 @@ export default function BienvenidaClient({
   const [seconds, setSeconds] = useState(5)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.fbq) {
-      window.fbq('track', 'CompleteRegistration', { content_name: 'trial_signup' })
+    const dispararConversion = async () => {
+      const supabase = createClient()
+      const { data: esNuevo, error } = await supabase.rpc('marcar_meta_conversion_enviada')
+
+      if (error) {
+        console.error('Error marcando conversión Meta:', error)
+        return // no disparamos fbq si no pudimos confirmar el guard
+      }
+
+      if (esNuevo && typeof window !== 'undefined' && window.fbq) {
+        window.fbq('track', 'CompleteRegistration', { content_name: 'trial_signup' })
+      }
     }
+
+    dispararConversion()
   }, [])
 
   useEffect(() => {

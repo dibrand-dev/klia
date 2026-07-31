@@ -41,6 +41,7 @@ export type Database = {
           cobrar_inasistencias: boolean
           email_bloqueada_enviado: boolean
           email_inactividad_enviado_at: string | null
+          meta_conversion_enviada: boolean
           booking_slug: string | null
           booking_bio: string | null
           booking_duracion_sesion: number
@@ -101,6 +102,7 @@ export type Database = {
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
           email_inactividad_enviado_at?: string | null
+          meta_conversion_enviada?: boolean
           booking_slug?: string | null
           booking_bio?: string | null
           booking_duracion_sesion?: number
@@ -161,6 +163,7 @@ export type Database = {
           cobrar_inasistencias?: boolean
           email_bloqueada_enviado?: boolean
           email_inactividad_enviado_at?: string | null
+          meta_conversion_enviada?: boolean
           booking_slug?: string | null
           booking_bio?: string | null
           booking_duracion_sesion?: number
