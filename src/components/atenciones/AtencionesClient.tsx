@@ -148,6 +148,7 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
     { label: 'Total', value: stats.total, dotClass: 'bg-blue-400' },
     { label: 'Confirmados', value: stats.confirmados, dotClass: 'bg-green-400' },
     { label: 'En espera', value: stats.enEspera, dotClass: 'bg-amber-400' },
+    { label: 'En consultorio', value: stats.enConsultorio, dotClass: 'bg-amber-400' },
     { label: 'Atendidos', value: stats.atendidos, dotClass: 'bg-gray-400' },
     { label: 'Ausentes', value: stats.ausentes, dotClass: 'bg-red-400' },
   ]
