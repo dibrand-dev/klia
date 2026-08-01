@@ -16,7 +16,33 @@ export default function BienvenidaClient({
   const [seconds, setSeconds] = useState(5)
 
   useEffect(() => {
+    function esperarFbq(timeoutMs = 2000, intervaloMs = 50): Promise<boolean> {
+      return new Promise((resolve) => {
+        const inicio = Date.now()
+        const check = () => {
+          if (typeof window !== 'undefined' && window.fbq) {
+            resolve(true)
+            return
+          }
+          if (Date.now() - inicio >= timeoutMs) {
+            resolve(false)
+            return
+          }
+          setTimeout(check, intervaloMs)
+        }
+        check()
+      })
+    }
+
     const dispararConversion = async () => {
+      const fbqListo = await esperarFbq()
+      if (!fbqListo) {
+        // fbq nunca cargó dentro del timeout — no llamamos la RPC para no
+        // consumir el guard sin poder disparar el evento; queda disponible
+        // para reintentar en una futura visita.
+        return
+      }
+
       const supabase = createClient()
       const { data: esNuevo, error } = await supabase.rpc('marcar_meta_conversion_enviada')
 
