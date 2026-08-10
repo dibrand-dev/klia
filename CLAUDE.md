@@ -144,6 +144,15 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 - codigos_descuento — códigos de descuento por colegio (colegio_id FK, codigo, porcentaje_descuento, usos_maximos, usos_actuales, activo)
   - `profiles.codigo_descuento_id` (FK a codigos_descuento, nullable) y `profiles.codigo_aplicado_fecha` — se setean vía RPC `aplicar_codigo_descuento(p_profile_id, p_codigo)`, nunca directo. El RPC hace grandfathering: si el colegio corta el convenio (`codigos_descuento.activo = false`), los profesionales que ya tenían el código aplicado conservan el descuento — no se revalida `activo` en cada cobro, solo al momento de aplicar el código.
 
+## OPS — Tabla de Prestadores (rediseñada 2026-07)
+
+`src/components/ops/PrestadoresTable.tsx` + `src/app/ops/(protected)/prestadores/page.tsx`:
+
+- **Columna "Colegio" reemplazada por "Código"**: antes traía nombre completo del colegio (3 queries encadenadas `profiles`→`codigos_descuento`→`colegios`); ahora solo el código (`COLE215`) con el `%` de descuento en un tooltip CSS puro (`group-hover`, sin JS) — elimina la query a `colegios` por completo.
+- **Sin scroll horizontal**: contenedor a `max-w-[1400px]` (antes 1200px), padding de celdas `px-3` (antes `px-6`), columna Profesional con nombre y email truncados a 30 caracteres (`TruncatedCell`, `title=` con el texto completo) — ancho de tabla ahora es prácticamente fijo, no depende del largo real de los datos.
+- **Ordenamiento por header**: click en Profesional/Especialidad/Plan/Estado/Registro/Último acceso ordena, un segundo click invierte. Estado en la URL (`?sort=&dir=`) vía `router.replace`, sorteo client-side (no hay paginación todavía). Dirección default por tipo de columna: texto → A→Z, fechas → más reciente primero, Plan/Estado → por rank de urgencia/jerarquía (`PLAN_RANK`/`ESTADO_RANK` en el componente), no alfabético — alfabético en esas dos no tiene ningún significado operativo.
+- **Nota**: los `<select>` de filtro por Plan/Estado en el formulario de búsqueda son decorativos — el RPC `admin_get_profiles` solo acepta `p_search`, nunca se llegó a implementar el filtrado real por esos dos campos. Pendiente, no tocado en este cambio.
+
 ## Mercado Pago / Suscripciones — RLS (agregado 2026-07)
 
 Todas las tablas de precios/descuentos tienen RLS habilitado. Patrón de policies que **hay que seguir siempre para nuevas tablas de este tipo**:
@@ -229,6 +238,51 @@ Campo `codigo_diagnostico` (Alta de Paciente y Ficha del paciente) usa un `<data
 - Wiring en `NuevoPacienteForm.tsx` (`datalist id="npf-cie10"`) y `PacienteDetalle.tsx` (`id="pd-cie10"`), mismo patrón que `nacionalidad`/`plan_obra_social` (`list=` + `autoComplete="off"`). El `<option value={codigo}>` inserta solo el código en el input (no código + descripción), preservando el formato que ya tenía el campo antes (usado tal cual en Ficha y en los PDFs de planillas).
 - **`NuevoInformeSlide.tsx`** (Informes IA) es una feature aparte, no tocada — sigue con `CIE10_FRECUENTES` inline y su propia UI de búsqueda custom, no consume el catálogo completo.
 
+## Visor lightbox de imágenes en Archivos del Paciente (agregado 2026-07)
+
+`ArchivosTab.tsx` — el click en el nombre de un archivo con `mime_type` que empieza con `image/` abre `ImagenLightbox.tsx` (overlay fullscreen, zoom por click fit-to-screen/100%, cierre con Escape/click-fuera/X) en vez de abrir Google Drive en pestaña nueva. PDF/Word/Excel mantienen el flujo de siempre.
+
+- **`GET /api/archivos/[id]/contenido`** — proxy de streaming desde Drive (`drive.files.get({ alt: 'media' }, { responseType: 'stream' })`), verifica que el archivo pertenezca a un paciente del `terapeuta_id` autenticado, devuelve 400 si `mime_type` no es de imagen. Nunca expone `google_drive_url` directo para este flujo — todo pasa por este endpoint autenticado.
+
+## Módulo de Oftalmología: Refracción y PIO corregida (agregado 2026-07)
+
+Dos features nuevas, ambas condicionadas a `especialidad === 'Oftalmología'` (mismo patrón que Nutrición/`'Nutrición'`).
+
+### Refracción (`RxGrid.tsx`)
+- Tab "Refracción" en ficha de paciente (`PacienteTabs.tsx`/`PacienteDetalle.tsx`, variant `standalone`) + sección embebida colapsable en el SlideOver de nota clínica (`NuevaNotaForm.tsx`, variant `embebida`).
+- **Edición inline por celda** (pixel-perfect según diseño real, no una interpretación): click en una celda de OD/OI activa un `<input>` ahí mismo, blur/Enter confirma, Escape cancela. Historial como dropdown (`.rx-hist-menu`) con chip Completa/Incompleta vía `recetaCompleta()`. Celdas vacías muestran `—` en `var(--muted-3)`. 5 columnas: SPH/CYL/AXIS/ADD/AV.
+- **Solo la receta más reciente es editable** (`recetas[0]`); las anteriores son de solo lectura con aviso "Registro histórico — no editable".
+- **Persistencia — regla insert-only con corrección posterior**: cada edición de campo hace `PATCH /api/refraccion/actualizar` (UPDATE in-place, filtrado por `id` + `terapeuta_id`) si la receta top ya tiene `id`, o `POST /api/refraccion/crear` (INSERT) si es un draft recién creado con el botón "Nueva receta" (`id: null`, aún no persistido). **Ojo con la trampa ya cazada una vez**: la primera implementación hacía INSERT en cada blur de celda, generando una fila nueva por campo editado en vez de ir completando la misma receta — el fix separó ambos casos explícitamente en `commitField()` de `RxGrid.tsx`.
+- `src/lib/oftalmologia/refraccion.ts` — `recetaCompleta()`, `formatearDioptrias()` (antepone `+` si es positivo).
+- Tabla `registros_refraccion`: `id, paciente_id, terapeuta_id, turno_id (nullable), sph_od, cyl_od, axis_od, add_od, av_od, sph_oi, cyl_oi, axis_oi, add_oi, av_oi, created_at`.
+
+### PIO corregida (`StickyWidgetPIO.tsx`)
+- Sección en `NuevaNotaForm.tsx` (mismo patrón que Antropometría: `AntropoGrid`/`AntropoInput` reusados, widget sticky en desktop, barra colapsable mobile `StickyWidgetPIOBarraMobile`), 4 inputs: PIO OD/OI (mmHg), Paquimetría OD/OI (µm).
+- `src/lib/oftalmologia/calculos.ts` — `calcularPIOCorregida(pioMedida, paquimetria)` (fórmula de Ehlers: `pioMedida - ((paquimetria - 545) / 25) * 2.5`), `clasificarPIO(pio)` reusa el type `IMCStatus` de `src/lib/nutricion/calculos.ts` (`< 10` Baja/info, `10-21` Normal/success, `> 21` Elevada/warning).
+- Al guardar la nota, si hay al menos un valor de PIO cargado, insert en `registros_pio` (mismo patrón que `registros_antropometricos`: si falla, la nota se guarda igual y se avisa el error puntual del PIO).
+- Tabla `registros_pio`: `id, paciente_id, terapeuta_id, turno_id (nullable), fecha, pio_medida_od, paquimetria_od, pio_medida_oi, paquimetria_oi, created_at`.
+
+## Flujo de sala de espera — `turnos.estado_atencion` (agregado 2026-07)
+
+- **Bug de fondo cazado y corregido**: `AtencionesClient.tsx` leía `turno.estado` (pendiente/confirmado/realizado/no_asistio/cancelado) para el badge "En Consultorio", que en realidad vive en la columna separada `turno.estado_atencion` (`en_preparacion`/`en_espera`/`en_consultorio`/`atendido`/`ausente`). El badge ahora usa `estado_atencion` cuando no es `null`, y recién cae a `estado` cuando el turno todavía no arrancó su día operativo.
+- **`PATCH /api/turnos/estado-atencion`** — mismo patrón de auth/verificación que `/api/turnos/estado` (ya existente, actualiza la columna `estado`), pero sobre `estado_atencion`.
+- Botones de acción por fila en Atenciones: "En espera" → "A consultorio" → "Atendido", visibles condicionalmente según el estado actual. `en_preparacion` no tiene botón dedicado todavía (queda disponible en el backend, sin trigger definido en la UI — probablemente un flag específico de Oftalmología a resolver más adelante).
+- `AtencionesClient.tsx` mantiene `turnos` en state local (`useState` inicializado desde el prop) para reflejar cambios de `estado_atencion` sin recargar la página. Stats y filtros "Pendientes"/"Atendidos" corregidos para leer `estado_atencion` en vez de `estado` donde corresponde.
+
+## Meta Pixel — CompleteRegistration en flujo de registro (agregado 2026-07)
+
+- **Pixel base** (ID `1330774269119331`) cargado en `src/app/layout.tsx` vía `next/script` con `strategy="beforeInteractive"` (no `afterInteractive` — hidrataba después de que `/bienvenida` pudiera intentar leer `window.fbq`, generando una condición de carrera de ~1s donde el evento nunca disparaba). Meta tag `facebook-domain-verification` con placeholder `PENDIENTE_REEMPLAZAR` — pendiente de reemplazar con el código real de Meta Business Manager → Configuración del negocio → Dominios.
+- **El registro real ocurre en `klia-landing`** (otro repo, fuera del scope de esta sesión de `klia`), que llama a `POST /api/auth/registro` de esta app. Hay un `src/components/auth/RegisterForm.tsx` en este repo pero está **huérfano** (no lo importa nada) — no confundir con el form real.
+- **Evento disparado en `src/app/bienvenida/BienvenidaClient.tsx`** (la pantalla "¡Tu cuenta está confirmada!", único punto de entrada real: `router.replace('/bienvenida')` desde `src/app/auth/confirm/page.tsx` tras confirmar el mail) — es la señal de conversión más confiable disponible en este repo, aunque más tardía en el funnel que el submit del formulario en la landing.
+- **Guard server-side anti-duplicado**: RPC `marcar_meta_conversion_enviada()` (columna `profiles.meta_conversion_enviada`, migración `017_meta_conversion_dedup.sql`) hace un `UPDATE ... WHERE meta_conversion_enviada = false RETURNING true` atómico — race-safe, y solo devuelve `true` la primera vez. `SECURITY DEFINER` pero usa `auth.uid()` internamente (nunca recibe un id como parámetro), `GRANT EXECUTE` solo a `authenticated`.
+- **Orden de la lógica en `BienvenidaClient.tsx`**: 1) `esperarFbq()` (polling cada 50ms, timeout 2s) antes de llamar a la RPC — si `fbq` nunca aparece, no se consume el guard (`meta_conversion_enviada` queda en `false`, permite reintentar en una futura visita); 2) recién si `fbq` está listo, llama a la RPC; 3) si la RPC confirma `esNuevo`, dispara `fbq('track', 'CompleteRegistration', ...)`.
+
+## Webhook de notificación Pushover en nuevo registro (agregado 2026-07)
+
+`POST /api/webhooks/nuevo-registro` — recibe el Database Webhook de Supabase configurado en `profiles` INSERT (formato estándar `{ type, table, schema, record, old_record }`), valida header `x-webhook-secret` contra `SUPABASE_WEBHOOK_SECRET` (401 sin llamar a Pushover si no matchea), arma un mensaje con `nombre + apellido / email / especialidad` (omite campos vacíos) y hace POST a la API de Pushover. La llamada a Pushover está en `try/catch` — si falla, solo loguea y de todos modos responde `200 { ok: true }`, para que Supabase no reintente el webhook por un problema nuestro de notificación. No lee ni escribe ninguna otra tabla.
+
+**Importante — el trigger dispara en el registro, no en la confirmación de email.** `handle_new_user` inserta en `profiles` en el momento de `auth.users` INSERT (envío del formulario), no cuando se confirma el mail — `email_confirmed_at` vive en `auth.users`, no en `profiles`, así que un webhook sobre esta tabla no puede filtrar por mail confirmado. Decisión consciente por ahora: se prefiere el aviso inmediato aunque incluya registros que después nunca confirman el mail. Si se vuelve ruidoso, el punto de conversión real está en `src/app/auth/confirm/page.tsx`.
+
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
 - profiles.feriados_nacionales, profiles.feriados_provinciales (boolean toggles)
@@ -252,7 +306,8 @@ MP_PUBLIC_KEY_TEST, MP_ACCESS_TOKEN_TEST, MP_PUBLIC_KEY_PROD, MP_ACCESS_TOKEN_PR
 MP_CLIENT_ID, MP_CLIENT_SECRET, MP_WEBHOOK_SECRET, MP_USE_PRODUCTION,
 NEXT_PUBLIC_APP_URL,
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
-GEMINI_API_KEY, ORCHARD_API_KEY, CRON_SECRET
+GEMINI_API_KEY, ORCHARD_API_KEY, CRON_SECRET,
+SUPABASE_WEBHOOK_SECRET, PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY
 
 ## Design system
 Custom CSS variables defined in component-level CSS files:
@@ -290,9 +345,23 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-07-29_
+_Actualizado el 2026-08-10_
 
 ```
+edd2ea3 feat: notificacion Pushover en nuevo registro de usuario
+cbf58d1 feat: rediseña tabla de Prestadores en OPS — columna Código con tooltip en vez de Colegio, sin scroll horizontal, ordenamiento por header con URL
+e7985f9 fix: corregir condición de carrera entre carga de fbq y guard de CompleteRegistration en /bienvenida
+d81897f fix: evitar duplicar evento Meta CompleteRegistration en /bienvenida via guard server-side
+faa60b3 feat: agregar Meta Pixel CompleteRegistration en flujo de registro
+d677bd1 chore: agrega email de inactividad trial al endpoint de test-emails
+92746bc feat: agrega tarjeta "En consultorio" a la barra de stats de Atenciones
+eb88449 fix: completa el flujo de estado_atencion en Atenciones
+b7cbe33 feat: calculador de PIO corregida para Oftalmología (corrección de Ehlers, StickyWidgetPIO)
+2dd3832 fix: RxGrid actualiza la receta más reciente in-place en vez de crear una fila por campo
+c1d7c07 fix: RxGrid pixel-perfect según diseño real (edición inline por celda, dropdown de historial, empty state), agrega columna ADD
+a838351 feat: módulo de Refracción para Oftalmología (tab, SlideOver, API, componente RxGrid)
+17096a1 feat: visor lightbox de imágenes en Archivos del Paciente
+1e8b83c docs: documenta catálogo completo CIE-10 (8899 códigos) y actualiza ultimos cambios
 8a9e5d4 feat: catálogo completo CIE-10 (8899 códigos) para campo de diagnóstico, carga perezosa
 3ea4806 feat: rediseño mobile-first de pantalla Alta de Paciente
 a0b0ba1 chore: commit vacio para verificar disparo de webhook de deploy en Vercel
@@ -302,17 +371,4 @@ e112887 chore: eliminar endpoint temporal de diagnóstico de precios, ya cumpli�
 e9ca176 fix: no marcar suscripcion como cancelada si la llamada a preApproval.update falla, evita estado desincronizado con MP
 b410893 fix: unificar creacion de suscripcion en una sola llamada a PreApproval con status authorized, elimina reuso de token
 a68aad5 feat: reemplazar link Editar por iconos y agregar eliminacion de codigos de descuento con proteccion de uso
-a880b68 docs: actualiza CLAUDE.md con modulo de nutricion completo, fix de router cache, y ultimos cambios
-b488d92 fix: cambia horario de cron del doc de Google Drive para evitar congestion de GitHub Actions a la hora en punto
-7823025 fix: corrige efecto de rebote visual del icono de carga en buscador de pacientes
-7a08b11 fix: busqueda de pacientes ahora consulta supabase en vez de filtrar solo la pagina actual
-27ba53c fix: evita lista de pacientes stale tras alta (force-dynamic + orden correcto push/refresh)
-97bfb4e fix: agrega router.refresh() a navegacion por tabs via query param para evitar router cache stale de nextjs
-6743c01 chore: renombra solapa a Antropometria (mas corto y termino tecnico correcto)
-c8ec029 fix: elimina solapa Documentos de ficha de paciente (placeholder sin funcionalidad, duplicaba Archivos)
-8c897d8 feat: agrega slideovers de menu semanal y distribucion de macros
-01d971e feat: agrega variante xl (760px) a SlideOver reutilizable
-06d1ee6 docs: documentar modulo de nutricion/antropometria en CLAUDE.md
-bf09b4c fix: mejorar layout del SlideOver de antropometria (ancho lg, grid flexible, breakpoint lg)
-5435420 chore: corrige indentacion de AntropometriaSection tras edicion manual
 ```
