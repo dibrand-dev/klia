@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { format, parseISO, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -12,6 +12,65 @@ import SlideOver from '@/components/ui/SlideOver'
 type EstadoCuenta = 'trial' | 'activa' | 'bloqueada' | 'cancelada'
 type Plan = 'esencial' | 'profesional' | 'premium' | 'bonificado'
 type Row = ProfileWithLastSignIn
+
+const PLAN_RANK: Record<Plan, number> = { esencial: 0, profesional: 1, premium: 2, bonificado: 3 }
+const ESTADO_RANK: Record<EstadoCuenta, number> = { bloqueada: 0, trial: 1, activa: 2, cancelada: 3 }
+
+type SortKey = 'nombre' | 'especialidad' | 'plan' | 'estado' | 'created_at' | 'last_sign_in_at'
+type SortDir = 'asc' | 'desc'
+
+// Dirección con la que arranca cada columna al primer click: texto → A→Z,
+// fechas → más reciente primero, rankeadas → la más urgente/baja primero.
+const DEFAULT_DIR: Record<SortKey, SortDir> = {
+  nombre: 'asc',
+  especialidad: 'asc',
+  plan: 'asc',
+  estado: 'asc',
+  created_at: 'desc',
+  last_sign_in_at: 'desc',
+}
+
+function sortValue(row: Row, key: SortKey): string | number {
+  switch (key) {
+    case 'nombre': return `${row.nombre} ${row.apellido}`.toLowerCase()
+    case 'especialidad': return (row.especialidad ?? '').toLowerCase()
+    case 'plan': return PLAN_RANK[row.plan] ?? 99
+    case 'estado': return ESTADO_RANK[row.estado_cuenta] ?? 99
+    case 'created_at': return row.created_at ? new Date(row.created_at).getTime() : 0
+    case 'last_sign_in_at': return row.last_sign_in_at ? new Date(row.last_sign_in_at).getTime() : 0
+  }
+}
+
+function SortIcon({ dir }: { dir: SortDir | null }) {
+  return (
+    <span
+      className={`material-symbols-outlined transition-opacity ${dir ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}
+      style={{ fontSize: 14 }}
+    >
+      {dir === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+    </span>
+  )
+}
+
+function SortableHeader({ label, sortKey, active, dir, onSort }: {
+  label: string
+  sortKey: SortKey
+  active: boolean
+  dir: SortDir
+  onSort: (key: SortKey) => void
+}) {
+  return (
+    <th className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">
+      <button
+        onClick={() => onSort(sortKey)}
+        className="group inline-flex items-center gap-1 hover:text-on-surface transition-colors"
+      >
+        {label}
+        <SortIcon dir={active ? dir : null} />
+      </button>
+    </th>
+  )
+}
 
 // ─── Badges ────────────────────────────────────────────────────────────────
 
@@ -333,15 +392,63 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 // ─── Main Table ─────────────────────────────────────────────────────────────
 
-type ColegioInfo = { colegioNombre: string; porcentaje: number }
+type CodigoInfo = { codigo: string; porcentaje: number }
 
-export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }: { prestadores: ProfileWithLastSignIn[]; colegioPorProfile?: Record<string, ColegioInfo> }) {
+function TruncatedCell({ text, maxChars }: { text: string; maxChars: number }) {
+  const truncado = text.length > maxChars ? `${text.slice(0, maxChars)}…` : text
+  return <span title={text.length > maxChars ? text : undefined}>{truncado}</span>
+}
+
+function CodigoBadge({ info }: { info: CodigoInfo }) {
+  return (
+    <span className="relative inline-block group/tip">
+      <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold cursor-default">
+        {info.codigo}
+      </span>
+      <span
+        className="pointer-events-none absolute left-1/2 bottom-full -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium opacity-0 group-hover/tip:opacity-100 transition-opacity z-10"
+        style={{ background: 'var(--ink, #0B1220)', color: '#fff', boxShadow: 'var(--shadow-md)' }}
+      >
+        {info.porcentaje}% descuento
+      </span>
+    </span>
+  )
+}
+
+export default function PrestadoresTable({ prestadores, codigoPorProfile = {} }: { prestadores: ProfileWithLastSignIn[]; codigoPorProfile?: Record<string, CodigoInfo> }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [rows, setRows] = useState<Row[]>(prestadores)
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [suscripcionTarget, setSuscripcionTarget] = useState<Row | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
+  const sortKey = (searchParams.get('sort') as SortKey | null) ?? 'created_at'
+  const sortDir = (searchParams.get('dir') as SortDir | null) ?? DEFAULT_DIR[sortKey]
+
+  function handleSort(key: SortKey) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (key === sortKey) {
+      params.set('dir', sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      params.set('sort', key)
+      params.set('dir', DEFAULT_DIR[key])
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  const sortedRows = useMemo(() => {
+    const copia = [...rows]
+    copia.sort((a, b) => {
+      const va = sortValue(a, sortKey)
+      const vb = sortValue(b, sortKey)
+      const cmp = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return copia
+  }, [rows, sortKey, sortDir])
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type })
@@ -400,52 +507,52 @@ export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }
         onConfirm={handleDelete}
       />
 
-      <div className="overflow-x-auto">
+      <div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-outline-variant/10 bg-surface-container-lowest">
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Profesional</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Especialidad</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Plan</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Colegio</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Onboarding</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Estado</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Registro</th>
-              <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Último acceso</th>
-              <th className="px-6 py-3 w-12" />
+              <SortableHeader label="Profesional" sortKey="nombre" active={sortKey === 'nombre'} dir={sortDir} onSort={handleSort} />
+              <SortableHeader label="Especialidad" sortKey="especialidad" active={sortKey === 'especialidad'} dir={sortDir} onSort={handleSort} />
+              <SortableHeader label="Plan" sortKey="plan" active={sortKey === 'plan'} dir={sortDir} onSort={handleSort} />
+              <th className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Código</th>
+              <th className="text-left px-3 py-3 text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant">Onboarding</th>
+              <SortableHeader label="Estado" sortKey="estado" active={sortKey === 'estado'} dir={sortDir} onSort={handleSort} />
+              <SortableHeader label="Registro" sortKey="created_at" active={sortKey === 'created_at'} dir={sortDir} onSort={handleSort} />
+              <SortableHeader label="Últ. acceso" sortKey="last_sign_in_at" active={sortKey === 'last_sign_in_at'} dir={sortDir} onSort={handleSort} />
+              <th className="px-3 py-3 w-10" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {sortedRows.map((p) => (
               <tr key={p.id} className="border-b border-outline-variant/5 hover:bg-surface-container-lowest transition-colors">
-                <td className="px-6 py-4">
-                  <Link href={`/ops/prestadores/${p.id}`} className="font-medium text-primary-600 hover:underline block">
-                    {p.nombre} {p.apellido}
+                <td className="px-3 py-4 max-w-[210px]">
+                  <Link href={`/ops/prestadores/${p.id}`} className="font-medium text-primary-600 hover:underline block truncate">
+                    <TruncatedCell text={`${p.nombre} ${p.apellido}`} maxChars={30} />
                   </Link>
-                  <span className="text-xs text-gray-500 block">{p.email}</span>
+                  <span className="text-xs text-gray-500 block truncate">
+                    <TruncatedCell text={p.email} maxChars={30} />
+                  </span>
                 </td>
-                <td className="px-6 py-4 text-on-surface-variant">{p.especialidad ?? '—'}</td>
-                <td className="px-6 py-4">
+                <td className="px-3 py-4 text-on-surface-variant">{p.especialidad ?? '—'}</td>
+                <td className="px-3 py-4">
                   <PlanBadge plan={p.plan} />
                 </td>
-                <td className="px-6 py-4 text-on-surface-variant">
-                  {colegioPorProfile[p.id]
-                    ? <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold">{colegioPorProfile[p.id].colegioNombre} · {colegioPorProfile[p.id].porcentaje}%</span>
-                    : '—'}
+                <td className="px-3 py-4 text-on-surface-variant">
+                  {codigoPorProfile[p.id] ? <CodigoBadge info={codigoPorProfile[p.id]} /> : '—'}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-3 py-4">
                   <OnboardingBadge row={p} />
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-3 py-4">
                   <EstadoBadge row={p} />
                 </td>
-                <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">
-                  {format(parseISO(p.created_at), 'd MMM yyyy', { locale: es })}
+                <td className="px-3 py-4 text-on-surface-variant whitespace-nowrap">
+                  {format(parseISO(p.created_at), 'dd/MM/yy', { locale: es })}
                 </td>
-                <td className="px-6 py-4 text-on-surface-variant whitespace-nowrap">
+                <td className="px-3 py-4 text-on-surface-variant whitespace-nowrap">
                   {p.last_sign_in_at ? format(parseISO(p.last_sign_in_at), 'dd/MM/yy HH:mm') : '—'}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-3 py-4">
                   <RowMenu
                     id={p.id}
                     onSuscripcion={() => setSuscripcionTarget(p)}
@@ -454,9 +561,9 @@ export default function PrestadoresTable({ prestadores, colegioPorProfile = {} }
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {sortedRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-6 py-16 text-center text-on-surface-variant">
+                <td colSpan={9} className="px-3 py-16 text-center text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">search_off</span>
                   <p>No se encontraron prestadores.</p>
                 </td>

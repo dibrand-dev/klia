@@ -26,9 +26,9 @@ export default async function PrestadoresPage({
     p_search: searchParams.q ?? null,
   })
 
-  // Colegio/descuento por prestador — join manual para no tocar el RPC
+  // Código de descuento por prestador — join manual para no tocar el RPC
   // admin_get_profiles (SQL preexistente fuera del alcance de este cambio).
-  const colegioPorProfile: Record<string, { colegioNombre: string; porcentaje: number }> = {}
+  const codigoPorProfile: Record<string, { codigo: string; porcentaje: number }> = {}
   const ids = (prestadores ?? []).map((p: { id: string }) => p.id)
   if (ids.length > 0) {
     const svc = serviceClient()
@@ -42,31 +42,24 @@ export default async function PrestadoresPage({
     if (codigoIds.length > 0) {
       const { data: codigosData } = await svc
         .from('codigos_descuento')
-        .select('id, colegio_id, porcentaje_descuento')
+        .select('id, codigo, porcentaje_descuento')
         .in('id', codigoIds)
 
-      const colegioIds = (codigosData ?? []).map((c) => c.colegio_id)
-      const { data: colegiosData } = await svc
-        .from('colegios')
-        .select('id, nombre')
-        .in('id', colegioIds)
-
-      const nombrePorColegio = new Map((colegiosData ?? []).map((c) => [c.id, c.nombre]))
       const infoPorCodigo = new Map(
-        (codigosData ?? []).map((c) => [c.id, { colegioNombre: nombrePorColegio.get(c.colegio_id) ?? 'Colegio', porcentaje: Number(c.porcentaje_descuento) }]),
+        (codigosData ?? []).map((c) => [c.id, { codigo: c.codigo, porcentaje: Number(c.porcentaje_descuento) }]),
       )
 
       for (const perfil of perfilesConCodigo ?? []) {
         if (perfil.codigo_descuento_id) {
           const info = infoPorCodigo.get(perfil.codigo_descuento_id)
-          if (info) colegioPorProfile[perfil.id] = info
+          if (info) codigoPorProfile[perfil.id] = info
         }
       }
     }
   }
 
   return (
-    <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1200px]">
+    <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1400px]">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-on-surface tracking-tight">Prestadores</h1>
@@ -110,7 +103,7 @@ export default async function PrestadoresPage({
 
       {/* Tabla */}
       <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
-        <PrestadoresTable prestadores={prestadores ?? []} colegioPorProfile={colegioPorProfile} />
+        <PrestadoresTable prestadores={prestadores ?? []} codigoPorProfile={codigoPorProfile} />
       </div>
     </div>
   )
