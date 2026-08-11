@@ -108,7 +108,7 @@ export default async function PrestadorDetallePage({
               { label: 'Pacientes', value: pacientesCount ?? 0, icon: 'group' },
               { label: 'Turnos totales', value: turnosCount ?? 0, icon: 'calendar_today' },
               { label: 'Plan actual', value: profile.plan ?? '—', icon: 'workspace_premium' },
-              { label: 'Última sesión', value: lastSesionLabel, icon: 'schedule' },
+              { label: 'Último turno atendido', value: lastSesionLabel, icon: 'schedule' },
             ].map((m) => (
               <div key={m.label} className="bg-surface-container-lowest rounded-xl p-4">
                 <span className="material-symbols-outlined text-primary text-xl block mb-1">{m.icon}</span>
