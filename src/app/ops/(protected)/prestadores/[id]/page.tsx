@@ -5,8 +5,20 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import PrestadorActions from '@/components/ops/PrestadorActions'
 import PrestadorEditButton from '@/components/ops/PrestadorEditButton'
+import type { EmailLog } from '@/types/database'
 
 export const metadata = { title: 'Detalle prestador — Klia Ops' }
+
+const TIPO_EMAIL_LABEL: Record<EmailLog['tipo'], string> = {
+  trial_d7: 'Semana 1 de trial',
+  trial_d14: '7 días restantes',
+  trial_d3: '3 días restantes',
+  trial_d1: '1 día restante',
+  bloqueada: 'Cuenta bloqueada',
+  inactividad: 'Aviso de inactividad',
+}
+
+const ORDEN_TIPO_EMAIL: EmailLog['tipo'][] = ['trial_d7', 'trial_d14', 'trial_d3', 'trial_d1', 'inactividad', 'bloqueada']
 
 export default async function PrestadorDetallePage({
   params,
@@ -23,6 +35,7 @@ export default async function PrestadorDetallePage({
     { data: lastSesion },
     { data: lastSignIn },
     { data: planes },
+    { data: emailLog },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', params.id).single(),
     supabase
@@ -49,9 +62,26 @@ export default async function PrestadorDetallePage({
       .select('id, nombre')
       .eq('activo', true)
       .order('precio_mensual', { ascending: true }),
+    supabase
+      .from('email_log')
+      .select('id, tipo, asunto, enviado_at, opened_at')
+      .eq('terapeuta_id', params.id)
+      .order('enviado_at', { ascending: false }),
   ])
 
   if (!profile) notFound()
+
+  const emailsPorTipo = ORDEN_TIPO_EMAIL.map((tipo) => {
+    const envios = (emailLog ?? []).filter((e) => e.tipo === tipo)
+    const ultimo = envios[0] // ya viene ordenado desc por enviado_at
+    return {
+      tipo,
+      label: TIPO_EMAIL_LABEL[tipo],
+      cantidad: envios.length,
+      abiertos: envios.filter((e) => e.opened_at).length,
+      ultimoEnvio: ultimo ? format(parseISO(ultimo.enviado_at), "d MMM ''yy", { locale: es }) : null,
+    }
+  }).filter((e) => e.cantidad > 0)
 
   const lastSesionLabel = lastSesion?.fecha_hora
     ? format(parseISO(lastSesion.fecha_hora), "d MMM ''yy", { locale: es })
@@ -118,6 +148,28 @@ export default async function PrestadorDetallePage({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Emails de aviso de trial */}
+      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-6 mb-6">
+        <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4">Emails de aviso enviados</h2>
+        {emailsPorTipo.length === 0 ? (
+          <p className="text-sm text-on-surface-variant">Todavía no se le envió ningún aviso de trial/inactividad a este profesional.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {emailsPorTipo.map((e) => (
+              <div key={e.tipo} className="bg-surface-container-lowest rounded-xl p-4">
+                <span className="material-symbols-outlined text-primary text-xl block mb-1">mail</span>
+                <p className="text-xl font-bold text-on-surface leading-tight">{e.cantidad}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">{e.label}</p>
+                <p className="text-[11px] text-on-surface-variant/70 mt-2">
+                  {e.abiertos > 0 ? `${e.abiertos} abierto${e.abiertos > 1 ? 's' : ''}` : 'Sin apertura registrada'}
+                  {e.ultimoEnvio && ` · último: ${e.ultimoEnvio}`}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Acciones */}

@@ -831,6 +831,44 @@ export type Database = {
           },
         ]
       }
+      email_log: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          asunto: string
+          brevo_message_id: string | null
+          enviado_at: string
+          opened_at: string | null
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          asunto: string
+          brevo_message_id?: string | null
+          enviado_at?: string
+          opened_at?: string | null
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          tipo?: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          asunto?: string
+          brevo_message_id?: string | null
+          enviado_at?: string
+          opened_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'email_log_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       registros_pio: {
         Row: {
           id: string
@@ -1607,6 +1645,7 @@ export type Plan = Database['public']['Tables']['planes']['Row']
 export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
 export type RegistroRefraccion = Database['public']['Tables']['registros_refraccion']['Row']
 export type RegistroPIO = Database['public']['Tables']['registros_pio']['Row']
+export type EmailLog = Database['public']['Tables']['email_log']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']
 export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
 export type ModuloConfig = {

@@ -22,11 +22,12 @@ export async function enviarEmail({
   nombreDestinatario: string
   asunto: string
   htmlContent: string
-}): Promise<void> {
-  await client.transactionalEmails.sendTransacEmail({
+}): Promise<{ messageId: string | null }> {
+  const result = await client.transactionalEmails.sendTransacEmail({
     sender: REMITENTE,
     to: [{ email: destinatario, name: nombreDestinatario }],
     subject: asunto,
     htmlContent,
   })
+  return { messageId: result.messageId ?? null }
 }

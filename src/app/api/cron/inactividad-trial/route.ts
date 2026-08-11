@@ -30,11 +30,18 @@ export async function GET(req: NextRequest) {
   for (const p of inactivos ?? []) {
     if (!p.email) continue
     try {
-      await enviarEmail({
+      const asunto = '¿Necesitás una mano con KLIA?'
+      const { messageId } = await enviarEmail({
         destinatario: p.email,
         nombreDestinatario: p.nombre ?? p.email,
-        asunto: '¿Necesitás una mano con KLIA?',
+        asunto,
         htmlContent: emailInactividadTrial(p.nombre ?? p.email),
+      })
+      await supabase.from('email_log').insert({
+        terapeuta_id: p.id,
+        tipo: 'inactividad',
+        asunto,
+        brevo_message_id: messageId,
       })
       await supabase.from('profiles').update({ email_inactividad_enviado_at: new Date().toISOString() }).eq('id', p.id)
       console.log(`[cron/inactividad-trial] Email enviado a profesional ${p.id}`)
