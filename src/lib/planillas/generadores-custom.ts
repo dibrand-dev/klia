@@ -16,6 +16,7 @@ export const GENERADORES_CUSTOM: GeneradorCustom[] = [
   { match: 'hospital italiano', label: 'Hospital Italiano', endpoint: '/api/planillas/hospital-italiano' },
   { match: 'ioma',              label: 'IOMA',              endpoint: '/api/planillas/ioma' },
   { match: 'swiss medical',     label: 'Swiss Medical',     endpoint: '/api/planillas/swiss-medical' },
+  { match: 'pami',              label: 'PAMI / INSSJP',     endpoint: '/api/planillas/pami' },
 ]
 
 export function detectarGeneradorCustom(nombreOS: string): GeneradorCustom | null {
