@@ -113,7 +113,7 @@ function drawField(
     color: C_LABEL_BG, borderColor: C_BLACK, borderWidth: 0.5,
   })
   page.drawText(label, {
-    x: x + 5, y: yb(kitY + rowH / 2 + FS / 2 - 1, FS),
+    x: x + 5, y: yb(kitY + rowH / 2 - FS / 2, FS),
     font: fonts.reg, size: FS, color: C_DARK,
   })
 
@@ -124,7 +124,7 @@ function drawField(
   })
   if (value) {
     page.drawText(value, {
-      x: x + labelW + 5, y: yb(kitY + rowH / 2 + FS / 2 - 1, FS),
+      x: x + labelW + 5, y: yb(kitY + rowH / 2 - FS / 2, FS),
       font: fonts.bold, size: FS, color: C_BLACK,
     })
   }

@@ -118,8 +118,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const matricula = profile.matricula
-    ? `${profile.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${profile.matricula}${profile.matricula_tipo === 'provincial' && profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
+  // profiles.matricula se guarda siempre sin prefijo (ver PerfilProfesional.tsx / AjustesClient.tsx,
+  // que lo arman recién en la UI) — este strip es solo defensivo por si algún dato viejo lo tuviera.
+  const matriculaLimpia = profile.matricula?.replace(/^(MN|MP)\s*/i, '') ?? ''
+  const matricula = matriculaLimpia
+    ? `${profile.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${matriculaLimpia}${profile.matricula_tipo === 'provincial' && profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
     : ''
 
   let pdfBuffer: Buffer
