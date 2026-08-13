@@ -245,13 +245,14 @@ function renderFirstPage(
   // Title: "CONSTANCIA DE ATENCION DE: <afiliado>"
   const titleKitY = 72
   const titleFS = 13
-  const labelText = 'CONSTANCIA DE ATENCION DE: '
+  const labelText = 'CONSTANCIA DE ATENCION DE:'
   page.drawText(labelText, { x: L, y: yb(titleKitY, titleFS), font: fonts.bold, size: titleFS, color: C_BLACK })
   const labelW = fonts.bold.widthOfTextAtSize(labelText, titleFS)
-  page.drawText(datos.afiliadoNombre, {
+  const afiliadoConEspacio = '  ' + datos.afiliadoNombre
+  page.drawText(afiliadoConEspacio, {
     x: L + labelW, y: yb(titleKitY, titleFS), font: fonts.bold, size: titleFS, color: C_PAMI,
   })
-  const fullW = labelW + fonts.bold.widthOfTextAtSize(datos.afiliadoNombre, titleFS)
+  const fullW = labelW + fonts.bold.widthOfTextAtSize(afiliadoConEspacio, titleFS)
   page.drawLine({
     start: { x: L, y: yb(titleKitY, titleFS) - 3 },
     end: { x: L + Math.max(fullW, W * 0.7), y: yb(titleKitY, titleFS) - 3 },
