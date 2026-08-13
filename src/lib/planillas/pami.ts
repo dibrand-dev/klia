@@ -35,7 +35,9 @@ const COL_HDR = [
 ]
 const ROW_H = 65
 const HDR_H = 28
-const ROWS_P1 = 8
+// 7 filas en página 1 (no 8): con el espaciado real entre secciones (título → grilla →
+// título siguiente) el header de datos ocupa más lugar del que entraba antes con gap 0.
+const ROWS_P1 = 7
 const ROWS_CONT = 11
 
 // Colors
@@ -257,47 +259,71 @@ function renderFirstPage(
   })
 
   const GRID_ROW_H = 16
+  // Espaciado entre bloques: título de sección → su grilla, y fin de una grilla →
+  // título de la sección siguiente. Antes el título tocaba la grilla sin aire (gap 0).
+  // TITLE_FS debe matchear la fuente usada dentro de drawSectionTitle (12pt) — el
+  // "kitY" de un título es su tope, no su base, así que hay que sumar su propia
+  // altura antes de aplicar el gap o la grilla arranca pisando el texto del título.
+  const TITLE_FS = 12
+  const GAP_TITLE_TO_GRID = 8
+  const GAP_SECTION_TO_SECTION = 14
 
   // DATOS DEL AFILIADO
-  drawSectionTitle(page, fonts, 94, 'DATOS DEL AFILIADO')
-  drawFieldRow(page, fonts, 106, GRID_ROW_H, [
+  const afiliadoTitleY = 99
+  drawSectionTitle(page, fonts, afiliadoTitleY, 'DATOS DEL AFILIADO')
+  const afiliadoGridY = afiliadoTitleY + TITLE_FS + GAP_TITLE_TO_GRID
+  drawFieldRow(page, fonts, afiliadoGridY, GRID_ROW_H, [
     { label: 'Número de beneficio', value: datos.numeroBeneficio, labelW: 130, valueW: 128 },
     { label: 'Núm. documento', value: datos.afiliadoDni, labelW: 120, valueW: W - 130 - 128 - 120 },
   ])
-  drawFieldRow(page, fonts, 106 + GRID_ROW_H, GRID_ROW_H, [
+  drawFieldRow(page, fonts, afiliadoGridY + GRID_ROW_H, GRID_ROW_H, [
     { label: 'Nombre y apellido', value: datos.afiliadoNombre, labelW: 130, valueW: W - 130 },
   ])
+  const afiliadoGridEnd = afiliadoGridY + GRID_ROW_H * 2
 
   // DATOS DEL FAMILIAR Y/O RESPONSABLE
-  drawSectionTitle(page, fonts, 156, 'DATOS DEL FAMILIAR Y/O RESPONSABLE')
-  drawFieldRow(page, fonts, 168, GRID_ROW_H, [
+  const familiarTitleY = afiliadoGridEnd + GAP_SECTION_TO_SECTION
+  drawSectionTitle(page, fonts, familiarTitleY, 'DATOS DEL FAMILIAR Y/O RESPONSABLE')
+  const familiarGridY = familiarTitleY + TITLE_FS + GAP_TITLE_TO_GRID
+  drawFieldRow(page, fonts, familiarGridY, GRID_ROW_H, [
     { label: 'Nombre y apellido', value: datos.familiarNombre ?? '', labelW: 130, valueW: 128 },
     { label: 'Núm. documento', value: '', labelW: 120, valueW: W - 130 - 128 - 120 },
   ])
+  const familiarGridEnd = familiarGridY + GRID_ROW_H
 
   // DATOS PROFESIONAL
-  drawSectionTitle(page, fonts, 202, 'DATOS PROFESIONAL')
-  drawFieldRow(page, fonts, 214, GRID_ROW_H, [
+  const profesionalTitleY = familiarGridEnd + GAP_SECTION_TO_SECTION
+  drawSectionTitle(page, fonts, profesionalTitleY, 'DATOS PROFESIONAL')
+  const profesionalGridY = profesionalTitleY + TITLE_FS + GAP_TITLE_TO_GRID
+  drawFieldRow(page, fonts, profesionalGridY, GRID_ROW_H, [
     { label: 'Nombre y Apellido', value: datos.profesionalNombre, labelW: 130, valueW: W - 130 },
   ])
-  drawFieldRow(page, fonts, 214 + GRID_ROW_H, GRID_ROW_H, [
+  drawFieldRow(page, fonts, profesionalGridY + GRID_ROW_H, GRID_ROW_H, [
     { label: 'Nº de Matricula', value: datos.matricula, labelW: 130, valueW: W - 130 },
   ])
-  drawFieldRow(page, fonts, 214 + GRID_ROW_H * 2, GRID_ROW_H, [
+  drawFieldRow(page, fonts, profesionalGridY + GRID_ROW_H * 2, GRID_ROW_H, [
     { label: 'Nombre Prestador', value: datos.nombrePrestador, labelW: 130, valueW: W - 130 },
   ])
+  const profesionalGridEnd = profesionalGridY + GRID_ROW_H * 3
 
   // DETALLE DE VISITAS
-  const visitasTitleY = 214 + GRID_ROW_H * 3 + 12
+  const visitasTitleY = profesionalGridEnd + GAP_SECTION_TO_SECTION
   drawSectionTitle(page, fonts, visitasTitleY, 'DETALLE DE VISITAS:')
 
-  const tableY = visitasTitleY + 12
+  const tableY = visitasTitleY + TITLE_FS + GAP_TITLE_TO_GRID
   drawTableHeader(page, fonts, tableY)
   let rowY = tableY + HDR_H
   for (let i = 0; i < ROWS_P1; i++) {
     drawRow(page, fonts, rowY, datos.sesiones[i] ?? null, imgCache)
     rowY += ROW_H
   }
+}
+
+function drawFooter(page: PDFPage, fonts: Fonts, pagina: number, totalPaginas: number) {
+  const FS = 8
+  const text = `Página ${pagina} de ${totalPaginas}`
+  const w = fonts.reg.widthOfTextAtSize(text, FS)
+  page.drawText(text, { x: PAGE_W - L - w, y: 22, font: fonts.reg, size: FS, color: C_MUTED })
 }
 
 function renderContinuationPage(
@@ -350,6 +376,13 @@ export async function generarPlanillaPami(datos: DatosPami): Promise<Buffer> {
       renderContinuationPage(page, fonts, restantes.slice(i, i + ROWS_CONT), imgCache)
     }
   }
+
+  // El total de páginas recién se conoce una vez creadas todas — se dibuja el
+  // footer al final, iterando sobre las páginas ya existentes.
+  const totalPaginas = pdfDoc.getPageCount()
+  pdfDoc.getPages().forEach((page, idx) => {
+    drawFooter(page, fonts, idx + 1, totalPaginas)
+  })
 
   return Buffer.from(await pdfDoc.save())
 }
