@@ -15,6 +15,7 @@ export interface DatosPami {
   profesionalNombre: string
   matricula: string
   nombrePrestador: string
+  anio: string          // "2026" — se recorta a 2 dígitos para la columna Fecha (DD/MM/AA)
   sesiones: SesionPami[]
   logoUrl?: string
 }
@@ -175,6 +176,7 @@ function drawRow(
   kitY: number,
   sesion: SesionPami | null,
   imgCache: Record<string, PDFImage | null>,
+  anioCorto: string,
 ) {
   for (let i = 0; i < 3; i++) {
     page.drawRectangle({
@@ -197,7 +199,7 @@ function drawRow(
 
   const FS = 10
   const textKitY = kitY + ROW_H / 2 - FS / 2
-  const fechaTxt = `${sesion.dia}/${sesion.mes}`
+  const fechaTxt = `${sesion.dia}/${sesion.mes}/${anioCorto}`
   const fw = fonts.reg.widthOfTextAtSize(fechaTxt, FS)
   page.drawText(fechaTxt, {
     x: COL_X[0] + (COL_W[0] - fw) / 2,
@@ -315,7 +317,7 @@ function renderFirstPage(
   drawTableHeader(page, fonts, tableY)
   let rowY = tableY + HDR_H
   for (let i = 0; i < ROWS_P1; i++) {
-    drawRow(page, fonts, rowY, datos.sesiones[i] ?? null, imgCache)
+    drawRow(page, fonts, rowY, datos.sesiones[i] ?? null, imgCache, datos.anio.slice(-2))
     rowY += ROW_H
   }
 }
@@ -332,11 +334,12 @@ function renderContinuationPage(
   fonts: Fonts,
   sesiones: SesionPami[],
   imgCache: Record<string, PDFImage | null>,
+  anioCorto: string,
 ) {
   drawTableHeader(page, fonts, 40)
   let rowY = 40 + HDR_H
   for (let i = 0; i < ROWS_CONT; i++) {
-    drawRow(page, fonts, rowY, sesiones[i] ?? null, imgCache)
+    drawRow(page, fonts, rowY, sesiones[i] ?? null, imgCache, anioCorto)
     rowY += ROW_H
   }
 }
@@ -374,7 +377,7 @@ export async function generarPlanillaPami(datos: DatosPami): Promise<Buffer> {
     const restantes = datos.sesiones.slice(ROWS_P1)
     for (let i = 0; i < restantes.length; i += ROWS_CONT) {
       const page = pdfDoc.addPage([PAGE_W, PAGE_H])
-      renderContinuationPage(page, fonts, restantes.slice(i, i + ROWS_CONT), imgCache)
+      renderContinuationPage(page, fonts, restantes.slice(i, i + ROWS_CONT), imgCache, datos.anio.slice(-2))
     }
   }
 

@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       profesionalNombre: `${profile.apellido}, ${profile.nombre}`.toUpperCase(),
       matricula,
       nombrePrestador: osConfig?.razon_social || `${profile.apellido}, ${profile.nombre}`.toUpperCase(),
+      anio: anio.toString(),
       sesiones: [...sesiones, ...sesionesDecl].sort((a, b) => {
         const d = parseInt(a.mes) * 100 + parseInt(a.dia) - (parseInt(b.mes) * 100 + parseInt(b.dia))
         return d
