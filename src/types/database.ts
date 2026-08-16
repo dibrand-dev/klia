@@ -831,42 +831,42 @@ export type Database = {
           },
         ]
       }
-      // Tabla en diseño — todavía no creada en Supabase. Este stub existe solo para
-      // que src/lib/auth/getEffectiveTerapeutaId.ts (Fase A del rol Colaboradora)
-      // tipe correctamente contra Database antes de correr la migración real.
+      // Tabla creada en producción desde 2026-08-10 (migración SQL manual en el
+      // dashboard de Supabase, fuera de este repo — mismo patrón que otras tablas
+      // de este proyecto). Este stub es la representación TS de esa tabla real.
       colaboradores: {
         Row: {
           id: string
           profesional_id: string
           colaborador_id: string
-          invitado_email: string
           rol: string
           invitacion_aceptada: boolean
           activo: boolean
+          invitado_en: string
+          aceptado_en: string | null
           created_at: string
-          updated_at: string
         }
         Insert: {
           id?: string
           profesional_id: string
           colaborador_id: string
-          invitado_email: string
           rol?: string
           invitacion_aceptada?: boolean
           activo?: boolean
+          invitado_en?: string
+          aceptado_en?: string | null
           created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
           profesional_id?: string
           colaborador_id?: string
-          invitado_email?: string
           rol?: string
           invitacion_aceptada?: boolean
           activo?: boolean
+          invitado_en?: string
+          aceptado_en?: string | null
           created_at?: string
-          updated_at?: string
         }
         Relationships: [
           {
