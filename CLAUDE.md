@@ -11,7 +11,7 @@ Super Admin panel: https://app.klia.com.ar/ops/login
 - Next.js 14 App Router + TypeScript
 - Supabase (PostgreSQL + Auth + Storage + RLS)
 - Tailwind CSS + custom CSS design system (CSS variables)
-- Vercel (CI/CD from main branch only — never push to preview branches)
+- Vercel (CI/CD from main branch for production; `staging` branch + klia-staging Supabase project for high-risk changes — ver "Flujo de deploy")
 - Mercado Pago OAuth (each professional connects their own MP account)
 - Google Calendar + Google Drive API (OAuth per professional)
 - Brevo API (transactional emails from hola@klia.com.ar)
@@ -21,7 +21,7 @@ Super Admin panel: https://app.klia.com.ar/ops/login
 - googleapis npm package (Google Drive file management)
 
 ## Key rules
-- ALWAYS push to main branch — never to preview or feature branches
+- Ver "Flujo de deploy" más abajo — ya no es siempre push directo a main, depende del tipo de cambio
 - Always show SQL before executing in Supabase
 - Always run `npm run build` before committing
 - Never use `window.confirm()` — use ConfirmDialog component
@@ -32,6 +32,16 @@ Super Admin panel: https://app.klia.com.ar/ops/login
 - Emails always sent via Brevo, never via Supabase default templates
 - Pixel-perfect implementation of designs — never invent UI decisions
 - CSS design system uses CSS variables (--ink, --surface, --border, etc.) not Tailwind for custom components
+
+## Flujo de deploy
+
+KLIA tiene dos ambientes: producción (main, Vercel + Supabase Klin) y staging (rama `staging`, Vercel + Supabase klia-staging).
+
+**Va directo a main:** cambios de UI, copy, estilos, fixes aislados que no tocan autenticación, middleware, RLS, ni la resolución de terapeuta_id/colaboradores.
+
+**Pasa por staging primero:** cualquier cambio que toque auth, middleware.ts, handle_new_user, políticas RLS, o call sites que dependan de terapeuta_id (incluye toda la Fase B del rol Colaboradora). Flujo: commit y push a `staging` → verificar en la URL de staging con la cuenta norberto@dibrand.co → si está bien, merge de staging a main → verificar de nuevo en producción.
+
+`git push origin HEAD:main` para producción, `git push origin HEAD:staging` para staging — nunca confundir destino.
 
 ## CRITICAL — Supabase: new tables require explicit GRANTs (breaking change 2026-05-30)
 
