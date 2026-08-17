@@ -71,7 +71,7 @@ export default function Sidebar({ profile }: SidebarProps) {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = 'https://app.klia.com.ar/login'
+    window.location.href = process.env.NEXT_PUBLIC_APP_ENV === 'staging' ? '/login' : 'https://app.klia.com.ar/login'
   }
 
   return (
