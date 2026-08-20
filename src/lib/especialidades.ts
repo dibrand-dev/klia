@@ -28,6 +28,7 @@ export const ESPECIALIDADES = [
   'Oftalmología',
   'Oncología',
   'Ortopedia',
+  'Osteopatía',
   'Otorrinolaringología',
   'Pediatría',
   'Psicología',
