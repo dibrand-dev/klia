@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getFeriados, getFeriadosProvinciales, esFeriado } from '@/lib/feriados'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import type { Database } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -9,8 +10,8 @@ export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = createServiceClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await db
     .from('profiles')
     .select('id, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
-    .eq('id', user.id)
+    .eq('id', efectivo.terapeutaId)
     .single()
 
   if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
   const { data: turnos } = await db
     .from('turnos')
     .select('id, fecha_hora, monto')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .gt('fecha_hora', new Date().toISOString())
     .not('estado', 'in', `(${estadosExcluir.map(e => `"${e}"`).join(',')})`)
 
