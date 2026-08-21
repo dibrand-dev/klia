@@ -5,6 +5,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import type { Database } from '@/types/database'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -42,8 +43,8 @@ function wrapText(text: string, font: PDFFont, size: number, maxW: number): stri
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     paciente_id: string
@@ -59,8 +60,8 @@ export async function POST(req: NextRequest) {
   const db = svc()
 
   const [{ data: paciente }, { data: profRaw }] = await Promise.all([
-    db.from('pacientes').select('nombre, apellido, dni').eq('id', paciente_id).eq('terapeuta_id', user.id).single(),
-    db.from('profiles').select('nombre, apellido, especialidad, matricula, direccion, localidad, provincia, email, telefono, firma_sello_url').eq('id', user.id).single(),
+    db.from('pacientes').select('nombre, apellido, dni').eq('id', paciente_id).eq('terapeuta_id', efectivo.terapeutaId).single(),
+    db.from('profiles').select('nombre, apellido, especialidad, matricula, direccion, localidad, provincia, email, telefono, firma_sello_url').eq('id', efectivo.terapeutaId).single(),
   ])
 
   if (!paciente || !profRaw) {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
 
   // Audit trail
   await db.from('certificados').insert({
-    terapeuta_id: user.id,
+    terapeuta_id: efectivo.terapeutaId,
     paciente_id,
     tipo: 'asistencia',
     contenido_texto: cuerpo_texto,

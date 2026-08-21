@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getDriveClient } from '@/lib/google-drive'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { data: archivo } = await supabase
     .from('archivos_paciente')
     .select('google_drive_file_id, mime_type')
     .eq('id', params.id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!archivo) return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 })
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   const { data: tokens } = await supabase
     .from('google_calendar_tokens')
     .select('access_token, refresh_token')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!tokens?.access_token || !tokens?.refresh_token) {

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const pacienteId = searchParams.get('pacienteId')
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     .from('archivos_paciente')
     .select('*')
     .eq('paciente_id', pacienteId)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .order('created_at', { ascending: false })
 
   return NextResponse.json({ archivos: archivos ?? [] })

@@ -6,6 +6,7 @@ import { emailPagoSesionPendiente } from '@/lib/email-templates'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 
@@ -30,8 +31,8 @@ function formatFechaHora(fechaHora: string) {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as { turno_id: string }
   if (!body.turno_id) return NextResponse.json({ error: 'turno_id requerido' }, { status: 400 })
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
     .from('turnos')
     .select('*, paciente:pacientes(*)')
     .eq('id', body.turno_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!turno) return NextResponse.json({ error: 'Turno no encontrado' }, { status: 404 })
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await db
     .from('profiles')
     .select('*')
-    .eq('id', user.id)
+    .eq('id', efectivo.terapeutaId)
     .single()
 
   const p = profile as Record<string, unknown> | null
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       },
       auto_return: 'approved',
       notification_url: `${appUrl}/api/pagos/webhook`,
-      metadata: { hash, turno_id: turno.id, terapeuta_id: user.id },
+      metadata: { hash, turno_id: turno.id, terapeuta_id: efectivo.terapeutaId },
       statement_descriptor: 'KLIA SESION',
     }),
   })
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
     .from('sesiones_pago')
     .insert({
       turno_id: turno.id,
-      terapeuta_id: user.id,
+      terapeuta_id: efectivo.terapeutaId,
       paciente_id: turno.paciente_id,
       hash,
       monto: turno.monto,

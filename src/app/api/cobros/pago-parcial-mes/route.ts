@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { paciente_id, mes, anio, monto, moneda, medio_pago, fecha_cobro } = await req.json() as {
     paciente_id: string
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     .from('pacientes')
     .select('id, cobrar_inasistencias')
     .eq('id', paciente_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!paciente) return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase
     .from('profiles')
     .select('cobrar_inasistencias')
-    .eq('id', user.id)
+    .eq('id', efectivo.terapeutaId)
     .single()
 
   const cobrarInasistencia = paciente.cobrar_inasistencias ?? (profile?.cobrar_inasistencias ?? false)
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     .from('turnos')
     .select('id, monto, monto_pagado, estado_pago, pagado')
     .eq('paciente_id', paciente_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .in('estado', estadosCobrables)
     .eq('pagado', false)
     .gte('fecha_hora', inicioMes)
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     cobrosBatch.push({
       turno_id: turno.id,
-      terapeuta_id: user.id,
+      terapeuta_id: efectivo.terapeutaId,
       paciente_id,
       monto_cobrado: montoCobradoEseTurno,
       moneda,

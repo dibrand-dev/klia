@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     action: 'update_estado' | 'convertir'
@@ -16,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .from('entrevistas')
       .update({ estado: body.estado, updated_at: new Date().toISOString() })
       .eq('id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
@@ -26,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       .from('entrevistas')
       .select('*')
       .eq('id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .single()
 
     if (!entrevista) return NextResponse.json({ error: 'Entrevista no encontrada' }, { status: 404 })
@@ -35,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { data: paciente, error: pacienteError } = await supabase
       .from('pacientes')
       .insert({
-        terapeuta_id: user.id,
+        terapeuta_id: efectivo.terapeutaId,
         nombre: entrevista.nombre,
         apellido: entrevista.apellido,
         telefono: entrevista.telefono,
@@ -60,7 +61,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { data: turno, error: turnoError } = await supabase
       .from('turnos')
       .insert({
-        terapeuta_id: user.id,
+        terapeuta_id: efectivo.terapeutaId,
         paciente_id: paciente.id,
         fecha_hora: fechaHora,
         duracion_min: entrevista.duracion,
@@ -85,7 +86,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (turno && hasCosto) {
       await supabase.from('cobros').insert({
         turno_id: turno.id,
-        terapeuta_id: user.id,
+        terapeuta_id: efectivo.terapeutaId,
         paciente_id: paciente.id,
         monto_cobrado: entrevista.costo!,
         moneda: entrevista.moneda ?? 'ARS',
