@@ -2,19 +2,20 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import NotaDetalleEditor from '@/components/pacientes/NotaDetalleEditor'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Nota de sesión — KLIA' }
 
 export default async function NotaDetallePage({ params }: { params: { id: string; notaId: string } }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const { data: nota } = await supabase
     .from('notas_clinicas')
     .select('*')
     .eq('id', params.notaId)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!nota) notFound()

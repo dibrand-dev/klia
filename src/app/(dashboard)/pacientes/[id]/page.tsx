@@ -5,6 +5,7 @@ import PacienteHeader, { type SummaryData } from '@/components/pacientes/Pacient
 import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/PacienteTabs'
 import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
 import { calcularDeudaMes, resolverPoliticaInasistencia, sesionGeneraDeuda } from '@/lib/deuda'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Paciente — KLIA' }
 // Mismo motivo que /agenda y /cobros — evitar que el Data Cache de Next.js
@@ -19,49 +20,49 @@ export default async function PacienteDetallePage({
   searchParams: { tab?: string; edit?: string }
 }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: paciente }, { data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }, { data: googleTokens }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
       .eq('id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .single(),
     supabase
       .from('profiles')
       .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, direccion, localidad, provincia, email, telefono, firma_sello_url')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
       .from('turnos')
       .select('*')
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .order('fecha_hora', { ascending: true }),
     supabase
       .from('notas_clinicas')
       .select('id', { count: 'exact', head: true })
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .not('borrador', 'is', true),
     supabase
       .from('medicacion_paciente')
       .select('*')
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .order('created_at'),
     supabase
       .from('profesional_obras_sociales')
       .select('*')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activa', true)
       .order('nombre'),
     supabase
       .from('turnos_recurrentes')
       .select('dia_semana, hora')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('paciente_id', params.id)
       .eq('activo', true)
       .limit(1)
@@ -69,7 +70,7 @@ export default async function PacienteDetallePage({
     supabase
       .from('google_calendar_tokens')
       .select('id')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .maybeSingle(),
   ])
 

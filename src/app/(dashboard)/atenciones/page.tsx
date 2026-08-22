@@ -2,16 +2,17 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AtencionesClient from '@/components/atenciones/AtencionesClient'
 import { getModulosConfig, puedeAcceder } from '@/lib/modulos'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Atenciones del Día — KLIA' }
 
 export default async function AtencionesPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: profile }, modulos] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
+    supabase.from('profiles').select('plan').eq('id', efectivo.terapeutaId).single(),
     getModulosConfig(supabase),
   ])
 
@@ -47,7 +48,7 @@ export default async function AtencionesPage() {
         modalidad_tratamiento
       )
     `)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .gte('fecha_hora', inicioHoyUTC.toISOString())
     .lt('fecha_hora', finHoyUTC.toISOString())
     .neq('estado', 'cancelado')

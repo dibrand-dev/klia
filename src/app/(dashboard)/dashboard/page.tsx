@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import type { Profile } from '@/types/database'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Dashboard — KLIA' }
 
 export default async function DashboardPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   // Argentina = UTC-3 (no DST)
   const ahora = new Date()
@@ -53,12 +54,12 @@ export default async function DashboardPage() {
     { data: obrasSociales },
     { data: turnosMesAnteriorSinPagar },
   ] = await Promise.all([
-    supabase.from('profiles').select('nombre').eq('id', user.id).single(),
+    supabase.from('profiles').select('nombre').eq('id', efectivo.terapeutaId).single(),
 
     supabase
       .from('turnos')
       .select('id, fecha_hora, estado, paciente:pacientes(nombre, apellido)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioHoyUTC.toISOString())
       .lt('fecha_hora', finHoyUTC.toISOString())
       .neq('estado', 'cancelado')
@@ -67,21 +68,21 @@ export default async function DashboardPage() {
     supabase
       .from('turnos')
       .select('id, estado, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioMesUTC.toISOString())
       .lt('fecha_hora', finMesUTC.toISOString()),
 
     supabase
       .from('entrevistas')
       .select('id, nombre, apellido, hora, estado')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('fecha', hoyArgStr)
       .neq('estado', 'cancelada'),
 
     supabase
       .from('turnos_recurrentes')
       .select('id, fecha_fin, paciente:pacientes(nombre, apellido)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activo', true)
       .lte('fecha_fin', treintaDiasStr)
       .order('fecha_fin'),
@@ -89,26 +90,26 @@ export default async function DashboardPage() {
     supabase
       .from('pacientes')
       .select('id')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activo', true),
 
     supabase
       .from('turnos')
       .select('paciente_id, fecha_hora')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('estado', 'realizado')
       .order('fecha_hora', { ascending: false }),
 
     supabase
       .from('profesional_obras_sociales')
       .select('id, nombre')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activa', true),
 
     supabase
       .from('turnos')
       .select('id, pagado, paciente:pacientes(os_config_id)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('pagado', false)
       .gte('fecha_hora', inicioMesAnteriorUTC.toISOString())
       .lt('fecha_hora', inicioMesUTC.toISOString())
@@ -135,7 +136,7 @@ export default async function DashboardPage() {
     ? await supabase
         .from('pacientes')
         .select('id, nombre, apellido')
-        .eq('terapeuta_id', user.id)
+        .eq('terapeuta_id', efectivo.terapeutaId)
         .eq('activo', true)
         .in('id', pacientesAusentesIds)
     : { data: [] }

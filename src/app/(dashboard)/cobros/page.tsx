@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getModulosConfig, puedeAcceder } from '@/lib/modulos'
 import CobrosClient from '@/components/cobros/CobrosClient'
 import type { TurnoDeuda, TopDeudor } from '@/components/cobros/CobrosClient'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Cobros — KLIA' }
 // Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
@@ -12,14 +13,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function CobrosPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: profile }, modulos] = await Promise.all([
     supabase
       .from('profiles')
       .select('nombre, apellido, especialidad, cobrar_inasistencias, plan')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     getModulosConfig(supabase),
   ])
@@ -32,7 +33,7 @@ export default async function CobrosPage() {
   const { data: profesionalObrasSociales } = await supabase
     .from('profesional_obras_sociales')
     .select('id, nombre')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
 
   const osMap: Record<string, string> = {}
   for (const os of profesionalObrasSociales ?? []) {
@@ -60,7 +61,7 @@ export default async function CobrosPage() {
         moneda_preferida
       )
     `)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .in('estado', ['realizado', 'no_asistio'])
     .in('estado_pago', ['pendiente', 'pago_parcial', 'bonificado'])
     .eq('pagado', false)
@@ -162,7 +163,7 @@ export default async function CobrosPage() {
       turnos={turnos}
       top3={top3}
       summary={{ particAdeudado, particMesActual, osAdeudado, osMesActual, particAdeudadoCount, osAdeudadoCount }}
-      terapeutaId={user.id}
+      terapeutaId={efectivo.terapeutaId}
       moneda={moneda}
     />
   )

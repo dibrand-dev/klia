@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ListaPacientes from '@/components/pacientes/ListaPacientes'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Pacientes — KLIA' }
 // Evitar que el Data Cache de Next.js sirva la lista stale tras crear/editar un paciente
@@ -15,8 +16,8 @@ export default async function PacientesPage({
   searchParams: { page?: string }
 }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const pageNum = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1)
   const from = (pageNum - 1) * PAGE_SIZE
@@ -26,18 +27,18 @@ export default async function PacientesPage({
     supabase
       .from('pacientes')
       .select('*', { count: 'exact' })
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .order('apellido')
       .range(from, to),
     supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
       .from('turnos')
       .select('paciente_id, fecha_hora')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('estado', 'realizado')
       .order('fecha_hora', { ascending: false }),
   ])
