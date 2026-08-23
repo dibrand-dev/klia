@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/RichTextEditor'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -14,6 +15,7 @@ function isHtmlEmpty(html: string): boolean {
 
 export default function NuevaNotaPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const [contenido, setContenido] = useState('')
   const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
@@ -21,14 +23,16 @@ export default function NuevaNotaPage({ params }: { params: { id: string } }) {
 
   async function handleGuardar() {
     if (isHtmlEmpty(contenido)) return
+    if (!terapeutaId) {
+      console.error('[NuevaNotaPage] terapeutaId no resuelto todavía')
+      return
+    }
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
 
     const { error: dbError } = await supabase.from('notas_clinicas').insert({
-      terapeuta_id: user.id,
+      terapeuta_id: terapeutaId,
       paciente_id: params.id,
       turno_id: null,
       fecha,

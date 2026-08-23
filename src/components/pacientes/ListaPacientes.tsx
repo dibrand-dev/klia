@@ -9,6 +9,7 @@ import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Profile } from '@/types/database'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 type PacienteListado = Paciente & { ultima_cita: string | null }
 
@@ -33,6 +34,7 @@ export default function ListaPacientes({
   currentPage?: number
   pageSize?: number
 }) {
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const [busqueda, setBusqueda] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
   const [ordenFilter, setOrdenFilter] = useState('')
@@ -50,13 +52,17 @@ export default function ListaPacientes({
     let cancelado = false
     setBuscando(true)
     const timer = setTimeout(async () => {
+      if (!terapeutaId) {
+        console.error('[ListaPacientes] terapeutaId no resuelto todavía')
+        setBuscando(false)
+        return
+      }
+      if (cancelado) return
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || cancelado) return
       const { data } = await supabase
         .from('pacientes')
         .select('*')
-        .eq('terapeuta_id', user.id)
+        .eq('terapeuta_id', terapeutaId)
         .or(`nombre.ilike.%${texto}%,apellido.ilike.%${texto}%,dni.ilike.%${texto}%`)
         .order('apellido')
         .limit(50)
@@ -67,7 +73,7 @@ export default function ListaPacientes({
         const { data: turnos } = await supabase
           .from('turnos')
           .select('paciente_id, fecha_hora')
-          .eq('terapeuta_id', user.id)
+          .eq('terapeuta_id', terapeutaId)
           .eq('estado', 'realizado')
           .in('paciente_id', encontrados.map((p) => p.id))
           .order('fecha_hora', { ascending: false })
@@ -81,7 +87,7 @@ export default function ListaPacientes({
     }, 300)
 
     return () => { cancelado = true; clearTimeout(timer) }
-  }, [busqueda])
+  }, [busqueda, terapeutaId])
 
   const baseList = resultadosBusqueda ?? pacientes
   const filtrados = baseList.filter((p) => {

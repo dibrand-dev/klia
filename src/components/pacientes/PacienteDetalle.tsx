@@ -23,6 +23,7 @@ import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/Registr
 import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
 import RxGrid from '@/components/oftalmologia/RxGrid'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -161,6 +162,7 @@ export default function PacienteDetalle({
   tieneDrive?: boolean
 }) {
   const router = useRouter()
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const { cie10, cargarCie10 } = useCie10()
   const [editando, setEditando] = useState(initialEdit)
   const [form, setForm] = useState(() => {
@@ -321,8 +323,7 @@ export default function PacienteDetalle({
     }
 
     // Sync medications: replace all existing ones
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
+    if (terapeutaId) {
       const { error: delError } = await supabase
         .from('medicacion_paciente')
         .delete()
@@ -339,7 +340,7 @@ export default function PacienteDetalle({
       if (medsFiltradas.length > 0) {
         const { error: insError } = await supabase.from('medicacion_paciente').insert(
           medsFiltradas.map((m) => ({
-            terapeuta_id: user.id,
+            terapeuta_id: terapeutaId,
             paciente_id: paciente.id,
             farmaco: m.farmaco.trim(),
             dosis: m.dosis || null,
@@ -354,6 +355,8 @@ export default function PacienteDetalle({
           return
         }
       }
+    } else {
+      console.error('[PacienteDetalle] terapeutaId no resuelto todavía — medicaciones no sincronizadas')
     }
 
     setEditando(false)

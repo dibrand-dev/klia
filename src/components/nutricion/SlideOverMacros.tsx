@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SlideOver from '@/components/ui/SlideOver'
 import { redistribuirMacros, gramosDesdeMacro, type MacrosPct } from '@/lib/nutricion/calculos'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 interface Props {
   pacienteId: string
@@ -20,6 +21,7 @@ const MACRO_DEFS: { key: keyof MacrosPct; name: string; color: string; kcalPorGr
 const DEFAULT_MACROS: MacrosPct = { cho: 45, prot: 30, gra: 25 }
 
 export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const [macros, setMacros] = useState<MacrosPct>(DEFAULT_MACROS)
   const [kcal, setKcal] = useState<number | null>(1850)
   const [loading, setLoading] = useState(true)
@@ -61,12 +63,14 @@ export default function SlideOverMacros({ pacienteId, open, onClose }: Props) {
   }
 
   async function guardar(nuevosMacros: MacrosPct, nuevoKcal: number | null, checkKeyId: string) {
+    if (!terapeutaId) {
+      console.error('[SlideOverMacros] terapeutaId no resuelto todavía')
+      return
+    }
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
     const { error } = await supabase.from('distribucion_macros').upsert({
       paciente_id: pacienteId,
-      terapeuta_id: user.id,
+      terapeuta_id: terapeutaId,
       porcentaje_carbohidratos: nuevosMacros.cho,
       porcentaje_proteinas: nuevosMacros.prot,
       porcentaje_grasas: nuevosMacros.gra,
