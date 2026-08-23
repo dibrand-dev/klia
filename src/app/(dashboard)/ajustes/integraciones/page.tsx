@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,12 +11,12 @@ export const metadata = { title: 'Integraciones — KLIA' }
 
 export default async function IntegracionesPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: googleTokens }, { data: profile }] = await Promise.all([
-    supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', user.id).maybeSingle(),
-    supabase.from('profiles').select('mp_user_id, mp_email, mp_nombre').eq('id', user.id).single(),
+    supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', efectivo.terapeutaId).maybeSingle(),
+    supabase.from('profiles').select('mp_user_id, mp_email, mp_nombre').eq('id', efectivo.terapeutaId).single(),
   ])
   const p = profile as Record<string, unknown> | null
 

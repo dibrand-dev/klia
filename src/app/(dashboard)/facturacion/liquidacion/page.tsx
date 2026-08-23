@@ -1,17 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import LiquidacionView from '@/components/facturacion/LiquidacionView'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Liquidación OS — KLIA' }
 
 export default async function LiquidacionPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: osList }, { data: profileRaw }] = await Promise.all([
-    supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', user.id).eq('activa', true).order('nombre'),
-    supabase.from('profiles').select('terminologia').eq('id', user.id).single(),
+    supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', efectivo.terapeutaId).eq('activa', true).order('nombre'),
+    supabase.from('profiles').select('terminologia').eq('id', efectivo.terapeutaId).single(),
   ])
   const terminologia = (profileRaw as Record<string, unknown> | null)?.terminologia as 'sesion' | 'consulta' | undefined
 
@@ -21,7 +22,7 @@ export default async function LiquidacionPage() {
       <p className="text-sm text-on-surface-variant mb-8">
         Calculá y exportá la planilla mensual por obra social.
       </p>
-      <LiquidacionView osList={osList ?? []} terapeutaId={user.id} terminologia={terminologia} />
+      <LiquidacionView osList={osList ?? []} terapeutaId={efectivo.terapeutaId} terminologia={terminologia} />
     </div>
   )
 }
