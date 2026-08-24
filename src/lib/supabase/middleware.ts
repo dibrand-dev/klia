@@ -69,6 +69,30 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // Caso especial: admin.generateLink() de Supabase a veces ignora el
+  // redirectTo que le pasamos y cae al Site URL a secas (bug documentado:
+  // supabase/supabase#10469, #22562). Cuando eso pasa, el link de invitación
+  // de colaboradora aterriza acá, en la raíz, con el código de sesión como
+  // query param — sin este intercept, el chequeo de !user de más abajo la
+  // rebotaría a /login antes de que el código se intercambie.
+  const inviteCode = request.nextUrl.searchParams.get('code')
+  if (pathname === '/' && inviteCode) {
+    const { data: exchangeData } = await supabase.auth.exchangeCodeForSession(inviteCode)
+    const tipoCuenta = exchangeData.session?.user?.user_metadata?.tipo_cuenta
+    if (tipoCuenta === 'colaborador') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/colaboradora/activar'
+      url.search = ''
+      const redirectResponse = NextResponse.redirect(url)
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie)
+      })
+      return redirectResponse
+    }
+    // Si no es colaboradora (o el exchange falló), no hacemos nada especial
+    // acá — dejamos que el flujo normal de abajo siga su curso.
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   // /auth/* routes handle their own authentication internally
