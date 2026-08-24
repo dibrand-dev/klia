@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     email,
     options: {
       data: { tipo_cuenta: 'colaborador', ...(nombre ? { nombre } : {}) },
-      redirectTo: `${appUrl}/auth/callback?type=invite`,
+      redirectTo: `${appUrl}/auth/callback-invite`,
     },
   })
 
