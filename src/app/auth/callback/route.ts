@@ -33,6 +33,13 @@ export async function GET(request: NextRequest) {
 
   const session = data.session
 
+  // Colaboradora recién invitada: setea su propia contraseña en /colaboradora/activar,
+  // no debe pasar por el bloque de "usuario nuevo" de abajo (es específico de profesionales
+  // — le pisaría el perfil con plan/trial_fin que no le corresponden).
+  if (type === 'invite') {
+    return NextResponse.redirect(new URL('/colaboradora/activar', origin))
+  }
+
   // Check if admin
   const { data: adminUser } = await supabase
     .from('admin_users')

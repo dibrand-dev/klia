@@ -346,6 +346,24 @@ export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): 
   `, 'Tu suscripción fue cancelada — KLIA')
 }
 
+export function emailInvitacionColaboradora(
+  nombreProfesional: string,
+  urlInvitacion: string
+): string {
+  return baseTemplate(`
+    ${icon('👋', '#eff6ff')}
+    ${h1('Te invitaron a KLIA')}
+    ${para(`<strong style="color:#2b2f38;font-weight:600;">${nombreProfesional}</strong> te invitó a colaborar como asistente en su cuenta de KLIA.<br>Para activar tu acceso, elegí una contraseña.`)}
+    ${cta('Activar mi cuenta', urlInvitacion)}
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;border-top:1px solid #e8eaf0;">
+      <tr><td style="padding:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#7a7f8a;text-align:center;">
+        Si el botón no funciona, copiá y pegá este enlace:<br>
+        <a href="${urlInvitacion}" style="color:#2563EB;word-break:break-all;font-size:11px;">${urlInvitacion}</a>
+      </td></tr>
+    </table>
+  `, 'Te invitaron a KLIA')
+}
+
 // ── Payment flow templates ────────────────────────────────────────────
 
 function sessionDetailBox(params: {
