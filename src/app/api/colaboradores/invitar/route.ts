@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { email } = await req.json() as { email?: string }
+  const { email, nombre } = await req.json() as { email?: string; nombre?: string }
   if (!email) {
     return NextResponse.json({ error: 'Falta email' }, { status: 400 })
   }
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     type: 'invite',
     email,
     options: {
-      data: { tipo_cuenta: 'colaborador' },
+      data: { tipo_cuenta: 'colaborador', ...(nombre ? { nombre } : {}) },
       redirectTo: `${appUrl}/auth/callback?type=invite`,
     },
   })
@@ -89,9 +89,9 @@ export async function POST(req: NextRequest) {
   try {
     await enviarEmail({
       destinatario: email,
-      nombreDestinatario: email,
-      asunto: 'Te invitaron a KLIA',
-      htmlContent: emailInvitacionColaboradora(nombreProfesional, linkData.properties.action_link),
+      nombreDestinatario: nombre ?? email,
+      asunto: `${nombreProfesional} te invitó a colaborar en KLIA`,
+      htmlContent: emailInvitacionColaboradora(nombreProfesional, nombre ?? null, linkData.properties.action_link),
     })
   } catch (emailError) {
     console.error('[colaboradores/invitar] Error enviando email:', emailError)

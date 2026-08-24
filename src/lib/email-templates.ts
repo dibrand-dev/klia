@@ -348,12 +348,24 @@ export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): 
 
 export function emailInvitacionColaboradora(
   nombreProfesional: string,
+  nombreColaboradora: string | null,
   urlInvitacion: string
 ): string {
+  const saludo = nombreColaboradora ? `Hola ${nombreColaboradora}` : 'Hola'
   return baseTemplate(`
     ${icon('👋', '#eff6ff')}
-    ${h1('Te invitaron a KLIA')}
-    ${para(`<strong style="color:#2b2f38;font-weight:600;">${nombreProfesional}</strong> te invitó a colaborar como asistente en su cuenta de KLIA.<br>Para activar tu acceso, elegí una contraseña.`)}
+    ${h1('Te invitaron a colaborar en KLIA')}
+    ${para(`${saludo}, <strong style="color:#2b2f38;font-weight:600;">${nombreProfesional}</strong> te invitó a colaborar como asistente en su consultorio dentro de KLIA.`)}
+    ${infoBox(`
+      <p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#1e3a8a;">Vas a poder:</p>
+      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr><td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e3a8a;">✓ &nbsp;Dar de alta pacientes nuevos</td></tr>
+        <tr><td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e3a8a;">✓ &nbsp;Editar los datos de contacto de los pacientes</td></tr>
+        <tr><td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e3a8a;">✓ &nbsp;Crear, modificar y cancelar turnos en la agenda</td></tr>
+        <tr><td style="padding:4px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1e3a8a;">✓ &nbsp;Ver toda la información del consultorio</td></tr>
+      </table>
+    `, '#eff6ff', '#2563EB', '#1e3a8a')}
+    ${para('Para activar tu acceso, elegí una contraseña.')}
     ${cta('Activar mi cuenta', urlInvitacion)}
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;border-top:1px solid #e8eaf0;">
       <tr><td style="padding:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#7a7f8a;text-align:center;">
@@ -361,7 +373,7 @@ export function emailInvitacionColaboradora(
         <a href="${urlInvitacion}" style="color:#2563EB;word-break:break-all;font-size:11px;">${urlInvitacion}</a>
       </td></tr>
     </table>
-  `, 'Te invitaron a KLIA')
+  `, `${nombreProfesional} te invitó a colaborar en KLIA`)
 }
 
 // ── Payment flow templates ────────────────────────────────────────────
