@@ -47,12 +47,11 @@ export default function ActivarColaboradoraPage() {
       return
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase
-        .from('colaboradores')
-        .update({ invitacion_aceptada: true })
-        .eq('colaborador_id', user.id)
+    const activarRes = await fetch('/api/colaboradores/activar', { method: 'POST' })
+    if (!activarRes.ok) {
+      setError('No pudimos activar tu cuenta. Intentá de nuevo.')
+      setLoading(false)
+      return
     }
 
     router.push('/dashboard')
