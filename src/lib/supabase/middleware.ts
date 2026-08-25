@@ -41,6 +41,14 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // '/' es ahora un client component que resuelve su propio redirect (lee
+  // el hash de tokens de invitación de colaboradora antes de decidir a
+  // dónde ir) — no usamos PUBLIC_ROUTES acá porque ese array matchea con
+  // .startsWith() y '/' rompería la protección de todas las rutas.
+  if (pathname === '/') {
+    return NextResponse.next()
+  }
+
   // Si es ruta pública → pasar directamente sin llamar a Supabase
   if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
     return NextResponse.next()
