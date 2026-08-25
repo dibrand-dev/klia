@@ -288,6 +288,7 @@ function Paginador({ currentPage, totalPages }: { currentPage: number; totalPage
 
 function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   const router = useRouter()
+  const { esColaborador } = useEffectiveTerapeutaId()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -308,8 +309,9 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
 
   async function doEliminar() {
     const supabase = createClient()
-    const { error } = await supabase.from('pacientes').delete().eq('id', paciente.id)
+    const { error, data } = await supabase.from('pacientes').delete().eq('id', paciente.id).select('id')
     if (error) { alert('Error al eliminar: ' + error.message); return }
+    if (!data || data.length === 0) { alert('No se pudo eliminar el paciente. Puede que no tengas permiso para esta acción.'); return }
     router.refresh()
   }
 
@@ -352,13 +354,15 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
                 <span className="material-symbols-outlined text-[18px]">edit</span>
                 Editar
               </button>
-              <button
-                className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left border-t border-outline-variant/10"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); setConfirmOpen(true) }}
-              >
-                <span className="material-symbols-outlined text-[18px]">delete</span>
-                Eliminar
-              </button>
+              {!esColaborador && (
+                <button
+                  className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left border-t border-outline-variant/10"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); setConfirmOpen(true) }}
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                  Eliminar
+                </button>
+              )}
             </div>
           )}
         </div>
