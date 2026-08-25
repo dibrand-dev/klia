@@ -20,12 +20,14 @@ export default function PacienteTabs({
   historialCount,
   tieneDrive = false,
   especialidad,
+  esColaborador = false,
 }: {
   pacienteId: string
   active: PacienteTabKey
   historialCount?: number
   tieneDrive?: boolean
   especialidad?: string | null
+  esColaborador?: boolean
 }) {
   const router = useRouter()
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
@@ -35,7 +37,7 @@ export default function PacienteTabs({
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
     { key: 'datos', label: 'Datos personales' },
-    { key: 'historial', label: 'Historial clínico', badge: historialCount },
+    ...(!esColaborador ? [{ key: 'historial' as PacienteTabKey, label: 'Historial clínico', badge: historialCount }] : []),
     { key: 'informes', label: 'Informes' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),

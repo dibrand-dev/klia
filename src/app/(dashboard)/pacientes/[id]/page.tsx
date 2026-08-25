@@ -165,6 +165,7 @@ export default async function PacienteDetallePage({
         historialCount={historialCount}
         tieneDrive={tieneDrive}
         especialidad={profile?.especialidad}
+        esColaborador={efectivo.esColaborador}
       />
       <PacienteDetalle
         paciente={paciente}

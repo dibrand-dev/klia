@@ -12,6 +12,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
   if (!efectivo) redirect('/login')
+  if (efectivo.esColaborador) redirect(`/pacientes/${params.id}`)
 
   const [{ data: paciente }, { data: notas }, { data: turnos }, { data: profile }] = await Promise.all([
     supabase
@@ -71,6 +72,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
         active="historial"
         historialCount={totalNotas}
         especialidad={profile?.especialidad}
+        esColaborador={efectivo.esColaborador}
       />
 
       {totalNotas === 0 ? (

@@ -10,6 +10,7 @@ export default async function NotaDetallePage({ params }: { params: { id: string
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
   if (!efectivo) redirect('/login')
+  if (efectivo.esColaborador) redirect(`/pacientes/${params.id}`)
 
   const { data: nota } = await supabase
     .from('notas_clinicas')
