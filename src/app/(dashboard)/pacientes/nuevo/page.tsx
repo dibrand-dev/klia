@@ -24,5 +24,5 @@ export default async function NuevoPacientePage() {
   const profNombres = profObrasSociales.map((o) => o.nombre)
   const obrasSociales = Array.from(new Set([...OBRAS_SOCIALES, ...profNombres])).sort()
 
-  return <NuevoPacienteForm terapeutaId={efectivo.terapeutaId} obrasSociales={obrasSociales} profObrasSociales={profObrasSociales} />
+  return <NuevoPacienteForm terapeutaId={efectivo.terapeutaId} obrasSociales={obrasSociales} profObrasSociales={profObrasSociales} esColaborador={efectivo.esColaborador} />
 }

@@ -10,6 +10,7 @@ import type { Moneda } from '@/lib/monedas'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { useCie10 } from '@/lib/hooks/useCie10'
+import type { DatosContactoPaciente } from '@/types/database'
 import './nuevo-paciente.css'
 
 const EMPTY_FORM = {
@@ -98,7 +99,7 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   )
 }
 
-export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], profObrasSociales = [] }: { terapeutaId: string; obrasSociales?: string[]; profObrasSociales?: ProfesionalObraSocial[] }) {
+export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], profObrasSociales = [], esColaborador = false }: { terapeutaId: string; obrasSociales?: string[]; profObrasSociales?: ProfesionalObraSocial[]; esColaborador?: boolean }) {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY_FORM)
   const [monedaPreferida, setMonedaPreferida] = useState<Moneda>('ARS')
@@ -158,47 +159,65 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
     try {
       const supabase = createClient()
       const esOtra = form.obra_social === 'Otra'
-      const { data: newPaciente, error: dbError } = await supabase
-        .from('pacientes')
-        .insert({
-          terapeuta_id: terapeutaId,
-          nombre: form.nombre.trim(),
-          apellido: form.apellido.trim(),
-          dni: form.dni || null,
-          fecha_nacimiento: form.fecha_nacimiento || null,
-          telefono: form.telefono || null,
-          email: form.email || null,
-          genero: form.genero || null,
-          nacionalidad: form.nacionalidad || null,
-          estado_civil: form.estado_civil || null,
-          domicilio: form.domicilio || null,
-          ocupacion: form.ocupacion || null,
-          contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
-          contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-          obra_social: esOtra ? 'Otra' : (form.obra_social || null),
-          plan_obra_social: esOtra ? null : (form.plan_obra_social || null),
-          os_nombre_libre: esOtra ? (form.os_nombre_libre.trim() || null) : null,
-          os_plan_libre: esOtra ? (form.os_plan_libre.trim() || null) : null,
-          os_pendiente_validacion: esOtra,
-          os_config_id: form.os_config_id && form.os_config_id !== 'otra' ? form.os_config_id : null,
-          numero_afiliado: form.numero_afiliado || null,
-          numero_autorizacion: form.numero_autorizacion || null,
-          autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
-          autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
-          modalidad_tratamiento: form.modalidad_tratamiento || null,
-          frecuencia_sesiones: form.frecuencia_sesiones || null,
-          honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
-          moneda_preferida: monedaPreferida,
-          motivo_consulta: form.motivo_consulta || null,
-          notas: form.notas || null,
-          codigo_diagnostico: form.codigo_diagnostico || null,
-          gravedad_estimada: form.gravedad_estimada || null,
-          activo: true,
-        })
-        .select('id')
-        .single()
 
-      if (dbError || !newPaciente) {
+      const datosContacto: DatosContactoPaciente = {
+        nombre: form.nombre.trim(),
+        apellido: form.apellido.trim(),
+        dni: form.dni || null,
+        fecha_nacimiento: form.fecha_nacimiento || null,
+        telefono: form.telefono || null,
+        email: form.email || null,
+        genero: form.genero || null,
+        nacionalidad: form.nacionalidad || null,
+        estado_civil: form.estado_civil || null,
+        domicilio: form.domicilio || null,
+        ocupacion: form.ocupacion || null,
+        contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
+        contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
+        obra_social: esOtra ? 'Otra' : (form.obra_social || null),
+        plan_obra_social: esOtra ? null : (form.plan_obra_social || null),
+        os_nombre_libre: esOtra ? (form.os_nombre_libre.trim() || null) : null,
+        os_plan_libre: esOtra ? (form.os_plan_libre.trim() || null) : null,
+        os_pendiente_validacion: esOtra,
+        os_config_id: form.os_config_id && form.os_config_id !== 'otra' ? form.os_config_id : null,
+        numero_afiliado: form.numero_afiliado || null,
+        numero_autorizacion: form.numero_autorizacion || null,
+        autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
+        autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
+        modalidad_tratamiento: form.modalidad_tratamiento || null,
+        frecuencia_sesiones: form.frecuencia_sesiones || null,
+        honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+        moneda_preferida: monedaPreferida,
+      }
+
+      let newPacienteId: string | null = null
+      let dbError: { message: string } | null = null
+
+      if (esColaborador) {
+        const { data, error } = await supabase.rpc('crear_paciente_colaborador', {
+          p_datos: datosContacto,
+        })
+        newPacienteId = data ?? null
+        dbError = error
+      } else {
+        const { data, error } = await supabase
+          .from('pacientes')
+          .insert({
+            terapeuta_id: terapeutaId,
+            ...datosContacto,
+            motivo_consulta: form.motivo_consulta || null,
+            notas: form.notas || null,
+            codigo_diagnostico: form.codigo_diagnostico || null,
+            gravedad_estimada: form.gravedad_estimada || null,
+            activo: true,
+          })
+          .select('id')
+          .single()
+        newPacienteId = data?.id ?? null
+        dbError = error
+      }
+
+      if (dbError || !newPacienteId) {
         console.error('Supabase insert error:', dbError)
         setError('Error al guardar el paciente. Intentá de nuevo.')
         setLoading(false)
@@ -219,21 +238,29 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
         }
       }
 
+      let medError: { message: string } | null = null
       const medsFiltradas = medicaciones.filter((m) => m.farmaco.trim())
       if (medsFiltradas.length > 0) {
-        await supabase.from('medicacion_paciente').insert(
+        const { error } = await supabase.from('medicacion_paciente').insert(
           medsFiltradas.map((m) => ({
             terapeuta_id: terapeutaId,
-            paciente_id: newPaciente.id,
+            paciente_id: newPacienteId,
             farmaco: m.farmaco.trim(),
             dosis: m.dosis || null,
             frecuencia: m.frecuencia || null,
             prescriptor: m.prescriptor || null,
           }))
         )
+        medError = error
+        if (medError) {
+          console.error('Error al guardar medicaciones:', medError)
+          showToast('Paciente guardado, pero hubo un problema al guardar la medicación')
+        }
       }
 
-      showToast('Paciente guardado correctamente')
+      if (!medError) {
+        showToast('Paciente guardado correctamente')
+      }
       setTimeout(() => {
         // Orden importa: refresh() invalida el cache de la ruta actual, no la de destino.
         // Hay que navegar primero y refrescar después para que /pacientes (Router Cache
