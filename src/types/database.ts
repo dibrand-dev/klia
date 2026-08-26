@@ -1669,6 +1669,14 @@ export type Database = {
         Args: Record<string, never>
         Returns: PacienteColaboradorRow[]
       }
+      actualizar_paciente_colaborador: {
+        Args: { p_paciente_id: string; p_datos: DatosContactoPaciente }
+        Returns: undefined
+      }
+      crear_paciente_colaborador: {
+        Args: { p_datos: Omit<DatosContactoPaciente, 'activo'> }
+        Returns: string
+      }
     }
     Enums: {
       estado_turno: 'cancelado' | 'confirmado' | 'no_asistio' | 'pendiente' | 'realizado'
@@ -1781,6 +1789,38 @@ export type PacienteColaboradorRow = {
   activo: boolean
   created_at: string
   updated_at: string
+}
+
+export type DatosContactoPaciente = {
+  nombre?: string
+  apellido?: string
+  dni?: string | null
+  fecha_nacimiento?: string | null
+  telefono?: string | null
+  email?: string | null
+  genero?: string | null
+  nacionalidad?: string | null
+  estado_civil?: string | null
+  domicilio?: string | null
+  ocupacion?: string | null
+  contacto_emergencia_nombre?: string | null
+  contacto_emergencia_telefono?: string | null
+  obra_social?: string | null
+  plan_obra_social?: string | null
+  os_nombre_libre?: string | null
+  os_plan_libre?: string | null
+  os_pendiente_validacion?: boolean
+  os_config_id?: string | null
+  numero_afiliado?: string | null
+  numero_autorizacion?: string | null
+  autorizacion_vigencia_desde?: string | null
+  autorizacion_vigencia_hasta?: string | null
+  modalidad_tratamiento?: string | null
+  frecuencia_sesiones?: string | null
+  honorarios?: number | null
+  moneda_preferida?: string
+  cobrar_inasistencias?: boolean | null
+  activo?: boolean
 }
 
 export type Interconsulta = {

@@ -286,10 +286,20 @@ export default function PacienteDetalle({
       gravedad_estimada: form.gravedad_estimada || null,
     }
 
-    const { error: dbError } = await supabase
-      .from('pacientes')
-      .update({ ...datosContacto, ...datosClinicos })
-      .eq('id', paciente.id)
+    let dbError: { message: string } | null = null
+    if (esColaborador) {
+      const { error } = await supabase.rpc('actualizar_paciente_colaborador', {
+        p_paciente_id: paciente.id,
+        p_datos: datosContacto,
+      })
+      dbError = error
+    } else {
+      const { error } = await supabase
+        .from('pacientes')
+        .update({ ...datosContacto, ...datosClinicos })
+        .eq('id', paciente.id)
+      dbError = error
+    }
     if (dbError) {
       setError('Error al guardar los cambios. Intentá de nuevo.')
       setLoading(false)
