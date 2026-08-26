@@ -162,7 +162,7 @@ export default function PacienteDetalle({
   tieneDrive?: boolean
 }) {
   const router = useRouter()
-  const { terapeutaId } = useEffectiveTerapeutaId()
+  const { terapeutaId, esColaborador } = useEffectiveTerapeutaId()
   const { cie10, cargarCie10 } = useCie10()
   const [editando, setEditando] = useState(initialEdit)
   const [form, setForm] = useState(() => {
@@ -247,43 +247,48 @@ export default function PacienteDetalle({
     setLoading(true)
     setError(null)
     const supabase = createClient()
+    const datosContacto = {
+      nombre: form.nombre,
+      apellido: form.apellido,
+      dni: form.dni || null,
+      fecha_nacimiento: form.fecha_nacimiento || null,
+      telefono: form.telefono || null,
+      email: form.email || null,
+      genero: form.genero || null,
+      nacionalidad: form.nacionalidad || null,
+      estado_civil: form.estado_civil || null,
+      domicilio: form.domicilio || null,
+      ocupacion: form.ocupacion || null,
+      contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
+      contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
+      obra_social: form.obra_social === 'Otra' ? 'Otra' : (form.obra_social || null),
+      plan_obra_social: form.obra_social === 'Otra' ? null : (form.plan_obra_social || null),
+      os_nombre_libre: form.obra_social === 'Otra' ? (form.os_nombre_libre.trim() || null) : null,
+      os_plan_libre: form.obra_social === 'Otra' ? (form.os_plan_libre.trim() || null) : null,
+      os_pendiente_validacion: form.obra_social === 'Otra',
+      os_config_id: form.os_config_id || null,
+      numero_afiliado: form.numero_afiliado || null,
+      numero_autorizacion: form.numero_autorizacion || null,
+      autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
+      autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
+      modalidad_tratamiento: form.modalidad_tratamiento || null,
+      frecuencia_sesiones: form.frecuencia_sesiones || null,
+      honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+      moneda_preferida: form.moneda_preferida || 'ARS',
+      cobrar_inasistencias: form.cobrar_inasistencias,
+      activo,
+    }
+
+    const datosClinicos = esColaborador ? {} : {
+      motivo_consulta: form.motivo_consulta || null,
+      notas: form.notas || null,
+      codigo_diagnostico: form.codigo_diagnostico || null,
+      gravedad_estimada: form.gravedad_estimada || null,
+    }
+
     const { error: dbError } = await supabase
       .from('pacientes')
-      .update({
-        nombre: form.nombre,
-        apellido: form.apellido,
-        dni: form.dni || null,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        telefono: form.telefono || null,
-        email: form.email || null,
-        genero: form.genero || null,
-        nacionalidad: form.nacionalidad || null,
-        estado_civil: form.estado_civil || null,
-        domicilio: form.domicilio || null,
-        ocupacion: form.ocupacion || null,
-        contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
-        contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-        obra_social: form.obra_social === 'Otra' ? 'Otra' : (form.obra_social || null),
-        plan_obra_social: form.obra_social === 'Otra' ? null : (form.plan_obra_social || null),
-        os_nombre_libre: form.obra_social === 'Otra' ? (form.os_nombre_libre.trim() || null) : null,
-        os_plan_libre: form.obra_social === 'Otra' ? (form.os_plan_libre.trim() || null) : null,
-        os_pendiente_validacion: form.obra_social === 'Otra',
-        os_config_id: form.os_config_id || null,
-        numero_afiliado: form.numero_afiliado || null,
-        numero_autorizacion: form.numero_autorizacion || null,
-        autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
-        autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
-        modalidad_tratamiento: form.modalidad_tratamiento || null,
-        frecuencia_sesiones: form.frecuencia_sesiones || null,
-        honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
-        moneda_preferida: form.moneda_preferida || 'ARS',
-        cobrar_inasistencias: form.cobrar_inasistencias,
-        motivo_consulta: form.motivo_consulta || null,
-        notas: form.notas || null,
-        codigo_diagnostico: form.codigo_diagnostico || null,
-        gravedad_estimada: form.gravedad_estimada || null,
-        activo,
-      })
+      .update({ ...datosContacto, ...datosClinicos })
       .eq('id', paciente.id)
     if (dbError) {
       setError('Error al guardar los cambios. Intentá de nuevo.')
