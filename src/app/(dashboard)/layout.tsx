@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import dynamic from 'next/dynamic'
 import { getModulosConfig } from '@/lib/modulos'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 const AppShell = dynamic(
   () => import('@/components/layout/AppShell'),
@@ -29,11 +30,11 @@ const OnboardingWizard = dynamic(
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [{ data: profile }, modulos] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('profiles').select('*').eq('id', efectivo.terapeutaId).single(),
     getModulosConfig(supabase),
   ])
 
@@ -41,7 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   // Auto-bloquear si el trial venció
   if (profile.estado_cuenta === 'trial' && profile.trial_fin && new Date(profile.trial_fin) < new Date()) {
-    await supabase.from('profiles').update({ estado_cuenta: 'bloqueada' }).eq('id', user.id)
+    await supabase.from('profiles').update({ estado_cuenta: 'bloqueada' }).eq('id', efectivo.terapeutaId)
     redirect('/cuenta-bloqueada')
   }
 
@@ -49,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/cuenta-bloqueada')
   }
 
-  const showOnboarding = !profile.onboarding_completed && !profile.onboarding_skipped
+  const showOnboarding = !efectivo.esColaborador && !profile.onboarding_completed && !profile.onboarding_skipped
 
   return (
     <>
