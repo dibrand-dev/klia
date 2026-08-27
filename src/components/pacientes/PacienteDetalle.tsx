@@ -1060,10 +1060,22 @@ function FormCard({
 
 function FirmaPacienteCard({ paciente }: { paciente: Paciente }) {
   const [firmaUrl, setFirmaUrl] = useState<string | null>(paciente.firma_paciente_url ?? null)
+  const [error, setError] = useState<string | null>(null)
+  const { esColaborador } = useEffectiveTerapeutaId()
   const supabase = createClient()
 
   async function guardar(url: string | null) {
-    await supabase.from('pacientes').update({ firma_paciente_url: url }).eq('id', paciente.id)
+    setError(null)
+    if (esColaborador) {
+      const { error } = await supabase.rpc('actualizar_paciente_colaborador', {
+        p_paciente_id: paciente.id,
+        p_datos: { firma_paciente_url: url },
+      })
+      if (error) setError('No se pudo guardar la firma. Intentá de nuevo.')
+    } else {
+      const { error } = await supabase.from('pacientes').update({ firma_paciente_url: url }).eq('id', paciente.id)
+      if (error) setError('No se pudo guardar la firma. Intentá de nuevo.')
+    }
   }
 
   return (
@@ -1071,6 +1083,7 @@ function FirmaPacienteCard({ paciente }: { paciente: Paciente }) {
       <p className="text-xs text-on-surface-variant mb-4">
         Usada en planillas de asistencia de obras sociales.
       </p>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
       <FirmaUploader
         label="Firma del paciente o tutor"
         descripcion="Fotografiá la firma sobre papel blanco con tinta negra"

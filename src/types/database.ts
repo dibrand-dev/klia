@@ -1821,6 +1821,7 @@ export type DatosContactoPaciente = {
   moneda_preferida?: string
   cobrar_inasistencias?: boolean | null
   activo?: boolean
+  firma_paciente_url?: string | null
 }
 
 export type Interconsulta = {
