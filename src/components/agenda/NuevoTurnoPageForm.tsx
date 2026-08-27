@@ -365,7 +365,8 @@ export default function NuevoTurnoPageForm({
       }
     }
     if (onCreado && data) {
-      onCreado(data as unknown as Turno)
+      const pacienteEncontrado = pacientes.find((p) => p.id === form.paciente_id)
+      onCreado({ ...data, paciente: pacienteEncontrado ?? data.paciente } as unknown as Turno)
     } else {
       router.push('/agenda')
       router.refresh()
