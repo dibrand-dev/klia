@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, Paciente, ModuloConfig } from '@/types/database'
+import type { Profile, Paciente, ModuloConfig, PacienteColaboradorRow } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
 import NavigationDrawer from './NavigationDrawer'
 import SlideOver from '@/components/ui/SlideOver'
@@ -12,6 +12,7 @@ import { puedeAcceder } from '@/lib/modulos'
 import Logo from '@/components/ui/Logo'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 function TrialBanner({ trialFin }: { trialFin: string }) {
   const [dias, setDias] = useState<number | null>(null)
@@ -46,6 +47,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { esColaborador, loading: loadingIdentidad } = useEffectiveTerapeutaId()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [nuevoTurnoOpen, setNuevoTurnoOpen] = useState(false)
   const [nuevoPacienteId, setNuevoPacienteId] = useState<string | undefined>(undefined)
@@ -69,15 +71,32 @@ export default function AppShell({
   }, [pathname])
 
   async function abrirNuevoTurno(pacienteId?: string) {
-    if (!pacientesCargados && profile) {
+    if (!pacientesCargados && profile && !loadingIdentidad) {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('pacientes')
-        .select('*')
-        .eq('terapeuta_id', profile.id)
-        .eq('activo', true)
-        .order('apellido')
-      setPacientes(data ?? [])
+      if (esColaborador) {
+        const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+        const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+        const pacientesLimpios = todosPacientes
+          .filter((p) => p.activo)
+          .sort((a, b) => a.apellido.localeCompare(b.apellido))
+          .map((p) => ({
+            ...p,
+            notas: null,
+            motivo_consulta: null,
+            codigo_diagnostico: null,
+            gravedad_estimada: null,
+            fecha_inicio_tratamiento: null,
+          })) as Paciente[]
+        setPacientes(pacientesLimpios)
+      } else {
+        const { data } = await supabase
+          .from('pacientes')
+          .select('*')
+          .eq('terapeuta_id', profile.id)
+          .eq('activo', true)
+          .order('apellido')
+        setPacientes(data ?? [])
+      }
       setPacientesCargados(true)
     }
     setNuevoPacienteId(pacienteId)
@@ -92,7 +111,7 @@ export default function AppShell({
     window.addEventListener('openNuevoTurno', handler)
     return () => window.removeEventListener('openNuevoTurno', handler)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pacientesCargados, profile])
+  }, [pacientesCargados, profile, esColaborador, loadingIdentidad])
 
   useEffect(() => {
     function handler(e: Event) {
