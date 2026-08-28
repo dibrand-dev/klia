@@ -72,17 +72,24 @@ export default function PlanesClient({
   const [periodo, setPeriodo] = useState<Periodo>('mensual')
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [selected, setSelected] = useState<SelectedPlan | null>(null)
 
   async function handleElegir(planId: string, planNombre: string) {
     setLoading(planId)
     setError(null)
+    setSessionExpired(false)
     try {
       const res = await fetch('/api/suscripcion/crear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: planId, modalidad: periodo }),
       })
+      if (res.status === 401) {
+        setError('Tu sesión venció. Iniciá sesión de nuevo para continuar con el pago.')
+        setSessionExpired(true)
+        return
+      }
       const data = await res.json()
       if (!res.ok || !data.preference_id) throw new Error(data.error ?? 'Error')
       setSelected({
@@ -143,14 +150,8 @@ export default function PlanesClient({
   return (
     <div className="min-h-screen bg-surface-container-lowest">
       <div className="bg-white border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 text-primary">
-          <span
-            className="material-symbols-outlined text-2xl"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            medical_services
-          </span>
-          <span className="font-bold text-xl tracking-tighter">KLIA</span>
+        <Link href="/">
+          <Logo className="h-8 w-auto" />
         </Link>
       </div>
 
@@ -191,6 +192,14 @@ export default function PlanesClient({
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl text-center">
             {error}
+            {sessionExpired && (
+              <>
+                {' '}
+                <Link href="/login" className="underline font-semibold">
+                  Iniciar sesión
+                </Link>
+              </>
+            )}
           </div>
         )}
 
