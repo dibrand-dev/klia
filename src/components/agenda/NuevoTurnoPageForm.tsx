@@ -163,7 +163,7 @@ export default function NuevoTurnoPageForm({
     const [{ data: turnosExistentes }, { data: entrevistasExistentes }] = await Promise.all([
       supabase
         .from('turnos')
-        .select('id, fecha_hora, duracion_min, estado, paciente:pacientes(nombre, apellido)')
+        .select('id, fecha_hora, duracion_min, estado, paciente_id, paciente:pacientes(nombre, apellido)')
         .eq('terapeuta_id', terapeutaId)
         .gte('fecha_hora', dayStart)
         .lte('fecha_hora', dayEnd)
@@ -183,8 +183,8 @@ export default function NuevoTurnoPageForm({
     })
 
     if (turnoConflicto) {
-      const pac = turnoConflicto.paciente as unknown as { nombre: string; apellido: string } | null
-      const nombre = pac ? `${pac.nombre} ${pac.apellido}` : 'otro paciente'
+      const pacLocal = pacientes.find((p) => p.id === turnoConflicto.paciente_id)
+      const nombre = pacLocal ? `${pacLocal.nombre} ${pacLocal.apellido}` : 'otro paciente'
       const esPendientePago = turnoConflicto.estado === 'pendiente'
       return {
         hayConflicto: true,
