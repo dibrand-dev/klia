@@ -4,6 +4,7 @@ import { getModulosConfig, puedeAcceder } from '@/lib/modulos'
 import CobrosClient from '@/components/cobros/CobrosClient'
 import type { TurnoDeuda, TopDeudor } from '@/components/cobros/CobrosClient'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import type { PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Cobros — KLIA' }
 // Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
@@ -52,6 +53,7 @@ export default async function CobrosPage() {
       estado,
       estado_pago,
       monto_pagado,
+      paciente_id,
       paciente:pacientes (
         id,
         nombre,
@@ -78,10 +80,27 @@ export default async function CobrosPage() {
 
   const cobrarInasistenciasProf = profile?.cobrar_inasistencias ?? false
 
+  const mapaPacientesColaborador = new Map<string, { nombre: string; apellido: string; os_config_id: string | null; cobrar_inasistencias: boolean | null; moneda_preferida: string }>()
+  if (efectivo.esColaborador) {
+    const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+    const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    for (const p of todosPacientes) {
+      mapaPacientesColaborador.set(p.id, {
+        nombre: p.nombre,
+        apellido: p.apellido,
+        os_config_id: p.os_config_id,
+        cobrar_inasistencias: p.cobrar_inasistencias,
+        moneda_preferida: p.moneda_preferida,
+      })
+    }
+  }
+
   const turnos: TurnoDeuda[] = []
 
   for (const raw of turnosRaw ?? []) {
-    const paciente = Array.isArray(raw.paciente) ? raw.paciente[0] : raw.paciente
+    const paciente = efectivo.esColaborador
+      ? mapaPacientesColaborador.get(raw.paciente_id)
+      : (Array.isArray(raw.paciente) ? raw.paciente[0] : raw.paciente)
     if (!paciente) continue
 
     const cobrarInasistencia = paciente.cobrar_inasistencias ?? cobrarInasistenciasProf
@@ -98,7 +117,7 @@ export default async function CobrosPage() {
       estado: raw.estado ?? 'realizado',
       estado_pago: (raw.estado_pago as TurnoDeuda['estado_pago']) ?? 'pendiente',
       monto_pagado: raw.monto_pagado ?? 0,
-      paciente_id: paciente.id,
+      paciente_id: raw.paciente_id,
       paciente_nombre: paciente.nombre,
       paciente_apellido: paciente.apellido,
       os_config_id: paciente.os_config_id ?? null,
