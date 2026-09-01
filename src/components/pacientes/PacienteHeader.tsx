@@ -10,6 +10,7 @@ import { formatNombreCompleto } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Turno } from '@/types/database'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 export interface SummaryData {
   sesionesRealizadas: number
@@ -37,6 +38,7 @@ export default function PacienteHeader({
   turnoRecurrente?: { dia_semana: number; hora: string } | null
 }) {
   const router = useRouter()
+  const { esColaborador } = useEffectiveTerapeutaId()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -58,8 +60,9 @@ export default function PacienteHeader({
 
   async function handleEliminar() {
     const supabase = createClient()
-    const { error } = await supabase.from('pacientes').delete().eq('id', paciente.id)
+    const { error, data } = await supabase.from('pacientes').delete().eq('id', paciente.id).select('id')
     if (error) { alert('Error al eliminar: ' + error.message); return }
+    if (!data || data.length === 0) { alert('No se pudo eliminar el paciente. Puede que no tengas permiso para esta acción.'); return }
     router.push('/pacientes')
   }
 
@@ -160,15 +163,19 @@ export default function PacienteHeader({
                   <svg viewBox="0 0 24 24"><path d="M12 20h9M16 3l5 5-11 11H5v-5z" /></svg>
                   <span>Editar paciente</span>
                 </button>
-                <div className="ph-menu-sep" />
-                <button
-                  className="ph-menu-item danger"
-                  role="menuitem"
-                  onClick={() => { setMenuOpen(false); setConfirmOpen(true) }}
-                >
-                  <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7" /></svg>
-                  <span>Eliminar paciente</span>
-                </button>
+                {!esColaborador && (
+                  <>
+                    <div className="ph-menu-sep" />
+                    <button
+                      className="ph-menu-item danger"
+                      role="menuitem"
+                      onClick={() => { setMenuOpen(false); setConfirmOpen(true) }}
+                    >
+                      <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7" /></svg>
+                      <span>Eliminar paciente</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             <button

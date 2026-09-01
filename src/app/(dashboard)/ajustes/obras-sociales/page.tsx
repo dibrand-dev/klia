@@ -2,18 +2,19 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Obras Sociales — KLIA' }
 
 export default async function ObrasSocialesAjustesPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const { data: osList } = await supabase
     .from('profesional_obras_sociales')
     .select('*')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .order('nombre')
 
   return (
@@ -27,7 +28,7 @@ export default async function ObrasSocialesAjustesPage() {
       <p className="text-sm text-on-surface-variant mb-8 ml-9">
         Configurá las obras sociales con las que trabajás para usarlas en liquidaciones.
       </p>
-      <ObraSocialesConfig initialList={osList ?? []} terapeutaId={user.id} />
+      <ObraSocialesConfig initialList={osList ?? []} terapeutaId={efectivo.terapeutaId} />
     </div>
   )
 }

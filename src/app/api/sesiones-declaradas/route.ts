@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const paciente_id = searchParams.get('paciente_id')
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from('sesiones_declaradas')
     .select('id, fecha, hora_entrada, hora_salida')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .eq('paciente_id', paciente_id)
     .eq('mes', parseInt(mes))
     .eq('anio', parseInt(anio))
@@ -33,8 +34,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { paciente_id, mes, anio, sesiones } = await req.json() as {
     paciente_id: string
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   const { error: delError } = await supabase
     .from('sesiones_declaradas')
     .delete()
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .eq('paciente_id', paciente_id)
     .eq('mes', mes)
     .eq('anio', anio)
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
   // Insert new ones
   if (sesiones.length > 0) {
     const rows = sesiones.map((s) => ({
-      terapeuta_id: user.id,
+      terapeuta_id: efectivo.terapeutaId,
       paciente_id,
       mes,
       anio,

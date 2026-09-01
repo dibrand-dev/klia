@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getDriveClient, uploadFileToDrive } from '@/lib/google-drive'
 import type { drive_v3 } from 'googleapis'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -81,8 +82,8 @@ async function getOrCreateInformesFolder(drive: DriveClient, apellidoPaciente: s
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as { informe_id: string; contenido_final: string }
   const { informe_id, contenido_final } = body
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
   const { data: informe } = await db.from('informes_medicos' as never)
     .select('*')
     .eq('id', informe_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!informe) return NextResponse.json({ error: 'Informe no encontrado' }, { status: 404 })
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
   const [{ data: prof }, { data: paciente }] = await Promise.all([
     db.from('profiles')
       .select('nombre, apellido, matricula, especialidad, direccion, localidad, provincia, email, telefono, firma_sello_url')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     db.from('pacientes')
       .select('nombre, apellido')
@@ -242,7 +243,7 @@ export async function POST(req: NextRequest) {
   try {
     const { data: tokens } = await db.from('google_calendar_tokens' as never)
       .select('access_token, refresh_token')
-      .eq('user_id', user.id)
+      .eq('user_id', efectivo.terapeutaId)
       .single()
 
     const t = tokens as { access_token: string; refresh_token: string } | null

@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { ProfesionalObraSocial, Paciente } from '@/types/database'
+import type { ProfesionalObraSocial, Paciente, PacienteColaboradorRow } from '@/types/database'
 import type { ItemLiquidacion } from '@/lib/liquidacion-excel'
 import SlideOver from '@/components/ui/SlideOver'
 import { getTerminologia } from '@/hooks/useTerminologia'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -38,6 +39,7 @@ export default function LiquidacionView({ osList, terapeutaId, terminologia }: {
   terminologia?: 'sesion' | 'consulta'
 }) {
   const t = getTerminologia(terminologia)
+  const { esColaborador } = useEffectiveTerapeutaId()
   const now = new Date()
   const [mes, setMes] = useState(now.getMonth() + 1)
   const [anio, setAnio] = useState(now.getFullYear())
@@ -56,15 +58,25 @@ export default function LiquidacionView({ osList, terapeutaId, terminologia }: {
     const inicio = new Date(anio, mes - 1, 1).toISOString()
     const fin = new Date(anio, mes, 0, 23, 59, 59).toISOString()
 
+    let todosPacientesColaborador: PacienteColaboradorRow[] = []
+    if (esColaborador) {
+      const { data } = await supabase.rpc('get_pacientes_colaborador')
+      todosPacientesColaborador = (data ?? []) as PacienteColaboradorRow[]
+    }
+
     const nuevos = await Promise.all(
       osList.map(async (os) => {
-        const { data: pacientes } = await supabase
-          .from('pacientes')
-          .select('id, nombre, apellido, numero_afiliado, numero_autorizacion')
-          .eq('os_config_id', os.id)
-          .eq('terapeuta_id', terapeutaId)
+        const pacs = esColaborador
+          ? todosPacientesColaborador
+              .filter((p) => p.os_config_id === os.id)
+              .map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, numero_afiliado: p.numero_afiliado, numero_autorizacion: p.numero_autorizacion }))
+          : (await supabase
+              .from('pacientes')
+              .select('id, nombre, apellido, numero_afiliado, numero_autorizacion')
+              .eq('os_config_id', os.id)
+              .eq('terapeuta_id', terapeutaId)
+            ).data ?? []
 
-        const pacs = pacientes ?? []
         if (pacs.length === 0) {
           return { os, pacientes: 0, sesiones: 0, importe: 0, items: [], cargado: true }
         }
@@ -120,7 +132,7 @@ export default function LiquidacionView({ osList, terapeutaId, terminologia }: {
 
     setTurnosNoARS(noARSCount ?? 0)
     setCargando(false)
-  }, [mes, anio, osList, terapeutaId])
+  }, [mes, anio, osList, terapeutaId, esColaborador])
 
   async function handleGenerarExcel(res: ResumenOS) {
     setGenerando(res.os.id)

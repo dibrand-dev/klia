@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await request.json()
   const { pacienteId, turnoId, sphOd, cylOd, axisOd, addOd, avOd, sphOi, cylOi, axisOi, addOi, avOi } = body
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     .from('pacientes')
     .select('id')
     .eq('id', pacienteId)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!paciente) return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     .from('registros_refraccion')
     .insert({
       paciente_id: pacienteId,
-      terapeuta_id: user.id,
+      terapeuta_id: efectivo.terapeutaId,
       turno_id: turnoId || null,
       sph_od: sphOd ?? null,
       cyl_od: cylOd ?? null,

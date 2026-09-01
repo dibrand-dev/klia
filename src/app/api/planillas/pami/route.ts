@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generarPlanillaPami } from '@/lib/planillas/pami'
 import type { Database } from '@/types/database'
 import type { SesionPami } from '@/lib/planillas/pami'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -21,8 +22,8 @@ function db() {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     paciente_id: string
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
       .single(),
     svc.from('profiles')
       .select('nombre, apellido, matricula, matricula_tipo, matricula_provincia, firma_sello_url')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     svc.from('profesional_obras_sociales')
       .select('nombre, razon_social')
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
   const { data: turnos } = await svc
     .from('turnos')
     .select('fecha_hora')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .eq('paciente_id', paciente_id)
     .gte('fecha_hora', inicioMes.toISOString())
     .lt('fecha_hora', finMes.toISOString())

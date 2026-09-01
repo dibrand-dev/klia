@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { Database } from '@/types/database'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -36,8 +37,8 @@ function stripHtml(html: string): string {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     paciente_id: string
@@ -61,15 +62,15 @@ export async function POST(req: NextRequest) {
     db.from('pacientes')
       .select('nombre, apellido, dni, fecha_nacimiento, obra_social, numero_afiliado, plan_obra_social, motivo_consulta')
       .eq('id', paciente_id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .single(),
     db.from('profiles')
       .select('nombre, apellido, matricula, especialidad, direccion, localidad, provincia')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
     db.from('notas_clinicas')
       .select('fecha, contenido')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('paciente_id', paciente_id)
       .not('borrador', 'is', true)
       .gte('fecha', periodo_desde)
@@ -129,7 +130,7 @@ IMPORTANTE: Generá solo el texto del informe con el formato indicado. Sin markd
     const contenido_generado = result.response.text().trim()
 
     const { data: informe, error: insertErr } = await db.from('informes_medicos').insert({
-      terapeuta_id: user.id,
+      terapeuta_id: efectivo.terapeutaId,
       paciente_id,
       tipo_solicitud,
       diagnostico_cie10_codigo: diagnostico_cie10_codigo || null,

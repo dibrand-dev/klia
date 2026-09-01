@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AjustesClient from '@/components/ajustes/AjustesClient'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Ajustes — KLIA' }
 
 export default async function AjustesPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
   const [
     { data: profile },
@@ -16,10 +17,10 @@ export default async function AjustesPage() {
     { data: suscripcion },
     { data: googleTokens },
   ] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', user.id).order('nombre'),
-    supabase.from('suscripciones').select('estado, plan, modalidad, suscripcion_fin, mp_preapproval_id, monto').eq('terapeuta_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', user.id).maybeSingle(),
+    supabase.from('profiles').select('*').eq('id', efectivo.terapeutaId).single(),
+    supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', efectivo.terapeutaId).order('nombre'),
+    supabase.from('suscripciones').select('estado, plan, modalidad, suscripcion_fin, mp_preapproval_id, monto').eq('terapeuta_id', efectivo.terapeutaId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', efectivo.terapeutaId).maybeSingle(),
   ])
 
   if (!profile) redirect('/login')
@@ -41,6 +42,7 @@ export default async function AjustesPage() {
       cobrosPrecioSesion={(p.cobros_precio_sesion as number | null) ?? null}
       cobrosMoneda={(p.cobros_moneda as string | null) ?? 'ARS'}
       cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
+      esColaborador={efectivo.esColaborador}
     />
   )
 }

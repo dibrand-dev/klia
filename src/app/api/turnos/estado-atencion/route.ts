@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -7,8 +8,8 @@ const ESTADOS_VALIDOS = ['en_espera', 'en_consultorio', 'atendido', 'ausente', '
 
 export async function PATCH(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { turno_id, estado_atencion } = await req.json() as { turno_id: string; estado_atencion: string }
 
@@ -30,7 +31,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Turno no encontrado' }, { status: 404 })
   }
 
-  if (turno.terapeuta_id !== user.id) {
+  if (turno.terapeuta_id !== efectivo.terapeutaId) {
     return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
   }
 

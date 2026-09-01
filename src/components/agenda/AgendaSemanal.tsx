@@ -20,6 +20,8 @@ import TurnoDetalleModal from './TurnoDetalleModal'
 import EntrevistaDetalleModal from './EntrevistaDetalleModal'
 import VistaDia from './VistaDia'
 import VistaMes from './VistaMes'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
+import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
 
 const DEFAULT_HORA_INICIO = 7
 const DEFAULT_HORA_FIN = 21
@@ -75,6 +77,8 @@ export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
   horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia,
 }: AgendaSemanalProps) {
+  const { esColaborador } = useEffectiveTerapeutaId()
+  const [mapaNombres, setMapaNombres] = useState<Map<string, { nombre: string; apellido: string }>>(new Map())
   const hi = horaInicioP ?? DEFAULT_HORA_INICIO
   const hf = horaFinP ?? DEFAULT_HORA_FIN
   const HORAS = Array.from({ length: hf - hi + 1 }, (_, i) => hi + i)
@@ -118,6 +122,23 @@ export default function AgendaSemanal({
       .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feriadosConfig?.nacionales, feriadosConfig?.provinciales, feriadosConfig?.provincia])
+
+  useEffect(() => {
+    if (esColaborador) {
+      const supabase = createClient()
+      resolverNombresPacientesColaborador(supabase, esColaborador).then(setMapaNombres)
+    }
+  }, [esColaborador])
+
+  function conNombres(data: unknown[]): Turno[] {
+    if (!esColaborador) return data as unknown as Turno[]
+    return (data as any[]).map((t) => ({
+      ...t,
+      paciente: mapaNombres.get(t.paciente_id)
+        ? { ...(t.paciente ?? {}), ...mapaNombres.get(t.paciente_id) }
+        : t.paciente,
+    })) as unknown as Turno[]
+  }
 
   const googleCacheRef = useRef<{ desde: Date; hasta: Date } | null>(null)
 
@@ -166,7 +187,7 @@ export default function AgendaSemanal({
       : Promise.resolve(null)
 
     const [{ data }, { data: entrevistasData }, gDataNueva] = await Promise.all([turnosPromise, entrevistasPromise, googlePromise])
-    if (data) setTurnos(data as unknown as Turno[])
+    if (data) setTurnos(conNombres(data))
     if (entrevistasData) setEntrevistas(entrevistasData as Entrevista[])
     if (gDataNueva) {
       setGoogleEvents((prev) => {
@@ -178,7 +199,7 @@ export default function AgendaSemanal({
         return [...prev, ...gDataNueva.eventosDiaCompleto.filter((e) => !ids.has(e.id))]
       })
     }
-  }, [terapeutaId, googleConnected])
+  }, [terapeutaId, googleConnected, esColaborador, mapaNombres])
 
   const fetchMes = useCallback(async (refDate: Date) => {
     const inicioMes = startOfMonth(refDate)
@@ -205,9 +226,10 @@ export default function AgendaSemanal({
         .neq('estado', 'cancelada'),
     ])
     if (data) {
+      const dataConNombres = conNombres(data)
       setTurnos((prev) => {
-        const ids = new Set((data as unknown as Turno[]).map((t) => t.id))
-        return [...prev.filter((t) => !ids.has(t.id)), ...(data as unknown as Turno[])]
+        const ids = new Set(dataConNombres.map((t) => t.id))
+        return [...prev.filter((t) => !ids.has(t.id)), ...dataConNombres]
       })
     }
     if (entrevistasData) {
@@ -216,7 +238,7 @@ export default function AgendaSemanal({
         return [...prev.filter((e) => !ids.has(e.id)), ...(entrevistasData as Entrevista[])]
       })
     }
-  }, [terapeutaId])
+  }, [terapeutaId, esColaborador, mapaNombres])
 
   function navegarSemana(dir: 1 | -1) {
     const nueva = dir === 1 ? addWeeks(semanaActual, 1) : subWeeks(semanaActual, 1)

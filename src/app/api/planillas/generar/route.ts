@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generarPlanillaGenerica } from '@/lib/planillas/motor-generico'
 import type { Database } from '@/types/database'
 import type { ConfigPlanilla, SesionGenerica } from '@/lib/planillas/motor-generico'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -19,8 +20,8 @@ function svc() {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as { paciente_id: string; mes: number; anio: number; os_config_id: string }
   const { paciente_id, mes, anio, os_config_id } = body
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     { data: osConfig },
   ] = await Promise.all([
     db.from('pacientes').select('nombre,apellido,numero_afiliado,numero_autorizacion,firma_paciente_url').eq('id', paciente_id).single(),
-    db.from('profiles').select('nombre,apellido,firma_sello_url').eq('id', user.id).single(),
+    db.from('profiles').select('nombre,apellido,firma_sello_url').eq('id', efectivo.terapeutaId).single(),
     db.from('profesional_obras_sociales').select('nombre,descripcion_practica,domicilio_os,planilla_template_id').eq('id', os_config_id).single(),
   ])
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
   // Fetch turnos
   const inicioMes = new Date(Date.UTC(anio, mes - 1, 1, 3, 0, 0))
   const finMes    = new Date(Date.UTC(anio, mes, 1, 3, 0, 0))
-  const { data: turnos } = await db.from('turnos').select('fecha_hora,duracion_min').eq('terapeuta_id', user.id).eq('paciente_id', paciente_id).gte('fecha_hora', inicioMes.toISOString()).lt('fecha_hora', finMes.toISOString()).in('estado', ['realizado', 'no_asistio']).order('fecha_hora')
+  const { data: turnos } = await db.from('turnos').select('fecha_hora,duracion_min').eq('terapeuta_id', efectivo.terapeutaId).eq('paciente_id', paciente_id).gte('fecha_hora', inicioMes.toISOString()).lt('fecha_hora', finMes.toISOString()).in('estado', ['realizado', 'no_asistio']).order('fecha_hora')
 
   const incluirFirmas = !(template.requiere_firma_olografa as boolean)
 

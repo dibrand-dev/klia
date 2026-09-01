@@ -1665,6 +1665,18 @@ export type Database = {
           | { success: true; porcentaje_descuento: number }
           | { success: false; error: 'codigo_invalido' | 'usos_agotados' | 'ya_tiene_codigo' }
       }
+      get_pacientes_colaborador: {
+        Args: Record<string, never>
+        Returns: PacienteColaboradorRow[]
+      }
+      actualizar_paciente_colaborador: {
+        Args: { p_paciente_id: string; p_datos: DatosContactoPaciente }
+        Returns: undefined
+      }
+      crear_paciente_colaborador: {
+        Args: { p_datos: Omit<DatosContactoPaciente, 'activo'> }
+        Returns: string
+      }
     }
     Enums: {
       estado_turno: 'cancelado' | 'confirmado' | 'no_asistio' | 'pendiente' | 'realizado'
@@ -1734,6 +1746,82 @@ export type EstadoPago = 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado'
 
 export interface Turno extends TurnoRow {
   paciente?: Paciente
+}
+
+// Idéntico al Row de `pacientes` — definido standalone (no como
+// Database['public']['Tables']['pacientes']['Row']) porque esta función
+// se referencia desde dentro de Functions, dentro del propio tipo
+// Database, y esa auto-referencia resolvía a `any` en vez del tipo real.
+export type PacienteColaboradorRow = {
+  id: string
+  terapeuta_id: string
+  nombre: string
+  apellido: string
+  dni: string | null
+  tipo_documento: string | null
+  fecha_nacimiento: string | null
+  genero: string | null
+  sexo: string | null
+  nacionalidad: string | null
+  ocupacion: string | null
+  estado_civil: string | null
+  telefono: string | null
+  email: string | null
+  domicilio: string | null
+  contacto_emergencia_nombre: string | null
+  contacto_emergencia_telefono: string | null
+  obra_social: string | null
+  numero_afiliado: string | null
+  plan_obra_social: string | null
+  numero_autorizacion: string | null
+  autorizacion_vigencia_desde: string | null
+  autorizacion_vigencia_hasta: string | null
+  os_nombre_libre: string | null
+  os_plan_libre: string | null
+  os_pendiente_validacion: boolean
+  os_config_id: string | null
+  modalidad_tratamiento: string | null
+  frecuencia_sesiones: string | null
+  honorarios: number | null
+  moneda_preferida: string
+  cobrar_inasistencias: boolean | null
+  firma_paciente_url: string | null
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type DatosContactoPaciente = {
+  nombre?: string
+  apellido?: string
+  dni?: string | null
+  fecha_nacimiento?: string | null
+  telefono?: string | null
+  email?: string | null
+  genero?: string | null
+  nacionalidad?: string | null
+  estado_civil?: string | null
+  domicilio?: string | null
+  ocupacion?: string | null
+  contacto_emergencia_nombre?: string | null
+  contacto_emergencia_telefono?: string | null
+  obra_social?: string | null
+  plan_obra_social?: string | null
+  os_nombre_libre?: string | null
+  os_plan_libre?: string | null
+  os_pendiente_validacion?: boolean
+  os_config_id?: string | null
+  numero_afiliado?: string | null
+  numero_autorizacion?: string | null
+  autorizacion_vigencia_desde?: string | null
+  autorizacion_vigencia_hasta?: string | null
+  modalidad_tratamiento?: string | null
+  frecuencia_sesiones?: string | null
+  honorarios?: number | null
+  moneda_preferida?: string
+  cobrar_inasistencias?: boolean | null
+  activo?: boolean
+  firma_paciente_url?: string | null
 }
 
 export type Interconsulta = {

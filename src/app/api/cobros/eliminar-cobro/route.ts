@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { cobro_id } = await req.json() as { cobro_id: string }
   if (!cobro_id) return NextResponse.json({ error: 'Falta cobro_id' }, { status: 400 })
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     .from('cobros')
     .select('id, turno_id, terapeuta_id')
     .eq('id', cobro_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!cobro) return NextResponse.json({ error: 'Cobro no encontrado' }, { status: 404 })
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     .from('turnos')
     .select('id, monto')
     .eq('id', cobro.turno_id)
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
 
   if (!turno) return NextResponse.json({ error: 'Turno no encontrado' }, { status: 404 })

@@ -2,9 +2,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AgendaSemanal from '@/components/agenda/AgendaSemanal'
 import { startOfWeek, endOfWeek } from 'date-fns'
-import type { Turno, Entrevista } from '@/types/database'
+import type { Turno, Entrevista, Paciente, PacienteColaboradorRow } from '@/types/database'
 import { format } from 'date-fns'
 import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
 
 export const metadata = { title: 'Agenda — KLIA' }
 // Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
@@ -15,9 +17,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function AgendaPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
 
-  if (!user) redirect('/login')
+  if (!efectivo) redirect('/login')
 
   const ahora = new Date()
   const inicioSemana = startOfWeek(ahora, { weekStartsOn: 1 })
@@ -26,41 +28,60 @@ export default async function AgendaPage() {
   const inicioStr = format(inicioSemana, 'yyyy-MM-dd')
   const finStr = format(finSemana, 'yyyy-MM-dd')
 
-  const [{ data: profile }, { data: turnos }, { data: pacientes }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
-    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia, horarios_por_dia').eq('id', user.id).single(),
+  const [{ data: profile }, { data: turnos }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
+    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia, horarios_por_dia').eq('id', efectivo.terapeutaId).single(),
     supabase
       .from('turnos')
       .select('*, paciente:pacientes(*)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioSemana.toISOString())
       .lte('fecha_hora', finSemana.toISOString())
       .order('fecha_hora'),
     supabase
-      .from('pacientes')
-      .select('*')
-      .eq('terapeuta_id', user.id)
-      .eq('activo', true)
-      .order('apellido'),
-    supabase
       .from('google_calendar_tokens')
       .select('*')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('sync_enabled', true)
       .maybeSingle(),
     supabase
       .from('entrevistas')
       .select('*')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha', inicioStr)
       .lte('fecha', finStr)
       .neq('estado', 'cancelada'),
   ])
 
+  let pacientes: Paciente[] | null
+  if (efectivo.esColaborador) {
+    const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+    const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    pacientes = todosPacientes
+      .filter((p) => p.activo)
+      .sort((a, b) => a.apellido.localeCompare(b.apellido))
+      .map((p) => ({
+        ...p,
+        notas: null,
+        motivo_consulta: null,
+        codigo_diagnostico: null,
+        gravedad_estimada: null,
+        fecha_inicio_tratamiento: null,
+      })) as Paciente[]
+  } else {
+    const { data } = await supabase
+      .from('pacientes')
+      .select('*')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .eq('activo', true)
+      .order('apellido')
+    pacientes = data
+  }
+
   let googleEventsIniciales: { id: string; titulo: string; inicio: string; fin: string }[] = []
   let googleEventsDiaCompletosIniciales: { id: string; titulo: string; fecha: string }[] = []
   if (googleTokens) {
     try {
-      const calendarClient = await getAuthenticatedClient(googleTokens, user.id)
+      const calendarClient = await getAuthenticatedClient(googleTokens, efectivo.terapeutaId)
       const tresMesesAtras = new Date()
       tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3)
       tresMesesAtras.setHours(0, 0, 0, 0)
@@ -79,12 +100,22 @@ export default async function AgendaPage() {
     }
   }
 
+  const mapaNombres = await resolverNombresPacientesColaborador(supabase, efectivo.esColaborador)
+  const turnosConNombre = efectivo.esColaborador
+    ? (turnos ?? []).map((t) => ({
+        ...t,
+        paciente: mapaNombres.get(t.paciente_id)
+          ? { ...(t.paciente ?? {}), ...mapaNombres.get(t.paciente_id) }
+          : t.paciente,
+      }))
+    : (turnos ?? [])
+
   return (
     <div className="h-[calc(100vh-4rem)] md:h-screen overflow-hidden">
       <AgendaSemanal
-        turnosIniciales={(turnos ?? []) as unknown as Turno[]}
+        turnosIniciales={turnosConNombre as unknown as Turno[]}
         pacientes={pacientes ?? []}
-        terapeutaId={user.id}
+        terapeutaId={efectivo.terapeutaId}
         googleConnected={!!googleTokens}
         googleEventsIniciales={googleEventsIniciales}
         googleEventsDiaCompletosIniciales={googleEventsDiaCompletosIniciales}

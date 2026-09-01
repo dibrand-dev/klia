@@ -1,14 +1,31 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from '@/components/dashboard/DashboardClient'
-import type { Profile } from '@/types/database'
+import type { Profile, PacienteColaboradorRow } from '@/types/database'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Dashboard — KLIA' }
 
 export default async function DashboardPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
+
+  // Mapa único de pacientes para colaboradora — reusado en los 6 puntos de
+  // este archivo que dependían de joins/consultas directas a `pacientes`,
+  // bloqueados por RLS (sin policy de SELECT para colaboradora). Sin
+  // filtrar por activo a propósito: un turno de un paciente inactivo debe
+  // seguir mostrando su nombre, igual que ya pasa para el profesional vía
+  // el join embebido sin filtro.
+  const mapaPacientesColaborador = new Map<string, { nombre: string; apellido: string; os_config_id: string | null; activo: boolean }>()
+  let todosPacientesColaborador: PacienteColaboradorRow[] = []
+  if (efectivo.esColaborador) {
+    const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+    todosPacientesColaborador = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    for (const p of todosPacientesColaborador) {
+      mapaPacientesColaborador.set(p.id, { nombre: p.nombre, apellido: p.apellido, os_config_id: p.os_config_id, activo: p.activo })
+    }
+  }
 
   // Argentina = UTC-3 (no DST)
   const ahora = new Date()
@@ -53,12 +70,12 @@ export default async function DashboardPage() {
     { data: obrasSociales },
     { data: turnosMesAnteriorSinPagar },
   ] = await Promise.all([
-    supabase.from('profiles').select('nombre').eq('id', user.id).single(),
+    supabase.from('profiles').select('nombre').eq('id', efectivo.terapeutaId).single(),
 
     supabase
       .from('turnos')
-      .select('id, fecha_hora, estado, paciente:pacientes(nombre, apellido)')
-      .eq('terapeuta_id', user.id)
+      .select('id, fecha_hora, estado, paciente_id, paciente:pacientes(nombre, apellido)')
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioHoyUTC.toISOString())
       .lt('fecha_hora', finHoyUTC.toISOString())
       .neq('estado', 'cancelado')
@@ -67,21 +84,21 @@ export default async function DashboardPage() {
     supabase
       .from('turnos')
       .select('id, estado, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioMesUTC.toISOString())
       .lt('fecha_hora', finMesUTC.toISOString()),
 
     supabase
       .from('entrevistas')
       .select('id, nombre, apellido, hora, estado')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('fecha', hoyArgStr)
       .neq('estado', 'cancelada'),
 
     supabase
       .from('turnos_recurrentes')
-      .select('id, fecha_fin, paciente:pacientes(nombre, apellido)')
-      .eq('terapeuta_id', user.id)
+      .select('id, fecha_fin, paciente_id, paciente:pacientes(nombre, apellido)')
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activo', true)
       .lte('fecha_fin', treintaDiasStr)
       .order('fecha_fin'),
@@ -89,26 +106,26 @@ export default async function DashboardPage() {
     supabase
       .from('pacientes')
       .select('id')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activo', true),
 
     supabase
       .from('turnos')
       .select('paciente_id, fecha_hora')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('estado', 'realizado')
       .order('fecha_hora', { ascending: false }),
 
     supabase
       .from('profesional_obras_sociales')
       .select('id, nombre')
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activa', true),
 
     supabase
       .from('turnos')
-      .select('id, pagado, paciente:pacientes(os_config_id)')
-      .eq('terapeuta_id', user.id)
+      .select('id, pagado, paciente_id, paciente:pacientes(os_config_id)')
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('pagado', false)
       .gte('fecha_hora', inicioMesAnteriorUTC.toISOString())
       .lt('fecha_hora', inicioMesUTC.toISOString())
@@ -131,21 +148,31 @@ export default async function DashboardPage() {
   }
 
   // Fetch details of absent patients
-  const { data: pacientesAusentesList } = pacientesAusentesIds.length > 0
-    ? await supabase
-        .from('pacientes')
-        .select('id, nombre, apellido')
-        .eq('terapeuta_id', user.id)
-        .eq('activo', true)
-        .in('id', pacientesAusentesIds)
-    : { data: [] }
+  let pacientesAusentesConFecha: { id: string; nombre: string; apellido: string; ultimaCita: string | null }[] = []
+  if (efectivo.esColaborador) {
+    pacientesAusentesConFecha = pacientesAusentesIds
+      .map((id) => {
+        const p = mapaPacientesColaborador.get(id)
+        return p && p.activo ? { id, nombre: p.nombre, apellido: p.apellido, ultimaCita: ultimaCitaMap[id] ?? null } : null
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+  } else {
+    const { data: pacientesAusentesList } = pacientesAusentesIds.length > 0
+      ? await supabase
+          .from('pacientes')
+          .select('id, nombre, apellido')
+          .eq('terapeuta_id', efectivo.terapeutaId)
+          .eq('activo', true)
+          .in('id', pacientesAusentesIds)
+      : { data: [] }
 
-  const pacientesAusentesConFecha = (pacientesAusentesList ?? []).map((p) => ({
-    id: p.id,
-    nombre: p.nombre,
-    apellido: p.apellido,
-    ultimaCita: ultimaCitaMap[p.id] ?? null,
-  }))
+    pacientesAusentesConFecha = (pacientesAusentesList ?? []).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      apellido: p.apellido,
+      ultimaCita: ultimaCitaMap[p.id] ?? null,
+    }))
+  }
 
   // Income by source
   const osMap: Record<string, string> = {}
@@ -155,9 +182,11 @@ export default async function DashboardPage() {
   const ingresosMesPorMonedaMap: Record<string, number> = {}
   for (const t of turnosMes ?? []) {
     if (!t.pagado || !t.monto) continue
-    const paciente = t.paciente as unknown as { os_config_id: string | null } | null
-    const clave = paciente?.os_config_id && osMap[paciente.os_config_id]
-      ? osMap[paciente.os_config_id]
+    const osConfigId = efectivo.esColaborador
+      ? mapaPacientesColaborador.get(t.paciente_id)?.os_config_id ?? null
+      : (t.paciente as unknown as { os_config_id: string | null } | null)?.os_config_id ?? null
+    const clave = osConfigId && osMap[osConfigId]
+      ? osMap[osConfigId]
       : 'Particular'
     ingresosPorOrigenMap[clave] = (ingresosPorOrigenMap[clave] ?? 0) + t.monto
     const moneda = (t as unknown as { moneda?: string }).moneda || 'ARS'
@@ -176,18 +205,31 @@ export default async function DashboardPage() {
 
   // Check if previous month has unpaid OS sessions
   const tieneSesionesAnteriorSinLiquidar = (turnosMesAnteriorSinPagar ?? []).some((t) => {
-    const p = t.paciente as unknown as { os_config_id: string | null } | null
-    return p?.os_config_id != null
+    const osConfigId = efectivo.esColaborador
+      ? mapaPacientesColaborador.get(t.paciente_id)?.os_config_id ?? null
+      : (t.paciente as unknown as { os_config_id: string | null } | null)?.os_config_id ?? null
+    return osConfigId != null
   })
 
+  let nombreTerapeuta = (profile as Profile | null)?.nombre ?? ''
+  if (efectivo.esColaborador) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: perfilPropio } = await supabase.from('profiles').select('nombre').eq('id', user.id).single()
+      if (perfilPropio?.nombre) nombreTerapeuta = perfilPropio.nombre
+    }
+  }
+
   const props = {
-    nombreTerapeuta: (profile as Profile | null)?.nombre ?? '',
+    nombreTerapeuta,
     hoyArgStr,
     turnosHoy: (turnosHoy ?? []).map((t) => ({
       id: t.id,
       fecha_hora: t.fecha_hora,
       estado: t.estado,
-      paciente: t.paciente as unknown as { nombre: string; apellido: string } | null,
+      paciente: efectivo.esColaborador
+        ? mapaPacientesColaborador.get(t.paciente_id) ?? null
+        : (t.paciente as unknown as { nombre: string; apellido: string } | null),
     })),
     entrevistasHoy: (entrevistasHoy ?? []).map((e) => ({
       id: e.id,
@@ -196,7 +238,9 @@ export default async function DashboardPage() {
       hora: e.hora,
       estado: e.estado,
     })),
-    totalPacientesActivos: pacientesActivos?.length ?? 0,
+    totalPacientesActivos: efectivo.esColaborador
+      ? todosPacientesColaborador.filter((p) => p.activo).length
+      : pacientesActivos?.length ?? 0,
     pacientesAusentes: pacientesAusentesConFecha,
     sesionesRealizadasMes: (turnosMes ?? []).filter((t) => t.estado === 'realizado').length,
     sesionesPendientesMes: (turnosMes ?? []).filter((t) => t.estado === 'pendiente' || t.estado === 'confirmado').length,
@@ -208,7 +252,9 @@ export default async function DashboardPage() {
     seriesVencen: (seriesVencen ?? []).map((s) => ({
       id: s.id,
       fecha_fin: s.fecha_fin,
-      paciente: s.paciente as unknown as { nombre: string; apellido: string } | null,
+      paciente: efectivo.esColaborador
+        ? mapaPacientesColaborador.get(s.paciente_id) ?? null
+        : (s.paciente as unknown as { nombre: string; apellido: string } | null),
     })),
     tieneSesionesAnteriorSinLiquidar,
     inicioSemanaStr,

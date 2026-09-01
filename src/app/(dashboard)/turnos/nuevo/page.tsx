@@ -3,17 +3,45 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import { Suspense } from 'react'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import type { Paciente, PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Nuevo turno — KLIA' }
 
 export default async function NuevoTurnoPage() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
 
-  const [{ data: pacientes }, { data: profileRaw }] = await Promise.all([
-    supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('activo', true).order('apellido'),
-    supabase.from('profiles').select('mp_user_id, terminologia').eq('id', user.id).single(),
+  let pacientes: Paciente[] | null = null
+
+  const [, { data: profileRaw }] = await Promise.all([
+    (async () => {
+      if (efectivo.esColaborador) {
+        const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+        const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+        pacientes = todosPacientes
+          .filter((p) => p.activo)
+          .sort((a, b) => a.apellido.localeCompare(b.apellido))
+          .map((p) => ({
+            ...p,
+            notas: null,
+            motivo_consulta: null,
+            codigo_diagnostico: null,
+            gravedad_estimada: null,
+            fecha_inicio_tratamiento: null,
+          })) as Paciente[]
+      } else {
+        const { data } = await supabase
+          .from('pacientes')
+          .select('*')
+          .eq('terapeuta_id', efectivo.terapeutaId)
+          .eq('activo', true)
+          .order('apellido')
+        pacientes = data
+      }
+    })(),
+    supabase.from('profiles').select('mp_user_id, terminologia').eq('id', efectivo.terapeutaId).single(),
   ])
   const mpConectado = !!(profileRaw as Record<string, unknown> | null)?.mp_user_id
   const terminologia = (profileRaw as Record<string, unknown> | null)?.terminologia as 'sesion' | 'consulta' | undefined
@@ -35,7 +63,7 @@ export default async function NuevoTurnoPage() {
 
         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
           <Suspense>
-            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={user.id} mpConectado={mpConectado} terminologia={terminologia} />
+            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={efectivo.terapeutaId} mpConectado={mpConectado} terminologia={terminologia} />
           </Suspense>
         </div>
       </div>

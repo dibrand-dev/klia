@@ -23,6 +23,7 @@ import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/Registr
 import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
 import RxGrid from '@/components/oftalmologia/RxGrid'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -161,6 +162,7 @@ export default function PacienteDetalle({
   tieneDrive?: boolean
 }) {
   const router = useRouter()
+  const { terapeutaId, esColaborador } = useEffectiveTerapeutaId()
   const { cie10, cargarCie10 } = useCie10()
   const [editando, setEditando] = useState(initialEdit)
   const [form, setForm] = useState(() => {
@@ -245,44 +247,59 @@ export default function PacienteDetalle({
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const { error: dbError } = await supabase
-      .from('pacientes')
-      .update({
-        nombre: form.nombre,
-        apellido: form.apellido,
-        dni: form.dni || null,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        telefono: form.telefono || null,
-        email: form.email || null,
-        genero: form.genero || null,
-        nacionalidad: form.nacionalidad || null,
-        estado_civil: form.estado_civil || null,
-        domicilio: form.domicilio || null,
-        ocupacion: form.ocupacion || null,
-        contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
-        contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
-        obra_social: form.obra_social === 'Otra' ? 'Otra' : (form.obra_social || null),
-        plan_obra_social: form.obra_social === 'Otra' ? null : (form.plan_obra_social || null),
-        os_nombre_libre: form.obra_social === 'Otra' ? (form.os_nombre_libre.trim() || null) : null,
-        os_plan_libre: form.obra_social === 'Otra' ? (form.os_plan_libre.trim() || null) : null,
-        os_pendiente_validacion: form.obra_social === 'Otra',
-        os_config_id: form.os_config_id || null,
-        numero_afiliado: form.numero_afiliado || null,
-        numero_autorizacion: form.numero_autorizacion || null,
-        autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
-        autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
-        modalidad_tratamiento: form.modalidad_tratamiento || null,
-        frecuencia_sesiones: form.frecuencia_sesiones || null,
-        honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
-        moneda_preferida: form.moneda_preferida || 'ARS',
-        cobrar_inasistencias: form.cobrar_inasistencias,
-        motivo_consulta: form.motivo_consulta || null,
-        notas: form.notas || null,
-        codigo_diagnostico: form.codigo_diagnostico || null,
-        gravedad_estimada: form.gravedad_estimada || null,
-        activo,
+    const datosContacto = {
+      nombre: form.nombre,
+      apellido: form.apellido,
+      dni: form.dni || null,
+      fecha_nacimiento: form.fecha_nacimiento || null,
+      telefono: form.telefono || null,
+      email: form.email || null,
+      genero: form.genero || null,
+      nacionalidad: form.nacionalidad || null,
+      estado_civil: form.estado_civil || null,
+      domicilio: form.domicilio || null,
+      ocupacion: form.ocupacion || null,
+      contacto_emergencia_nombre: form.contacto_emergencia_nombre || null,
+      contacto_emergencia_telefono: form.contacto_emergencia_telefono || null,
+      obra_social: form.obra_social === 'Otra' ? 'Otra' : (form.obra_social || null),
+      plan_obra_social: form.obra_social === 'Otra' ? null : (form.plan_obra_social || null),
+      os_nombre_libre: form.obra_social === 'Otra' ? (form.os_nombre_libre.trim() || null) : null,
+      os_plan_libre: form.obra_social === 'Otra' ? (form.os_plan_libre.trim() || null) : null,
+      os_pendiente_validacion: form.obra_social === 'Otra',
+      os_config_id: form.os_config_id || null,
+      numero_afiliado: form.numero_afiliado || null,
+      numero_autorizacion: form.numero_autorizacion || null,
+      autorizacion_vigencia_desde: form.autorizacion_vigencia_desde || null,
+      autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
+      modalidad_tratamiento: form.modalidad_tratamiento || null,
+      frecuencia_sesiones: form.frecuencia_sesiones || null,
+      honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+      moneda_preferida: form.moneda_preferida || 'ARS',
+      cobrar_inasistencias: form.cobrar_inasistencias,
+      activo,
+    }
+
+    const datosClinicos = esColaborador ? {} : {
+      motivo_consulta: form.motivo_consulta || null,
+      notas: form.notas || null,
+      codigo_diagnostico: form.codigo_diagnostico || null,
+      gravedad_estimada: form.gravedad_estimada || null,
+    }
+
+    let dbError: { message: string } | null = null
+    if (esColaborador) {
+      const { error } = await supabase.rpc('actualizar_paciente_colaborador', {
+        p_paciente_id: paciente.id,
+        p_datos: datosContacto,
       })
-      .eq('id', paciente.id)
+      dbError = error
+    } else {
+      const { error } = await supabase
+        .from('pacientes')
+        .update({ ...datosContacto, ...datosClinicos })
+        .eq('id', paciente.id)
+      dbError = error
+    }
     if (dbError) {
       setError('Error al guardar los cambios. Intentá de nuevo.')
       setLoading(false)
@@ -321,8 +338,7 @@ export default function PacienteDetalle({
     }
 
     // Sync medications: replace all existing ones
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
+    if (terapeutaId) {
       const { error: delError } = await supabase
         .from('medicacion_paciente')
         .delete()
@@ -339,7 +355,7 @@ export default function PacienteDetalle({
       if (medsFiltradas.length > 0) {
         const { error: insError } = await supabase.from('medicacion_paciente').insert(
           medsFiltradas.map((m) => ({
-            terapeuta_id: user.id,
+            terapeuta_id: terapeutaId,
             paciente_id: paciente.id,
             farmaco: m.farmaco.trim(),
             dosis: m.dosis || null,
@@ -354,6 +370,8 @@ export default function PacienteDetalle({
           return
         }
       }
+    } else {
+      console.error('[PacienteDetalle] terapeutaId no resuelto todavía — medicaciones no sincronizadas')
     }
 
     setEditando(false)
@@ -1042,10 +1060,22 @@ function FormCard({
 
 function FirmaPacienteCard({ paciente }: { paciente: Paciente }) {
   const [firmaUrl, setFirmaUrl] = useState<string | null>(paciente.firma_paciente_url ?? null)
+  const [error, setError] = useState<string | null>(null)
+  const { esColaborador } = useEffectiveTerapeutaId()
   const supabase = createClient()
 
   async function guardar(url: string | null) {
-    await supabase.from('pacientes').update({ firma_paciente_url: url }).eq('id', paciente.id)
+    setError(null)
+    if (esColaborador) {
+      const { error } = await supabase.rpc('actualizar_paciente_colaborador', {
+        p_paciente_id: paciente.id,
+        p_datos: { firma_paciente_url: url },
+      })
+      if (error) setError('No se pudo guardar la firma. Intentá de nuevo.')
+    } else {
+      const { error } = await supabase.from('pacientes').update({ firma_paciente_url: url }).eq('id', paciente.id)
+      if (error) setError('No se pudo guardar la firma. Intentá de nuevo.')
+    }
   }
 
   return (
@@ -1053,6 +1083,7 @@ function FirmaPacienteCard({ paciente }: { paciente: Paciente }) {
       <p className="text-xs text-on-surface-variant mb-4">
         Usada en planillas de asistencia de obras sociales.
       </p>
+      {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
       <FirmaUploader
         label="Firma del paciente o tutor"
         descripcion="Fotografiá la firma sobre papel blanco con tinta negra"

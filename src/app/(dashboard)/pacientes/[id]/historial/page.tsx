@@ -4,26 +4,28 @@ import { createClient } from '@/lib/supabase/server'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs from '@/components/pacientes/PacienteTabs'
 import HistorialList from '@/components/pacientes/HistorialList'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Historial clínico — KLIA' }
 
 export default async function HistorialPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) redirect('/login')
+  if (efectivo.esColaborador) redirect(`/pacientes/${params.id}`)
 
   const [{ data: paciente }, { data: notas }, { data: turnos }, { data: profile }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
       .eq('id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .single(),
     supabase
       .from('notas_clinicas')
       .select('*')
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .not('borrador', 'is', true)
       .order('fecha', { ascending: false })
       .order('created_at', { ascending: false }),
@@ -31,12 +33,12 @@ export default async function HistorialPage({ params }: { params: { id: string }
       .from('turnos')
       .select('*')
       .eq('paciente_id', params.id)
-      .eq('terapeuta_id', user.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .order('fecha_hora', { ascending: true }),
     supabase
       .from('profiles')
       .select('especialidad')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
   ])
 
@@ -70,6 +72,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
         active="historial"
         historialCount={totalNotas}
         especialidad={profile?.especialidad}
+        esColaborador={efectivo.esColaborador}
       />
 
       {totalNotas === 0 ? (

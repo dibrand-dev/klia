@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { generarPlanillaSwissMedical } from '@/lib/planillas/swiss-medical'
 import type { Database } from '@/types/database'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const runtime = 'nodejs'
 
@@ -20,8 +21,8 @@ function svc() {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     paciente_id: string
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       .single(),
     db.from('profiles')
       .select('nombre, apellido, especialidad, matricula, firma_url, firma_sello_url')
-      .eq('id', user.id)
+      .eq('id', efectivo.terapeutaId)
       .single(),
   ])
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   const { data: turnos } = await db
     .from('turnos')
     .select('fecha_hora, duracion_min')
-    .eq('terapeuta_id', user.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
     .eq('paciente_id', paciente_id)
     .gte('fecha_hora', inicioMes.toISOString())
     .lt('fecha_hora', finMes.toISOString())

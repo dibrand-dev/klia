@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
+import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
 import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import { ESPECIALIDADES } from '@/lib/especialidades'
@@ -34,6 +35,7 @@ interface Props {
   cobrosPrecioSesion: number | null
   cobrosMoneda: string
   cobrosMessagePaciente: string
+  esColaborador?: boolean
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -107,6 +109,7 @@ const ICONS: Record<string, React.ReactNode> = {
   'link-publico':  icnSvg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>),
   plan:            icnSvg(<path d="M12 2l3 7 7 .5-5.5 4.5L18 21l-6-4-6 4 1.5-7L2 9.5 9 9z"/>),
   cuenta:          icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
+  colaboradoras:   icnSvg(<><circle cx="9" cy="8" r="3"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M17 8a3 3 0 1 0 0-6"/><path d="M22 20a6 6 0 0 0-5-6"/></>),
   recetas:         icnSvg(<><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></>),
 }
 
@@ -201,7 +204,8 @@ const DIAS_SEMANA_CONFIG = [
 ]
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false }: Props) {
+  const mostrarColaboradoras = profile.plan === 'premium' && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
 
@@ -563,6 +567,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'firmas', label: 'Firma escaneada' },
     { id: 'link-publico', label: 'Link público' },
     { id: 'sep' },
+    ...(mostrarColaboradoras ? [{ id: 'colaboradoras', label: 'Asistentes' }] : []),
     { id: 'plan', label: 'Suscripción y plan' },
     { id: 'cuenta', label: 'Cuenta y seguridad' },
   ]
@@ -1454,6 +1459,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
             </form>
           </section>
+
+          {mostrarColaboradoras && (
+            <section className={`ajustes-sec${activeSection !== 'colaboradoras' ? ' hidden md:block' : ''}`} id="colaboradoras" style={secStyle}>
+              <div style={secHdrStyle}>
+                <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.colaboradoras}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Asistentes</h2>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Invitá a tu secretaria o asistente para que gestione la agenda y los pacientes en tu nombre.</p>
+                </div>
+              </div>
+              <ColaboradorasConfig />
+            </section>
+          )}
 
           {/* ═══ SUSCRIPCIÓN ═══ */}
           <section className={`ajustes-sec${activeSection !== 'plan' ? ' hidden md:block' : ''}`} id="plan" style={secStyle}>

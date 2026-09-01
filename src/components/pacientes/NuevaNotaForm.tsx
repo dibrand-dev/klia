@@ -9,6 +9,7 @@ import VoiceRecorder from '@/components/ui/VoiceRecorder'
 import StickyWidgetAntropometria from '@/components/nutricion/StickyWidgetAntropometria'
 import RxGrid from '@/components/oftalmologia/RxGrid'
 import StickyWidgetPIO from '@/components/oftalmologia/StickyWidgetPIO'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -269,6 +270,7 @@ interface Props {
 }
 
 export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, onCreada, onClose }: Props) {
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const [modo, setModo] = useState<'texto' | 'voz'>(modoInicial)
   const [contenido, setContenido] = useState('')
   const [fecha, setFecha] = useState('')
@@ -328,17 +330,17 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     fetchConfig()
   }, [])
 
-  // Load existing draft for this patient+turno on mount
+  // Load existing draft for this patient+turno on mount — y de nuevo cuando
+  // terapeutaId termina de resolver (llega null en el primer render)
   useEffect(() => {
     async function cargarBorrador() {
       if (!pacienteId) return
+      if (!terapeutaId) return
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
       const query = supabase
         .from('notas_clinicas')
         .select('id, contenido, fecha')
-        .eq('terapeuta_id', user.id)
+        .eq('terapeuta_id', terapeutaId)
         .eq('paciente_id', pacienteId)
         .eq('borrador', true as never)
         .order('created_at', { ascending: false })
@@ -354,15 +356,16 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       }
     }
     cargarBorrador()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [terapeutaId])
 
   async function autoGuardarBorrador(html: string, fechaActual: string) {
+    if (!terapeutaId) {
+      console.error('[NuevaNotaForm] terapeutaId no resuelto todavía')
+      return
+    }
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
     const { data } = await supabase.from('notas_clinicas').insert({
-      terapeuta_id: user.id,
+      terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
       turno_id: turnoId ?? null,
       fecha: fechaActual,
@@ -393,11 +396,13 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
   async function handleGuardar() {
     if (isHtmlEmpty(contenido)) return
+    if (!terapeutaId) {
+      console.error('[NuevaNotaForm] terapeutaId no resuelto todavía')
+      return
+    }
     setLoading(true)
     setError(null)
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
 
     const fechaFinal = fecha || format(new Date(), 'yyyy-MM-dd')
 
@@ -408,7 +413,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
     } else {
       const { error: dbError } = await supabase.from('notas_clinicas').insert({
-        terapeuta_id: user.id,
+        terapeuta_id: terapeutaId,
         paciente_id: pacienteId,
         turno_id: turnoId ?? null,
         fecha: fechaFinal,
@@ -435,7 +440,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       const hayDatos = Object.values(antropoValues).some((v) => v != null)
       if (hayDatos) {
         const { error: antropoError } = await supabase.from('registros_antropometricos').insert({
-          terapeuta_id: user.id,
+          terapeuta_id: terapeutaId,
           paciente_id: pacienteId,
           turno_id: turnoId ?? null,
           fecha: fechaFinal,
@@ -455,7 +460,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       const hayDatosPio = Object.values(pioValues).some((v) => v != null)
       if (hayDatosPio) {
         const { error: pioError } = await supabase.from('registros_pio').insert({
-          terapeuta_id: user.id,
+          terapeuta_id: terapeutaId,
           paciente_id: pacienteId,
           turno_id: turnoId ?? null,
           fecha: fechaFinal,

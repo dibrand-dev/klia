@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import SlideOver from '@/components/ui/SlideOver'
 import type { MenuSemanalItem } from '@/types/database'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 interface Props {
   pacienteId: string
@@ -57,6 +58,7 @@ function semanaVacia(): Semana {
 }
 
 export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Props) {
+  const { terapeutaId } = useEffectiveTerapeutaId()
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()))
   const [semana, setSemana] = useState<Semana>(semanaVacia())
   const [loading, setLoading] = useState(true)
@@ -89,11 +91,13 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
   }, [pacienteId, open, weekStart])
 
   async function guardarCelda(dia: string, comida: string, valor: string, checkEl: HTMLSpanElement | null) {
+    if (!terapeutaId) {
+      console.error('[SlideOverMenuSemanal] terapeutaId no resuelto todavía')
+      return
+    }
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
     const { error } = await supabase.from('menu_semanal').upsert({
-      terapeuta_id: user.id,
+      terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
       semana_inicio: toDateKey(weekStart),
       dia,
@@ -114,12 +118,14 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
   }
 
   async function duplicarSemanaAnterior() {
+    if (!terapeutaId) {
+      console.error('[SlideOverMenuSemanal] terapeutaId no resuelto todavía')
+      return
+    }
     setDuplicando(true)
     setAviso(null)
     const semanaAnteriorInicio = toDateKey(addDays(weekStart, -7))
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setDuplicando(false); return }
     const { data } = await supabase
       .from('menu_semanal')
       .select('*')
@@ -132,7 +138,7 @@ export default function SlideOverMenuSemanal({ pacienteId, open, onClose }: Prop
       return
     }
     const inserts = filas.map((f) => ({
-      terapeuta_id: user.id,
+      terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
       semana_inicio: toDateKey(weekStart),
       dia: f.dia,

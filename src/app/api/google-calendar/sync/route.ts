@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import {
   sincronizarTurnoCreado,
   sincronizarTurnoCancelado,
@@ -15,8 +16,8 @@ import {
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json() as {
     turno_id?: string
@@ -31,29 +32,29 @@ export async function POST(req: NextRequest) {
   try {
     if (body.action === 'create') {
       if (body.turno_ids) {
-        await sincronizarSerieRecurrentePorIds(body.turno_ids, user.id)
+        await sincronizarSerieRecurrentePorIds(body.turno_ids, efectivo.terapeutaId)
       } else if (body.serie_id) {
-        await sincronizarSerieRecurrente(body.serie_id, user.id)
+        await sincronizarSerieRecurrente(body.serie_id, efectivo.terapeutaId)
       } else if (body.turno_id) {
-        await sincronizarTurnoCreado(body.turno_id, user.id)
+        await sincronizarTurnoCreado(body.turno_id, efectivo.terapeutaId)
       } else if (body.entrevista_id) {
-        await sincronizarEntrevistaCreada(body.entrevista_id, user.id)
+        await sincronizarEntrevistaCreada(body.entrevista_id, efectivo.terapeutaId)
       }
     } else if (body.action === 'update') {
       if (body.turno_id) {
-        await sincronizarTurnoActualizado(body.turno_id, user.id)
+        await sincronizarTurnoActualizado(body.turno_id, efectivo.terapeutaId)
       } else if (body.entrevista_id) {
-        await sincronizarEntrevistaActualizada(body.entrevista_id, user.id)
+        await sincronizarEntrevistaActualizada(body.entrevista_id, efectivo.terapeutaId)
       }
     } else if (body.action === 'delete') {
       if (body.google_event_ids) {
-        await sincronizarSerieCanceladaPorIds(body.google_event_ids, user.id)
+        await sincronizarSerieCanceladaPorIds(body.google_event_ids, efectivo.terapeutaId)
       } else if (body.serie_id && body.desde_fecha) {
-        await sincronizarSerieCancelada(body.serie_id, user.id, body.desde_fecha)
+        await sincronizarSerieCancelada(body.serie_id, efectivo.terapeutaId, body.desde_fecha)
       } else if (body.turno_id) {
-        await sincronizarTurnoCancelado(body.turno_id, user.id)
+        await sincronizarTurnoCancelado(body.turno_id, efectivo.terapeutaId)
       } else if (body.entrevista_id) {
-        await sincronizarEntrevistaCancelada(body.entrevista_id, user.id)
+        await sincronizarEntrevistaCancelada(body.entrevista_id, efectivo.terapeutaId)
       }
     }
   } catch (err) {

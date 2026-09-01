@@ -36,12 +36,16 @@ export default function NavigationDrawer({
   onNuevaSesion,
   mobileOpen = false,
   onClose,
+  esColaborador = false,
+  nombrePropio,
 }: {
   profile: Profile | null
   modulos: ModuloConfig[]
   onNuevaSesion: () => void
   mobileOpen?: boolean
   onClose?: () => void
+  esColaborador?: boolean
+  nombrePropio?: string
 }) {
   const pathname = usePathname()
   const plan = profile?.plan ?? ''
@@ -49,7 +53,7 @@ export default function NavigationDrawer({
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = 'https://app.klia.com.ar/login'
+    window.location.href = process.env.NEXT_PUBLIC_APP_ENV === 'staging' ? '/login' : 'https://app.klia.com.ar/login'
   }
 
   const initials = profile
@@ -75,10 +79,15 @@ export default function NavigationDrawer({
       {/* User Profile Card */}
       <SidebarUserCard
         initials={initials}
-        name={profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
+        name={esColaborador && nombrePropio ? nombrePropio : profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
         subtitle={profile?.especialidad || profile?.email || ''}
         avatarUrl={profile?.avatar_url}
       />
+      {esColaborador && (
+        <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-primary -mt-4 mb-6 pl-4">
+          Asistente
+        </p>
+      )}
 
       {/* Navigation Menu */}
       <ul className="flex flex-col gap-2 flex-1">
