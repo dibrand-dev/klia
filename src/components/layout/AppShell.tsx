@@ -151,7 +151,7 @@ export default function AppShell({
       )}
 
       {/* Navigation Drawer */}
-      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} />
 
       {/* Main content */}
       <main

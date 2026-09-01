@@ -36,12 +36,14 @@ export default function NavigationDrawer({
   onNuevaSesion,
   mobileOpen = false,
   onClose,
+  esColaborador = false,
 }: {
   profile: Profile | null
   modulos: ModuloConfig[]
   onNuevaSesion: () => void
   mobileOpen?: boolean
   onClose?: () => void
+  esColaborador?: boolean
 }) {
   const pathname = usePathname()
   const plan = profile?.plan ?? ''
@@ -79,6 +81,11 @@ export default function NavigationDrawer({
         subtitle={profile?.especialidad || profile?.email || ''}
         avatarUrl={profile?.avatar_url}
       />
+      {esColaborador && (
+        <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-primary -mt-4 mb-6 pl-4">
+          Asistente
+        </p>
+      )}
 
       {/* Navigation Menu */}
       <ul className="flex flex-col gap-2 flex-1">
