@@ -37,6 +37,7 @@ export default function NavigationDrawer({
   mobileOpen = false,
   onClose,
   esColaborador = false,
+  nombrePropio,
 }: {
   profile: Profile | null
   modulos: ModuloConfig[]
@@ -44,6 +45,7 @@ export default function NavigationDrawer({
   mobileOpen?: boolean
   onClose?: () => void
   esColaborador?: boolean
+  nombrePropio?: string
 }) {
   const pathname = usePathname()
   const plan = profile?.plan ?? ''
@@ -77,7 +79,7 @@ export default function NavigationDrawer({
       {/* User Profile Card */}
       <SidebarUserCard
         initials={initials}
-        name={profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
+        name={esColaborador && nombrePropio ? nombrePropio : profile ? `${profile.nombre} ${profile.apellido}` : 'Usuario'}
         subtitle={profile?.especialidad || profile?.email || ''}
         avatarUrl={profile?.avatar_url}
       />

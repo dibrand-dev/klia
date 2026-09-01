@@ -57,6 +57,18 @@ export default function AppShell({
   const [notaPacienteId, setNotaPacienteId] = useState<string>('')
   const [notaTurnoId, setNotaTurnoId] = useState<string | null>(null)
   const [notaModo, setNotaModo] = useState<'texto' | 'voz'>('texto')
+  const [nombrePropio, setNombrePropio] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (!esColaborador || loadingIdentidad) return
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const { data: perfilPropio } = await supabase.from('profiles').select('nombre, apellido').eq('id', user.id).single()
+      if (perfilPropio) setNombrePropio(`${perfilPropio.nombre} ${perfilPropio.apellido}`)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esColaborador, loadingIdentidad])
 
   useEffect(() => {
     if (mobileOpen) {
@@ -151,7 +163,7 @@ export default function AppShell({
       )}
 
       {/* Navigation Drawer */}
-      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} />
+      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} nombrePropio={nombrePropio} />
 
       {/* Main content */}
       <main

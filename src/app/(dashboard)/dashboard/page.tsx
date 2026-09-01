@@ -211,8 +211,17 @@ export default async function DashboardPage() {
     return osConfigId != null
   })
 
+  let nombreTerapeuta = (profile as Profile | null)?.nombre ?? ''
+  if (efectivo.esColaborador) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: perfilPropio } = await supabase.from('profiles').select('nombre').eq('id', user.id).single()
+      if (perfilPropio?.nombre) nombreTerapeuta = perfilPropio.nombre
+    }
+  }
+
   const props = {
-    nombreTerapeuta: (profile as Profile | null)?.nombre ?? '',
+    nombreTerapeuta,
     hoyArgStr,
     turnosHoy: (turnosHoy ?? []).map((t) => ({
       id: t.id,
