@@ -42,6 +42,7 @@ export default async function AjustesPage() {
       cobrosPrecioSesion={(p.cobros_precio_sesion as number | null) ?? null}
       cobrosMoneda={(p.cobros_moneda as string | null) ?? 'ARS'}
       cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
+      esColaborador={efectivo.esColaborador}
     />
   )
 }
