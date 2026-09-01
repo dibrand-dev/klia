@@ -112,7 +112,7 @@ export default function ColaboradorasConfig() {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">Invitar colaboradora</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-on-surface-variant mb-3">Invitar asistente</p>
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>}
         <form onSubmit={handleInvitar} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div>
@@ -136,7 +136,7 @@ export default function ColaboradorasConfig() {
       ) : list.length === 0 ? (
         <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm px-6 py-14 text-center text-on-surface-variant">
           <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">group</span>
-          <p className="text-sm">Todavía no invitaste a ninguna colaboradora.</p>
+          <p className="text-sm">Todavía no invitaste a ninguna asistente.</p>
         </div>
       ) : (
         <div className="space-y-3">

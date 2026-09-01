@@ -567,7 +567,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'firmas', label: 'Firma escaneada' },
     { id: 'link-publico', label: 'Link público' },
     { id: 'sep' },
-    ...(mostrarColaboradoras ? [{ id: 'colaboradoras', label: 'Colaboradoras' }] : []),
+    ...(mostrarColaboradoras ? [{ id: 'colaboradoras', label: 'Asistentes' }] : []),
     { id: 'plan', label: 'Suscripción y plan' },
     { id: 'cuenta', label: 'Cuenta y seguridad' },
   ]
@@ -1465,7 +1465,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               <div style={secHdrStyle}>
                 <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.colaboradoras}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Colaboradoras</h2>
+                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Asistentes</h2>
                   <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Invitá a tu secretaria o asistente para que gestione la agenda y los pacientes en tu nombre.</p>
                 </div>
               </div>
