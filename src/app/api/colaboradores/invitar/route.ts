@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { enviarEmail } from '@/lib/brevo'
-import { emailInvitacionColaboradora } from '@/lib/email-templates'
-import type { Database } from '@/types/database'
+import { crearInvitacionColaborador } from '@/lib/colaboradores/invitacion'
 
 export const runtime = 'nodejs'
-
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -32,69 +27,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Falta email' }, { status: 400 })
   }
 
-  const db = createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-
-  const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: {
-      data: { tipo_cuenta: 'colaborador', ...(nombre ? { nombre } : {}) },
-      redirectTo: `${appUrl}/auth/callback-invite`,
-    },
-  })
-
-  if (linkError) {
-    const yaExiste = linkError.message.toLowerCase().includes('already registered')
-      || linkError.message.toLowerCase().includes('already been registered')
-      || linkError.message.toLowerCase().includes('already exists')
-    if (yaExiste) {
-      return NextResponse.json(
-        { error: 'ya_tiene_cuenta', message: 'Este email ya tiene una cuenta en KLIA. Contactá a soporte para vincularlo.' },
-        { status: 409 },
-      )
-    }
-    return NextResponse.json({ error: 'Error al generar la invitación' }, { status: 500 })
-  }
-
-  const { error: insertError } = await db.from('colaboradores').insert({
-    profesional_id: user.id,
-    colaborador_id: linkData.user.id,
-    invitacion_aceptada: false,
-  })
-
-  if (insertError) {
-    console.error('[colaboradores/invitar] Error insertando colaborador:', insertError)
-    if (insertError.code === '23505') {
-      return NextResponse.json(
-        { error: 'invitacion_duplicada', message: 'Ya invitaste a este email anteriormente.' },
-        { status: 409 },
-      )
-    }
-    try {
-      await db.auth.admin.deleteUser(linkData.user.id)
-    } catch (rollbackError) {
-      console.error('[colaboradores/invitar] Rollback de auth.users también falló — requiere limpieza manual:', rollbackError)
-    }
-    return NextResponse.json(
-      { error: 'error_vinculo', message: `La invitación se generó pero no pudimos vincularla a tu cuenta. Contactá a soporte con este email: ${email}` },
-      { status: 500 },
-    )
-  }
-
   const nombreProfesional = [profile?.nombre, profile?.apellido].filter(Boolean).join(' ') || 'Tu profesional'
 
-  try {
-    await enviarEmail({
-      destinatario: email,
-      nombreDestinatario: nombre ?? email,
-      asunto: `${nombreProfesional} te invitó a colaborar en KLIA`,
-      htmlContent: emailInvitacionColaboradora(nombreProfesional, nombre ?? null, linkData.properties.action_link),
-    })
-  } catch (emailError) {
-    console.error('[colaboradores/invitar] Error enviando email:', emailError)
+  const resultado = await crearInvitacionColaborador({
+    profesionalId: user.id,
+    nombreProfesional,
+    email,
+    nombre,
+  })
+
+  if (!resultado.ok) {
+    return NextResponse.json({ error: resultado.error, message: resultado.message }, { status: resultado.status })
   }
 
   return NextResponse.json({ ok: true })
