@@ -30,7 +30,7 @@ export async function crearInvitacionColaborador(params: {
     email,
     options: {
       data: { tipo_cuenta: 'colaborador', ...(nombre ? { nombre } : {}) },
-      redirectTo: `${appUrl}/auth/callback-invite`,
+      redirectTo: `${appUrl}/colaboradora/activar`,
     },
   })
 
