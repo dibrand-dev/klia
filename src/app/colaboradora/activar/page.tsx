@@ -27,11 +27,27 @@ function ActivarColaboradoraContent() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    async function resolver() {
+      const supabase = createClient()
+      const hash = window.location.hash
+      if (hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.substring(1))
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+        }
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
       setSesionValida(!!user)
       setCheckingSession(false)
-    })
+    }
+
+    resolver()
   }, [])
 
   async function handleActivar(e: React.FormEvent) {
