@@ -18,6 +18,7 @@ const PUBLIC_ROUTES = [
   '/checkout',
   '/terminos',
   '/privacidad',
+  '/colaboradora/activar',
 ]
 
 // Routes that require a specific module to be enabled for the professional's plan
