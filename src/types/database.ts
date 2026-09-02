@@ -63,6 +63,7 @@ export type Database = {
           onboarding_skipped: boolean
           onboarding_max_step_reached: number
           aviso_deuda_activo: boolean | null
+          tipo_cuenta: string | null
           created_at: string
           updated_at: string
         }
@@ -124,6 +125,7 @@ export type Database = {
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
+          tipo_cuenta?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -185,6 +187,7 @@ export type Database = {
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
+          tipo_cuenta?: string | null
           created_at?: string
           updated_at?: string
         }

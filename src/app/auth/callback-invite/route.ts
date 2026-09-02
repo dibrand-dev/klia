@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
 
   if (!code) {
-    return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
+    return NextResponse.redirect(new URL('https://app.klia.com.ar/colaboradora/activar?error=invite_expired'))
   }
 
   const supabase = createClient()
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   if (error || !data.session) {
     console.error('🔵 CALLBACK-INVITE error:', error?.message)
-    return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
+    return NextResponse.redirect(new URL('https://app.klia.com.ar/colaboradora/activar?error=invite_expired'))
   }
 
   return NextResponse.redirect(new URL('/colaboradora/activar', origin))

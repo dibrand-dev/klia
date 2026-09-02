@@ -48,9 +48,13 @@ export async function GET(request: NextRequest) {
   // Check if new user
   const { data: profile } = await supabase
     .from('profiles')
-    .select('trial_fin, nombre, apellido, avatar_url')
+    .select('trial_fin, nombre, apellido, avatar_url, tipo_cuenta')
     .eq('id', session.user.id)
     .single()
+
+  if (!profile?.trial_fin && profile?.tipo_cuenta === 'colaborador') {
+    return NextResponse.redirect(new URL('/dashboard', origin))
+  }
 
   if (!profile?.trial_fin) {
     const trialFin = new Date()

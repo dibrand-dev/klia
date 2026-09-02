@@ -1,14 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/ui/Logo'
 
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d).{8,}$/
 
 export default function ActivarColaboradoraPage() {
+  return (
+    <Suspense fallback={null}>
+      <ActivarColaboradoraContent />
+    </Suspense>
+  )
+}
+
+function ActivarColaboradoraContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteExpired = searchParams.get('error') === 'invite_expired'
   const [checkingSession, setCheckingSession] = useState(true)
   const [sesionValida, setSesionValida] = useState(false)
   const [password, setPassword] = useState('')
@@ -72,7 +82,11 @@ export default function ActivarColaboradoraPage() {
         <Logo className="h-8 w-auto" />
         <div style={{ width: '100%', maxWidth: 360, background: '#fff', borderRadius: 16, padding: 32, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textAlign: 'center' }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Link no válido</h1>
-          <p style={{ fontSize: 14, color: '#5B6472' }}>Este link ya no es válido o ya fue usado. Pedile al profesional que te reenvíe la invitación.</p>
+          <p style={{ fontSize: 14, color: '#5B6472' }}>
+            {inviteExpired
+              ? 'Esta invitación ya fue utilizada o venció. Pedile a tu profesional que te reenvíe la invitación desde Ajustes.'
+              : 'Este link ya no es válido o ya fue usado. Pedile al profesional que te reenvíe la invitación.'}
+          </p>
         </div>
       </div>
     )
