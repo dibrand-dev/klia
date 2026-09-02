@@ -12,6 +12,7 @@ interface SupabaseWebhookPayload {
     apellido?: string | null
     email?: string | null
     especialidad?: string | null
+    tipo_cuenta?: string | null
     [key: string]: unknown
   } | null
   old_record: unknown
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest) {
 
   const payload = await req.json() as SupabaseWebhookPayload
   const record = payload.record
+
+  if (record?.tipo_cuenta === 'colaborador') {
+    return NextResponse.json({ ok: true })
+  }
 
   const nombreCompleto = [record?.nombre, record?.apellido].filter(Boolean).join(' ').trim()
   const lineas = [
