@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  if (profile?.plan !== 'premium') {
+  if (profile?.plan !== 'premium' && profile?.plan !== 'bonificado') {
     return NextResponse.json(
       { error: 'Necesitás el plan Premium para invitar colaboradoras' },
       { status: 403 },

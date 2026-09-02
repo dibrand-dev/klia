@@ -205,7 +205,7 @@ const DIAS_SEMANA_CONFIG = [
 
 // ── Main component ─────────────────────────────────────────────────────
 export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false }: Props) {
-  const mostrarColaboradoras = profile.plan === 'premium' && !esColaborador
+  const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
 
