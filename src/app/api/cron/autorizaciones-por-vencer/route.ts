@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
   const { start, end } = dayWindow(7)
   const startStr = start.toISOString().slice(0, 10)
   const endStr = end.toISOString().slice(0, 10)
+  console.log('[debug] hoy:', new Date().toISOString(), '| ventana:', startStr, 'a', endStr)
 
   const { data: pacientes, error } = await supabase
     .from('pacientes')
