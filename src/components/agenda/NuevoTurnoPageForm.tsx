@@ -13,6 +13,7 @@ import MontoInput from '@/components/ui/MontoInput'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import type { Moneda } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
@@ -101,6 +102,7 @@ export default function NuevoTurnoPageForm({
   const [fechasValidas, setFechasValidas] = useState<Date[]>([])
   const [mostrandoConflictos, setMostrandoConflictos] = useState(false)
   const [pagoPrevio, setPagoPrevio] = useState(false)
+  const [conflictoPendiente, setConflictoPendiente] = useState<{ mensaje: string; tipo: 'turno' | 'entrevista' } | null>(null)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -210,18 +212,8 @@ export default function NuevoTurnoPageForm({
     return { hayConflicto: false }
   }
 
-  async function handleSubmitEntrevista(e: React.FormEvent) {
-    e.preventDefault()
-    if (!entrevistaForm.nombre.trim()) { setError('Nombre es requerido'); return }
-    if (!entrevistaForm.apellido.trim()) { setError('Apellido es requerido'); return }
+  async function crearEntrevista(esSobreturno: boolean) {
     setLoading(true)
-    setError(null)
-
-    const { hayConflicto: conflictoEnt, mensaje: mensajeEnt } = await validarConflicto(
-      entrevistaForm.fecha, entrevistaForm.hora, Number(entrevistaForm.duracion) || 50
-    )
-    if (conflictoEnt) { setError(mensajeEnt!); setLoading(false); return }
-
     const supabase = createClient()
     const { data, error: dbError } = await supabase
       .from('entrevistas')
@@ -238,6 +230,7 @@ export default function NuevoTurnoPageForm({
         moneda: entrevistaForm.moneda,
         notas: entrevistaForm.notas.trim() || null,
         estado: 'pendiente',
+        es_sobreturno: esSobreturno,
       })
       .select('*')
       .single()
@@ -261,6 +254,87 @@ export default function NuevoTurnoPageForm({
     } else if (onClose) {
       router.refresh()
       onClose()
+    } else {
+      router.push('/agenda')
+      router.refresh()
+    }
+  }
+
+  async function handleSubmitEntrevista(e: React.FormEvent) {
+    e.preventDefault()
+    if (!entrevistaForm.nombre.trim()) { setError('Nombre es requerido'); return }
+    if (!entrevistaForm.apellido.trim()) { setError('Apellido es requerido'); return }
+    setLoading(true)
+    setError(null)
+
+    const { hayConflicto: conflictoEnt, mensaje: mensajeEnt } = await validarConflicto(
+      entrevistaForm.fecha, entrevistaForm.hora, Number(entrevistaForm.duracion) || 50
+    )
+    if (conflictoEnt) {
+      setConflictoPendiente({ mensaje: mensajeEnt!, tipo: 'entrevista' })
+      setLoading(false)
+      return
+    }
+
+    await crearEntrevista(false)
+  }
+
+  async function crearTurno(esSobreturno: boolean) {
+    setLoading(true)
+    const supabase = createClient()
+    const { data, error: dbError } = await supabase
+      .from('turnos')
+      .insert({
+        terapeuta_id: terapeutaId,
+        paciente_id: form.paciente_id,
+        fecha_hora: new Date(`${form.fecha}T${form.hora}:00`).toISOString(),
+        duracion_min: Number(form.duracion_min),
+        modalidad: form.modalidad,
+        estado: 'pendiente',
+        monto: form.monto ? Number(form.monto) : null,
+        moneda,
+        notas: form.notas || null,
+        es_sobreturno: esSobreturno,
+      })
+      .select('*, paciente:pacientes(*)')
+      .single()
+
+    if (dbError) {
+      setError('Error al crear el turno. Intentá de nuevo.')
+      setLoading(false)
+      return
+    }
+
+    if (data?.id) {
+      fetch('/api/google-calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turno_id: data.id, action: 'create' }),
+      }).catch(() => {})
+
+      if (pagoPrevio) {
+        try {
+          const pagoRes = await fetch('/api/pagos/crear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ turno_id: data.id }),
+          })
+          if (!pagoRes.ok) {
+            const err = await pagoRes.json() as { error?: string }
+            setError(err.error ?? 'No se pudo generar el link de pago')
+            setLoading(false)
+            return
+          }
+        } catch {
+          setError('Error al generar el link de pago')
+          setLoading(false)
+          return
+        }
+      }
+    }
+    if (onCreado && data) {
+      const pacienteEncontrado = pacientes.find((p) => p.id === form.paciente_id)
+      onCreado({ ...data, paciente: pacienteEncontrado ?? data.paciente } as unknown as Turno)
     } else {
       router.push('/agenda')
       router.refresh()
@@ -312,65 +386,25 @@ export default function NuevoTurnoPageForm({
     const { hayConflicto, mensaje } = await validarConflicto(
       form.fecha, form.hora, Number(form.duracion_min) || 50
     )
-    if (hayConflicto) { setError(mensaje!); setLoading(false); return }
-
-    const supabase = createClient()
-    const { data, error: dbError } = await supabase
-      .from('turnos')
-      .insert({
-        terapeuta_id: terapeutaId,
-        paciente_id: form.paciente_id,
-        fecha_hora: new Date(`${form.fecha}T${form.hora}:00`).toISOString(),
-        duracion_min: Number(form.duracion_min),
-        modalidad: form.modalidad,
-        estado: 'pendiente',
-        monto: form.monto ? Number(form.monto) : null,
-        moneda,
-        notas: form.notas || null,
-      })
-      .select('*, paciente:pacientes(*)')
-      .single()
-
-    if (dbError) {
-      setError('Error al crear el turno. Intentá de nuevo.')
+    if (hayConflicto) {
+      setConflictoPendiente({ mensaje: mensaje!, tipo: 'turno' })
       setLoading(false)
       return
     }
 
-    if (data?.id) {
-      fetch('/api/google-calendar/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turno_id: data.id, action: 'create' }),
-      }).catch(() => {})
+    await crearTurno(false)
+  }
 
-      if (pagoPrevio) {
-        try {
-          const pagoRes = await fetch('/api/pagos/crear', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ turno_id: data.id }),
-          })
-          if (!pagoRes.ok) {
-            const err = await pagoRes.json() as { error?: string }
-            setError(err.error ?? 'No se pudo generar el link de pago')
-            setLoading(false)
-            return
-          }
-        } catch {
-          setError('Error al generar el link de pago')
-          setLoading(false)
-          return
-        }
-      }
-    }
-    if (onCreado && data) {
-      const pacienteEncontrado = pacientes.find((p) => p.id === form.paciente_id)
-      onCreado({ ...data, paciente: pacienteEncontrado ?? data.paciente } as unknown as Turno)
-    } else {
-      router.push('/agenda')
-      router.refresh()
-    }
+  function confirmarSobreturno() {
+    const tipo = conflictoPendiente?.tipo
+    setConflictoPendiente(null)
+    if (tipo === 'turno') crearTurno(true)
+    else if (tipo === 'entrevista') crearEntrevista(true)
+  }
+
+  function cancelarSobreturno() {
+    setConflictoPendiente(null)
+    setLoading(false)
   }
 
   async function handleOmitirConflictos() {
@@ -491,6 +525,17 @@ export default function NuevoTurnoPageForm({
             {loading ? 'Guardando...' : 'Crear entrevista'}
           </button>
         </div>
+
+        <ConfirmDialog
+          open={!!conflictoPendiente}
+          title="Conflicto de horario"
+          message={conflictoPendiente?.mensaje ?? ''}
+          confirmLabel="Crear igual"
+          cancelLabel="Cancelar"
+          variant="warning"
+          onConfirm={confirmarSobreturno}
+          onCancel={cancelarSobreturno}
+        />
       </form>
     )
   }
@@ -788,6 +833,17 @@ export default function NuevoTurnoPageForm({
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={!!conflictoPendiente}
+        title="Conflicto de horario"
+        message={conflictoPendiente?.mensaje ?? ''}
+        confirmLabel="Crear igual"
+        cancelLabel="Cancelar"
+        variant="warning"
+        onConfirm={confirmarSobreturno}
+        onCancel={cancelarSobreturno}
+      />
     </form>
   )
 }

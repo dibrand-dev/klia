@@ -347,6 +347,7 @@ export type Database = {
           estado_atencion: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
           estado_pago: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado: number | null
+          es_sobreturno: boolean
           created_at: string
           updated_at: string
         }
@@ -371,6 +372,7 @@ export type Database = {
           estado_atencion?: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
           estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado?: number | null
+          es_sobreturno?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -389,6 +391,7 @@ export type Database = {
           estado_atencion?: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
           estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado?: number | null
+          es_sobreturno?: boolean
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
@@ -1447,6 +1450,7 @@ export type Database = {
           estado: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id: string | null
           google_event_id: string | null
+          es_sobreturno: boolean
           created_at: string
           updated_at: string
         }
@@ -1466,6 +1470,7 @@ export type Database = {
           estado?: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id?: string | null
           google_event_id?: string | null
+          es_sobreturno?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1483,6 +1488,7 @@ export type Database = {
           estado?: 'pendiente' | 'realizada' | 'cancelada' | 'convertida'
           paciente_id?: string | null
           google_event_id?: string | null
+          es_sobreturno?: boolean
           updated_at?: string
         }
         Relationships: []

@@ -196,7 +196,8 @@ export default function VistaDia({
                   key={turno.id}
                   className={cn(
                     'absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer border text-xs hover:shadow-md transition-shadow overflow-hidden',
-                    ESTADO_TURNO_COLORS[turno.estado]
+                    ESTADO_TURNO_COLORS[turno.estado],
+                    turno.es_sobreturno && 'border-l-2 border-l-amber-500'
                   )}
                   style={{ top: `${top}px`, height: `${height}px` }}
                   onClick={(e) => { e.stopPropagation(); onTurnoClick(turno) }}
@@ -206,6 +207,9 @@ export default function VistaDia({
                     <span className="truncate flex-1">
                       {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
                     </span>
+                    {turno.es_sobreturno && (
+                      <span className="flex-shrink-0 text-[10px] opacity-70" title="Sobreturno">⚠</span>
+                    )}
                     {turno.serie_recurrente_id && (
                       <span className="flex-shrink-0 text-[10px] opacity-60">↻</span>
                     )}
