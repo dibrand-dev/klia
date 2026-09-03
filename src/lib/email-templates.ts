@@ -688,3 +688,21 @@ export function emailRecordatorioTurno({
     ${help('Si no podés asistir, contactá a tu profesional con anticipación.')}
   `, 'Recordatorio de sesión — KLIA')
 }
+
+export function emailAutorizacionesPorVencer(
+  nombre: string,
+  pacientes: { nombre: string; fecha: string }[],
+): string {
+  const lista = pacientes
+    .map((p) => `<li style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#444651;"><strong style="color:#2b2f38;">${p.nombre}</strong> — vence el ${p.fecha}</li>`)
+    .join('')
+
+  return baseTemplate(`
+    ${icon('📋', '#fff4d1')}
+    ${h1(pacientes.length === 1 ? 'Una autorización está por vencer' : 'Autorizaciones por vencer')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, ${pacientes.length === 1 ? 'la siguiente autorización de obra social vence' : 'las siguientes autorizaciones de obra social vencen'} en 7 días:`)}
+    <ul style="margin:20px 0 0;padding:0 0 0 20px;text-align:left;">${lista}</ul>
+    ${infoBox('Revisá si hace falta gestionar la renovación con la obra social antes de la fecha de vencimiento.', '#fffbeb', '#d97706', '#92400e')}
+    ${cta('Ver pacientes &rarr;', 'https://app.klia.com.ar/pacientes')}
+  `, 'Autorizaciones de obra social por vencer — KLIA')
+}

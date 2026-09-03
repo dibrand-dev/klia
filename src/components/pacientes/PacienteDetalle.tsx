@@ -25,6 +25,17 @@ import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorpora
 import RxGrid from '@/components/oftalmologia/RxGrid'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
+function estadoAutorizacion(fechaHasta: string | null): { label: string; tono: 'vencida' | 'porVencer' } | null {
+  if (!fechaHasta) return null
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const vencimiento = new Date(fechaHasta + 'T00:00:00')
+  const dias = Math.round((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
+  if (dias < 0) return { label: 'Autorización vencida', tono: 'vencida' }
+  if (dias <= 7) return { label: dias === 0 ? 'Vence hoy' : `Vence en ${dias} día${dias === 1 ? '' : 's'}`, tono: 'porVencer' }
+  return null
+}
+
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
 const labelCls =
@@ -527,7 +538,21 @@ export default function PacienteDetalle({
                   <input name="autorizacion_vigencia_desde" type="date" value={form.autorizacion_vigencia_desde} onChange={handleChange} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Vigencia hasta</label>
+                  <label className={labelCls}>
+                    Vigencia hasta
+                    {estadoAutorizacion(paciente.autorizacion_vigencia_hasta) && (
+                      <span
+                        className={cn(
+                          'ml-2 normal-case font-medium px-2 py-0.5 rounded-full text-[10px]',
+                          estadoAutorizacion(paciente.autorizacion_vigencia_hasta)!.tono === 'vencida'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-amber-100 text-amber-800'
+                        )}
+                      >
+                        {estadoAutorizacion(paciente.autorizacion_vigencia_hasta)!.label}
+                      </span>
+                    )}
+                  </label>
                   <input name="autorizacion_vigencia_hasta" type="date" value={form.autorizacion_vigencia_hasta} onChange={handleChange} className={inputCls} />
                 </div>
               </>
