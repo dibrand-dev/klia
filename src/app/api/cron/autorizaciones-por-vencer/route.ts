@@ -18,7 +18,6 @@ function dayWindow(daysFromNow: number) {
 }
 
 export async function GET(req: NextRequest) {
-  console.log('CRON_SECRET length:', process.env.CRON_SECRET?.length ?? 'undefined')
   const isVercelCron = req.headers.get('x-vercel-cron') === '1'
   const auth = req.headers.get('authorization')
   if (!isVercelCron && auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -35,8 +34,6 @@ export async function GET(req: NextRequest) {
   const { start, end } = dayWindow(7)
   const startStr = start.toISOString().slice(0, 10)
   const endStr = end.toISOString().slice(0, 10)
-  console.log('[debug] hoy:', new Date().toISOString(), '| ventana:', startStr, 'a', endStr)
-
   const { data: pacientes, error } = await supabase
     .from('pacientes')
     .select('id, nombre, apellido, terapeuta_id, autorizacion_vigencia_hasta')
