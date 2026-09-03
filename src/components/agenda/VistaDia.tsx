@@ -50,10 +50,16 @@ export default function VistaDia({
   const entrevistasDia = entrevistas.filter(
     (e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia) && e.estado !== 'cancelada'
   )
-  const layoutTurnos = calcularLayoutTurnos(turnosDia.map((t) => {
-    const d = parseISO(t.fecha_hora)
-    return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
-  }))
+  const layoutTurnos = calcularLayoutTurnos([
+    ...turnosDia.map((t) => {
+      const d = parseISO(t.fecha_hora)
+      return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
+    }),
+    ...entrevistasDia.map((e) => {
+      const [h, m] = e.hora.slice(0, 5).split(':').map(Number)
+      return { id: e.id, inicio: h * 60 + m, duracion: e.duracion ?? 50 }
+    }),
+  ])
   const gEventsDia = googleEvents.filter((e) => {
     if (!isSameDay(new Date(e.inicio), dia)) return false
     const inicio = new Date(e.inicio)
@@ -173,11 +179,18 @@ export default function VistaDia({
             {entrevistasDia.map((entrevista) => {
               const top = getTopOffset(entrevista.hora, entrevista.fecha, hi)
               const height = Math.max(getHeight(entrevista.duracion), 28)
+              const { columna, totalColumnas } = layoutTurnos.get(entrevista.id) ?? { columna: 0, totalColumnas: 1 }
+              const anchoPct = 100 / totalColumnas
               return (
                 <div
                   key={entrevista.id}
-                  className="absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer border text-xs bg-amber-100 border-amber-400 text-amber-900 hover:shadow-md transition-shadow overflow-hidden"
-                  style={{ top: `${top}px`, height: `${height}px` }}
+                  className="absolute rounded-md px-2 py-1 cursor-pointer border text-xs bg-amber-100 border-amber-400 text-amber-900 hover:shadow-md transition-shadow overflow-hidden"
+                  style={{
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    left: `calc(${anchoPct * columna}% + 2px)`,
+                    width: `calc(${anchoPct}% - 4px)`,
+                  }}
                   onClick={(e) => { e.stopPropagation(); onEntrevistaClick(entrevista) }}
                 >
                   <div className="flex items-center gap-1 font-semibold truncate">
