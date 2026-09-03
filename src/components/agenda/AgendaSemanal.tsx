@@ -22,6 +22,7 @@ import VistaDia from './VistaDia'
 import VistaMes from './VistaMes'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
+import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
 
 const DEFAULT_HORA_INICIO = 7
 const DEFAULT_HORA_FIN = 21
@@ -329,6 +330,10 @@ export default function AgendaSemanal({
     const entrevistasDia = entrevistas.filter(
       (e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia) && e.estado !== 'cancelada'
     )
+    const layoutTurnos = calcularLayoutTurnos(lista.map((t) => {
+      const d = parseISO(t.fecha_hora)
+      return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
+    }))
     return (
       <div className="flex-1 relative">
         {HORAS.map((hora) => (
@@ -389,16 +394,23 @@ export default function AgendaSemanal({
           const top = getTopOffset(turno.fecha_hora, hi)
           const height = Math.max(getHeight(turno.duracion_min), 28)
           const p = turno.paciente
+          const { columna, totalColumnas } = layoutTurnos.get(turno.id) ?? { columna: 0, totalColumnas: 1 }
+          const anchoPct = 100 / totalColumnas
           return (
             <div
               key={turno.id}
               className={cn(
-                'absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer border text-xs',
+                'absolute rounded-md px-2 py-1 cursor-pointer border text-xs',
                 'hover:shadow-md transition-shadow overflow-hidden',
                 ESTADO_TURNO_COLORS[turno.estado],
                 turno.es_sobreturno && 'border-l-2 border-l-amber-500'
               )}
-              style={{ top: `${top}px`, height: `${height}px` }}
+              style={{
+                top: `${top}px`,
+                height: `${height}px`,
+                left: `calc(${anchoPct * columna}% + 2px)`,
+                width: `calc(${anchoPct}% - 4px)`,
+              }}
               onClick={(e) => { e.stopPropagation(); setTurnoSeleccionado(turno) }}
             >
               <div className="flex items-center gap-1 font-semibold truncate">

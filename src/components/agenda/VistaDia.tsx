@@ -4,6 +4,7 @@ import { addDays, subDays, format, isToday, isSameDay, parseISO } from 'date-fns
 import { es } from 'date-fns/locale'
 import type { Turno, Entrevista } from '@/types/database'
 import { cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT, formatNombreCompleto } from '@/lib/utils'
+import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
 
 type GoogleEventSerialized = { id: string; titulo: string; inicio: string; fin: string }
 
@@ -49,6 +50,10 @@ export default function VistaDia({
   const entrevistasDia = entrevistas.filter(
     (e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia) && e.estado !== 'cancelada'
   )
+  const layoutTurnos = calcularLayoutTurnos(turnosDia.map((t) => {
+    const d = parseISO(t.fecha_hora)
+    return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
+  }))
   const gEventsDia = googleEvents.filter((e) => {
     if (!isSameDay(new Date(e.inicio), dia)) return false
     const inicio = new Date(e.inicio)
@@ -191,15 +196,22 @@ export default function VistaDia({
               const top = getTopOffsetISO(turno.fecha_hora, hi)
               const height = Math.max(getHeight(turno.duracion_min), 28)
               const p = turno.paciente
+              const { columna, totalColumnas } = layoutTurnos.get(turno.id) ?? { columna: 0, totalColumnas: 1 }
+              const anchoPct = 100 / totalColumnas
               return (
                 <div
                   key={turno.id}
                   className={cn(
-                    'absolute left-0.5 right-0.5 rounded-md px-2 py-1 cursor-pointer border text-xs hover:shadow-md transition-shadow overflow-hidden',
+                    'absolute rounded-md px-2 py-1 cursor-pointer border text-xs hover:shadow-md transition-shadow overflow-hidden',
                     ESTADO_TURNO_COLORS[turno.estado],
                     turno.es_sobreturno && 'border-l-2 border-l-amber-500'
                   )}
-                  style={{ top: `${top}px`, height: `${height}px` }}
+                  style={{
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    left: `calc(${anchoPct * columna}% + 2px)`,
+                    width: `calc(${anchoPct}% - 4px)`,
+                  }}
                   onClick={(e) => { e.stopPropagation(); onTurnoClick(turno) }}
                 >
                   <div className="flex items-center gap-1 font-semibold truncate">
