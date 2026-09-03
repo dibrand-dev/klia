@@ -18,6 +18,7 @@ function dayWindow(daysFromNow: number) {
 }
 
 export async function GET(req: NextRequest) {
+  console.log('CRON_SECRET length:', process.env.CRON_SECRET?.length ?? 'undefined')
   const isVercelCron = req.headers.get('x-vercel-cron') === '1'
   const auth = req.headers.get('authorization')
   if (!isVercelCron && auth !== `Bearer ${process.env.CRON_SECRET}`) {
