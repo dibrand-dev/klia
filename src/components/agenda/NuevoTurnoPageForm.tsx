@@ -528,11 +528,11 @@ export default function NuevoTurnoPageForm({
 
         <ConfirmDialog
           open={!!conflictoPendiente}
-          title="Conflicto de horario"
+          title="Ya hay un turno en ese horario"
           message={conflictoPendiente?.mensaje ?? ''}
-          confirmLabel="Crear igual"
+          confirmLabel="Agendar como sobreturno"
           cancelLabel="Cancelar"
-          variant="warning"
+          variant="default"
           onConfirm={confirmarSobreturno}
           onCancel={cancelarSobreturno}
         />
@@ -836,11 +836,11 @@ export default function NuevoTurnoPageForm({
 
       <ConfirmDialog
         open={!!conflictoPendiente}
-        title="Conflicto de horario"
+        title="Ya hay un turno en ese horario"
         message={conflictoPendiente?.mensaje ?? ''}
-        confirmLabel="Crear igual"
+        confirmLabel="Agendar como sobreturno"
         cancelLabel="Cancelar"
-        variant="warning"
+        variant="default"
         onConfirm={confirmarSobreturno}
         onCancel={cancelarSobreturno}
       />
