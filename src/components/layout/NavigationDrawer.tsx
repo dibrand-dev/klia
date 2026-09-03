@@ -38,6 +38,7 @@ export default function NavigationDrawer({
   onClose,
   esColaborador = false,
   nombrePropio,
+  veCobros = true,
 }: {
   profile: Profile | null
   modulos: ModuloConfig[]
@@ -46,6 +47,7 @@ export default function NavigationDrawer({
   onClose?: () => void
   esColaborador?: boolean
   nombrePropio?: string
+  veCobros?: boolean
 }) {
   const pathname = usePathname()
   const plan = profile?.plan ?? ''
@@ -62,7 +64,9 @@ export default function NavigationDrawer({
 
   const navItems = [
     ALWAYS_ITEMS[0], // Dashboard
-    ...MODULE_ITEMS.filter(item => puedeAcceder(item.moduloId, plan, modulos)),
+    ...MODULE_ITEMS
+      .filter(item => puedeAcceder(item.moduloId, plan, modulos))
+      .filter(item => !(item.moduloId === 'cobros' && esColaborador && !veCobros)),
     ALWAYS_ITEMS[1], // Ajustes
   ]
 

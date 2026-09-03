@@ -4,6 +4,7 @@ import type { Database } from '@/types/database'
 export interface TerapeutaEfectivo {
   terapeutaId: string
   esColaborador: boolean
+  veCobros: boolean
 }
 
 // Resuelve de quién son los datos que tiene que ver la sesión actual: del propio
@@ -19,15 +20,15 @@ export async function getEffectiveTerapeutaIdServer(
 
   const { data: colaboracion } = await supabase
     .from('colaboradores')
-    .select('profesional_id')
+    .select('profesional_id, ve_cobros')
     .eq('colaborador_id', user.id)
     .eq('activo', true)
     .eq('invitacion_aceptada', true)
     .maybeSingle()
 
   if (colaboracion) {
-    return { terapeutaId: colaboracion.profesional_id, esColaborador: true }
+    return { terapeutaId: colaboracion.profesional_id, esColaborador: true, veCobros: colaboracion.ve_cobros }
   }
 
-  return { terapeutaId: user.id, esColaborador: false }
+  return { terapeutaId: user.id, esColaborador: false, veCobros: true }
 }

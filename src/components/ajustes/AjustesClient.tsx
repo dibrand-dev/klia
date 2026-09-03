@@ -36,6 +36,8 @@ interface Props {
   cobrosMoneda: string
   cobrosMessagePaciente: string
   esColaborador?: boolean
+  tieneColaboradoraActiva?: boolean
+  veCobrosColaborador?: boolean
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -204,7 +206,7 @@ const DIAS_SEMANA_CONFIG = [
 ]
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tieneColaboradoraActiva = false, veCobrosColaborador = true }: Props) {
   const mostrarColaboradoras = profile.plan === 'premium' && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
@@ -267,6 +269,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   )
   const [avisoDeudaLoading, setAvisoDeudaLoading] = useState(false)
   const [avisoDeudaSaved, setAvisoDeudaSaved] = useState(false)
+
+  // Permiso ve_cobros de la asistente
+  const [veCobros, setVeCobros] = useState<boolean>(veCobrosColaborador)
+  const [veCobrosLoading, setVeCobrosLoading] = useState(false)
+  const [veCobrosSaved, setVeCobrosSaved] = useState(false)
 
   // Política de cobros state
   const [cobrar, setCobrar] = useState(profile.cobrar_inasistencias ?? false)
@@ -449,6 +456,22 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setAvisoDeudaLoading(false)
     setAvisoDeudaSaved(true)
     setTimeout(() => setAvisoDeudaSaved(false), 2000)
+  }
+
+  // ── Permiso ve_cobros toggle ──────────────────────────────────────
+  async function handleVeCobrosToggle(val: boolean) {
+    setVeCobrosLoading(true)
+    const res = await fetch('/api/colaboradores/permisos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ve_cobros: val }),
+    })
+    if (res.ok) {
+      setVeCobros(val)
+      setVeCobrosSaved(true)
+      setTimeout(() => setVeCobrosSaved(false), 2000)
+    }
+    setVeCobrosLoading(false)
   }
 
   // ── Política toggle ────────────────────────────────────────────────
@@ -1470,6 +1493,23 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 </div>
               </div>
               <ColaboradorasConfig />
+              {tieneColaboradoraActiva && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 0 0', marginTop: 18, borderTop: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Asistente puede ver Cobros</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Si lo desactivás, tu asistente deja de ver el módulo de Cobros y el link desaparece de su menú.</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {veCobrosSaved && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                        Guardado
+                      </span>
+                    )}
+                    <Toggle on={veCobros} onChange={() => handleVeCobrosToggle(!veCobros)} disabled={veCobrosLoading} />
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
