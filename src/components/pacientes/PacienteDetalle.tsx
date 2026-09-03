@@ -24,17 +24,7 @@ import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
 import RxGrid from '@/components/oftalmologia/RxGrid'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
-
-function estadoAutorizacion(fechaHasta: string | null): { label: string; tono: 'vencida' | 'porVencer' } | null {
-  if (!fechaHasta) return null
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const vencimiento = new Date(fechaHasta + 'T00:00:00')
-  const dias = Math.round((vencimiento.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-  if (dias < 0) return { label: 'Autorización vencida', tono: 'vencida' }
-  if (dias <= 7) return { label: dias === 0 ? 'Vence hoy' : `Vence en ${dias} día${dias === 1 ? '' : 's'}`, tono: 'porVencer' }
-  return null
-}
+import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 
 const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
@@ -390,9 +380,27 @@ export default function PacienteDetalle({
     router.refresh()
   }
 
+  const autorizacionEstado = estadoAutorizacion(paciente.autorizacion_vigencia_hasta)
+  const autorizacionBanner = autorizacionEstado ? (
+    <div
+      className={cn(
+        'flex items-center gap-2.5 px-4 py-3 rounded-xl mb-4 text-sm font-medium',
+        autorizacionEstado.tono === 'vencida'
+          ? 'bg-red-50 text-red-700 border border-red-200'
+          : 'bg-amber-50 text-amber-800 border border-amber-200'
+      )}
+    >
+      <span className="material-symbols-outlined text-[18px]">
+        {autorizacionEstado.tono === 'vencida' ? 'error' : 'warning'}
+      </span>
+      Autorización de obra social — {autorizacionEstado.label.toLowerCase()}
+    </div>
+  ) : null
+
   if (editando) {
     return (
       <>
+        {autorizacionBanner}
         <datalist id="pd-paises">
           {PAISES.map((p) => <option key={p} value={p} />)}
         </datalist>
@@ -765,39 +773,39 @@ export default function PacienteDetalle({
   }
 
   if (activeTab === 'resumen') {
-    return <ResumenTab paciente={paciente} medicaciones={medicacionesIniciales} />
+    return <>{autorizacionBanner}<ResumenTab paciente={paciente} medicaciones={medicacionesIniciales} /></>
   }
 
   if (activeTab === 'interconsultas') {
-    return <InterconsultasTab paciente={paciente} interconsultas={interconsultas} />
+    return <>{autorizacionBanner}<InterconsultasTab paciente={paciente} interconsultas={interconsultas} /></>
   }
 
   if (activeTab === 'facturacion') {
-    return <AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} profesionalData={profesionalData} />
+    return <>{autorizacionBanner}<AsistenciaTab paciente={paciente} turnos={turnos} profObrasSociales={profObrasSociales} profesionalCobrarInasistencias={profesionalCobrarInasistencias} profesionalData={profesionalData} /></>
   }
 
   if (activeTab === 'informes') {
-    return <InformesTab paciente={paciente} profesionalData={profesionalData ?? null} turnoRecurrente={turnoRecurrente ?? null} />
+    return <>{autorizacionBanner}<InformesTab paciente={paciente} profesionalData={profesionalData ?? null} turnoRecurrente={turnoRecurrente ?? null} /></>
   }
 
   if (activeTab === 'admision') {
-    return <AdmisionTab pacienteId={paciente.id} />
+    return <>{autorizacionBanner}<AdmisionTab pacienteId={paciente.id} /></>
   }
 
   if (activeTab === 'archivos') {
-    return <ArchivosTab pacienteId={paciente.id} pacienteNombre={`${paciente.nombre} ${paciente.apellido}`} />
+    return <>{autorizacionBanner}<ArchivosTab pacienteId={paciente.id} pacienteNombre={`${paciente.nombre} ${paciente.apellido}`} /></>
   }
 
   if (activeTab === 'composicion') {
-    return <TabComposicionCorporal pacienteId={paciente.id} />
+    return <>{autorizacionBanner}<TabComposicionCorporal pacienteId={paciente.id} /></>
   }
 
   if (activeTab === 'refraccion') {
-    return <RxGrid pacienteId={paciente.id} variant="standalone" />
+    return <>{autorizacionBanner}<RxGrid pacienteId={paciente.id} variant="standalone" /></>
   }
 
   if (activeTab && activeTab !== 'datos') {
-    return <TabEmptyState tab={activeTab} />
+    return <>{autorizacionBanner}<TabEmptyState tab={activeTab} /></>
   }
 
   const edad = paciente.fecha_nacimiento
@@ -811,6 +819,8 @@ export default function PacienteDetalle({
   const generoLabel: Record<string, string> = { M: 'Masculino', F: 'Femenino', NB: 'No Binario' }
 
   return (
+    <>
+    {autorizacionBanner}
     <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
       <KlinCard title="Información personal">
         <Kv
@@ -888,6 +898,7 @@ export default function PacienteDetalle({
 
       <FirmaPacienteCard paciente={paciente} />
     </div>
+    </>
   )
 }
 

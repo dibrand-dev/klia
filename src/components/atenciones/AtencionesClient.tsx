@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import ResumenIA from './ResumenIA'
+import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 
 type Paciente = {
   id: string
@@ -12,6 +13,7 @@ type Paciente = {
   os_config_id: string | null
   codigo_diagnostico: string | null
   modalidad_tratamiento: string | null
+  autorizacion_vigencia_hasta: string | null
 }
 
 type Turno = {
@@ -240,6 +242,7 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
               const edad = calcEdad(p?.fecha_nacimiento ?? null)
               const os = p?.obra_social || 'Particular'
               const hasCache = !!turno.ai_summary
+              const autorizacion = estadoAutorizacion(p?.autorizacion_vigencia_hasta ?? null)
 
               return (
                 <tr
@@ -262,7 +265,19 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
                         {ini}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-on-surface text-[13.5px] truncate">{nombre}</p>
+                        <p className="font-semibold text-on-surface text-[13.5px] truncate flex items-center gap-1.5">
+                          {nombre}
+                          {autorizacion && (
+                            <span
+                              className={`material-symbols-outlined text-[15px] flex-shrink-0 ${
+                                autorizacion.tono === 'vencida' ? 'text-red-600' : 'text-amber-600'
+                              }`}
+                              title={`Autorización de obra social: ${autorizacion.label.toLowerCase()}`}
+                            >
+                              warning
+                            </span>
+                          )}
+                        </p>
                         <p className="text-[11.5px] text-on-surface-variant mt-0.5">
                           {p?.modalidad_tratamiento || p?.codigo_diagnostico || 'Sin datos adicionales'}
                         </p>

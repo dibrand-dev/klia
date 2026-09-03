@@ -45,7 +45,8 @@ export default async function AtencionesPage() {
         obra_social,
         os_config_id,
         codigo_diagnostico,
-        modalidad_tratamiento
+        modalidad_tratamiento,
+        autorizacion_vigencia_hasta
       )
     `)
     .eq('terapeuta_id', efectivo.terapeutaId)

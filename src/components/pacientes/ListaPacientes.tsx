@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Profile } from '@/types/database'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
+import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 
 type PacienteListado = Paciente & { ultima_cita: string | null }
 
@@ -296,6 +297,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
   const motivo = paciente.motivo_consulta?.trim() || paciente.notas?.split('\n')[0]?.trim() || null
   const ultimaCitaStr = formatUltimaCita(paciente.ultima_cita)
+  const autorizacion = estadoAutorizacion(paciente.autorizacion_vigencia_hasta)
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -383,16 +385,27 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
       </div>
 
       {/* Card footer */}
-      <div className="pt-4 border-t border-surface-container-low flex justify-between items-center">
-        {paciente.activo ? (
-          <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">
-            EN TRATAMIENTO
-          </span>
-        ) : (
-          <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-surface-container text-on-surface-variant">
-            ALTA
-          </span>
-        )}
+      <div className="pt-4 border-t border-surface-container-low flex justify-between items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {paciente.activo ? (
+            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">
+              EN TRATAMIENTO
+            </span>
+          ) : (
+            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-surface-container text-on-surface-variant">
+              ALTA
+            </span>
+          )}
+          {autorizacion && (
+            <span
+              className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${
+                autorizacion.tono === 'vencida' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {autorizacion.label}
+            </span>
+          )}
+        </div>
         <span className="text-sm font-semibold text-primary group-hover:text-primary-container transition-colors">
           Ver Perfil
         </span>
