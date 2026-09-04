@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import AtencionesClient from '@/components/atenciones/AtencionesClient'
 import { getModulosConfig, puedeAcceder } from '@/lib/modulos'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import type { PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Atenciones del Día — KLIA' }
 
@@ -27,6 +28,35 @@ export default async function AtencionesPage() {
   const inicioHoyUTC = new Date(`${hoyArgStr}T03:00:00.000Z`)
   const finHoyUTC = new Date(inicioHoyUTC.getTime() + 24 * 60 * 60 * 1000)
 
+  // Mapa de pacientes para colaboradora — el join embebido de abajo no resuelve
+  // para ella por RLS (sin policy de SELECT directa sobre `pacientes`), mismo
+  // patrón ya usado en Dashboard/Cobros. codigo_diagnostico queda fuera del RPC
+  // a propósito (campo clínico) — cae al fallback existente en AtencionesClient.
+  const mapaPacientesColaborador = new Map<string, {
+    nombre: string
+    apellido: string
+    fecha_nacimiento: string | null
+    obra_social: string | null
+    os_config_id: string | null
+    modalidad_tratamiento: string | null
+    autorizacion_vigencia_hasta: string | null
+  }>()
+  if (efectivo.esColaborador) {
+    const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
+    const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    for (const p of todosPacientes) {
+      mapaPacientesColaborador.set(p.id, {
+        nombre: p.nombre,
+        apellido: p.apellido,
+        fecha_nacimiento: p.fecha_nacimiento,
+        obra_social: p.obra_social,
+        os_config_id: p.os_config_id,
+        modalidad_tratamiento: p.modalidad_tratamiento,
+        autorizacion_vigencia_hasta: p.autorizacion_vigencia_hasta,
+      })
+    }
+  }
+
   const { data: turnos } = await supabase
     .from('turnos')
     .select(`
@@ -37,6 +67,7 @@ export default async function AtencionesPage() {
       estado,
       ai_summary,
       estado_atencion,
+      paciente_id,
       paciente:pacientes (
         id,
         nombre,
@@ -56,10 +87,15 @@ export default async function AtencionesPage() {
     .order('fecha_hora')
 
   type TurnoConPaciente = Parameters<typeof AtencionesClient>[0]['turnos'][number]
-  const turnosTyped = (turnos ?? []).map(t => ({
-    ...t,
-    paciente: Array.isArray(t.paciente) ? t.paciente[0] ?? null : t.paciente,
-  })) as TurnoConPaciente[]
+  const turnosTyped = (turnos ?? []).map(t => {
+    const pacienteEmbebido = Array.isArray(t.paciente) ? t.paciente[0] ?? null : t.paciente
+    const paciente = efectivo.esColaborador
+      ? (mapaPacientesColaborador.get(t.paciente_id)
+        ? { id: t.paciente_id, codigo_diagnostico: null, ...mapaPacientesColaborador.get(t.paciente_id) }
+        : null)
+      : pacienteEmbebido
+    return { ...t, paciente }
+  }) as TurnoConPaciente[]
 
   return <AtencionesClient turnos={turnosTyped} hoyArgStr={hoyArgStr} />
 }
