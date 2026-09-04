@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data: colaboradores, error } = await supabase
     .from('colaboradores')
-    .select('id, colaborador_id, activo, invitacion_aceptada, invitado_en, aceptado_en')
+    .select('id, colaborador_id, activo, invitacion_aceptada, invitado_en, aceptado_en, ve_cobros')
     .eq('profesional_id', user.id)
     .order('invitado_en', { ascending: false })
 
@@ -42,6 +42,7 @@ export async function GET() {
       invitacion_aceptada: c.invitacion_aceptada,
       invitado_en: c.invitado_en,
       aceptado_en: c.aceptado_en,
+      ve_cobros: c.ve_cobros,
     }
   })
 

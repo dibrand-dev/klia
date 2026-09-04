@@ -848,6 +848,7 @@ export type Database = {
           rol: string
           invitacion_aceptada: boolean
           activo: boolean
+          ve_cobros: boolean
           invitado_en: string
           aceptado_en: string | null
           created_at: string
@@ -859,6 +860,7 @@ export type Database = {
           rol?: string
           invitacion_aceptada?: boolean
           activo?: boolean
+          ve_cobros?: boolean
           invitado_en?: string
           aceptado_en?: string | null
           created_at?: string
@@ -870,6 +872,7 @@ export type Database = {
           rol?: string
           invitacion_aceptada?: boolean
           activo?: boolean
+          ve_cobros?: boolean
           invitado_en?: string
           aceptado_en?: string | null
           created_at?: string

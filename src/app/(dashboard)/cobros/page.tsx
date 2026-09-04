@@ -16,6 +16,7 @@ export default async function CobrosPage() {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
   if (!efectivo) redirect('/login')
+  if (efectivo.esColaborador && !efectivo.veCobros) redirect('/dashboard')
 
   const [{ data: profile }, modulos] = await Promise.all([
     supabase

@@ -47,7 +47,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { esColaborador, loading: loadingIdentidad } = useEffectiveTerapeutaId()
+  const { esColaborador, veCobros, loading: loadingIdentidad } = useEffectiveTerapeutaId()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [nuevoTurnoOpen, setNuevoTurnoOpen] = useState(false)
   const [nuevoPacienteId, setNuevoPacienteId] = useState<string | undefined>(undefined)
@@ -163,7 +163,7 @@ export default function AppShell({
       )}
 
       {/* Navigation Drawer */}
-      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} nombrePropio={nombrePropio} />
+      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} nombrePropio={nombrePropio} veCobros={veCobros} />
 
       {/* Main content */}
       <main

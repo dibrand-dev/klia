@@ -7,6 +7,7 @@ import type { TerapeutaEfectivo } from './getEffectiveTerapeutaId'
 interface EstadoTerapeutaEfectivo {
   terapeutaId: string | null
   esColaborador: boolean
+  veCobros: boolean
   loading: boolean
 }
 
@@ -29,7 +30,7 @@ export function useEffectiveTerapeutaId(): EstadoTerapeutaEfectivo {
 
       const { data: colaboracion } = await supabase
         .from('colaboradores')
-        .select('profesional_id')
+        .select('profesional_id, ve_cobros')
         .eq('colaborador_id', user.id)
         .eq('activo', true)
         .eq('invitacion_aceptada', true)
@@ -39,8 +40,8 @@ export function useEffectiveTerapeutaId(): EstadoTerapeutaEfectivo {
 
       setEstado(
         colaboracion
-          ? { terapeutaId: colaboracion.profesional_id, esColaborador: true }
-          : { terapeutaId: user.id, esColaborador: false }
+          ? { terapeutaId: colaboracion.profesional_id, esColaborador: true, veCobros: colaboracion.ve_cobros }
+          : { terapeutaId: user.id, esColaborador: false, veCobros: true }
       )
       setLoading(false)
     }
@@ -52,6 +53,7 @@ export function useEffectiveTerapeutaId(): EstadoTerapeutaEfectivo {
   return {
     terapeutaId: estado?.terapeutaId ?? null,
     esColaborador: estado?.esColaborador ?? false,
+    veCobros: estado?.veCobros ?? true,
     loading,
   }
 }
