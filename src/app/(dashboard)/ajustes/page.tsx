@@ -16,13 +16,11 @@ export default async function AjustesPage() {
     { data: obrasSociales },
     { data: suscripcion },
     { data: googleTokens },
-    { data: colaboradorasActivas },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', efectivo.terapeutaId).single(),
     supabase.from('profesional_obras_sociales').select('*').eq('terapeuta_id', efectivo.terapeutaId).order('nombre'),
     supabase.from('suscripciones').select('estado, plan, modalidad, suscripcion_fin, mp_preapproval_id, monto').eq('terapeuta_id', efectivo.terapeutaId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('google_calendar_tokens').select('sync_enabled').eq('terapeuta_id', efectivo.terapeutaId).maybeSingle(),
-    supabase.from('colaboradores').select('ve_cobros').eq('profesional_id', efectivo.terapeutaId).eq('activo', true).eq('invitacion_aceptada', true),
   ])
 
   if (!profile) redirect('/login')
@@ -45,8 +43,6 @@ export default async function AjustesPage() {
       cobrosMoneda={(p.cobros_moneda as string | null) ?? 'ARS'}
       cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
       esColaborador={efectivo.esColaborador}
-      tieneColaboradoraActiva={(colaboradorasActivas?.length ?? 0) > 0}
-      veCobrosColaborador={colaboradorasActivas?.[0]?.ve_cobros ?? true}
     />
   )
 }

@@ -11,6 +11,35 @@ type Colaboradora = {
   invitacion_aceptada: boolean
   invitado_en: string
   aceptado_en: string | null
+  ve_cobros: boolean
+}
+
+function Toggle({ on, onChange, disabled }: { on: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={disabled}
+      aria-pressed={on}
+      style={{
+        position: 'relative', width: 34, height: 20, flexShrink: 0,
+        background: on ? 'var(--ink)' : 'var(--border-strong)',
+        borderRadius: 100, cursor: disabled ? 'default' : 'pointer',
+        border: 'none', transition: 'background .15s ease',
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 2,
+        left: on ? 16 : 2,
+        width: 16, height: 16, borderRadius: '50%',
+        background: 'white',
+        transition: 'left .15s ease',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        display: 'block',
+      }} />
+    </button>
+  )
 }
 
 const inputCls = 'w-full bg-surface-container-high border border-outline-variant/20 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors'
@@ -39,6 +68,7 @@ export default function ColaboradorasConfig() {
   const [inviting, setInviting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [veCobrosLoadingId, setVeCobrosLoadingId] = useState<string | null>(null)
 
   async function cargarLista() {
     setLoading(true)
@@ -109,6 +139,20 @@ export default function ColaboradorasConfig() {
     await cargarLista()
   }
 
+  async function handleVeCobrosToggle(c: Colaboradora) {
+    const nuevo = !c.ve_cobros
+    setVeCobrosLoadingId(c.id)
+    const res = await fetch('/api/colaboradores/permisos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ colaboradorId: c.id, ve_cobros: nuevo }),
+    })
+    if (res.ok) {
+      setList((prev) => prev.map((x) => x.id === c.id ? { ...x, ve_cobros: nuevo } : x))
+    }
+    setVeCobrosLoadingId(null)
+  }
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm p-5">
@@ -149,6 +193,16 @@ export default function ColaboradorasConfig() {
                 </div>
                 {c.email && <p className="text-xs text-on-surface-variant mt-0.5">{c.email}</p>}
               </div>
+              {c.activo && c.invitacion_aceptada && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-xs text-on-surface-variant whitespace-nowrap">Ve Cobros</span>
+                  <Toggle
+                    on={c.ve_cobros}
+                    onChange={() => handleVeCobrosToggle(c)}
+                    disabled={veCobrosLoadingId === c.id}
+                  />
+                </div>
+              )}
               {c.activo && !c.invitacion_aceptada && (
                 <button
                   onClick={() => handleReenviar(c)}

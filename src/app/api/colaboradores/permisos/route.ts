@@ -3,16 +3,17 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database'
 
-// Actualiza ve_cobros en todas las colaboradoras activas del profesional logueado —
-// hoy es un toggle único desde Ajustes, no por colaboradora individual.
+// Actualiza ve_cobros de una colaboradora puntual — filtra por id además de
+// profesional_id, así ninguna colaboradora puede modificar el permiso de otra
+// fila que no sea de su propio profesional.
 export async function PATCH(req: NextRequest) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { ve_cobros } = await req.json() as { ve_cobros?: boolean }
-  if (typeof ve_cobros !== 'boolean') {
-    return NextResponse.json({ error: 'Falta ve_cobros' }, { status: 400 })
+  const { colaboradorId, ve_cobros } = await req.json() as { colaboradorId?: string; ve_cobros?: boolean }
+  if (!colaboradorId || typeof ve_cobros !== 'boolean') {
+    return NextResponse.json({ error: 'Faltan colaboradorId o ve_cobros' }, { status: 400 })
   }
 
   const db = createServiceClient<Database>(
@@ -23,8 +24,8 @@ export async function PATCH(req: NextRequest) {
   const { error } = await db
     .from('colaboradores')
     .update({ ve_cobros })
+    .eq('id', colaboradorId)
     .eq('profesional_id', user.id)
-    .eq('activo', true)
 
   if (error) {
     console.error('[colaboradores/permisos] Error:', error)
