@@ -35,9 +35,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
   }
 
+  // Sincroniza con el campo operativo `estado_atencion` cuando corresponde —
+  // 'programado'/'cancelado' no tienen equivalente operativo, se dejan igual.
+  const update: { estado: string; estado_atencion?: string } = { estado }
+  if (estado === 'realizado') update.estado_atencion = 'atendido'
+  if (estado === 'no_asistio') update.estado_atencion = 'ausente'
+
   const { data: updated, error: updateError } = await supabase
     .from('turnos')
-    .update({ estado })
+    .update(update)
     .eq('id', turno_id)
     .select()
     .single()

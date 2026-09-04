@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: turno, error: fetchError } = await supabase
     .from('turnos')
-    .select('id, terapeuta_id')
+    .select('id, terapeuta_id, estado')
     .eq('id', turno_id)
     .single()
 
@@ -35,9 +35,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
   }
 
+  // Sincroniza con el campo de negocio `estado` — nunca pisa un turno ya cancelado.
+  const update: { estado_atencion: string; estado?: string } = { estado_atencion }
+  if (turno.estado !== 'cancelado') {
+    if (estado_atencion === 'atendido') update.estado = 'realizado'
+    if (estado_atencion === 'ausente') update.estado = 'no_asistio'
+  }
+
   const { data: updated, error: updateError } = await supabase
     .from('turnos')
-    .update({ estado_atencion })
+    .update(update)
     .eq('id', turno_id)
     .select()
     .single()
