@@ -36,11 +36,13 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Sincroniza con el campo operativo `estado_atencion` cuando corresponde —
-  // 'pendiente'/'confirmado'/'programado'/'cancelado' no tienen equivalente
-  // operativo, se dejan igual.
-  const update: { estado: string; estado_atencion?: string; motivo_cancelacion?: string | null } = { estado }
+  // 'programado'/'cancelado' no tienen equivalente operativo, se dejan igual.
+  // 'pendiente'/'confirmado' sí resetean estado_atencion: son una corrección
+  // explícita de error, así que a diferencia de 'cancelado' no llevan guarda.
+  const update: { estado: string; estado_atencion?: string | null; motivo_cancelacion?: string | null } = { estado }
   if (estado === 'realizado') update.estado_atencion = 'atendido'
   if (estado === 'no_asistio') update.estado_atencion = 'ausente'
+  if (estado === 'pendiente' || estado === 'confirmado') update.estado_atencion = null
   if (estado === 'cancelado' && motivo_cancelacion !== undefined) update.motivo_cancelacion = motivo_cancelacion
 
   const { data: updated, error: updateError } = await supabase
