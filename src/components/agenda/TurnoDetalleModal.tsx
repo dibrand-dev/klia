@@ -421,12 +421,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   async function confirmarCancelacion() {
     setLoading(true)
     setError(null)
-    const supabase = createClient()
-    const { error: dbError } = await supabase
-      .from('turnos')
-      .update({ estado: 'cancelado', motivo_cancelacion: motivoCancelacion || null })
-      .eq('id', turno.id)
-    if (dbError) { setError('Error al cancelar.'); setLoading(false); return }
+    const res = await fetch('/api/turnos/estado', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno_id: turno.id, estado: 'cancelado', motivo_cancelacion: motivoCancelacion || null }),
+    })
+    if (!res.ok) { setError('Error al cancelar.'); setLoading(false); return }
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -440,9 +440,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   async function marcarRealizado(conNota: boolean, modoNota: 'texto' | 'voz' = 'texto') {
     setLoading(true)
     setError(null)
-    const supabase = createClient()
-    const { error: dbError } = await supabase.from('turnos').update({ estado: 'realizado' }).eq('id', turno.id)
-    if (dbError) { setError('Error al actualizar estado.'); setLoading(false); return }
+    const res = await fetch('/api/turnos/estado', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno_id: turno.id, estado: 'realizado' }),
+    })
+    if (!res.ok) { setError('Error al actualizar estado.'); setLoading(false); return }
     onTurnoActualizado({ ...turno, estado: 'realizado' })
     if (conNota) {
       window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', {
@@ -458,8 +461,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     if (nuevoEstado === 'cancelado') { setModo('cancelando'); return }
     if (nuevoEstado === 'realizado') { setModo('realizando'); return }
     setLoading(true)
-    const supabase = createClient()
-    await supabase.from('turnos').update({ estado: nuevoEstado }).eq('id', turno.id)
+    const res = await fetch('/api/turnos/estado', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno_id: turno.id, estado: nuevoEstado }),
+    })
+    if (!res.ok) { setError('Error al actualizar estado.'); setLoading(false); return }
     onTurnoActualizado({ ...turno, estado: nuevoEstado })
     setLoading(false)
     router.refresh()

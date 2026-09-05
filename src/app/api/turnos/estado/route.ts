@@ -4,14 +4,14 @@ import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaI
 
 export const runtime = 'nodejs'
 
-const ESTADOS_VALIDOS = ['realizado', 'no_asistio', 'cancelado', 'programado']
+const ESTADOS_VALIDOS = ['pendiente', 'confirmado', 'realizado', 'no_asistio', 'cancelado', 'programado']
 
 export async function PATCH(req: NextRequest) {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
   if (!efectivo) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { turno_id, estado } = await req.json() as { turno_id: string; estado: string }
+  const { turno_id, estado, motivo_cancelacion } = await req.json() as { turno_id: string; estado: string; motivo_cancelacion?: string | null }
 
   if (!turno_id || !estado) {
     return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 })
@@ -36,10 +36,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Sincroniza con el campo operativo `estado_atencion` cuando corresponde —
-  // 'programado'/'cancelado' no tienen equivalente operativo, se dejan igual.
-  const update: { estado: string; estado_atencion?: string } = { estado }
+  // 'pendiente'/'confirmado'/'programado'/'cancelado' no tienen equivalente
+  // operativo, se dejan igual.
+  const update: { estado: string; estado_atencion?: string; motivo_cancelacion?: string | null } = { estado }
   if (estado === 'realizado') update.estado_atencion = 'atendido'
   if (estado === 'no_asistio') update.estado_atencion = 'ausente'
+  if (estado === 'cancelado' && motivo_cancelacion !== undefined) update.motivo_cancelacion = motivo_cancelacion
 
   const { data: updated, error: updateError } = await supabase
     .from('turnos')
