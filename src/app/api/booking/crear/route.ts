@@ -3,8 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
-
-const ARGENTINA_TZ = 'America/Argentina/Buenos_Aires' // TODO: leer de profiles.timezone cuando haya profesionales fuera de Argentina
+import { ARGENTINA_TZ } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

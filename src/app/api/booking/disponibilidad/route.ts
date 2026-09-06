@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
+import { fromZonedTime, toZonedTime } from 'date-fns-tz'
 import { getFeriados, getFeriadosProvinciales, esFeriado } from '@/lib/feriados'
+import { ARGENTINA_TZ } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -98,9 +100,9 @@ async function getAvailableSlots(
 
   if (futureSlots.length === 0) return []
 
-  // Get occupied turnos for this day
-  const dayStart = `${fecha}T00:00:00`
-  const dayEnd = `${fecha}T23:59:59`
+  // Get occupied turnos for this day (límites del día en hora Argentina, convertidos a UTC)
+  const dayStart = fromZonedTime(`${fecha}T00:00:00`, ARGENTINA_TZ).toISOString()
+  const dayEnd = fromZonedTime(`${fecha}T23:59:59`, ARGENTINA_TZ).toISOString()
 
   const [{ data: turnos }, { data: entrevistas }] = await Promise.all([
     db.from('turnos')
@@ -120,7 +122,7 @@ async function getAvailableSlots(
   const occupied: Array<[number, number]> = []
 
   for (const t of turnos ?? []) {
-    const d = parseISO(t.fecha_hora)
+    const d = toZonedTime(parseISO(t.fecha_hora), ARGENTINA_TZ)
     const slotStart = d.getHours() * 60 + d.getMinutes()
     occupied.push([slotStart, slotStart + (t.duracion_min ?? duracion)])
   }
