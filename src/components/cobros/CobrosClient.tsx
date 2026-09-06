@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import RegistrarPagoSlide from './RegistrarPagoSlide'
@@ -162,21 +163,42 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
   const [pagoSlide, setPagoSlide] = useState<{ turno: TurnoDeuda } | null>(null)
   const [detalleSlide, setDetalleSlide] = useState<{ paciente_id: string; nombre: string; apellido: string; os_nombre: string | null } | null>(null)
   const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set())
   const menuRef = useRef<HTMLDivElement>(null)
+  const menuPortalRef = useRef<HTMLDivElement>(null)
 
   function toggleExpand(pid: string) {
     setExpandedPatients(prev => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n })
   }
 
+  function abrirMenu(turnoId: string, e: React.MouseEvent<HTMLButtonElement>) {
+    if (openMenu === turnoId) { setOpenMenu(null); return }
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    setOpenMenu(turnoId)
+  }
+
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenu(null)
+      const target = e.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (menuPortalRef.current?.contains(target)) return
+      setOpenMenu(null)
     }
-    if (openMenu) document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    function cerrarPorScrollOResize() { setOpenMenu(null) }
+    if (openMenu) {
+      document.addEventListener('mousedown', handler)
+      window.addEventListener('scroll', cerrarPorScrollOResize, true)
+      window.addEventListener('resize', cerrarPorScrollOResize)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      window.removeEventListener('scroll', cerrarPorScrollOResize, true)
+      window.removeEventListener('resize', cerrarPorScrollOResize)
+    }
   }, [openMenu])
 
   const dateBoundaries = useMemo(() => {
@@ -658,15 +680,15 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                                   </button>
                                   <div style={{ position: 'relative' }} ref={isMenuOpen ? menuRef : undefined}>
                                     <button
-                                      onClick={() => setOpenMenu(prev => prev === t.id ? null : t.id)}
+                                      onClick={(e) => abrirMenu(t.id, e)}
                                       style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #E7E9EE', background: '#FFFFFF', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
                                     >
                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="#5B6472">
                                         <circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>
                                       </svg>
                                     </button>
-                                    {isMenuOpen && (
-                                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, minWidth: '200px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '10px', boxShadow: '0 8px 24px rgba(16,24,40,.08)', padding: '6px', zIndex: 25 }}>
+                                    {isMenuOpen && menuPos && createPortal(
+                                      <div ref={menuPortalRef} style={{ position: 'fixed', top: `${menuPos.top}px`, right: `${menuPos.right}px`, minWidth: '200px', background: '#FFFFFF', border: '1px solid #E7E9EE', borderRadius: '10px', boxShadow: '0 8px 24px rgba(16,24,40,.08)', padding: '6px', zIndex: 25 }}>
                                         <MenuBtn onClick={() => handleBonificar(t.id)}>
                                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="9"/></svg>
                                           Bonificar
@@ -684,7 +706,8 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.7"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
                                           Eliminar
                                         </MenuBtn>
-                                      </div>
+                                      </div>,
+                                      document.body
                                     )}
                                   </div>
                                 </div>
