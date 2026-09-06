@@ -208,7 +208,10 @@ export async function POST(req: NextRequest) {
 
     try {
       await sincronizarTurnoCreado(turno.id, profile.id)
-    } catch { /* non-critical — GCal sync failure must not break booking */ }
+    } catch (err) {
+      console.error('🔴 GCAL SYNC FAILED:', err instanceof Error ? err.message : err)
+      // non-critical — GCal sync failure must not break booking
+    }
 
     return NextResponse.json({
       hash,
