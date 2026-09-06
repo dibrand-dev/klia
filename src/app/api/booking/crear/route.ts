@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
+import { fromZonedTime } from 'date-fns-tz'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+
+const ARGENTINA_TZ = 'America/Argentina/Buenos_Aires' // TODO: leer de profiles.timezone cuando haya profesionales fuera de Argentina
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -172,7 +175,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Create turno
-  const fechaHora = `${fecha}T${hora}:00`
+  const fechaHoraLocal = `${fecha}T${hora}:00`
+  const fechaHora = fromZonedTime(fechaHoraLocal, ARGENTINA_TZ).toISOString()
   const modalidadMap: Record<string, string> = { online: 'videollamada', presencial: 'presencial', videollamada: 'videollamada', telefonica: 'telefonica' }
   const modalidadDb = (modalidadMap[modalidad ?? ''] ?? 'presencial') as 'presencial' | 'videollamada' | 'telefonica'
 
@@ -214,7 +218,7 @@ export async function POST(req: NextRequest) {
       mp_public_key: null,
       confirmado: true,
       turno_id: turno.id,
-      fecha_fmt: format(parseISO(fechaHora), "EEEE d 'de' MMMM yyyy"),
+      fecha_fmt: format(parseISO(fechaHoraLocal), "EEEE d 'de' MMMM yyyy"),
       hora,
       duracion,
       moneda,
