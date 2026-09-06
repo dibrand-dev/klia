@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import FirmaUploader from '@/components/ui/FirmaUploader'
+import MontoInput from '@/components/ui/MontoInput'
 import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
 import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
@@ -1419,7 +1420,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 ].map(({ label, value, set }) => (
                   <div key={label}>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
-                    <input type="number" min={0} value={value} onChange={e => set(e.target.value)} placeholder="0"
+                    <MontoInput name={label} value={value} onChange={set} placeholder="Ej: 70000"
                       style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 ))}
@@ -1428,7 +1429,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               {/* Requiere pago */}
               <ToggleRow
                 name="Requiere pago para confirmar"
-                desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago."
+                desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
                 on={bookingRequierePago}
                 onChange={() => setBookingRequierePago(v => !v)}
               />

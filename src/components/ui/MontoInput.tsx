@@ -8,6 +8,7 @@ interface MontoInputProps {
   onChange: (raw: string) => void
   placeholder?: string
   className?: string
+  style?: React.CSSProperties
 }
 
 function formatPesos(raw: string): string {
@@ -22,7 +23,7 @@ function formatPesos(raw: string): string {
   }).format(num)
 }
 
-export default function MontoInput({ name, value, onChange, placeholder, className }: MontoInputProps) {
+export default function MontoInput({ name, value, onChange, placeholder, className, style }: MontoInputProps) {
   const [focused, setFocused] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -42,6 +43,7 @@ export default function MontoInput({ name, value, onChange, placeholder, classNa
       onBlur={() => setFocused(false)}
       placeholder={placeholder ?? 'Ej: 15000'}
       className={className}
+      style={style}
     />
   )
 }
