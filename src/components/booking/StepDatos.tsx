@@ -169,8 +169,8 @@ export default function StepDatos({
         marginBottom: 18,
         boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-          <div style={{ paddingRight: 8 }}>
+        <div className="bk-nombre-apellido-grid">
+          <div className="bk-nombre-apellido-col">
             <InputField
               label="Nombre"
               id="bk-nombre"
@@ -180,7 +180,7 @@ export default function StepDatos({
               placeholder="Ana"
             />
           </div>
-          <div style={{ paddingLeft: 8 }}>
+          <div className="bk-nombre-apellido-col">
             <InputField
               label="Apellido"
               id="bk-apellido"
@@ -190,6 +190,30 @@ export default function StepDatos({
               placeholder="García"
             />
           </div>
+          <style jsx>{`
+            .bk-nombre-apellido-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 0;
+            }
+            .bk-nombre-apellido-col:first-child {
+              padding-right: 8px;
+            }
+            .bk-nombre-apellido-col:last-child {
+              padding-left: 8px;
+            }
+            @media (max-width: 460px) {
+              .bk-nombre-apellido-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+              }
+              .bk-nombre-apellido-col:first-child,
+              .bk-nombre-apellido-col:last-child {
+                padding-right: 0;
+                padding-left: 0;
+              }
+            }
+          `}</style>
         </div>
 
         <InputField
