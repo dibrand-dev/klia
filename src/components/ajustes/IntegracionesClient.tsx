@@ -25,6 +25,8 @@ export default function IntegracionesClient({
   const [sync, setSync] = useState(syncEnabled)
   const [desconectando, setDesconectando] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [resincronizando, setResincronizando] = useState(false)
+  const [resyncMensaje, setResyncMensaje] = useState<string | null>(null)
   const [mpDesconectando, setMpDesconectando] = useState(false)
   const [mpConfirmOpen, setMpConfirmOpen] = useState(false)
   const [mpActualConectado, setMpActualConectado] = useState(mpConectado)
@@ -55,6 +57,25 @@ export default function IntegracionesClient({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sync_enabled: nuevo }),
     }).catch(() => setSync(!nuevo))
+  }
+
+  async function resincronizarTurnos() {
+    setResincronizando(true)
+    setResyncMensaje(null)
+    try {
+      const res = await fetch('/api/google-calendar/resync-turnos', { method: 'POST' })
+      if (!res.ok) throw new Error()
+      const data = await res.json() as { total: number; sincronizados: number }
+      setResyncMensaje(
+        data.total === 0
+          ? 'No hay turnos pendientes de sincronizar.'
+          : `Se sincronizaron ${data.sincronizados} de ${data.total} turnos.`
+      )
+    } catch {
+      setResyncMensaje('Error al sincronizar. Intentá de nuevo.')
+    } finally {
+      setResincronizando(false)
+    }
   }
 
   async function desconectarGoogle() {
@@ -165,11 +186,18 @@ export default function IntegracionesClient({
                 </button>
               </div>
               <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
+                <button onClick={resincronizarTurnos} disabled={resincronizando}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)', opacity: resincronizando ? 0.6 : 1 }}>
+                  {resincronizando ? 'Sincronizando…' : 'Sincronizar turnos existentes'}
+                </button>
                 <button onClick={() => setConfirmOpen(true)} disabled={desconectando}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)', opacity: desconectando ? 0.6 : 1 }}>
                   {desconectando ? 'Desconectando…' : 'Desconectar'}
                 </button>
               </div>
+              {resyncMensaje && (
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>{resyncMensaje}</p>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 12 }}>
