@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     const db = serviceClient()
-    await db.from('google_calendar_tokens').upsert(
+    const { error: upsertError } = await db.from('google_calendar_tokens').upsert(
       {
         terapeuta_id: terapeutaId,
         access_token: tokens.access_token,
@@ -40,6 +40,11 @@ export async function GET(req: NextRequest) {
       },
       { onConflict: 'terapeuta_id' },
     )
+
+    if (upsertError) {
+      console.error('🔴 GCAL TOKEN UPSERT FAILED:', upsertError.message)
+      return NextResponse.redirect(`${appUrl}/ajustes/integraciones?google=error`)
+    }
 
     return NextResponse.redirect(`${appUrl}/ajustes/integraciones?google=connected&t=${Date.now()}`)
   } catch {
