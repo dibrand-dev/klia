@@ -72,7 +72,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   const [fechaHoraOverride, setFechaHoraOverride] = useState<string | null>(null)
   const fecha = parseISO(fechaHoraOverride ?? turno.fecha_hora)
   const slTitle = paciente ? formatNombreCompleto(paciente.nombre, paciente.apellido) : 'Sin paciente'
-  const slSubtitle = format(fecha, "EEEE d 'de' MMMM · HH:mm hs", { locale: es })
+  const slSubtitle = format(fecha, "EEEE d 'de' MMMM · HH:mm 'hs'", { locale: es })
 
   const [modo, setModo] = useState<Modo>('ver')
   const [loading, setLoading] = useState(false)
