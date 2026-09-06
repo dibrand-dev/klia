@@ -12,8 +12,17 @@ const TURNO_IDS = [
 const PROFILE_ID = '4cc00120-212c-4fc6-8481-d6ea074ecd47' // norberto@dibrand.co
 
 export async function GET(req: NextRequest) {
-  if (req.nextUrl.searchParams.get('secret') !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const recibido = req.nextUrl.searchParams.get('secret') ?? ''
+  const esperado = process.env.CRON_SECRET ?? ''
+  if (recibido !== esperado) {
+    return NextResponse.json({
+      error: 'unauthorized',
+      debug: {
+        largoRecibido: recibido.length,
+        largoEsperado: esperado.length,
+        recibidoTrim: recibido.trim() === esperado.trim(),
+      },
+    }, { status: 401 })
   }
   const resultados = []
   for (const turnoId of TURNO_IDS) {
