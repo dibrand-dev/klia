@@ -344,7 +344,7 @@ export default function StepDatos({
             transition: 'all 0.15s',
           }}
         >
-          Continuar al pago →
+          {form.coberturaId === '' || form.coberturaId === 'particular' ? 'Continuar al pago →' : 'Continuar →'}
         </button>
         <button
           onClick={onBack}
