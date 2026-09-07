@@ -8,7 +8,6 @@ export const oauth2Client = new google.auth.OAuth2(
 )
 
 export const SCOPES = [
-  'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/drive.file',
 ]
