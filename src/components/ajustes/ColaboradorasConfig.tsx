@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 type Colaboradora = {
   id: string
@@ -69,6 +70,7 @@ export default function ColaboradorasConfig() {
   const [error, setError] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [veCobrosLoadingId, setVeCobrosLoadingId] = useState<string | null>(null)
+  const [eliminarConfirm, setEliminarConfirm] = useState<Colaboradora | null>(null)
 
   async function cargarLista() {
     setLoading(true)
@@ -117,6 +119,21 @@ export default function ColaboradorasConfig() {
     const resultado = await res.json() as { error?: string; message?: string }
     if (!res.ok) {
       setError(resultado.message ?? resultado.error ?? 'Error al reenviar la invitación')
+      setActionLoadingId(null)
+      return
+    }
+    setActionLoadingId(null)
+    await cargarLista()
+  }
+
+  async function handleEliminarInvitacion(c: Colaboradora) {
+    setEliminarConfirm(null)
+    setActionLoadingId(c.id)
+    setError(null)
+    const res = await fetch(`/api/colaboradores/${c.id}/eliminar-invitacion`, { method: 'DELETE' })
+    const resultado = await res.json() as { error?: string; message?: string }
+    if (!res.ok) {
+      setError(resultado.message ?? resultado.error ?? 'Error al eliminar la invitación')
       setActionLoadingId(null)
       return
     }
@@ -212,6 +229,15 @@ export default function ColaboradorasConfig() {
                   {actionLoadingId === c.id ? 'Reenviando...' : 'Reenviar invitación'}
                 </button>
               )}
+              {c.activo && !c.invitacion_aceptada && (
+                <button
+                  onClick={() => setEliminarConfirm(c)}
+                  disabled={actionLoadingId === c.id}
+                  className="text-xs text-red-600 hover:underline font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {actionLoadingId === c.id ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              )}
               {c.activo && c.invitacion_aceptada && (
                 <button
                   onClick={() => handleDesactivar(c)}
@@ -225,6 +251,15 @@ export default function ColaboradorasConfig() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={eliminarConfirm !== null}
+        title="Eliminar invitación"
+        message={eliminarConfirm ? `¿Eliminar la invitación pendiente de ${nombreCompleto(eliminarConfirm)}? Esta acción no se puede deshacer.` : ''}
+        confirmLabel="Eliminar"
+        variant="danger"
+        onConfirm={() => eliminarConfirm && handleEliminarInvitacion(eliminarConfirm)}
+        onCancel={() => setEliminarConfirm(null)}
+      />
     </div>
   )
 }
