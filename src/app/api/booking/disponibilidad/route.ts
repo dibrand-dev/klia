@@ -4,9 +4,15 @@ import { parseISO, addMinutes, format } from 'date-fns'
 import { fromZonedTime, toZonedTime } from 'date-fns-tz'
 import { getFeriados, getFeriadosProvinciales, esFeriado } from '@/lib/feriados'
 import { ARGENTINA_TZ } from '@/lib/timezone'
+import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Lanzada cuando no se pudo verificar el Google Calendar del profesional (token
+// vencido, error de red, etc.) — el booking público no debe mostrar horarios
+// como libres sin haber podido chequearlos contra el calendario real.
+class GoogleAvailabilityError extends Error {}
 
 function serviceClient() {
   return createClient(
@@ -131,6 +137,42 @@ async function getAvailableSlots(
     occupied.push([slotStart, slotStart + (e.duracion ?? 30)])
   }
 
+  // Chequear también el Google Calendar real del profesional (si tiene la
+  // integración activa) — un turno bloqueado a mano en Google, fuera de KLIA,
+  // debe bloquear igual el link público.
+  const { data: googleTokens } = await db
+    .from('google_calendar_tokens')
+    .select('*')
+    .eq('terapeuta_id', profile.id)
+    .eq('sync_enabled', true)
+    .maybeSingle()
+
+  if (googleTokens) {
+    try {
+      const calendarClient = await getAuthenticatedClient(googleTokens, profile.id)
+      const { eventosConHora, eventosDiaCompleto } = await obtenerEventosGoogle(
+        calendarClient,
+        new Date(dayStart),
+        new Date(dayEnd),
+        googleTokens.calendar_id || 'primary',
+      )
+
+      // Un evento de todo el día (vacaciones, congreso, etc.) bloquea el día completo.
+      if (eventosDiaCompleto.length > 0) return []
+
+      for (const ev of eventosConHora) {
+        const inicioLocal = toZonedTime(ev.inicio, ARGENTINA_TZ)
+        const finLocal = toZonedTime(ev.fin, ARGENTINA_TZ)
+        const oStart = inicioLocal.getHours() * 60 + inicioLocal.getMinutes()
+        const oEnd = finLocal.getHours() * 60 + finLocal.getMinutes()
+        occupied.push([oStart, oEnd])
+      }
+    } catch (err) {
+      console.error('[booking/disponibilidad] Error verificando Google Calendar:', err)
+      throw new GoogleAvailabilityError('No pudimos verificar la disponibilidad en este momento. Intentá nuevamente en unos minutos.')
+    }
+  }
+
   // Filter out overlapping slots
   const available = futureSlots.filter(slotTime => {
     const sStart = timeToMin(slotTime)
@@ -165,8 +207,13 @@ export async function GET(request: NextRequest) {
       Array.from({ length: daysInMonth }, (_, i) => i + 1).map(async (day) => {
         const dayStr = `${y}-${pad(m)}-${pad(day)}`
         if (dayStr < todayDateStr) return null
-        const slots = await getAvailableSlots(slug, dayStr, tipo)
-        return slots.length > 0 ? day : null
+        try {
+          const slots = await getAvailableSlots(slug, dayStr, tipo)
+          return slots.length > 0 ? day : null
+        } catch (err) {
+          if (err instanceof GoogleAvailabilityError) return null
+          throw err
+        }
       })
     )
 
@@ -174,6 +221,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Day view: YYYY-MM-DD
-  const slots = await getAvailableSlots(slug, fecha, tipo)
-  return NextResponse.json({ slots })
+  try {
+    const slots = await getAvailableSlots(slug, fecha, tipo)
+    return NextResponse.json({ slots })
+  } catch (err) {
+    if (err instanceof GoogleAvailabilityError) {
+      return NextResponse.json({ error: err.message }, { status: 503 })
+    }
+    throw err
+  }
 }
