@@ -346,6 +346,7 @@ export type Database = {
           monto: number | null
           moneda: string
           notas: string | null
+          tipo_turno: string
           pagado: boolean
           motivo_cancelacion: string | null
           recordatorio_enviado: boolean
@@ -371,6 +372,7 @@ export type Database = {
           monto?: number | null
           moneda?: string
           notas?: string | null
+          tipo_turno?: string
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
@@ -396,6 +398,7 @@ export type Database = {
           monto?: number | null
           moneda?: string
           notas?: string | null
+          tipo_turno?: string
           ai_summary?: string | null
           estado_atencion?: 'en_espera' | 'en_consultorio' | 'atendido' | 'ausente' | null
           estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null

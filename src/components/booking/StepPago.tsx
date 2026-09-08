@@ -289,6 +289,62 @@ export default function StepPago({
   const [creating, setCreating] = useState(true)
   const [createError, setCreateError] = useState<string | null>(null)
   const [reserva, setReserva] = useState<CrearResponse | null>(null)
+  const [medio, setMedio] = useState<'mp' | 'transferencia' | null>(null)
+  const [mpData, setMpData] = useState<{ preference_id: string; mp_public_key: string } | null>(null)
+  const [mpLoading, setMpLoading] = useState(false)
+  const [mpError, setMpError] = useState<string | null>(null)
+  const [confirmandoTransferencia, setConfirmandoTransferencia] = useState(false)
+  const [transferenciaError, setTransferenciaError] = useState<string | null>(null)
+
+  const tieneTransferencia = !!(profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular)
+
+  async function seleccionarMP() {
+    setMedio('mp')
+    if (mpData || mpLoading || !reserva) return
+    setMpLoading(true)
+    setMpError(null)
+    try {
+      const res = await fetch('/api/booking/mp-preferencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turno_id: reserva.turno_id, hash: reserva.hash }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setMpError(data.error ?? 'No se pudo iniciar el pago con Mercado Pago. Intentá nuevamente.')
+        setMpLoading(false)
+        return
+      }
+      setMpData(data as { preference_id: string; mp_public_key: string })
+      setMpLoading(false)
+    } catch {
+      setMpError('Error de conexión. Intentá nuevamente.')
+      setMpLoading(false)
+    }
+  }
+
+  async function confirmarTransferencia() {
+    if (!reserva) return
+    setConfirmandoTransferencia(true)
+    setTransferenciaError(null)
+    try {
+      const res = await fetch('/api/booking/confirmar-transferencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turno_id: reserva.turno_id, hash: reserva.hash }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setTransferenciaError(data.error ?? 'No se pudo confirmar el turno. Intentá nuevamente.')
+        setConfirmandoTransferencia(false)
+        return
+      }
+      onConfirmacion(data as ConfirmacionData)
+    } catch {
+      setTransferenciaError('Error de conexión. Intentá nuevamente.')
+      setConfirmandoTransferencia(false)
+    }
+  }
 
   const duracion = tipo === 'sesion'
     ? profile.booking_duracion_sesion
@@ -440,11 +496,12 @@ export default function StepPago({
         marginBottom: 14,
       }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0B1220' }}>
-          {profile.nombre} {profile.apellido}
+          {datosForm.nombre} {datosForm.apellido}
+        </p>
+        <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#5B6472' }}>
+          {tipo === 'sesion' ? t.Sesion : (TIPO_LABELS[tipo] ?? tipo)} con {profile.nombre} {profile.apellido}
         </p>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#5B6472' }}>
-          {tipo === 'sesion' ? t.Sesion : (TIPO_LABELS[tipo] ?? tipo)}
-          {' · '}
           <span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>
           {' · '}{hora} hs
         </p>
@@ -459,56 +516,156 @@ export default function StepPago({
         )}
       </div>
 
-      {/* Security notice */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: '#F6F7F9', borderRadius: 100, padding: '10px 14px',
-        marginBottom: 14, fontSize: 12, color: '#5B6472',
-      }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-        <span>Pago seguro procesado por <strong>Mercado Pago</strong></span>
+      {/* Selección de medio de pago */}
+      <p style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: '#0B1220' }}>
+        Elegí cómo pagar
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+        {tieneTransferencia && (
+          <button
+            onClick={() => setMedio('transferencia')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              textAlign: 'left', width: '100%',
+              background: medio === 'transferencia' ? '#F4F7FF' : '#F6F7F9',
+              border: medio === 'transferencia' ? '2px solid #002d72' : '2px solid transparent',
+              boxShadow: medio === 'transferencia' ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
+              borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s',
+            }}
+          >
+            <span style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: '#fff', border: '1px solid #E7E9EE',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0B1220" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="14" x2="13" y2="14"/></svg>
+            </span>
+            <span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0B1220' }}>Transferencia bancaria</span>
+              <span style={{ display: 'block', fontSize: 12, color: '#5B6472', marginTop: 1 }}>Pagás por afuera, el profesional registra el pago</span>
+            </span>
+          </button>
+        )}
+        <button
+          onClick={seleccionarMP}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            textAlign: 'left', width: '100%',
+            background: medio === 'mp' ? '#F4F7FF' : '#F6F7F9',
+            border: medio === 'mp' ? '2px solid #002d72' : '2px solid transparent',
+            boxShadow: medio === 'mp' ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
+            borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s',
+          }}
+        >
+          <span style={{
+            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            background: '#fff', border: '1px solid #E7E9EE',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0B1220" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <span>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0B1220' }}>Mercado Pago</span>
+            <span style={{ display: 'block', fontSize: 12, color: '#5B6472', marginTop: 1 }}>Tarjeta, dinero en cuenta y más</span>
+          </span>
+        </button>
       </div>
 
-      {/* MP Brick */}
-      {reserva.preference_id && reserva.mp_public_key && (
-        <div style={{
-          background: '#fff',
-          borderRadius: 16,
-          border: '1px solid #E7E9EE',
-          padding: '20px',
-          marginBottom: 14,
-          boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
-        }}>
-          <p style={{
-            margin: '0 0 16px',
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#8A93A1',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-          }}>
-            Datos de pago
-          </p>
-          <BookingCheckoutBrick
-            preferenceId={reserva.preference_id}
-            monto={reserva.monto}
-            publicKey={reserva.mp_public_key}
-            hash={reserva.hash}
-            onSuccess={onConfirmacion}
-            onError={onErrPago}
+      {/* Panel de Transferencia */}
+      {medio === 'transferencia' && tieneTransferencia && (
+        <>
+          <TransferenciaBancaria
+            banco={profile.transferencia_banco!}
+            alias={profile.transferencia_alias!}
+            titular={profile.transferencia_titular!}
           />
-        </div>
+          {transferenciaError && (
+            <div style={{
+              background: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B',
+              fontSize: 13, padding: '12px 16px', borderRadius: 10, marginBottom: 12,
+            }}>
+              {transferenciaError}
+            </div>
+          )}
+          <button
+            onClick={confirmarTransferencia}
+            disabled={confirmandoTransferencia}
+            style={{
+              width: '100%',
+              background: confirmandoTransferencia ? '#E7E9EE' : 'linear-gradient(135deg, #001a48, #002d72)',
+              color: confirmandoTransferencia ? '#AEB5C0' : '#fff',
+              border: 'none', borderRadius: 10, padding: '13px 18px',
+              fontSize: 14.5, fontWeight: 600,
+              cursor: confirmandoTransferencia ? 'not-allowed' : 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              boxShadow: confirmandoTransferencia ? 'none' : '0 6px 18px rgba(0,45,114,0.25)',
+              marginBottom: 14,
+            }}
+          >
+            {confirmandoTransferencia ? 'Confirmando...' : 'Confirmar turno'}
+          </button>
+        </>
       )}
 
-      {/* Transferencia bancaria — alternativa, coexiste con MP */}
-      {profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular && (
-        <TransferenciaBancaria
-          banco={profile.transferencia_banco}
-          alias={profile.transferencia_alias}
-          titular={profile.transferencia_titular}
-        />
+      {/* Panel de Mercado Pago */}
+      {medio === 'mp' && (
+        <>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#F6F7F9', borderRadius: 100, padding: '10px 14px',
+            marginBottom: 14, fontSize: 12, color: '#5B6472',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>Pago seguro procesado por <strong>Mercado Pago</strong></span>
+          </div>
+
+          <div style={{
+            background: '#fff',
+            borderRadius: 16,
+            border: '1px solid #E7E9EE',
+            padding: '20px',
+            marginBottom: 14,
+            boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
+          }}>
+            <p style={{
+              margin: '0 0 16px',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#8A93A1',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              Datos de pago
+            </p>
+            {mpLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
+                <div className="bk-spinner" />
+              </div>
+            )}
+            {mpError && (
+              <div style={{
+                background: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B',
+                fontSize: 13, padding: '12px 16px', borderRadius: 10,
+              }}>
+                {mpError}
+              </div>
+            )}
+            {mpData && (
+              <BookingCheckoutBrick
+                preferenceId={mpData.preference_id}
+                monto={reserva.monto}
+                publicKey={mpData.mp_public_key}
+                hash={reserva.hash}
+                onSuccess={onConfirmacion}
+                onError={onErrPago}
+              />
+            )}
+          </div>
+        </>
       )}
 
       {/* Back button */}

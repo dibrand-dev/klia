@@ -8,8 +8,6 @@ import { ARGENTINA_TZ } from '@/lib/timezone'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
-
 function serviceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -191,6 +189,7 @@ export async function POST(req: NextRequest) {
       monto: precio ?? null,
       moneda,
       notas: tipo === 'entrevista' ? 'Entrevista inicial reservada online' : 'Reserva online',
+      tipo_turno: tipo === 'sesion' ? 'sesion' : 'entrevista',
     })
     .select('id')
     .single()
@@ -228,72 +227,14 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // 6. Create MP preference
-  const venceAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min
-
-  const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${profile.mp_access_token}`,
-    },
-    body: JSON.stringify({
-      items: [{
-        title: `${tipo === 'sesion' ? 'Sesión' : 'Entrevista inicial'} con ${profile.nombre} ${profile.apellido}`,
-        quantity: 1,
-        unit_price: precio,
-        currency_id: moneda,
-      }],
-      payer: { email },
-      back_urls: {
-        success: `${appUrl}/p/${slug}?status=success&hash=${hash}`,
-        failure: `${appUrl}/p/${slug}?status=failure&hash=${hash}`,
-        pending: `${appUrl}/p/${slug}?status=pending&hash=${hash}`,
-      },
-      auto_return: 'approved',
-      notification_url: `${appUrl}/api/pagos/webhook`,
-      metadata: { hash, turno_id: turno.id, terapeuta_id: profile.id, booking: true },
-      statement_descriptor: 'KLIA TURNO',
-      expires: true,
-      expiration_date_to: venceAt,
-    }),
-  })
-
-  if (!prefRes.ok) {
-    const errText = await prefRes.text()
-    console.error('[booking/crear] MP preference error:', errText)
-    // Still create sesion_pago without preference
-    await db.from('sesiones_pago').insert({
-      turno_id: turno.id,
-      terapeuta_id: profile.id,
-      paciente_id: pacienteId,
-      hash,
-      monto: precio,
-      moneda,
-      vence_at: venceAt,
-    })
-    return NextResponse.json({ error: 'Error al crear preferencia de pago' }, { status: 502 })
-  }
-
-  const pref = await prefRes.json() as { id: string }
-
-  // 7. Create sesion_pago
-  await db.from('sesiones_pago').insert({
-    turno_id: turno.id,
-    terapeuta_id: profile.id,
-    paciente_id: pacienteId,
-    hash,
-    monto: precio,
-    moneda,
-    mp_preference_id: pref.id,
-    vence_at: venceAt,
-  })
-
+  // 6. Particular con precio, pago requerido y MP conectado — el paciente elige el
+  // medio de pago en el paso siguiente (Mercado Pago vs. Transferencia). La preferencia
+  // de MP se crea recién si elige esa opción, vía /api/booking/mp-preferencia.
   return NextResponse.json({
     hash,
-    preference_id: pref.id,
+    preference_id: null,
     monto: precio,
-    mp_public_key: profile.mp_public_key,
+    mp_public_key: null,
     confirmado: false,
     turno_id: turno.id,
   })
