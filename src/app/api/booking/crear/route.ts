@@ -134,13 +134,21 @@ export async function POST(req: NextRequest) {
 
   const { data: existing } = await db
     .from('pacientes')
-    .select('id, obra_social')
+    .select('id, obra_social, nombre, apellido')
     .eq('terapeuta_id', profile.id)
     .eq('email', email)
     .maybeSingle()
 
   if (existing) {
     pacienteId = existing.id
+    // No se actualiza nombre/apellido a propósito — queda a criterio del profesional
+    // corregirlo a mano si lo nota. Solo se deja trazabilidad en logs para medir
+    // qué tan frecuente es el caso en producción real.
+    if (existing.nombre !== nombre || existing.apellido !== apellido) {
+      console.log('[booking/crear] Nombre tipeado difiere del guardado — paciente_id:', pacienteId,
+        '| guardado:', existing.nombre, existing.apellido,
+        '| tipeado en esta reserva:', nombre, apellido)
+    }
     // No pisar una obra social ya cargada a mano por el profesional en la ficha del paciente.
     if (!esParticular && osEncontrada && !existing.obra_social) {
       await db
