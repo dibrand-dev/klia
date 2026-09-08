@@ -64,6 +64,9 @@ export type Database = {
           onboarding_max_step_reached: number
           aviso_deuda_activo: boolean | null
           tipo_cuenta: string | null
+          transferencia_banco: string | null
+          transferencia_alias: string | null
+          transferencia_titular: string | null
           created_at: string
           updated_at: string
         }
@@ -126,6 +129,9 @@ export type Database = {
           onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
           tipo_cuenta?: string | null
+          transferencia_banco?: string | null
+          transferencia_alias?: string | null
+          transferencia_titular?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -188,6 +194,9 @@ export type Database = {
           onboarding_max_step_reached?: number
           aviso_deuda_activo?: boolean | null
           tipo_cuenta?: string | null
+          transferencia_banco?: string | null
+          transferencia_alias?: string | null
+          transferencia_titular?: string | null
           created_at?: string
           updated_at?: string
         }

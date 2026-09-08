@@ -200,6 +200,77 @@ function BookingCheckoutBrick({
   )
 }
 
+// ─── TransferenciaBancaria ─────────────────────────────────────────────────────
+
+function TransferenciaBancaria({ banco, alias, titular }: { banco: string; alias: string; titular: string }) {
+  const [copiado, setCopiado] = useState(false)
+
+  async function copiarAlias() {
+    try {
+      await navigator.clipboard.writeText(alias)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      // clipboard no disponible — no rompe el flujo
+    }
+  }
+
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: 16,
+      border: '1px solid #E7E9EE',
+      padding: '20px',
+      marginBottom: 14,
+      boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
+    }}>
+      <p style={{
+        margin: '0 0 16px',
+        fontSize: 11,
+        fontWeight: 700,
+        color: '#8A93A1',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+      }}>
+        Transferencia bancaria
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontSize: 12.5, color: '#5B6472' }}>Banco</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0B1220', textAlign: 'right' }}>{banco}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12.5, color: '#5B6472' }}>Alias</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0B1220', textAlign: 'right' }}>{alias}</span>
+            <button
+              type="button"
+              onClick={copiarAlias}
+              title="Copiar alias"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: 7,
+                border: '1px solid #E7E9EE', background: copiado ? '#EFF4FF' : '#fff',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              {copiado ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e40af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6472" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              )}
+            </button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ fontSize: 12.5, color: '#5B6472' }}>Titular</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0B1220', textAlign: 'right' }}>{titular}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── StepPago ────────────────────────────────────────────────────────────────
 
 export default function StepPago({
@@ -429,6 +500,15 @@ export default function StepPago({
             onError={onErrPago}
           />
         </div>
+      )}
+
+      {/* Transferencia bancaria — alternativa, coexiste con MP */}
+      {profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular && (
+        <TransferenciaBancaria
+          banco={profile.transferencia_banco}
+          alias={profile.transferencia_alias}
+          titular={profile.transferencia_titular}
+        />
       )}
 
       {/* Back button */}

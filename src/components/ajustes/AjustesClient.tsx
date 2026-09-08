@@ -101,6 +101,7 @@ const ICONS: Record<string, React.ReactNode> = {
   horarios:        icnSvg(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
   cobros:          icnSvg(<><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/></>),
   'cobros-pagos':  icnSvg(<><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></>),
+  transferencia:   icnSvg(<><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="14" x2="13" y2="14"/></>),
   politica:        icnSvg(<><path d="M3 10h18M5 6h14l1 14H4L5 6z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></>),
   'aviso-deuda':   icnSvg(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>),
   feriados:        icnSvg(<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9.5" y1="14.5" x2="14.5" y2="19.5"/><line x1="14.5" y1="14.5" x2="9.5" y2="19.5"/></>),
@@ -290,6 +291,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [cobrosMensaje, setCobrosMensaje] = useState(cobrosMessagePaciente)
   const [cobrosLoading, setCobrosLoading] = useState(false)
   const [cobrosSaved, setCobrosSaved] = useState(false)
+  const [transferenciaBanco, setTransferenciaBanco] = useState(profile.transferencia_banco ?? '')
+  const [transferenciaAlias, setTransferenciaAlias] = useState(profile.transferencia_alias ?? '')
+  const [transferenciaTitular, setTransferenciaTitular] = useState(profile.transferencia_titular ?? '')
+  const [transferenciaLoading, setTransferenciaLoading] = useState(false)
+  const [transferenciaSaved, setTransferenciaSaved] = useState(false)
 
   // Link público state
   const p = profile as unknown as Record<string, unknown>
@@ -501,6 +507,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setTimeout(() => setCobrosSaved(false), 2500)
   }
 
+  async function handleTransferenciaSave(e: React.FormEvent) {
+    e.preventDefault()
+    setTransferenciaLoading(true); setTransferenciaSaved(false)
+    const supabase = createClient()
+    await supabase.from('profiles').update({
+      transferencia_banco: transferenciaBanco.trim() || null,
+      transferencia_alias: transferenciaAlias.trim() || null,
+      transferencia_titular: transferenciaTitular.trim() || null,
+    }).eq('id', profile.id)
+    setTransferenciaLoading(false); setTransferenciaSaved(true)
+    setTimeout(() => setTransferenciaSaved(false), 2500)
+  }
+
   // ── Booking save ───────────────────────────────────────────────────
   const [bookingError, setBookingError] = useState<string | null>(null)
 
@@ -560,6 +579,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'recetas', label: 'Recetas electrónicas' },
     { id: 'horarios', label: 'Horarios' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
+    { id: 'transferencia', label: 'Transferencia bancaria' },
     { id: 'aviso-deuda', label: 'Aviso de deuda' },
     { id: 'politica', label: 'Política de cobros' },
     { id: 'feriados', label: 'Feriados' },
@@ -1137,6 +1157,47 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 <button type="submit" disabled={cobrosLoading}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: cobrosLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: cobrosLoading ? 0.7 : 1 }}>
                   {cobrosLoading ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* ═══ TRANSFERENCIA BANCARIA ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'transferencia' ? ' hidden md:block' : ''}`} id="transferencia" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.transferencia}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Transferencia bancaria</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Medio de pago alternativo a Mercado Pago — se muestra en tu link público de reservas junto al pago online, si lo tenés conectado.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleTransferenciaSave}>
+              <div className={grid2Class} style={{ marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Banco</label>
+                  <input style={inputStyle} type="text" placeholder="Ej: Banco Galicia" value={transferenciaBanco} onChange={e => setTransferenciaBanco(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Alias</label>
+                  <input style={inputStyle} type="text" placeholder="Ej: mi.alias.mp" value={transferenciaAlias} onChange={e => setTransferenciaAlias(e.target.value)} />
+                </div>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Titular (Nombre y Apellido)</label>
+                <input style={inputStyle} type="text" placeholder="Ej: Norberto Riccitelli" value={transferenciaTitular} onChange={e => setTransferenciaTitular(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {transferenciaSaved && (
+                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                    Guardado
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <button type="submit" disabled={transferenciaLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: transferenciaLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: transferenciaLoading ? 0.7 : 1 }}>
+                  {transferenciaLoading ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </form>

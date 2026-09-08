@@ -28,6 +28,9 @@ export type ProfileData = {
   booking_moneda: string
   booking_requiere_pago: boolean
   mp_conectado: boolean
+  transferencia_banco: string | null
+  transferencia_alias: string | null
+  transferencia_titular: string | null
   terminologia: 'sesion' | 'consulta'
   obrasSociales: { id: string; nombre: string }[]
 }
@@ -84,6 +87,9 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     booking_moneda: data.booking_moneda ?? 'ARS',
     booking_requiere_pago: data.booking_requiere_pago ?? true,
     mp_conectado: !!(data.mp_access_token),
+    transferencia_banco: data.transferencia_banco ?? null,
+    transferencia_alias: data.transferencia_alias ?? null,
+    transferencia_titular: data.transferencia_titular ?? null,
     terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
     obrasSociales: obrasSociales ?? [],
   }
