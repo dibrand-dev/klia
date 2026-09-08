@@ -201,10 +201,10 @@ export async function POST(req: NextRequest) {
 
   const hash = shortId()
 
-  // 5. If no payment required, no MP connected, or paciente eligió obra social → confirm immediately
+  // 5. If no payment required, no MP connected, or paciente eligió obra social → queda
+  // pendiente de confirmación manual del profesional (solo un pago real por MP confirma
+  // automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
   if (!profile.booking_requiere_pago || !precio || !profile.mp_access_token || !esParticular) {
-    await db.from('turnos').update({ estado: 'confirmado' }).eq('id', turno.id)
-
     try {
       await sincronizarTurnoCreado(turno.id, profile.id)
     } catch (err) {

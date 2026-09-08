@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'El turno fue cancelado' }, { status: 409 })
   }
 
-  if (turno.estado !== 'confirmado') {
-    await db.from('turnos').update({ estado: 'confirmado' }).eq('id', turno.id)
-  }
+  // El turno queda 'pendiente' (ya lo está desde su creación) — solo un pago real
+  // por Mercado Pago confirma automáticamente. La transferencia espera confirmación
+  // manual del profesional en Agenda.
 
   try {
     await sincronizarTurnoCreado(turno.id, turno.terapeuta_id)
