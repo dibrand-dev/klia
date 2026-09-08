@@ -401,6 +401,7 @@ export default function StepPago({
             monto: 0,
             moneda: profile.booking_moneda,
             referencia: data.hash ?? '',
+            medio_pago: 'sin_costo',
           })
           return
         }

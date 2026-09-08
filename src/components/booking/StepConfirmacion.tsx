@@ -4,6 +4,14 @@ import type { ProfileData } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
+interface DatosForm {
+  nombre: string
+  apellido: string
+  email: string
+  telefono: string
+  coberturaId: string
+}
+
 interface Props {
   profile: ProfileData
   tipo: string
@@ -11,6 +19,17 @@ interface Props {
   hora: string
   modalidad: string
   confirmacion: ConfirmacionData
+  datosForm: DatosForm
+}
+
+// Deja solo dígitos y valida un largo razonable para un número con código de
+// país (ej. 5491123456789 tiene 13). Sin librería externa — si no pasa, el
+// botón de WhatsApp directamente no se renderiza, sin mensaje de error.
+function telefonoWhatsappValido(telefono: string | null): string | null {
+  if (!telefono) return null
+  const limpio = telefono.replace(/\D/g, '')
+  if (limpio.length < 10 || limpio.length > 15) return null
+  return limpio
 }
 
 function formatFecha(fechaStr: string): string {
@@ -31,10 +50,18 @@ function buildGCalUrl(params: { title: string; start: string; end: string; detai
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
-export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion }: Props) {
+export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm }: Props) {
   const t = getTerminologia(profile.terminologia)
   const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
   const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
+
+  const esMp = confirmacion.medio_pago === 'mp'
+  const telefonoWa = telefonoWhatsappValido(profile.telefono)
+  const waUrl = telefonoWa
+    ? `https://wa.me/${telefonoWa}?text=${encodeURIComponent(
+        `Hola ${profile.nombre}, te envío el comprobante de mi transferencia por el turno del ${formatFecha(fecha).toLowerCase()} a las ${hora} hs a nombre de ${datosForm.nombre} ${datosForm.apellido}.`
+      )}`
+    : null
 
   const gCalUrl = (() => {
     const [y, m, d] = fecha.split('-').map(Number)
@@ -89,15 +116,19 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
         </div>
 
         <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em', color: '#0B1220', margin: '0 0 8px' }}>
-          ¡Reserva confirmada!
+          {esMp ? '¡Reserva confirmada!' : '¡Turno reservado!'}
         </h1>
         <p style={{ fontSize: 14, color: '#5B6472', margin: '0 0 24px', lineHeight: 1.6 }}>
-          {confirmacion.mp_payment_id ? (
+          {esMp ? (
             <>Tu {tipoLabel.toLowerCase()} fue agendada y el pago procesado.<br /></>
           ) : (
             <>Tu {tipoLabel.toLowerCase()} fue agendada.<br /></>
           )}
-          Te enviamos la confirmación a tu email.
+          {esMp ? (
+            'Te enviamos la confirmación a tu email.'
+          ) : (
+            'El profesional va a confirmar tu turno a la brevedad.'
+          )}
         </p>
 
         {/* Detail */}
@@ -119,6 +150,51 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
             </div>
           ))}
         </div>
+
+        {/* Comprobante de transferencia */}
+        {confirmacion.medio_pago === 'transferencia' && (profile.email || waUrl) && (
+          <div style={{
+            background: '#FFFBEB',
+            border: '1px solid #FDE68A',
+            borderRadius: 12,
+            padding: '14px 16px',
+            textAlign: 'left',
+            marginBottom: 20,
+          }}>
+            {profile.email && (
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#92400E', lineHeight: 1.55 }}>
+                Enviá el comprobante de tu transferencia a{' '}
+                <strong>{profile.email}</strong>
+                {profile.colaboradorasEmails.length > 0 && (
+                  <> con copia a <strong>{profile.colaboradorasEmails.join(', ')}</strong></>
+                )}
+                .
+              </p>
+            )}
+            {waUrl && (
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  padding: '10px 16px',
+                  background: '#25D366',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 9,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91 0-5.46-4.45-9.92-9.91-9.92zm0 18.15c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.27-4.4c0-4.54 3.7-8.24 8.24-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.55-3.7 8.27-8.24 8.27zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.48-1.39-1.73-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.87.85-.87 2.08 0 1.22.89 2.41 1.02 2.57.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29z"/></svg>
+                Enviar comprobante por WhatsApp
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

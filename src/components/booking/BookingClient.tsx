@@ -19,6 +19,7 @@ export type ConfirmacionData = {
   monto: number
   moneda: string
   referencia: string
+  medio_pago: 'mp' | 'transferencia' | 'sin_costo'
 }
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 'err-pay' | 'err-slot'
@@ -252,6 +253,7 @@ export default function BookingClient({ profile }: Props) {
                 hora={selectedHora}
                 modalidad={modalidad}
                 confirmacion={confirmacion}
+                datosForm={datosForm}
               />
             </div>
           )}

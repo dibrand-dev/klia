@@ -31,6 +31,9 @@ export type ProfileData = {
   transferencia_banco: string | null
   transferencia_alias: string | null
   transferencia_titular: string | null
+  email: string | null
+  telefono: string | null
+  colaboradorasEmails: string[]
   terminologia: 'sesion' | 'consulta'
   obrasSociales: { id: string; nombre: string }[]
 }
@@ -68,6 +71,18 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     .eq('activa', true)
     .order('nombre')
 
+  const { data: colaboradoras } = await supabase
+    .from('colaboradores')
+    .select('colaborador_id')
+    .eq('profesional_id', data.id)
+    .eq('activo', true)
+    .eq('invitacion_aceptada', true)
+
+  const colaboradorIds = (colaboradoras ?? []).map((c) => c.colaborador_id)
+  const { data: perfilesColaboradoras } = colaboradorIds.length > 0
+    ? await supabase.from('profiles').select('email').in('id', colaboradorIds)
+    : { data: [] as { email: string | null }[] }
+
   return {
     id: data.id,
     nombre: data.nombre ?? '',
@@ -90,6 +105,9 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     transferencia_banco: data.transferencia_banco ?? null,
     transferencia_alias: data.transferencia_alias ?? null,
     transferencia_titular: data.transferencia_titular ?? null,
+    email: data.email ?? null,
+    telefono: data.telefono ?? null,
+    colaboradorasEmails: (perfilesColaboradoras ?? []).map(p => p.email).filter((e): e is string => !!e),
     terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
     obrasSociales: obrasSociales ?? [],
   }

@@ -62,5 +62,6 @@ export async function POST(req: NextRequest) {
     monto: turno.monto ?? 0,
     moneda: turno.moneda,
     referencia: hash ?? turno.id,
+    medio_pago: 'transferencia' as const,
   })
 }

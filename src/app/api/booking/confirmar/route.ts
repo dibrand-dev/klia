@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       monto: sesion.monto,
       moneda: sesion.moneda,
       referencia: sesion.mp_payment_id ?? hash,
+      medio_pago: 'mp' as const,
     })
   }
 
@@ -154,5 +155,6 @@ export async function POST(req: NextRequest) {
     monto: sesion.monto,
     moneda: sesion.moneda,
     referencia: mpPaymentId ?? hash,
+    medio_pago: 'mp' as const,
   })
 }
