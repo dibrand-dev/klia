@@ -1439,7 +1439,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 {[
                   { label: 'Duración sesión (min)', value: bookingDuracionSesion, set: setBookingDuracionSesion },
                   { label: 'Duración entrevista (min)', value: bookingDuracionEntrevista, set: setBookingDuracionEntrevista },
-                  { label: 'Buffer entre turnos (min)', value: bookingTiempoEntre, set: setBookingTiempoEntre },
                 ].map(({ label, value, set }) => (
                   <div key={label}>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
@@ -1447,6 +1446,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                       style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 ))}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Buffer entre turnos (min)</label>
+                  <input type="number" min={0} max={240} value={bookingTiempoEntre} onChange={e => setBookingTiempoEntre(Number(e.target.value))}
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
               </div>
 
               {/* Anticipación */}
