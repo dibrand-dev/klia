@@ -1,6 +1,7 @@
 'use client'
 
 import type { Sucursal } from '@/types/database'
+import { abreviaturasUnicas } from '@/lib/agenda/sedeAgenda'
 
 interface Props {
   sedes: Sucursal[]
@@ -11,6 +12,7 @@ interface Props {
 // abreviatura + cantidad de turnos del período visible). Solo se monta cuando
 // hay 2+ sedes activas.
 export default function AgendaLeyendaSedes({ sedes, conteos }: Props) {
+  const abrevs = abreviaturasUnicas(sedes)
   return (
     <div className="flex items-center gap-3.5 flex-wrap py-2 text-xs text-gray-600">
       {sedes.map(s => (
@@ -21,7 +23,7 @@ export default function AgendaLeyendaSedes({ sedes, conteos }: Props) {
             className="font-mono text-[10px] tracking-wide text-gray-400"
             style={{ fontFeatureSettings: '"tnum"' }}
           >
-            {abreviatura(s.nombre)}
+            {abrevs[s.id]}
           </span>
           <span className="text-gray-400 tabular-nums">{conteos[s.id] ?? 0}</span>
         </span>
@@ -31,12 +33,4 @@ export default function AgendaLeyendaSedes({ sedes, conteos }: Props) {
       </span>
     </div>
   )
-}
-
-export function abreviatura(nombre: string): string {
-  const limpio = nombre.trim().toUpperCase().replace(/[^A-ZÑÁÉÍÓÚ\s]/g, '')
-  const palabras = limpio.split(/\s+/).filter(Boolean)
-  if (palabras.length === 0) return '—'
-  if (palabras.length === 1) return palabras[0].slice(0, 3)
-  return palabras.slice(0, 3).map(p => p[0]).join('')
 }

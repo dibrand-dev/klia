@@ -21,12 +21,12 @@ import EntrevistaDetalleModal from './EntrevistaDetalleModal'
 import VistaDia from './VistaDia'
 import VistaMes from './VistaMes'
 import AgendaScopeToggle from './AgendaScopeToggle'
-import AgendaLeyendaSedes, { abreviatura } from './AgendaLeyendaSedes'
+import AgendaLeyendaSedes from './AgendaLeyendaSedes'
 import SedeFiltroBar from './SedeFiltroBar'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
 import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
-import { leerPreferenciaAgenda, guardarPreferenciaAgenda, type AgendaScope } from '@/lib/agenda/sedeAgenda'
+import { leerPreferenciaAgenda, guardarPreferenciaAgenda, abreviaturasUnicas, type AgendaScope } from '@/lib/agenda/sedeAgenda'
 import type { Sucursal } from '@/types/database'
 
 const DEFAULT_HORA_INICIO = 7
@@ -115,6 +115,9 @@ export default function AgendaSemanal({
   const [agendaScope, setAgendaScope] = useState<AgendaScope>(prefInicial.scope)
   const [sedeSeleccionadaId, setSedeSeleccionadaId] = useState<string | null>(prefInicial.sedeId)
   const multiSede = sedesActivas.length > 1
+  // Siglas únicas por profesional — evita colisiones tipo "Consultorio
+  // principal" / "Consultorio Palermo" (ambas "CP" con la regla simple).
+  const abrevsSedes = abreviaturasUnicas(sedesActivas)
 
   useEffect(() => {
     fetch('/api/sedes')
@@ -478,7 +481,7 @@ export default function AgendaSemanal({
                     className="flex-shrink-0 font-mono text-[8.5px] font-medium tracking-wide px-1 rounded"
                     style={{ background: sedeTurno.color + '20', color: sedeTurno.color }}
                   >
-                    {abreviatura(sedeTurno.nombre)}
+                    {abrevsSedes[sedeTurno.id]}
                   </span>
                 )}
                 {turno.es_sobreturno && (

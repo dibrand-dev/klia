@@ -80,3 +80,84 @@ export function guardarPreferenciaAgenda(scope: AgendaScope, sedeId: string | nu
     // simplemente no persiste, no es crítico para el funcionamiento.
   }
 }
+
+// ── Abreviaturas de sede ────────────────────────────────────────────────
+
+function palabrasDe(nombre: string): string[] {
+  const limpio = nombre.trim().toUpperCase().replace(/[^A-ZÑÁÉÍÓÚ\s]/g, '')
+  return limpio.split(/\s+/).filter(Boolean)
+}
+
+// Sigla base — igual que antes: 1ra letra de cada una de las primeras 3
+// palabras (o las primeras 3 letras si el nombre es una sola palabra).
+function siglaBase(nombre: string): string {
+  const palabras = palabrasDe(nombre)
+  if (palabras.length === 0) return '—'
+  if (palabras.length === 1) return palabras[0].slice(0, 3)
+  return palabras.slice(0, 3).map(p => p[0]).join('')
+}
+
+// Crece progresivamente la sigla tomando más letras de la última palabra
+// incluida (la que suele distinguir mejor, ej. "Palermo" vs "principal" ya
+// difieren en la 2da letra: PA vs PR) y, si esa palabra se agota, retrocede
+// a la anterior. `nivel` es cuántas letras extra sumar en total.
+function siglaConNivel(nombre: string, nivel: number): string | null {
+  const palabras = palabrasDe(nombre)
+  if (palabras.length === 0) return '—'
+  if (palabras.length === 1) {
+    const letras = Math.min(3 + nivel, palabras[0].length)
+    return palabras[0].slice(0, letras)
+  }
+  const nPalabras = Math.min(palabras.length, 3)
+  const letrasPorPalabra = Array(nPalabras).fill(1)
+  let restante = nivel
+  let idx = nPalabras - 1
+  while (restante > 0) {
+    if (letrasPorPalabra[idx] < palabras[idx].length) {
+      letrasPorPalabra[idx]++
+      restante--
+    } else {
+      idx--
+      if (idx < 0) return null // no queda de dónde tomar más letras
+    }
+  }
+  return palabras.slice(0, nPalabras).map((p, i) => p.slice(0, letrasPorPalabra[i])).join('')
+}
+
+const MAX_NIVEL_CRECIMIENTO = 12
+
+// Genera una sigla única por sede dentro de un mismo profesional (las sedes
+// ya vienen filtradas por terapeuta_id desde /api/sedes, así que "único" acá
+// es único por profesional). Ante colisión (ej. "Consultorio principal" y
+// "Consultorio Palermo", ambas "CP" con la sigla base), la primera sede en
+// el orden recibido conserva la sigla base y las siguientes se desambiguan
+// tomando progresivamente más letras (CP → CPR / CPA). Si dos nombres son
+// literalmente idénticos y no hay más letras de dónde tomar, cae a un
+// sufijo numérico (CP, CP2, CP3...) como último recurso.
+export function abreviaturasUnicas(sedes: { id: string; nombre: string }[]): Record<string, string> {
+  const resultado: Record<string, string> = {}
+  const usadas = new Set<string>()
+  for (const sede of sedes) {
+    let sigla: string | null = null
+    for (let nivel = 0; nivel <= MAX_NIVEL_CRECIMIENTO; nivel++) {
+      const candidata = siglaConNivel(sede.nombre, nivel)
+      if (candidata && !usadas.has(candidata)) {
+        sigla = candidata
+        break
+      }
+    }
+    if (!sigla) {
+      const base = siglaBase(sede.nombre)
+      let n = 2
+      let candidata = `${base}${n}`
+      while (usadas.has(candidata)) {
+        n++
+        candidata = `${base}${n}`
+      }
+      sigla = candidata
+    }
+    usadas.add(sigla)
+    resultado[sede.id] = sigla
+  }
+  return resultado
+}

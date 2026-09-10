@@ -6,11 +6,11 @@ import type { Turno, Entrevista, Sucursal } from '@/types/database'
 import { cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT, formatNombreCompleto } from '@/lib/utils'
 import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
 import {
-  calcularTraslados, BREAKPOINT_COLUMNAS_A_FILTRO,
+  calcularTraslados, BREAKPOINT_COLUMNAS_A_FILTRO, abreviaturasUnicas,
   type AgendaScope,
 } from '@/lib/agenda/sedeAgenda'
 import AgendaScopeToggle from './AgendaScopeToggle'
-import AgendaLeyendaSedes, { abreviatura } from './AgendaLeyendaSedes'
+import AgendaLeyendaSedes from './AgendaLeyendaSedes'
 import SedeFiltroBar from './SedeFiltroBar'
 
 type GoogleEventSerialized = { id: string; titulo: string; inicio: string; fin: string }
@@ -63,6 +63,9 @@ export default function VistaDia({
   const HORAS = Array.from({ length: hf - hi + 1 }, (_, i) => hi + i)
   const multi = sedes.length > 1
   const sedeActual = sedes.find(s => s.id === sedeSeleccionadaId) ?? sedes[0] ?? null
+  // Siglas únicas por profesional — evita colisiones tipo "Consultorio
+  // principal" / "Consultorio Palermo" (ambas "CP" con la regla simple).
+  const abrevsSedes = abreviaturasUnicas(sedes)
 
   const turnosDiaTodos = turnos
     .filter((t) => isSameDay(parseISO(t.fecha_hora), dia))
@@ -225,7 +228,7 @@ export default function VistaDia({
                       <span className="truncate">{sede.nombre}</span>
                     </div>
                     <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1.5">
-                      <span className="font-mono bg-gray-100 rounded px-1">{abreviatura(sede.nombre)}</span>
+                      <span className="font-mono bg-gray-100 rounded px-1">{abrevsSedes[sede.id]}</span>
                       {lista.length} turnos
                     </div>
                   </div>
@@ -290,7 +293,7 @@ export default function VistaDia({
                     }}
                   >
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                      {tr.minutos} min de traslado · {abreviatura(origen?.nombre ?? '')} → {abreviatura(destino?.nombre ?? '')}
+                      {tr.minutos} min de traslado · {origen ? abrevsSedes[origen.id] : ''} → {destino ? abrevsSedes[destino.id] : ''}
                     </span>
                   </div>
                 )
@@ -413,7 +416,7 @@ export default function VistaDia({
                         className="flex-shrink-0 font-mono text-[9px] font-medium tracking-wide px-1 rounded"
                         style={{ background: color + '20', color }}
                       >
-                        {abreviatura(sedes.find(s => s.id === turno.sucursal_id)?.nombre ?? '')}
+                        {turno.sucursal_id ? abrevsSedes[turno.sucursal_id] : ''}
                       </span>
                     )}
                     {turno.es_sobreturno && (
