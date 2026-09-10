@@ -68,11 +68,25 @@ async function getAvailableSlots(
     // dia_semana en horarios_sucursal: 0=Lunes...6=Domingo (mismo orden que el
     // resto de la feature de Sedes) — distinto del DIAS_KEY legacy de abajo.
     const diaSemanaSede = (new Date(fecha + 'T12:00:00').getDay() + 6) % 7
+
+    console.error('[DIAG disponibilidad]', {
+      sedeIdRecibido: sedeId,
+      sedeValidadaId: sedeValidada.id,
+      fecha,
+      getDayJS: new Date(fecha + 'T12:00:00').getDay(),
+      diaSemanaCalculado: diaSemanaSede,
+    })
+
     const { data: bloques } = await db
       .from('horarios_sucursal')
       .select('hora_inicio, hora_fin')
       .eq('sucursal_id', sedeValidada.id)
       .eq('dia_semana', diaSemanaSede)
+
+    console.error('[DIAG disponibilidad - bloques]', {
+      cantidadBloques: bloques?.length ?? 0,
+      bloques,
+    })
 
     if (!bloques || bloques.length === 0) return []
 
