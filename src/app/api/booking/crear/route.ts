@@ -96,6 +96,15 @@ export async function POST(req: NextRequest) {
     .eq('booking_slug', slug)
     .single()
 
+  console.error('[DIAGNÓSTICO booking/crear]', {
+    slug,
+    profileFound: !!profile,
+    bookingActivo: profile?.booking_activo,
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  })
+
   if (!profile || !profile.booking_activo) {
     return NextResponse.json({ error: 'Perfil no disponible' }, { status: 404 })
   }
