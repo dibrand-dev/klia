@@ -20,9 +20,14 @@ import TurnoDetalleModal from './TurnoDetalleModal'
 import EntrevistaDetalleModal from './EntrevistaDetalleModal'
 import VistaDia from './VistaDia'
 import VistaMes from './VistaMes'
+import AgendaScopeToggle from './AgendaScopeToggle'
+import AgendaLeyendaSedes, { abreviatura } from './AgendaLeyendaSedes'
+import SedeFiltroBar from './SedeFiltroBar'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
 import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
+import { leerPreferenciaAgenda, guardarPreferenciaAgenda, type AgendaScope } from '@/lib/agenda/sedeAgenda'
+import type { Sucursal } from '@/types/database'
 
 const DEFAULT_HORA_INICIO = 7
 const DEFAULT_HORA_FIN = 21
@@ -99,6 +104,36 @@ export default function AgendaSemanal({
   function abrirNuevoTurno(fecha: Date) {
     setNuevoFecha(fecha)
     setNuevoOpen(true)
+  }
+
+  // ── Sedes (agenda multi-sede) ──────────────────────────────────────────
+  // Con 1 sola sede activa (o ninguna) el resto del componente se comporta
+  // exactamente como antes: multiSede queda en false y no se monta ningún
+  // elemento nuevo (toggle, leyenda, filtro, columnas, banda de traslado).
+  const [sedesActivas, setSedesActivas] = useState<Sucursal[]>([])
+  const prefInicial = leerPreferenciaAgenda()
+  const [agendaScope, setAgendaScope] = useState<AgendaScope>(prefInicial.scope)
+  const [sedeSeleccionadaId, setSedeSeleccionadaId] = useState<string | null>(prefInicial.sedeId)
+  const multiSede = sedesActivas.length > 1
+
+  useEffect(() => {
+    fetch('/api/sedes')
+      .then(r => r.json())
+      .then((data: { sedes?: Sucursal[] }) => {
+        const activas = (data.sedes ?? []).filter(s => s.activo)
+        setSedesActivas(activas)
+        setSedeSeleccionadaId(prev => (prev && activas.some(s => s.id === prev)) ? prev : (activas[0]?.id ?? null))
+      })
+      .catch(() => {})
+  }, [])
+
+  function cambiarAgendaScope(scope: AgendaScope) {
+    setAgendaScope(scope)
+    guardarPreferenciaAgenda(scope, sedeSeleccionadaId)
+  }
+  function cambiarSedeSeleccionada(id: string) {
+    setSedeSeleccionadaId(id)
+    guardarPreferenciaAgenda(agendaScope, id)
   }
 
   const inicioSemana = startOfWeek(semanaActual, { weekStartsOn: 1 })
@@ -318,7 +353,9 @@ export default function AgendaSemanal({
 
   // ─── Columna de turnos reutilizable ──────────────────────────
   function ColumnaHoras({ dia, onCeldaClick }: { dia: Date; onCeldaClick: (f: Date) => void }) {
-    const lista = getTurnosDelDia(dia)
+    const filtrandoPorSede = multiSede && agendaScope === 'sede' && !!sedeSeleccionadaId
+    const listaTodos = getTurnosDelDia(dia)
+    const lista = filtrandoPorSede ? listaTodos.filter(t => t.sucursal_id === sedeSeleccionadaId) : listaTodos
     const gEventsDia = googleEvents.filter((e) => {
       if (!isSameDay(new Date(e.inicio), dia)) return false
       const inicio = new Date(e.inicio)
@@ -327,7 +364,10 @@ export default function AgendaSemanal({
       const finH = fin.getHours() + fin.getMinutes() / 60
       return inicioH < hf && finH > hi
     })
-    const entrevistasDia = entrevistas.filter(
+    // Las entrevistas no tienen sucursal_id — al filtrar por sede no se puede
+    // saber a cuál pertenecen, así que se excluyen de esa vista (igual que en
+    // VistaDia con 5+ sedes).
+    const entrevistasDia = filtrandoPorSede ? [] : entrevistas.filter(
       (e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia) && e.estado !== 'cancelada'
     )
     const layoutTurnos = calcularLayoutTurnos([
@@ -409,6 +449,7 @@ export default function AgendaSemanal({
           const p = turno.paciente
           const { columna, totalColumnas } = layoutTurnos.get(turno.id) ?? { columna: 0, totalColumnas: 1 }
           const anchoPct = 100 / totalColumnas
+          const sedeTurno = multiSede && !filtrandoPorSede ? sedesActivas.find(s => s.id === turno.sucursal_id) : undefined
           return (
             <div
               key={turno.id}
@@ -423,6 +464,7 @@ export default function AgendaSemanal({
                 height: `${height}px`,
                 left: `calc(${anchoPct * columna}% + 2px)`,
                 width: `calc(${anchoPct}% - 4px)`,
+                ...(sedeTurno && !turno.es_sobreturno ? { borderLeftColor: sedeTurno.color, borderLeftWidth: 3 } : {}),
               }}
               onClick={(e) => { e.stopPropagation(); setTurnoSeleccionado(turno) }}
             >
@@ -431,6 +473,14 @@ export default function AgendaSemanal({
                 <span className="truncate flex-1">
                   {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
                 </span>
+                {sedeTurno && (
+                  <span
+                    className="flex-shrink-0 font-mono text-[8.5px] font-medium tracking-wide px-1 rounded"
+                    style={{ background: sedeTurno.color + '20', color: sedeTurno.color }}
+                  >
+                    {abreviatura(sedeTurno.nombre)}
+                  </span>
+                )}
                 {turno.es_sobreturno && (
                   <span className="flex-shrink-0 text-[10px] opacity-70 leading-none" title="Sobreturno">⚠</span>
                 )}
@@ -488,6 +538,11 @@ export default function AgendaSemanal({
           vistaSelector={<ViewSelector />}
           horaInicio={hi}
           horaFin={hf}
+          sedes={sedesActivas}
+          scope={agendaScope}
+          sedeSeleccionadaId={sedeSeleccionadaId}
+          onScopeChange={cambiarAgendaScope}
+          onSedeChange={cambiarSedeSeleccionada}
         />
       )}
 
@@ -527,8 +582,11 @@ export default function AgendaSemanal({
             </div>
           </div>
 
-          <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-4 text-xs text-gray-500">
-            <ViewSelector />
+          <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-4 text-xs text-gray-500 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ViewSelector />
+              {multiSede && <AgendaScopeToggle scope={agendaScope} onChange={cambiarAgendaScope} />}
+            </div>
             <div className="flex items-center gap-4 md:gap-6 overflow-x-auto">
               <span><strong className="text-gray-700">{turnosSemana.length}</strong> {turnosSemana.length === 1 ? 'turno' : 'turnos'} esta semana</span>
               <span><strong className="text-green-600">{turnosSemana.filter(t => t.estado === 'realizado').length}</strong> realizados</span>
@@ -536,6 +594,29 @@ export default function AgendaSemanal({
               <span className="hidden md:inline"><strong className="text-red-500">{turnosSemana.filter(t => ['cancelado', 'no_asistio'].includes(t.estado)).length}</strong> cancelados/ausentes</span>
             </div>
           </div>
+
+          {multiSede && (
+            <div className="bg-white border-b border-gray-100 px-4 md:px-6">
+              <AgendaLeyendaSedes
+                sedes={sedesActivas}
+                conteos={Object.fromEntries(sedesActivas.map(s => [s.id, turnosSemana.filter(t => t.sucursal_id === s.id).length]))}
+              />
+            </div>
+          )}
+
+          {multiSede && agendaScope === 'sede' && sedeSeleccionadaId && (
+            <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-2">
+              <SedeFiltroBar
+                sedes={sedesActivas}
+                sedeSeleccionadaId={sedeSeleccionadaId}
+                onCambiar={cambiarSedeSeleccionada}
+                total={turnosSemana.filter(t => t.sucursal_id === sedeSeleccionadaId).length}
+                totalSinFiltrar={turnosSemana.length}
+                onVerTodas={() => cambiarAgendaScope('todas')}
+                etiquetaPeriodo="de la semana"
+              />
+            </div>
+          )}
 
           <div className="flex-1 overflow-auto">
             <div className="flex min-w-[600px]">

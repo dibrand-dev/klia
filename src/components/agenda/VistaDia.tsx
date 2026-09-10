@@ -2,9 +2,16 @@
 
 import { addDays, subDays, format, isToday, isSameDay, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import type { Turno, Entrevista } from '@/types/database'
+import type { Turno, Entrevista, Sucursal } from '@/types/database'
 import { cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT, formatNombreCompleto } from '@/lib/utils'
 import { calcularLayoutTurnos } from '@/lib/agenda/calcularLayoutTurnos'
+import {
+  calcularTraslados, BREAKPOINT_COLUMNAS_A_FILTRO,
+  type AgendaScope,
+} from '@/lib/agenda/sedeAgenda'
+import AgendaScopeToggle from './AgendaScopeToggle'
+import AgendaLeyendaSedes, { abreviatura } from './AgendaLeyendaSedes'
+import SedeFiltroBar from './SedeFiltroBar'
 
 type GoogleEventSerialized = { id: string; titulo: string; inicio: string; fin: string }
 
@@ -22,6 +29,10 @@ function getHeight(min: number) {
   return min * (64 / 60)
 }
 
+function sedeColor(sedes: Sucursal[], id: string | null): string | null {
+  return sedes.find(s => s.id === id)?.color ?? null
+}
+
 interface VistaDiaProps {
   dia: Date
   turnos: Turno[]
@@ -34,32 +45,31 @@ interface VistaDiaProps {
   vistaSelector: React.ReactNode
   horaInicio?: number
   horaFin?: number
+  sedes?: Sucursal[]
+  scope?: AgendaScope
+  sedeSeleccionadaId?: string | null
+  onScopeChange?: (scope: AgendaScope) => void
+  onSedeChange?: (id: string) => void
 }
 
 export default function VistaDia({
   dia, turnos, entrevistas, googleEvents,
   onDiaChange, onNuevoTurno, onTurnoClick, onEntrevistaClick, vistaSelector,
   horaInicio: horaInicioP, horaFin: horaFinP,
+  sedes = [], scope = 'todas', sedeSeleccionadaId = null, onScopeChange, onSedeChange,
 }: VistaDiaProps) {
   const hi = horaInicioP ?? 7
   const hf = horaFinP ?? 21
   const HORAS = Array.from({ length: hf - hi + 1 }, (_, i) => hi + i)
-  const turnosDia = turnos
+  const multi = sedes.length > 1
+  const sedeActual = sedes.find(s => s.id === sedeSeleccionadaId) ?? sedes[0] ?? null
+
+  const turnosDiaTodos = turnos
     .filter((t) => isSameDay(parseISO(t.fecha_hora), dia))
     .sort((a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime())
   const entrevistasDia = entrevistas.filter(
     (e) => isSameDay(parseISO(e.fecha + 'T12:00:00'), dia) && e.estado !== 'cancelada'
   )
-  const layoutTurnos = calcularLayoutTurnos([
-    ...turnosDia.map((t) => {
-      const d = parseISO(t.fecha_hora)
-      return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
-    }),
-    ...entrevistasDia.map((e) => {
-      const [h, m] = e.hora.slice(0, 5).split(':').map(Number)
-      return { id: e.id, inicio: h * 60 + m, duracion: e.duracion ?? 50 }
-    }),
-  ])
   const gEventsDia = googleEvents.filter((e) => {
     if (!isSameDay(new Date(e.inicio), dia)) return false
     const inicio = new Date(e.inicio)
@@ -69,9 +79,36 @@ export default function VistaDia({
     return inicioH < hf && finH > hi
   })
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
+  // Con 5+ sedes activas, "Por sede" cae al mismo patrón de filtro que Semana
+  // (selector, sin columnas) — no está en el diseño de referencia, es la spec.
+  const filtroPorCantidad = sedes.length >= BREAKPOINT_COLUMNAS_A_FILTRO
+  const modoColumnas = multi && scope === 'sede' && !filtroPorCantidad
+  const modoFiltro = multi && scope === 'sede' && filtroPorCantidad
+
+  const turnosDia = modoFiltro && sedeActual
+    ? turnosDiaTodos.filter(t => t.sucursal_id === sedeActual.id)
+    : turnosDiaTodos
+
+  const conteosPorSede: Record<string, number> = {}
+  if (multi) {
+    for (const s of sedes) {
+      conteosPorSede[s.id] = turnosDiaTodos.filter(t => t.sucursal_id === s.id).length
+    }
+  }
+
+  const layoutTurnos = calcularLayoutTurnos([
+    ...turnosDia.map((t) => {
+      const d = parseISO(t.fecha_hora)
+      return { id: t.id, inicio: d.getHours() * 60 + d.getMinutes(), duracion: t.duracion_min ?? 50 }
+    }),
+    ...(modoFiltro ? [] : entrevistasDia.map((e) => {
+      const [h, m] = e.hora.slice(0, 5).split(':').map(Number)
+      return { id: e.id, inicio: h * 60 + m, duracion: e.duracion ?? 50 }
+    })),
+  ])
+
+  const headerRow = (
+    <>
       <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-2 min-w-0">
           <p className="font-semibold text-gray-900 capitalize truncate">
@@ -112,27 +149,164 @@ export default function VistaDia({
         </div>
       </div>
 
-      {/* Segunda fila: selector + stats */}
-      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
-        {vistaSelector}
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-2 flex items-center justify-between gap-2 text-xs text-gray-500 flex-wrap">
+        <div className="flex items-center gap-2">
+          {vistaSelector}
+          {multi && onScopeChange && <AgendaScopeToggle scope={scope} onChange={onScopeChange} />}
+        </div>
         <div className="flex items-center gap-3">
           <span>
             <strong className="text-gray-700">{turnosDia.length}</strong>{' '}
             <span className="hidden sm:inline">turno{turnosDia.length !== 1 ? 's' : ''}</span>
           </span>
-          {entrevistasDia.length > 0 && (
+          {!modoFiltro && entrevistasDia.length > 0 && (
             <span className="text-amber-600">
               <strong>{entrevistasDia.length}</strong>{' '}
               <span className="hidden sm:inline">entrevista{entrevistasDia.length !== 1 ? 's' : ''}</span>
             </span>
           )}
-          {turnosDia.length === 0 && entrevistasDia.length === 0 && (
+          {turnosDia.length === 0 && (modoFiltro || entrevistasDia.length === 0) && (
             <span className="text-gray-400 hidden sm:inline">Sin turnos este día</span>
           )}
         </div>
       </div>
 
-      {/* Timeline */}
+      {multi && (
+        <div className="bg-white border-b border-gray-100 px-4 md:px-6">
+          <AgendaLeyendaSedes sedes={sedes} conteos={conteosPorSede} />
+        </div>
+      )}
+
+      {modoFiltro && sedeActual && onSedeChange && onScopeChange && (
+        <div className="bg-white border-b border-gray-100 px-4 md:px-6 py-2">
+          <SedeFiltroBar
+            sedes={sedes}
+            sedeSeleccionadaId={sedeActual.id}
+            onCambiar={onSedeChange}
+            total={turnosDia.length}
+            totalSinFiltrar={turnosDiaTodos.length}
+            onVerTodas={() => onScopeChange('todas')}
+            etiquetaPeriodo="del día"
+          />
+        </div>
+      )}
+    </>
+  )
+
+  // ══ Modo columnas (2-4 sedes, scope "Por sede") ══
+  if (modoColumnas) {
+    const traslados = calcularTraslados(
+      turnosDiaTodos.map(t => {
+        const d = parseISO(t.fecha_hora)
+        const inicioMin = d.getHours() * 60 + d.getMinutes()
+        return { id: t.id, sucursal_id: t.sucursal_id, inicioMin, finMin: inicioMin + (t.duracion_min ?? 50) }
+      })
+    )
+
+    return (
+      <div className="flex flex-col h-full">
+        {headerRow}
+        <div className="flex-1 overflow-auto">
+          <div className="flex min-w-[700px] relative">
+            <div className="w-12 md:w-16 flex-shrink-0 bg-white border-r border-gray-200 sticky left-0 z-10">
+              {HORAS.map((hora) => (
+                <div key={hora} className="h-16 border-b border-gray-100 flex items-start justify-end pr-1.5 md:pr-2 pt-1">
+                  <span className="text-[11px] text-gray-400">{hora}:00</span>
+                </div>
+              ))}
+            </div>
+            {sedes.map((sede) => {
+              const lista = turnosDiaTodos.filter(t => t.sucursal_id === sede.id)
+              return (
+                <div key={sede.id} className="flex-1 min-w-0 border-r border-gray-200 last:border-r-0">
+                  <div className="h-12 border-b border-gray-200 sticky top-0 z-10 bg-white px-2 py-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-900 truncate">
+                      <i className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: sede.color }} />
+                      <span className="truncate">{sede.nombre}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1.5">
+                      <span className="font-mono bg-gray-100 rounded px-1">{abreviatura(sede.nombre)}</span>
+                      {lista.length} turnos
+                    </div>
+                  </div>
+                  <div className={cn('relative', lista.length === 0 && 'bg-gray-50')}>
+                    {HORAS.map((hora) => (
+                      <div
+                        key={hora}
+                        className="h-16 border-b border-gray-100 hover:bg-primary-fixed/20 cursor-pointer transition-colors"
+                        onClick={() => {
+                          const f = new Date(dia)
+                          f.setHours(hora, 0, 0, 0)
+                          onNuevoTurno(f)
+                        }}
+                      />
+                    ))}
+                    {lista.map((turno) => {
+                      const top = getTopOffsetISO(turno.fecha_hora, hi)
+                      const height = Math.max(getHeight(turno.duracion_min), 26)
+                      const p = turno.paciente
+                      return (
+                        <div
+                          key={turno.id}
+                          className={cn(
+                            'absolute left-1 right-1 rounded-md px-1.5 py-1 cursor-pointer border text-[11px] hover:shadow-md transition-shadow overflow-hidden',
+                            ESTADO_TURNO_COLORS[turno.estado],
+                          )}
+                          style={{ top: `${top}px`, height: `${height}px`, borderLeftColor: sede.color, borderLeftWidth: 3 }}
+                          onClick={(e) => { e.stopPropagation(); onTurnoClick(turno) }}
+                        >
+                          <div className="flex items-center gap-1 font-semibold truncate">
+                            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', ESTADO_TURNO_DOT[turno.estado])} />
+                            <span className="truncate flex-1">{p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}</span>
+                          </div>
+                          {height > 34 && (
+                            <div className="opacity-80 truncate mt-0.5">{format(parseISO(turno.fecha_hora), 'HH:mm')}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Banda de alerta de traslado — puramente informativa, cruza
+                todas las columnas. No valida ni bloquea nada del lado de
+                guardado de turnos. */}
+            <div className="absolute left-12 md:left-16 right-0 top-12 bottom-0 pointer-events-none">
+              {traslados.map((tr, i) => {
+                const top = (tr.finAnteriorMin - hi * 60) / 60 * 64
+                const height = Math.max((tr.inicioSiguienteMin - tr.finAnteriorMin) / 60 * 64, 3)
+                const origen = sedes.find(s => s.id === tr.sedeOrigenId)
+                const destino = sedes.find(s => s.id === tr.sedeDestinoId)
+                return (
+                  <div
+                    key={i}
+                    className="absolute left-0 right-0 z-10"
+                    style={{
+                      top: `${top}px`, height: `${height}px`,
+                      background: 'repeating-linear-gradient(135deg, rgba(166,90,6,.08), rgba(166,90,6,.08) 5px, transparent 5px, transparent 10px)',
+                      borderTop: '1px dashed #D9A85F', borderBottom: '1px dashed #D9A85F',
+                    }}
+                  >
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 whitespace-nowrap inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                      {tr.minutos} min de traslado · {abreviatura(origen?.nombre ?? '')} → {abreviatura(destino?.nombre ?? '')}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ══ Modo cronológico único (1 sede, "Todas", o filtro con 5+ sedes) ══
+  return (
+    <div className="flex flex-col h-full">
+      {headerRow}
+
       <div className="flex-1 overflow-auto">
         <div className="flex">
           <div className="w-12 md:w-16 flex-shrink-0 bg-white border-r border-gray-200 sticky left-0">
@@ -175,8 +349,8 @@ export default function VistaDia({
               )
             })}
 
-            {/* Entrevistas */}
-            {entrevistasDia.map((entrevista) => {
+            {/* Entrevistas — no llevan sucursal_id, no se muestran filtradas por sede */}
+            {!modoFiltro && entrevistasDia.map((entrevista) => {
               const top = getTopOffset(entrevista.hora, entrevista.fecha, hi)
               const height = Math.max(getHeight(entrevista.duracion), 28)
               const { columna, totalColumnas } = layoutTurnos.get(entrevista.id) ?? { columna: 0, totalColumnas: 1 }
@@ -211,6 +385,7 @@ export default function VistaDia({
               const p = turno.paciente
               const { columna, totalColumnas } = layoutTurnos.get(turno.id) ?? { columna: 0, totalColumnas: 1 }
               const anchoPct = 100 / totalColumnas
+              const color = multi && !modoFiltro ? sedeColor(sedes, turno.sucursal_id) : null
               return (
                 <div
                   key={turno.id}
@@ -224,6 +399,7 @@ export default function VistaDia({
                     height: `${height}px`,
                     left: `calc(${anchoPct * columna}% + 2px)`,
                     width: `calc(${anchoPct}% - 4px)`,
+                    ...(color && !turno.es_sobreturno ? { borderLeftColor: color, borderLeftWidth: 3 } : {}),
                   }}
                   onClick={(e) => { e.stopPropagation(); onTurnoClick(turno) }}
                 >
@@ -232,6 +408,14 @@ export default function VistaDia({
                     <span className="truncate flex-1">
                       {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
                     </span>
+                    {color && (
+                      <span
+                        className="flex-shrink-0 font-mono text-[9px] font-medium tracking-wide px-1 rounded"
+                        style={{ background: color + '20', color }}
+                      >
+                        {abreviatura(sedes.find(s => s.id === turno.sucursal_id)?.nombre ?? '')}
+                      </span>
+                    )}
                     {turno.es_sobreturno && (
                       <span className="flex-shrink-0 text-[10px] opacity-70" title="Sobreturno">⚠</span>
                     )}
