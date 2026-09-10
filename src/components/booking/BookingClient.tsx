@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import type { ProfileData } from '@/app/p/[slug]/page'
+import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 import StepTipoConsulta from './StepTipoConsulta'
+import StepSede from './StepSede'
 import StepCalendario from './StepCalendario'
 import StepHorario from './StepHorario'
 import StepDatos from './StepDatos'
@@ -22,20 +23,37 @@ export type ConfirmacionData = {
   medio_pago: 'mp' | 'transferencia' | 'sin_costo'
 }
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6 | 'err-pay' | 'err-slot'
+type StepKey = 'tipo' | 'sede' | 'fecha' | 'hora' | 'datos' | 'pago'
+type Step = StepKey | 'confirmacion' | 'err-pay' | 'err-slot'
 
-const STEP_NAMES = ['Profesional', 'Fecha', 'Hora', 'Datos', 'Pago']
+const STEP_NAMES: Record<StepKey, string> = {
+  tipo: 'Profesional',
+  sede: 'Sede',
+  fecha: 'Fecha',
+  hora: 'Hora',
+  datos: 'Datos',
+  pago: 'Pago',
+}
 
 interface Props {
   profile: ProfileData
 }
 
 export default function BookingClient({ profile }: Props) {
-  const [step, setStep] = useState<Step>(1)
+  const multiSede = profile.sedes.length > 1
+
+  // Fuente única de orden/cantidad/nombres de pasos — 'sede' se inserta solo
+  // cuando hay 2+ sedes activas, nunca reemplaza a los demás pasos.
+  const STEPS: StepKey[] = multiSede
+    ? ['tipo', 'sede', 'fecha', 'hora', 'datos', 'pago']
+    : ['tipo', 'fecha', 'hora', 'datos', 'pago']
+
+  const [step, setStep] = useState<Step>('tipo')
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
   const [modalidad, setModalidad] = useState<string>(
     profile.booking_modalidades?.[0] ?? 'presencial'
   )
+  const [sede, setSede] = useState<SedePublica | null>(null)
   const [selectedFecha, setSelectedFecha] = useState<string | null>(null)
   const [selectedHora, setSelectedHora] = useState<string | null>(null)
   const [datosForm, setDatosForm] = useState({
@@ -47,22 +65,78 @@ export default function BookingClient({ profile }: Props) {
   })
   const [confirmacion, setConfirmacion] = useState<ConfirmacionData | null>(null)
 
-  const showProgress = step !== 6 && step !== 'err-pay' && step !== 'err-slot'
-  const stepNum = typeof step === 'number' ? step : 0
+  const stepIdx = STEPS.indexOf(step as StepKey)
+  const showProgress = stepIdx >= 0
+  const stepNum = stepIdx + 1
+
+  function goToKey(key: StepKey) {
+    setStep(key)
+  }
+
+  function goNextFrom(key: StepKey) {
+    const idx = STEPS.indexOf(key)
+    const next = STEPS[idx + 1]
+    if (next) setStep(next)
+  }
+
+  function goBackFrom(key: StepKey) {
+    const idx = STEPS.indexOf(key)
+    const prev = STEPS[idx - 1]
+    if (prev) setStep(prev)
+  }
 
   function handleBack() {
-    if (step === 2) setStep(1)
-    else if (step === 3) setStep(2)
-    else if (step === 4) setStep(3)
-    else if (step === 5) setStep(4)
-    else if (step === 'err-slot') setStep(2)
-    else if (step === 'err-pay') setStep(4)
+    if (step === 'err-slot') {
+      goToKey('fecha')
+    } else if (step === 'err-pay') {
+      goToKey('datos')
+    } else if (step !== 'tipo' && step !== 'confirmacion') {
+      goBackFrom(step as StepKey)
+    }
+  }
+
+  function handleSede(s: SedePublica) {
+    setSede(s)
+    setModalidad(s.es_online ? 'videollamada' : 'presencial')
+    goNextFrom('sede')
+  }
+
+  function handleCambiarSede() {
+    goToKey('sede')
   }
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+        :root {
+          --bg: #FAFBFC;
+          --surface: #FFFFFF;
+          --surface-2: #F6F7F9;
+          --surface-3: #F1F3F6;
+          --border: #E7E9EE;
+          --border-strong: #D6DAE1;
+          --ink: #0B1220;
+          --ink-2: #1F2937;
+          --muted: #5B6472;
+          --muted-2: #8A93A1;
+          --muted-3: #AEB5C0;
+          --navy: #001a48;
+          --navy-2: #002d72;
+          --blue: #2563EB;
+          --blue-soft: #EFF4FF;
+          --blue-soft-2: #F4F7FF;
+          --green: #10b981;
+          --green-soft: #DCFCE7;
+          --green-ink: #047857;
+          --amber: #f59e0b;
+          --amber-soft: #FEF3C7;
+          --red: #DC2626;
+          --red-soft: #FEE2E2;
+          --shadow-sm: 0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04);
+          --shadow-md: 0 2px 4px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+          --shadow-lg: 0 8px 24px rgba(16,24,40,.08), 0 24px 64px rgba(16,24,40,.10);
+        }
         *, *::before, *::after { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
         body {
@@ -129,7 +203,7 @@ export default function BookingClient({ profile }: Props) {
               padding: '14px 0',
             }}>
               <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-                {STEP_NAMES.map((_, i) => (
+                {STEPS.map((_, i) => (
                   <div key={i} style={{
                     flex: 1,
                     height: 4,
@@ -144,15 +218,15 @@ export default function BookingClient({ profile }: Props) {
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                {STEP_NAMES.map((name, i) => (
-                  <span key={i} style={{
+                {STEPS.map((key, i) => (
+                  <span key={key} style={{
                     fontSize: 10,
                     fontWeight: stepNum === i + 1 ? 600 : 400,
                     color: stepNum === i + 1 ? '#2563EB' : stepNum > i + 1 ? '#001a48' : '#AEB5C0',
                     letterSpacing: '0.02em',
                     textTransform: 'uppercase',
                   }}>
-                    {name}
+                    {STEP_NAMES[key]}
                   </span>
                 ))}
               </div>
@@ -168,48 +242,66 @@ export default function BookingClient({ profile }: Props) {
           margin: '0 auto',
           padding: '24px 20px 40px',
         }}>
-          {step === 1 && (
-            <div key="step-1" className="booking-step-in">
+          {step === 'tipo' && (
+            <div key="step-tipo" className="booking-step-in">
               <StepTipoConsulta
                 profile={profile}
                 tipo={tipo}
                 modalidad={modalidad}
                 onTipo={setTipo}
                 onModalidad={setModalidad}
-                onNext={() => setStep(2)}
+                onNext={() => goNextFrom('tipo')}
+                ocultarModalidad={multiSede}
               />
             </div>
           )}
 
-          {step === 2 && (
-            <div key="step-2" className="booking-step-in">
+          {step === 'sede' && (
+            <div key="step-sede" className="booking-step-in">
+              <StepSede
+                slug={profile.booking_slug}
+                tipo={tipo}
+                nombreProfesional={profile.nombre}
+                sedes={profile.sedes}
+                onSede={handleSede}
+                onBack={() => goBackFrom('sede')}
+              />
+            </div>
+          )}
+
+          {step === 'fecha' && (
+            <div key="step-fecha" className="booking-step-in">
               <StepCalendario
                 tipo={tipo}
                 slug={profile.booking_slug}
                 selectedFecha={selectedFecha}
                 onFecha={(f) => { setSelectedFecha(f); setSelectedHora(null) }}
-                onNext={() => setStep(3)}
+                onNext={() => goNextFrom('fecha')}
                 onBack={handleBack}
+                sede={sede}
+                onCambiarSede={multiSede ? handleCambiarSede : undefined}
               />
             </div>
           )}
 
-          {step === 3 && selectedFecha && (
-            <div key="step-3" className="booking-step-in">
+          {step === 'hora' && selectedFecha && (
+            <div key="step-hora" className="booking-step-in">
               <StepHorario
                 slug={profile.booking_slug}
                 fecha={selectedFecha}
                 tipo={tipo}
                 selectedHora={selectedHora}
                 onHora={setSelectedHora}
-                onNext={() => setStep(4)}
+                onNext={() => goNextFrom('hora')}
                 onBack={handleBack}
+                sede={sede}
+                onCambiarSede={multiSede ? handleCambiarSede : undefined}
               />
             </div>
           )}
 
-          {step === 4 && selectedFecha && selectedHora && (
-            <div key="step-4" className="booking-step-in">
+          {step === 'datos' && selectedFecha && selectedHora && (
+            <div key="step-datos" className="booking-step-in">
               <StepDatos
                 profile={profile}
                 tipo={tipo}
@@ -218,14 +310,15 @@ export default function BookingClient({ profile }: Props) {
                 modalidad={modalidad}
                 form={datosForm}
                 onForm={setDatosForm}
-                onNext={() => setStep(5)}
+                onNext={() => goNextFrom('datos')}
                 onBack={handleBack}
+                sede={sede}
               />
             </div>
           )}
 
-          {step === 5 && selectedFecha && selectedHora && (
-            <div key="step-5" className="booking-step-in">
+          {step === 'pago' && selectedFecha && selectedHora && (
+            <div key="step-pago" className="booking-step-in">
               <StepPago
                 profile={profile}
                 tipo={tipo}
@@ -235,17 +328,18 @@ export default function BookingClient({ profile }: Props) {
                 datosForm={datosForm}
                 onConfirmacion={(conf) => {
                   setConfirmacion(conf)
-                  setStep(6)
+                  setStep('confirmacion')
                 }}
                 onBack={handleBack}
                 onErrPago={() => setStep('err-pay')}
                 onErrSlot={() => setStep('err-slot')}
+                sede={sede}
               />
             </div>
           )}
 
-          {step === 6 && confirmacion && selectedFecha && selectedHora && (
-            <div key="step-6" className="booking-step-in">
+          {step === 'confirmacion' && confirmacion && selectedFecha && selectedHora && (
+            <div key="step-confirmacion" className="booking-step-in">
               <StepConfirmacion
                 profile={profile}
                 tipo={tipo}
@@ -281,7 +375,7 @@ export default function BookingClient({ profile }: Props) {
                   Otro paciente tomó ese turno mientras completabas el formulario. Por favor elegí otra fecha u horario.
                 </p>
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => goToKey('fecha')}
                   style={{
                     background: '#001a48',
                     color: '#fff',
@@ -324,7 +418,7 @@ export default function BookingClient({ profile }: Props) {
                   Hubo un problema al procesar tu pago. Podés volver atrás e intentar nuevamente con otra tarjeta.
                 </p>
                 <button
-                  onClick={() => setStep(4)}
+                  onClick={() => goToKey('datos')}
                   style={{
                     background: '#001a48',
                     color: '#fff',

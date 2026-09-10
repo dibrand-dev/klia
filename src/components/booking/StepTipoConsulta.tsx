@@ -10,6 +10,7 @@ interface Props {
   onTipo: (t: 'sesion' | 'entrevista') => void
   onModalidad: (m: string) => void
   onNext: () => void
+  ocultarModalidad?: boolean
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -45,6 +46,7 @@ export default function StepTipoConsulta({
   onTipo,
   onModalidad,
   onNext,
+  ocultarModalidad,
 }: Props) {
   const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined
   const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined
@@ -189,56 +191,60 @@ export default function StepTipoConsulta({
       </div>
 
       {/* Modality — copied from HTML design */}
-      <h2 style={{
-        fontSize: 13, fontWeight: 700, color: '#8A93A1',
-        textTransform: 'uppercase', letterSpacing: '0.06em',
-        margin: '0 0 12px',
-      }}>
-        Modalidad
-      </h2>
-      <div style={{
-        display: 'flex', gap: 6,
-        background: '#FFFFFF', border: '1px solid #E7E9EE',
-        padding: 3, borderRadius: 10,
-        marginBottom: 24,
-      }}>
-        {profile.booking_modalidades.map((m) => {
-          const selected = modalidad === m
-          return (
-            <button
-              key={m}
-              onClick={() => onModalidad(m)}
-              style={{
-                flex: 1, padding: '9px 12px', borderRadius: 7, border: 'none',
-                background: selected ? '#0B1220' : 'transparent',
-                color: selected ? '#fff' : '#5B6472',
-                fontSize: 13, fontWeight: 500,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                transition: 'all .12s ease',
-                cursor: 'pointer',
-                fontFamily: 'Inter, system-ui, sans-serif',
-              }}
-            >
-              {m === 'presencial' && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/>
-                </svg>
-              )}
-              {m === 'videollamada' && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/>
-                </svg>
-              )}
-              {m === 'telefonica' && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                </svg>
-              )}
-              {MODALIDAD_LABELS[m] ?? m}
-            </button>
-          )
-        })}
-      </div>
+      {!ocultarModalidad && (
+        <>
+          <h2 style={{
+            fontSize: 13, fontWeight: 700, color: '#8A93A1',
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            margin: '0 0 12px',
+          }}>
+            Modalidad
+          </h2>
+          <div style={{
+            display: 'flex', gap: 6,
+            background: '#FFFFFF', border: '1px solid #E7E9EE',
+            padding: 3, borderRadius: 10,
+            marginBottom: 24,
+          }}>
+            {profile.booking_modalidades.map((m) => {
+              const selected = modalidad === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => onModalidad(m)}
+                  style={{
+                    flex: 1, padding: '9px 12px', borderRadius: 7, border: 'none',
+                    background: selected ? '#0B1220' : 'transparent',
+                    color: selected ? '#fff' : '#5B6472',
+                    fontSize: 13, fontWeight: 500,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    transition: 'all .12s ease',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                  }}
+                >
+                  {m === 'presencial' && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M3 10l9-6 9 6v10H3z"/><path d="M9 20v-6h6v6"/>
+                    </svg>
+                  )}
+                  {m === 'videollamada' && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <rect x="2" y="6" width="14" height="12" rx="2"/><path d="M22 8l-6 4 6 4z"/>
+                    </svg>
+                  )}
+                  {m === 'telefonica' && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                  )}
+                  {MODALIDAD_LABELS[m] ?? m}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {/* Continue */}
       <button

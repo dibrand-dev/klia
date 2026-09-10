@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { ProfileData } from '@/app/p/[slug]/page'
+import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
@@ -38,6 +38,7 @@ interface Props {
   onBack: () => void
   onErrPago: () => void
   onErrSlot: () => void
+  sede?: SedePublica | null
 }
 
 interface CrearResponse {
@@ -284,6 +285,7 @@ export default function StepPago({
   onBack,
   onErrPago,
   onErrSlot,
+  sede,
 }: Props) {
   const t = getTerminologia(profile.terminologia)
   const [creating, setCreating] = useState(true)
@@ -372,6 +374,7 @@ export default function StepPago({
             email: datosForm.email,
             telefono: datosForm.telefono || undefined,
             cobertura_id: datosForm.coberturaId,
+            sede_id: sede?.id ?? undefined,
           }),
         })
 

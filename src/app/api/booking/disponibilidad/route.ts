@@ -29,6 +29,7 @@ async function getAvailableSlots(
   slug: string,
   fecha: string,  // YYYY-MM-DD
   tipo: string,
+  sedeId?: string | null,
 ): Promise<string[]> {
   const db = serviceClient()
 
@@ -40,14 +41,62 @@ async function getAvailableSlots(
 
   if (!profile || !profile.booking_activo) return []
 
-  // Check per-day schedule
-  const DIAS_KEY = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
-  const diaNombre = DIAS_KEY[new Date(fecha + 'T12:00:00').getDay()]
   type HorarioDiaViejo = { activo: boolean; inicio: number; fin: number }
   type FranjaHoraria = { inicio: number; fin: number }
   type HorarioDia = { activo: boolean; franjas?: FranjaHoraria[] } | HorarioDiaViejo
-  const horariosDia = (profile.horarios_por_dia as Record<string, HorarioDia> | null)?.[diaNombre]
-  if (horariosDia && !horariosDia.activo) return []
+
+  // Si viene sede_id (y es una sede activa real de este profesional), la fuente de
+  // franjas horarias es horarios_sucursal en vez de profiles.horarios_por_dia —
+  // validación dura: si esa sede no tiene bloques cargados para este día, no hay
+  // slots, punto. Sin sede_id (profesional con 1 sola sede, o llamada legacy) el
+  // comportamiento es exactamente el de siempre, sin ningún cambio.
+  let sedeValidada: { id: string } | null = null
+  if (sedeId) {
+    const { data: sede } = await db
+      .from('sucursales')
+      .select('id')
+      .eq('id', sedeId)
+      .eq('terapeuta_id', profile.id)
+      .eq('activo', true)
+      .maybeSingle()
+    sedeValidada = sede
+  }
+
+  let franjas: FranjaHoraria[]
+
+  if (sedeValidada) {
+    // dia_semana en horarios_sucursal: 0=Lunes...6=Domingo (mismo orden que el
+    // resto de la feature de Sedes) — distinto del DIAS_KEY legacy de abajo.
+    const diaSemanaSede = (new Date(fecha + 'T12:00:00').getDay() + 6) % 7
+    const { data: bloques } = await db
+      .from('horarios_sucursal')
+      .select('hora_inicio, hora_fin')
+      .eq('sucursal_id', sedeValidada.id)
+      .eq('dia_semana', diaSemanaSede)
+
+    if (!bloques || bloques.length === 0) return []
+
+    franjas = bloques.map(b => {
+      const [hi, mi] = b.hora_inicio.split(':').map(Number)
+      const [hf, mf] = b.hora_fin.split(':').map(Number)
+      return { inicio: hi + mi / 60, fin: hf + mf / 60 }
+    })
+  } else {
+    // ── Comportamiento legacy exacto — sin cambios ──
+    const DIAS_KEY = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+    const diaNombre = DIAS_KEY[new Date(fecha + 'T12:00:00').getDay()]
+    const horariosDia = (profile.horarios_por_dia as Record<string, HorarioDia> | null)?.[diaNombre]
+    if (horariosDia && !horariosDia.activo) return []
+
+    const horarioDiaRaw = horariosDia as Record<string, unknown> | undefined
+    if (horarioDiaRaw && Array.isArray(horarioDiaRaw.franjas)) {
+      franjas = horarioDiaRaw.franjas as FranjaHoraria[]
+    } else if (horarioDiaRaw) {
+      franjas = [{ inicio: (horarioDiaRaw.inicio as number) ?? profile.agenda_hora_inicio ?? 9, fin: (horarioDiaRaw.fin as number) ?? profile.agenda_hora_fin ?? 20 }]
+    } else {
+      franjas = [{ inicio: profile.agenda_hora_inicio ?? 9, fin: profile.agenda_hora_fin ?? 20 }]
+    }
+  }
 
   // Block holidays if configured
   if (profile.feriados_nacionales || profile.feriados_provinciales) {
@@ -68,17 +117,6 @@ async function getAvailableSlots(
     : (profile.booking_duracion_entrevista ?? 30)
   const buffer: number = profile.booking_tiempo_entre ?? 10
   const anticipacion: number = profile.booking_anticipacion_minutos ?? 60
-
-  // Resolver franjas (nuevo formato o retrocompatibilidad con viejo)
-  let franjas: FranjaHoraria[]
-  const horarioDiaRaw = horariosDia as Record<string, unknown> | undefined
-  if (horarioDiaRaw && Array.isArray(horarioDiaRaw.franjas)) {
-    franjas = horarioDiaRaw.franjas as FranjaHoraria[]
-  } else if (horarioDiaRaw) {
-    franjas = [{ inicio: (horarioDiaRaw.inicio as number) ?? profile.agenda_hora_inicio ?? 9, fin: (horarioDiaRaw.fin as number) ?? profile.agenda_hora_fin ?? 20 }]
-  } else {
-    franjas = [{ inicio: profile.agenda_hora_inicio ?? 9, fin: profile.agenda_hora_fin ?? 20 }]
-  }
 
   // Generate all possible slots across all franjas
   const allSlotsMin: number[] = []
@@ -189,6 +227,7 @@ export async function GET(request: NextRequest) {
   const fecha = searchParams.get('fecha') ?? ''
   const tipo = searchParams.get('tipo') ?? 'sesion'
   const view = searchParams.get('view') ?? 'dia'
+  const sedeId = searchParams.get('sede_id') || null
 
   if (!slug || !fecha) {
     return NextResponse.json({ error: 'slug y fecha requeridos' }, { status: 400 })
@@ -208,7 +247,7 @@ export async function GET(request: NextRequest) {
         const dayStr = `${y}-${pad(m)}-${pad(day)}`
         if (dayStr < todayDateStr) return null
         try {
-          const slots = await getAvailableSlots(slug, dayStr, tipo)
+          const slots = await getAvailableSlots(slug, dayStr, tipo, sedeId)
           return slots.length > 0 ? day : null
         } catch (err) {
           if (err instanceof GoogleAvailabilityError) return null
@@ -222,7 +261,7 @@ export async function GET(request: NextRequest) {
 
   // Day view: YYYY-MM-DD
   try {
-    const slots = await getAvailableSlots(slug, fecha, tipo)
+    const slots = await getAvailableSlots(slug, fecha, tipo, sedeId)
     return NextResponse.json({ slots })
   } catch (err) {
     if (err instanceof GoogleAvailabilityError) {

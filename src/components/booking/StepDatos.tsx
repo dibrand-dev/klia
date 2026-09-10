@@ -1,6 +1,6 @@
 'use client'
 
-import type { ProfileData } from '@/app/p/[slug]/page'
+import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 
 interface FormData {
   nombre: string
@@ -20,6 +20,7 @@ interface Props {
   onForm: (f: FormData) => void
   onNext: () => void
   onBack: () => void
+  sede?: SedePublica | null
 }
 
 const TIPO_LABELS: Record<string, string> = {
@@ -133,6 +134,7 @@ export default function StepDatos({
   onForm,
   onNext,
   onBack,
+  sede,
 }: Props) {
   const duracion = tipo === 'sesion'
     ? profile.booking_duracion_sesion
@@ -293,6 +295,7 @@ export default function StepDatos({
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sede && <ResumenRow label="Sede" value={sede.nombre} />}
             <ResumenRow label="Modalidad" value={MODALIDAD_LABELS[modalidad] ?? modalidad} />
             <ResumenRow
               label="Fecha"

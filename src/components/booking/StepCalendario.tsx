@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import SedeBreadcrumb from './SedeBreadcrumb'
+import type { SedePublica } from '@/app/p/[slug]/page'
 
 interface Props {
   tipo: string
@@ -9,6 +11,8 @@ interface Props {
   onFecha: (f: string) => void
   onNext: () => void
   onBack: () => void
+  sede?: SedePublica | null
+  onCambiarSede?: () => void
 }
 
 const DOW_HEADERS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
@@ -34,6 +38,8 @@ export default function StepCalendario({
   onFecha,
   onNext,
   onBack,
+  sede,
+  onCambiarSede,
 }: Props) {
   const [today] = useState(() => new Date())
   const [viewYear, setViewYear] = useState(() => today.getFullYear())
@@ -49,8 +55,9 @@ export default function StepCalendario({
     setAvailableDays([])
     try {
       const monthStr = `${viewYear}-${pad(viewMonth)}`
+      const sedeParam = sede ? `&sede_id=${sede.id}` : ''
       const res = await fetch(
-        `/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes`
+        `/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes${sedeParam}`
       )
       if (res.ok) {
         const data = await res.json()
@@ -61,7 +68,7 @@ export default function StepCalendario({
     } finally {
       setLoading(false)
     }
-  }, [slug, tipo, viewYear, viewMonth])
+  }, [slug, tipo, viewYear, viewMonth, sede])
 
   useEffect(() => {
     fetchAvailable()
@@ -124,6 +131,7 @@ export default function StepCalendario({
 
   return (
     <div>
+      {sede && onCambiarSede && <SedeBreadcrumb sede={sede} onCambiar={onCambiarSede} />}
       <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
         Elegí una fecha
       </p>

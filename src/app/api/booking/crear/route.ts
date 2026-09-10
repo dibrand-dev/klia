@@ -78,9 +78,10 @@ export async function POST(req: NextRequest) {
     email?: string
     telefono?: string
     cobertura_id?: string
+    sede_id?: string
   }
 
-  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId } = body
+  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId } = body
 
   if (!slug || !fecha || !hora || !tipo || !nombre || !apellido || !email) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -196,6 +197,7 @@ export async function POST(req: NextRequest) {
       estado: 'pendiente' as const,
       monto: precio ?? null,
       moneda,
+      sucursal_id: sedeId ?? null,
       notas: tipo === 'entrevista' ? 'Entrevista inicial reservada online' : 'Reserva online',
       tipo_turno: tipo === 'sesion' ? 'sesion' : 'entrevista',
     })

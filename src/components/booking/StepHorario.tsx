@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import SedeBreadcrumb from './SedeBreadcrumb'
+import type { SedePublica } from '@/app/p/[slug]/page'
 
 interface Props {
   slug: string
@@ -10,6 +12,8 @@ interface Props {
   onHora: (h: string) => void
   onNext: () => void
   onBack: () => void
+  sede?: SedePublica | null
+  onCambiarSede?: () => void
 }
 
 function formatFecha(fecha: string): string {
@@ -42,6 +46,8 @@ export default function StepHorario({
   onHora,
   onNext,
   onBack,
+  sede,
+  onCambiarSede,
 }: Props) {
   const [slots, setSlots] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,7 +59,8 @@ export default function StepHorario({
     setError(false)
     setSlots([])
 
-    fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}`)
+    const sedeParam = sede ? `&sede_id=${sede.id}` : ''
+    fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}${sedeParam}`)
       .then((r) => {
         if (!r.ok) throw new Error('error')
         return r.json()
@@ -71,7 +78,7 @@ export default function StepHorario({
       })
 
     return () => { cancelled = true }
-  }, [slug, fecha, tipo])
+  }, [slug, fecha, tipo, sede])
 
   const manana = slots.filter((s) => {
     const [h] = s.split(':').map(Number)
@@ -94,6 +101,7 @@ export default function StepHorario({
         }
       `}</style>
 
+      {sede && onCambiarSede && <SedeBreadcrumb sede={sede} onCambiar={onCambiarSede} />}
       <p style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
         Elegí tu horario
       </p>

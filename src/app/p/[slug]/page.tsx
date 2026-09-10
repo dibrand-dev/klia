@@ -36,6 +36,15 @@ export type ProfileData = {
   colaboradorasEmails: string[]
   terminologia: 'sesion' | 'consulta'
   obrasSociales: { id: string; nombre: string }[]
+  sedes: SedePublica[]
+}
+
+export type SedePublica = {
+  id: string
+  nombre: string
+  direccion: string | null
+  es_online: boolean
+  color: string
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
@@ -83,6 +92,13 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     ? await supabase.from('profiles').select('email').in('id', colaboradorIds)
     : { data: [] as { email: string | null }[] }
 
+  const { data: sucursales } = await supabase
+    .from('sucursales')
+    .select('id, nombre, direccion, es_online, color')
+    .eq('terapeuta_id', data.id)
+    .eq('activo', true)
+    .order('orden')
+
   return {
     id: data.id,
     nombre: data.nombre ?? '',
@@ -110,6 +126,7 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     colaboradorasEmails: (perfilesColaboradoras ?? []).map(p => p.email).filter((e): e is string => !!e),
     terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
     obrasSociales: obrasSociales ?? [],
+    sedes: sucursales ?? [],
   }
 }
 
