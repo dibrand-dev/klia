@@ -96,22 +96,6 @@ export async function POST(req: NextRequest) {
     .eq('booking_slug', slug)
     .single()
 
-  console.error('[DIAGNÓSTICO booking/crear]', {
-    slug,
-    profileFound: !!profile,
-    bookingActivo: profile?.booking_activo,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  })
-
-  console.error('[DIAGNÓSTICO booking/crear - error real]', {
-    errorMessage: profileError?.message,
-    errorCode: profileError?.code,
-    errorDetails: profileError?.details,
-    errorHint: profileError?.hint,
-  })
-
   if (!profile || !profile.booking_activo) {
     return NextResponse.json({ error: 'Perfil no disponible' }, { status: 404 })
   }
@@ -222,6 +206,13 @@ export async function POST(req: NextRequest) {
 
   if (turnoErr || !turno) {
     console.error('[booking/crear] turno insert error:', turnoErr)
+    console.error('[DIAGNÓSTICO booking/crear - insert turno]', {
+      errorMessage: turnoErr?.message,
+      errorCode: turnoErr?.code,
+      errorDetails: turnoErr?.details,
+      errorHint: turnoErr?.hint,
+      sedeId: sedeId ?? null,
+    })
     return NextResponse.json({ error: 'Error al crear turno' }, { status: 500 })
   }
 
