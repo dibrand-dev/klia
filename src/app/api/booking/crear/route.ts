@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
   const db = serviceClient()
 
   // 1. Get professional
-  const { data: profile } = await db
+  const { data: profile, error: profileError } = await db
     .from('profiles')
     .select('id, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
     .eq('booking_slug', slug)
@@ -103,6 +103,13 @@ export async function POST(req: NextRequest) {
     hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length ?? 0,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  })
+
+  console.error('[DIAGNÓSTICO booking/crear - error real]', {
+    errorMessage: profileError?.message,
+    errorCode: profileError?.code,
+    errorDetails: profileError?.details,
+    errorHint: profileError?.hint,
   })
 
   if (!profile || !profile.booking_activo) {
