@@ -9,6 +9,7 @@ import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
 import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
 import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
+import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import type { Profile, ProfesionalObraSocial } from '@/types/database'
@@ -210,6 +211,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
+  const [multiSede, setMultiSede] = useState(false)
 
   // Perfil state
   const [perfilForm, setPerfilForm] = useState({
@@ -577,7 +579,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const navItems = [
     { id: 'perfil', label: 'Perfil profesional' },
     { id: 'recetas', label: 'Recetas electrónicas' },
-    { id: 'horarios', label: 'Horarios' },
+    { id: 'horarios', label: multiSede ? 'Sedes y horarios' : 'Horarios' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'transferencia', label: 'Transferencia bancaria' },
     { id: 'aviso-deuda', label: 'Aviso de deuda' },
@@ -968,8 +970,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             </form>
           </section>
 
-          {/* ═══ HORARIOS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios" style={secStyle}>
+          {/* ═══ SEDES Y HORARIOS POR SEDE (solo 2+ sedes reales — ver SedesHorariosSection) ═══ */}
+          <div className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="sedes-horarios">
+            <SedesHorariosSection plan={profile.plan} onMultiChange={setMultiSede} />
+          </div>
+
+          {/* ═══ HORARIOS (experiencia actual — 1 sola sede) ═══ */}
+          <section className={multiSede ? 'hidden' : `ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#FFF4E4', 'var(--warn)')}>{ICONS.horarios}</div>
               <div style={{ flex: 1, minWidth: 0 }}>

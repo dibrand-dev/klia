@@ -202,6 +202,95 @@ export type Database = {
         }
         Relationships: []
       }
+      sucursales: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          nombre: string
+          direccion: string | null
+          es_online: boolean
+          activo: boolean
+          orden: number
+          color: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          nombre: string
+          direccion?: string | null
+          es_online?: boolean
+          activo?: boolean
+          orden?: number
+          color: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          nombre?: string
+          direccion?: string | null
+          es_online?: boolean
+          activo?: boolean
+          orden?: number
+          color?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'sucursales_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      horarios_sucursal: {
+        Row: {
+          id: string
+          sucursal_id: string
+          terapeuta_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fin: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sucursal_id: string
+          terapeuta_id: string
+          dia_semana: number
+          hora_inicio: string
+          hora_fin: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sucursal_id?: string
+          terapeuta_id?: string
+          dia_semana?: number
+          hora_inicio?: string
+          hora_fin?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'horarios_sucursal_sucursal_id_fkey'
+            columns: ['sucursal_id']
+            isOneToOne: false
+            referencedRelation: 'sucursales'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'horarios_sucursal_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pacientes: {
         Row: {
           id: string
@@ -358,6 +447,7 @@ export type Database = {
           estado_pago: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado: number | null
           es_sobreturno: boolean
+          sucursal_id: string | null
           created_at: string
           updated_at: string
         }
@@ -384,6 +474,7 @@ export type Database = {
           estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado?: number | null
           es_sobreturno?: boolean
+          sucursal_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -404,6 +495,7 @@ export type Database = {
           estado_pago?: 'pendiente' | 'pagado' | 'pago_parcial' | 'bonificado' | null
           monto_pagado?: number | null
           es_sobreturno?: boolean
+          sucursal_id?: string | null
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
@@ -426,6 +518,13 @@ export type Database = {
             columns: ['terapeuta_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'turnos_sucursal_id_fkey'
+            columns: ['sucursal_id']
+            isOneToOne: false
+            referencedRelation: 'sucursales'
             referencedColumns: ['id']
           },
         ]
@@ -1760,6 +1859,8 @@ export type InformeMedico = Database['public']['Tables']['informes_medicos']['Ro
 export type MenuSemanalItem = Database['public']['Tables']['menu_semanal']['Row']
 export type DistribucionMacros = Database['public']['Tables']['distribucion_macros']['Row']
 export type Testimonio = Database['public']['Tables']['testimonios']['Row']
+export type Sucursal = Database['public']['Tables']['sucursales']['Row']
+export type HorarioSucursal = Database['public']['Tables']['horarios_sucursal']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]
