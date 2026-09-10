@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   // 1. Get professional
   const { data: profile } = await db
     .from('profiles')
-    .select('id, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin')
+    .select('id, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
     .eq('booking_slug', slug)
     .single()
 
@@ -209,10 +209,13 @@ export async function POST(req: NextRequest) {
 
   const hash = shortId()
 
-  // 5. If no payment required, no MP connected, or paciente eligió obra social → queda
-  // pendiente de confirmación manual del profesional (solo un pago real por MP confirma
-  // automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
-  if (!profile.booking_requiere_pago || !precio || !profile.mp_access_token || !esParticular) {
+  const tieneTransferencia = !!(profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular)
+
+  // 5. If no payment required, no medio de pago disponible (ni MP ni transferencia),
+  // or paciente eligió obra social → queda pendiente de confirmación manual del
+  // profesional (solo un pago real por MP, o una transferencia confirmada a mano,
+  // confirma automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
+  if (!profile.booking_requiere_pago || !precio || (!profile.mp_access_token && !tieneTransferencia) || !esParticular) {
     try {
       await sincronizarTurnoCreado(turno.id, profile.id)
     } catch (err) {

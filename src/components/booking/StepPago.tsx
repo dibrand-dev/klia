@@ -548,30 +548,32 @@ export default function StepPago({
             </span>
           </button>
         )}
-        <button
-          onClick={seleccionarMP}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            textAlign: 'left', width: '100%',
-            background: medio === 'mp' ? '#F4F7FF' : '#F6F7F9',
-            border: medio === 'mp' ? '2px solid #002d72' : '2px solid transparent',
-            boxShadow: medio === 'mp' ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
-            borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
-            fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s',
-          }}
-        >
-          <span style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: '#fff', border: '1px solid #E7E9EE',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0B1220" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </span>
-          <span>
-            <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0B1220' }}>Mercado Pago</span>
-            <span style={{ display: 'block', fontSize: 12, color: '#5B6472', marginTop: 1 }}>Tarjeta, dinero en cuenta y más</span>
-          </span>
-        </button>
+        {profile.mp_conectado && (
+          <button
+            onClick={seleccionarMP}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              textAlign: 'left', width: '100%',
+              background: medio === 'mp' ? '#F4F7FF' : '#F6F7F9',
+              border: medio === 'mp' ? '2px solid #002d72' : '2px solid transparent',
+              boxShadow: medio === 'mp' ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
+              borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif', transition: 'all 0.15s',
+            }}
+          >
+            <span style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: '#fff', border: '1px solid #E7E9EE',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0B1220" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            <span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0B1220' }}>Mercado Pago</span>
+              <span style={{ display: 'block', fontSize: 12, color: '#5B6472', marginTop: 1 }}>Tarjeta, dinero en cuenta y más</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Panel de Transferencia */}
