@@ -206,13 +206,6 @@ export async function POST(req: NextRequest) {
 
   if (turnoErr || !turno) {
     console.error('[booking/crear] turno insert error:', turnoErr)
-    console.error('[DIAGNÓSTICO booking/crear - insert turno]', {
-      errorMessage: turnoErr?.message,
-      errorCode: turnoErr?.code,
-      errorDetails: turnoErr?.details,
-      errorHint: turnoErr?.hint,
-      sedeId: sedeId ?? null,
-    })
     return NextResponse.json({ error: 'Error al crear turno' }, { status: 500 })
   }
 
