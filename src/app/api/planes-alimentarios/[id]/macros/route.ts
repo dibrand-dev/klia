@@ -91,33 +91,28 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
   }
 
-  // valorPor100g[alimento_id][codigo] = valor_nutriente (por 100g)
+  // valorPor100g[alimento_id][codigo] = valor (por 100g)
   const valorPor100g = new Map<string, Map<NutrienteCodigo, number>>()
 
   if (alimentoIdsArgenfood.size > 0) {
-    const { data: nutrientes } = await db
-      .from('vademecum_nutrientes')
-      .select('id, codigo')
-      .in('codigo', NUTRIENTES_CODIGOS as unknown as string[])
+    // vademecum_alimento_nutrientes guarda el código del nutriente directo en
+    // nutriente_codigo (no una FK a vademecum_nutrientes.id) — sin indirección.
+    const { data: valores, error: valoresError } = await db
+      .from('vademecum_alimento_nutrientes')
+      .select('alimento_id, nutriente_codigo, valor')
+      .in('alimento_id', Array.from(alimentoIdsArgenfood))
+      .in('nutriente_codigo', NUTRIENTES_CODIGOS as unknown as string[])
 
-    const idPorCodigo = new Map<string, NutrienteCodigo>()
-    for (const n of nutrientes ?? []) {
-      if (NUTRIENTES_CODIGOS.includes(n.codigo as NutrienteCodigo)) {
-        idPorCodigo.set(n.id, n.codigo as NutrienteCodigo)
-      }
+    if (valoresError) {
+      console.error('[planes-alimentarios/[id]/macros] Error consultando vademecum_alimento_nutrientes:', valoresError)
     }
 
-    const { data: valores } = await db
-      .from('vademecum_alimento_nutrientes')
-      .select('alimento_id, nutriente_id, valor_nutriente')
-      .in('alimento_id', Array.from(alimentoIdsArgenfood))
-
     for (const v of valores ?? []) {
-      const codigo = idPorCodigo.get(v.nutriente_id)
-      if (!codigo) continue
+      if (!NUTRIENTES_CODIGOS.includes(v.nutriente_codigo as NutrienteCodigo)) continue
+      const codigo = v.nutriente_codigo as NutrienteCodigo
       const alimentoId = String(v.alimento_id)
       if (!valorPor100g.has(alimentoId)) valorPor100g.set(alimentoId, new Map())
-      valorPor100g.get(alimentoId)!.set(codigo, v.valor_nutriente)
+      valorPor100g.get(alimentoId)!.set(codigo, v.valor)
     }
   }
 

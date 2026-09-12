@@ -1912,16 +1912,16 @@ export type Database = {
       vademecum_alimento_nutrientes: {
         Row: {
           alimento_id: string
-          nutriente_id: string
-          valor_nutriente: number
+          nutriente_codigo: string
+          valor: number
         }
         Insert: {
           alimento_id: string
-          nutriente_id: string
-          valor_nutriente: number
+          nutriente_codigo: string
+          valor: number
         }
         Update: {
-          valor_nutriente?: number
+          valor?: number
         }
         Relationships: [
           {
@@ -1929,13 +1929,6 @@ export type Database = {
             columns: ['alimento_id']
             isOneToOne: false
             referencedRelation: 'vademecum_alimentos'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'vademecum_alimento_nutrientes_nutriente_id_fkey'
-            columns: ['nutriente_id']
-            isOneToOne: false
-            referencedRelation: 'vademecum_nutrientes'
             referencedColumns: ['id']
           },
         ]
