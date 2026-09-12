@@ -58,7 +58,7 @@ export default function StepTipoConsulta({
     tipoOptions.push({
       key: 'sesion',
       label: 'Sesión',
-      desc: 'Sesión terapéutica individual',
+      desc: 'Sesión individual',
       price: profile.booking_precio_sesion,
       dur: profile.booking_duracion_sesion,
     })
