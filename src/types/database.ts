@@ -1835,6 +1835,7 @@ export type Database = {
         Row: {
           id: string
           comida_id: string
+          terapeuta_id: string
           tipo: string
           contenido_texto: string | null
           alimento_fuente: string | null
@@ -1846,6 +1847,7 @@ export type Database = {
         Insert: {
           id?: string
           comida_id: string
+          terapeuta_id: string
           tipo: string
           contenido_texto?: string | null
           alimento_fuente?: string | null

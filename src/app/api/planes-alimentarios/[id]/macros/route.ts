@@ -42,10 +42,14 @@ type ItemRow = {
 
 type ComidaRow = {
   id: string
-  dia_semana: number
+  dia_semana: string
   tipo_comida: string
   plan_comida_items: ItemRow[]
 }
+
+// dia_semana es texto ('lunes'/'martes'/...), no numérico — mismo orden que
+// menu_semanal.dia. Usado solo para ordenar la respuesta Lunes→Domingo.
+const ORDEN_DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -157,7 +161,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         itemsSinDatosNutricionales: itemsSinDatos,
       }
     })
-    .sort((a, b) => a.diaSemana - b.diaSemana)
+    .sort((a, b) => ORDEN_DIAS.indexOf(a.diaSemana) - ORDEN_DIAS.indexOf(b.diaSemana))
 
   return NextResponse.json({
     planId: params.id,

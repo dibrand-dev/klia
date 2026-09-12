@@ -49,6 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     .from('plan_comida_items')
     .insert({
       comida_id: params.id,
+      terapeuta_id: efectivo.terapeutaId,
       tipo,
       contenido_texto: tipo === 'texto_libre' ? contenidoTexto : null,
       alimento_fuente: tipo === 'alimento' ? alimentoFuente : null,
