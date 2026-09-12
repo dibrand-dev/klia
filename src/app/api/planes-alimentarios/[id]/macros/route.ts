@@ -78,7 +78,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     for (const item of comida.plan_comida_items ?? []) {
       if (item.tipo !== 'alimento') continue
       if (item.alimento_fuente === 'argenfood' && item.alimento_id) {
-        alimentoIdsArgenfood.add(item.alimento_id)
+        // alimento_id es bigint en la DB — PostgREST lo serializa como string,
+        // pero puede llegar como number si el valor vino de otro lado (ej. el
+        // body de un POST). Normalizar a string en el único punto de entrada
+        // a este Set evita el mismatch de tipo al comparar contra valorPor100g.
+        alimentoIdsArgenfood.add(String(item.alimento_id))
       } else if (item.alimento_fuente === 'off') {
         sinDatos.push({ itemId: item.id, motivo: 'Fuente "off" todavía no tiene datos nutricionales cargados' })
       } else {
@@ -111,8 +115,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     for (const v of valores ?? []) {
       const codigo = idPorCodigo.get(v.nutriente_id)
       if (!codigo) continue
-      if (!valorPor100g.has(v.alimento_id)) valorPor100g.set(v.alimento_id, new Map())
-      valorPor100g.get(v.alimento_id)!.set(codigo, v.valor_nutriente)
+      const alimentoId = String(v.alimento_id)
+      if (!valorPor100g.has(alimentoId)) valorPor100g.set(alimentoId, new Map())
+      valorPor100g.get(alimentoId)!.set(codigo, v.valor_nutriente)
     }
   }
 
@@ -120,7 +125,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     if (item.tipo !== 'alimento' || item.alimento_fuente !== 'argenfood' || !item.alimento_id || item.cantidad_gramos == null) {
       return null
     }
-    const valores = valorPor100g.get(item.alimento_id)
+    const valores = valorPor100g.get(String(item.alimento_id))
     if (!valores) return null
     const factor = item.cantidad_gramos / 100
     const resultado = totalesVacios()
