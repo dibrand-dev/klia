@@ -36,7 +36,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   if (error) {
     console.error('[planes-alimentarios/[id]/comidas POST] DB error:', error)
-    return NextResponse.json({ error: 'Error al agregar la comida' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Error al agregar la comida',
+      debug: {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      },
+    }, { status: 500 })
   }
 
   return NextResponse.json({ comida })
