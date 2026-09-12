@@ -1801,7 +1801,8 @@ export type Database = {
         Row: {
           id: string
           plan_id: string
-          dia_semana: number
+          terapeuta_id: string
+          dia_semana: string
           tipo_comida: string
           orden: number
           created_at: string
@@ -1809,13 +1810,14 @@ export type Database = {
         Insert: {
           id?: string
           plan_id: string
-          dia_semana: number
+          terapeuta_id: string
+          dia_semana: string
           tipo_comida: string
           orden?: number
           created_at?: string
         }
         Update: {
-          dia_semana?: number
+          dia_semana?: string
           tipo_comida?: string
           orden?: number
         }
