@@ -1834,7 +1834,7 @@ export type Database = {
           id: string
           comida_id: string
           tipo: string
-          descripcion: string | null
+          contenido_texto: string | null
           alimento_fuente: string | null
           alimento_id: string | null
           cantidad_gramos: number | null
@@ -1845,7 +1845,7 @@ export type Database = {
           id?: string
           comida_id: string
           tipo: string
-          descripcion?: string | null
+          contenido_texto?: string | null
           alimento_fuente?: string | null
           alimento_id?: string | null
           cantidad_gramos?: number | null
@@ -1854,7 +1854,7 @@ export type Database = {
         }
         Update: {
           tipo?: string
-          descripcion?: string | null
+          contenido_texto?: string | null
           alimento_fuente?: string | null
           alimento_id?: string | null
           cantidad_gramos?: number | null

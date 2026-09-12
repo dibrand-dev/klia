@@ -5,16 +5,36 @@ import { serviceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 
-// Códigos asumidos en vademecum_nutrientes.codigo — ajustar si el esquema real
-// usa otros valores (no confirmado contra la DB al momento de escribir esto).
-const NUTRIENTES_CODIGOS = ['energia', 'proteinas', 'grasas', 'carbohidratos'] as const
+// Códigos reales de vademecum_nutrientes.codigo (convención tipo FoodData/USDA).
+const NUTRIENTES_CODIGOS = ['ENERC_KCAL', 'PROTCNT', 'FAT', 'CHOCDF'] as const
 type NutrienteCodigo = typeof NUTRIENTES_CODIGOS[number]
+
+// Nombres amigables para la respuesta — el consumidor de este endpoint no
+// necesita conocer los códigos internos del Vademécum.
+const NOMBRE_AMIGABLE: Record<NutrienteCodigo, 'energia' | 'proteinas' | 'grasas' | 'carbohidratos'> = {
+  ENERC_KCAL: 'energia',
+  PROTCNT: 'proteinas',
+  FAT: 'grasas',
+  CHOCDF: 'carbohidratos',
+}
+
+function totalesVacios(): Record<NutrienteCodigo, number> {
+  return { ENERC_KCAL: 0, PROTCNT: 0, FAT: 0, CHOCDF: 0 }
+}
+
+function aFormatoAmigable(totales: Record<NutrienteCodigo, number>): Record<'energia' | 'proteinas' | 'grasas' | 'carbohidratos', number> {
+  const resultado = { energia: 0, proteinas: 0, grasas: 0, carbohidratos: 0 }
+  for (const codigo of NUTRIENTES_CODIGOS) {
+    resultado[NOMBRE_AMIGABLE[codigo]] = totales[codigo]
+  }
+  return resultado
+}
 
 type ItemRow = {
   id: string
   comida_id: string
   tipo: string
-  descripcion: string | null
+  contenido_texto: string | null
   alimento_fuente: string | null
   alimento_id: string | null
   cantidad_gramos: number | null
@@ -99,18 +119,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const valores = valorPor100g.get(item.alimento_id)
     if (!valores) return null
     const factor = item.cantidad_gramos / 100
-    const resultado: Record<NutrienteCodigo, number> = { energia: 0, proteinas: 0, grasas: 0, carbohidratos: 0 }
+    const resultado = totalesVacios()
     for (const codigo of NUTRIENTES_CODIGOS) {
       resultado[codigo] = (valores.get(codigo) ?? 0) * factor
     }
     return resultado
   }
 
-  const totalPlan: Record<NutrienteCodigo, number> = { energia: 0, proteinas: 0, grasas: 0, carbohidratos: 0 }
+  const totalPlan = totalesVacios()
 
   const porDia = comidas
     .map((comida) => {
-      const totalComida: Record<NutrienteCodigo, number> = { energia: 0, proteinas: 0, grasas: 0, carbohidratos: 0 }
+      const totalComida = totalesVacios()
       const itemsSinDatos: string[] = []
 
       for (const item of comida.plan_comida_items ?? []) {
@@ -133,7 +153,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         comidaId: comida.id,
         diaSemana: comida.dia_semana,
         tipoComida: comida.tipo_comida,
-        totales: totalComida,
+        totales: aFormatoAmigable(totalComida),
         itemsSinDatosNutricionales: itemsSinDatos,
       }
     })
@@ -142,7 +162,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   return NextResponse.json({
     planId: params.id,
     porDia,
-    total: totalPlan,
+    total: aFormatoAmigable(totalPlan),
     avisos: sinDatos,
   })
 }

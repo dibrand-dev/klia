@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const body = await request.json()
   const {
     tipo,
-    descripcion,
+    contenido_texto: contenidoTexto,
     alimento_fuente: alimentoFuente,
     alimento_id: alimentoId,
     cantidad_gramos: cantidadGramos,
@@ -41,8 +41,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         { status: 400 }
       )
     }
-  } else if (!descripcion) {
-    return NextResponse.json({ error: 'Para tipo=texto_libre, descripcion es requerida' }, { status: 400 })
+  } else if (!contenidoTexto) {
+    return NextResponse.json({ error: 'Para tipo=texto_libre, contenido_texto es requerido' }, { status: 400 })
   }
 
   const { data: item, error } = await db
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     .insert({
       comida_id: params.id,
       tipo,
-      descripcion: tipo === 'texto_libre' ? descripcion : null,
+      contenido_texto: tipo === 'texto_libre' ? contenidoTexto : null,
       alimento_fuente: tipo === 'alimento' ? alimentoFuente : null,
       alimento_id: tipo === 'alimento' ? alimentoId : null,
       cantidad_gramos: tipo === 'alimento' ? cantidadGramos : null,

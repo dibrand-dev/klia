@@ -21,7 +21,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const body = await request.json()
   const {
     tipo,
-    descripcion,
+    contenido_texto: contenidoTexto,
     alimento_fuente: alimentoFuente,
     alimento_id: alimentoId,
     cantidad_gramos: cantidadGramos,
@@ -38,16 +38,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       { status: 400 }
     )
   }
-  if (tipo === 'texto_libre' && !descripcion) {
-    return NextResponse.json({ error: 'Para tipo=texto_libre, descripcion es requerida' }, { status: 400 })
+  if (tipo === 'texto_libre' && !contenidoTexto) {
+    return NextResponse.json({ error: 'Para tipo=texto_libre, contenido_texto es requerido' }, { status: 400 })
   }
 
   const { data: itemActualizado, error } = await db
     .from('plan_comida_items')
     .update({
       ...(tipo !== undefined ? { tipo } : {}),
-      ...(tipo === 'alimento' ? { descripcion: null, alimento_fuente: alimentoFuente, alimento_id: alimentoId, cantidad_gramos: cantidadGramos } : {}),
-      ...(tipo === 'texto_libre' ? { descripcion, alimento_fuente: null, alimento_id: null, cantidad_gramos: null } : {}),
+      ...(tipo === 'alimento' ? { contenido_texto: null, alimento_fuente: alimentoFuente, alimento_id: alimentoId, cantidad_gramos: cantidadGramos } : {}),
+      ...(tipo === 'texto_libre' ? { contenido_texto: contenidoTexto, alimento_fuente: null, alimento_id: null, cantidad_gramos: null } : {}),
       ...(orden !== undefined ? { orden } : {}),
     })
     .eq('id', params.id)
