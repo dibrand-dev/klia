@@ -41,7 +41,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         { status: 400 }
       )
     }
-  } else if (!contenidoTexto) {
+  } else if (contenidoTexto === undefined || contenidoTexto === null) {
+    // String vacío es válido: es el estado inicial de un ítem recién creado,
+    // que el profesional completa después. Solo rechazamos si el campo falta.
     return NextResponse.json({ error: 'Para tipo=texto_libre, contenido_texto es requerido' }, { status: 400 })
   }
 

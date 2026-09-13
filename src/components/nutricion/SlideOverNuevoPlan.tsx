@@ -55,12 +55,16 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
       subtitle={pacienteNombre}
       width="md"
       footer={
-        <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+        <div style={{
+          display: 'flex', gap: 8, width: '100%',
+          padding: '12px 16px', background: 'var(--surface-2, #F6F7F9)',
+          borderTop: '1px solid var(--border, #E7E9EE)',
+        }}>
           <button
             type="button"
             onClick={onClose}
             className="btn"
-            style={{ flex: 1 }}
+            style={{ flex: 1, display: 'flex', justifyContent: 'center' }}
           >
             Cancelar
           </button>
@@ -69,7 +73,7 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
             onClick={crear}
             disabled={creando}
             className="btn primary"
-            style={{ flex: 1, opacity: creando ? 0.6 : 1 }}
+            style={{ flex: 1, display: 'flex', justifyContent: 'center', opacity: creando ? 0.6 : 1 }}
           >
             Crear plan
           </button>

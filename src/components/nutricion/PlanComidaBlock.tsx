@@ -186,10 +186,10 @@ export default function PlanComidaBlock({
             style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', font: 'inherit', fontSize: 14.5, fontWeight: 600, color: 'var(--ink, #0B1220)', padding: '3px 6px', margin: '-3px -6px', minWidth: 60, outline: 'none' }}
           />
           <input
+            type="time"
             value={hora}
             onChange={(e) => setHora(e.target.value)}
             onBlur={commitHora}
-            placeholder="--:--"
             aria-label="Horario"
             style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', padding: '3px 5px', width: 52, outline: 'none' }}
           />
