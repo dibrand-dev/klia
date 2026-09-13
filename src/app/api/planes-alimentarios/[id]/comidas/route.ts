@@ -17,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!perteneceAlTerapeuta) return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 })
 
   const body = await request.json()
-  const { dia_semana: diaSemana, tipo_comida: tipoComida, orden } = body
+  const { dia_semana: diaSemana, tipo_comida: tipoComida, hora, orden } = body
 
   if (diaSemana === undefined || diaSemana === null || !tipoComida) {
     return NextResponse.json({ error: 'dia_semana y tipo_comida requeridos' }, { status: 400 })
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       terapeuta_id: efectivo.terapeutaId,
       dia_semana: diaSemana,
       tipo_comida: tipoComida,
+      hora: hora ?? null,
       orden: orden ?? 0,
     })
     .select()

@@ -163,10 +163,54 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
     .sort((a, b) => ORDEN_DIAS.indexOf(a.diaSemana) - ORDEN_DIAS.indexOf(b.diaSemana))
 
+  // Agregación por día (para el scope "Día" del selector de macros): suma los
+  // totales de todas las comidas de cada dia_semana que tenga al menos una.
+  const totalesPorDiaSemana = new Map<string, Record<NutrienteCodigo, number>>()
+  for (const comida of comidas) {
+    if (!totalesPorDiaSemana.has(comida.dia_semana)) {
+      totalesPorDiaSemana.set(comida.dia_semana, totalesVacios())
+    }
+    const acumulado = totalesPorDiaSemana.get(comida.dia_semana)!
+    for (const item of comida.plan_comida_items ?? []) {
+      const aporte = sumarNutrientesItem(item)
+      if (!aporte) continue
+      for (const codigo of NUTRIENTES_CODIGOS) {
+        acumulado[codigo] += aporte[codigo]
+      }
+    }
+  }
+
+  const porDiaAgregado = ORDEN_DIAS
+    .filter((dia) => totalesPorDiaSemana.has(dia))
+    .map((dia) => ({
+      diaSemana: dia,
+      totales: aFormatoAmigable(totalesPorDiaSemana.get(dia)!),
+    }))
+
+  // Promedio del plan: promedio de los totales diarios sobre la cantidad de
+  // días con al menos una comida — no sobre 7, y no recalculado en el cliente.
+  const diasConDatos = porDiaAgregado.length
+  const promedioAcumulado = totalesVacios()
+  for (const dia of porDiaAgregado) {
+    for (const codigo of NUTRIENTES_CODIGOS) {
+      promedioAcumulado[codigo] += totalesPorDiaSemana.get(dia.diaSemana)![codigo]
+    }
+  }
+  if (diasConDatos > 0) {
+    for (const codigo of NUTRIENTES_CODIGOS) {
+      promedioAcumulado[codigo] = promedioAcumulado[codigo] / diasConDatos
+    }
+  }
+
   return NextResponse.json({
     planId: params.id,
     porDia,
     total: aFormatoAmigable(totalPlan),
     avisos: sinDatos,
+    porDiaAgregado,
+    promedioPlan: {
+      diasConDatos,
+      totales: aFormatoAmigable(promedioAcumulado),
+    },
   })
 }

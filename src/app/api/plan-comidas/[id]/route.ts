@@ -19,13 +19,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 
   const body = await request.json()
-  const { dia_semana: diaSemana, tipo_comida: tipoComida, orden } = body
+  const { dia_semana: diaSemana, tipo_comida: tipoComida, hora, orden } = body
 
   const { data: comidaActualizada, error } = await db
     .from('plan_comidas')
     .update({
       ...(diaSemana !== undefined ? { dia_semana: diaSemana } : {}),
       ...(tipoComida !== undefined ? { tipo_comida: tipoComida } : {}),
+      ...(hora !== undefined ? { hora } : {}),
       ...(orden !== undefined ? { orden } : {}),
     })
     .eq('id', params.id)

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion' | 'refraccion'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion' | 'plan-alimentario' | 'refraccion'
 
 interface TabDef {
   key: PacienteTabKey
@@ -42,6 +42,7 @@ export default function PacienteTabs({
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
     ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
+    ...(showComposicion ? [{ key: 'plan-alimentario' as PacienteTabKey, label: 'Plan Alimentario' }] : []),
     ...(showRefraccion ? [{ key: 'refraccion' as PacienteTabKey, label: 'Refracción' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
@@ -59,6 +60,7 @@ export default function PacienteTabs({
           : tab.key === 'archivos' ? `/pacientes/${pacienteId}?tab=archivos`
           : tab.key === 'admision' ? `/pacientes/${pacienteId}?tab=admision`
           : tab.key === 'composicion' ? `/pacientes/${pacienteId}?tab=composicion`
+          : tab.key === 'plan-alimentario' ? `/pacientes/${pacienteId}?tab=plan-alimentario`
           : tab.key === 'refraccion' ? `/pacientes/${pacienteId}?tab=refraccion`
           : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
           : `/pacientes/${pacienteId}?tab=interconsultas`

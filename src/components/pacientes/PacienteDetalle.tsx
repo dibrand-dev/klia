@@ -22,6 +22,7 @@ import AdmisionTab from './AdmisionTab'
 import RegistrarPagoSlide, { type TurnoDeuda } from '@/components/cobros/RegistrarPagoSlide'
 import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
+import PlanAlimentarioTab from '@/components/nutricion/PlanAlimentarioTab'
 import RxGrid from '@/components/oftalmologia/RxGrid'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
@@ -800,6 +801,10 @@ export default function PacienteDetalle({
     return <>{autorizacionBanner}<TabComposicionCorporal pacienteId={paciente.id} /></>
   }
 
+  if (activeTab === 'plan-alimentario') {
+    return <>{autorizacionBanner}<PlanAlimentarioTab paciente={paciente} /></>
+  }
+
   if (activeTab === 'refraccion') {
     return <>{autorizacionBanner}<RxGrid pacienteId={paciente.id} variant="standalone" /></>
   }
@@ -1176,6 +1181,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
     interconsultas: { title: 'Interconsultas', body: '' },
     archivos: { title: 'Archivos', body: '' },
     composicion: { title: 'Antropometría', body: '' },
+    'plan-alimentario': { title: 'Plan Alimentario', body: '' },
   }
   const c = config[tab]
   return (
