@@ -76,6 +76,7 @@ export default function PlanComidaBlock({
   const [popOpen, setPopOpen] = useState(false)
   const [diasSel, setDiasSel] = useState<Set<string>>(new Set())
   const [copiando, setCopiando] = useState(false)
+  const [draftIds, setDraftIds] = useState<string[]>([])
 
   useEffect(() => { setNombre(comida.tipo_comida) }, [comida.tipo_comida])
   useEffect(() => { setHora(comida.hora ?? '') }, [comida.hora])
@@ -111,17 +112,25 @@ export default function PlanComidaBlock({
     onChanged()
   }
 
-  async function agregarItem(tipo: 'alimento' | 'texto_libre') {
+  async function agregarItemTexto() {
     await fetch(`/api/plan-comidas/${comida.id}/items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        tipo === 'alimento'
-          ? { tipo: 'alimento', alimento_fuente: 'argenfood', alimento_id: null, cantidad_gramos: 100 }
-          : { tipo: 'texto_libre', contenido_texto: '' }
-      ),
+      body: JSON.stringify({ tipo: 'texto_libre', contenido_texto: '' }),
     })
     onChanged()
+  }
+
+  // A diferencia de texto_libre, un ítem tipo=alimento sin alimento_id es un
+  // registro incoherente (chk_item_coherente) — no se persiste nada hasta que
+  // el profesional elija un alimento real. Mientras tanto es solo un borrador
+  // en memoria (DraftAlimentoRow más abajo).
+  function agregarBorradorAlimento() {
+    setDraftIds((prev) => [...prev, `draft-${Date.now()}-${prev.length}`])
+  }
+
+  function quitarBorrador(draftId: string) {
+    setDraftIds((prev) => prev.filter((id) => id !== draftId))
   }
 
   async function eliminarItem(itemId: string) {
@@ -191,7 +200,7 @@ export default function PlanComidaBlock({
             onChange={(e) => setHora(e.target.value)}
             onBlur={commitHora}
             aria-label="Horario"
-            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', padding: '3px 5px', width: 52, outline: 'none' }}
+            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', padding: '3px 5px', width: 84, outline: 'none' }}
           />
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', whiteSpace: 'nowrap' }}>{resumen}</span>
         </div>
@@ -240,7 +249,7 @@ export default function PlanComidaBlock({
       {!colapsado && (
         <div style={{ borderTop: '1px solid var(--border, #E7E9EE)', padding: '10px 12px 12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {items.length === 0 && (
+            {items.length === 0 && draftIds.length === 0 && (
               <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Sin ítems todavía.</p>
             )}
             {items.map((item) => (
@@ -253,12 +262,21 @@ export default function PlanComidaBlock({
                 onChanged={onChanged}
               />
             ))}
+            {draftIds.map((draftId) => (
+              <DraftAlimentoRow
+                key={draftId}
+                comidaId={comida.id}
+                onRegistrarAlimento={onRegistrarAlimento}
+                onCreado={() => { quitarBorrador(draftId); onChanged() }}
+                onCancelar={() => quitarBorrador(draftId)}
+              />
+            ))}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             {modo === 'formula' && (
-              <button type="button" onClick={() => agregarItem('alimento')} style={miniStyle}>{ICON.plus}Alimento</button>
+              <button type="button" onClick={agregarBorradorAlimento} style={miniStyle}>{ICON.plus}Alimento</button>
             )}
-            <button type="button" onClick={() => agregarItem('texto_libre')} style={miniStyle}>{ICON.plus}Texto libre</button>
+            <button type="button" onClick={agregarItemTexto} style={miniStyle}>{ICON.plus}Texto libre</button>
           </div>
         </div>
       )}
@@ -443,4 +461,125 @@ function ItemRow({
 const inpStyle: React.CSSProperties = {
   width: '100%', height: 36, border: '1px solid var(--border, #E7E9EE)', borderRadius: 'var(--r-md, 8px)',
   padding: '0 11px', font: 'inherit', fontSize: 13.5, color: 'var(--ink, #0B1220)', background: 'var(--surface, #fff)', outline: 'none',
+}
+
+// Fila "borrador" para un ítem tipo=alimento todavía sin elegir — no existe
+// como fila en la base (sería incoherente: alimento sin alimento_id). Recién
+// se persiste (POST real) cuando el profesional elige un alimento concreto.
+function DraftAlimentoRow({
+  comidaId, onRegistrarAlimento, onCreado, onCancelar,
+}: {
+  comidaId: string
+  onRegistrarAlimento: (a: AlimentoVademecum) => void
+  onCreado: () => void
+  onCancelar: () => void
+}) {
+  const [busqueda, setBusqueda] = useState('')
+  const [cantidad, setCantidad] = useState(100)
+  const [dropOpen, setDropOpen] = useState(true)
+  const [creando, setCreando] = useState(false)
+  const { resultados, buscando, buscar } = useVademecumAlimentos()
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    buscar('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!dropOpen) return
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) onCancelar()
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [dropOpen, onCancelar])
+
+  async function elegir(a: AlimentoVademecum) {
+    setDropOpen(false)
+    setCreando(true)
+    onRegistrarAlimento(a)
+    await fetch(`/api/plan-comidas/${comidaId}/items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'alimento', alimento_fuente: a.fuente, alimento_id: a.id, cantidad_gramos: cantidad }),
+    })
+    onCreado()
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
+      <div ref={wrapRef} style={{ position: 'relative' }}>
+        {ICON.mag}
+        <input
+          value={busqueda}
+          onChange={(e) => { setBusqueda(e.target.value); setDropOpen(true); buscar(e.target.value) }}
+          onFocus={() => setDropOpen(true)}
+          placeholder="Buscar alimento…"
+          autoComplete="off"
+          aria-label="Alimento"
+          disabled={creando}
+          autoFocus
+          style={{ ...inpStyle, paddingLeft: 32 }}
+        />
+        {dropOpen && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
+            {buscando && (
+              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Buscando…</div>
+            )}
+            {!buscando && resultados.length === 0 && (
+              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>
+                Sin resultados{busqueda ? ` para «${busqueda}»` : ''}. Podés cargarlo como texto libre.
+              </div>
+            )}
+            {!buscando && (() => {
+              const hayTermino = busqueda.trim() !== ''
+              let ultimoGrupo: string | null = null
+              return resultados.map((a) => {
+                const mostrarHeader = !hayTermino && a.grupo !== ultimoGrupo
+                if (mostrarHeader) ultimoGrupo = a.grupo
+                return (
+                  <div key={a.id}>
+                    {mostrarHeader && (
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '8px 9px 3px' }}>
+                        {a.grupo}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); elegir(a) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', font: 'inherit', padding: '7px 9px', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
+                      {hayTermino && (
+                        <span style={{ fontSize: 11, color: 'var(--muted-2, #8A93A1)', flexShrink: 0 }}>{a.grupo}</span>
+                      )}
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>
+                        {a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal/100g` : 's/d'}
+                      </span>
+                    </button>
+                  </div>
+                )
+              })
+            })()}
+          </div>
+        )}
+      </div>
+      <div style={{ position: 'relative' }}>
+        <input
+          type="number" min={0} step={5}
+          value={cantidad}
+          onChange={(e) => setCantidad(Math.max(0, Number(e.target.value) || 0))}
+          disabled={creando}
+          aria-label="Cantidad en gramos"
+          style={{ ...inpStyle, paddingRight: 26, textAlign: 'right' }}
+        />
+        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', pointerEvents: 'none' }}>g</span>
+      </div>
+      <div style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
+      <button type="button" onClick={onCancelar} title="Cancelar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
+    </div>
+  )
 }
