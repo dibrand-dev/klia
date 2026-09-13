@@ -379,21 +379,38 @@ function ItemRow({
                 Sin resultados{busquedaAlimento ? ` para «${busquedaAlimento}»` : ''}. Podés cargarlo como texto libre.
               </div>
             )}
-            {!buscando && resultados.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); elegirAlimento(a) }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', font: 'inherit', padding: '7px 9px', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              >
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>
-                  {a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal/100g` : 's/d'}
-                </span>
-              </button>
-            ))}
+            {!buscando && (() => {
+              const hayTermino = busquedaAlimento.trim() !== ''
+              let ultimoGrupo: string | null = null
+              return resultados.map((a) => {
+                const mostrarHeader = !hayTermino && a.grupo !== ultimoGrupo
+                if (mostrarHeader) ultimoGrupo = a.grupo
+                return (
+                  <div key={a.id}>
+                    {mostrarHeader && (
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '8px 9px 3px' }}>
+                        {a.grupo}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); elegirAlimento(a) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', font: 'inherit', padding: '7px 9px', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
+                      {hayTermino && (
+                        <span style={{ fontSize: 11, color: 'var(--muted-2, #8A93A1)', flexShrink: 0 }}>{a.grupo}</span>
+                      )}
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>
+                        {a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal/100g` : 's/d'}
+                      </span>
+                    </button>
+                  </div>
+                )
+              })
+            })()}
           </div>
         )}
       </div>

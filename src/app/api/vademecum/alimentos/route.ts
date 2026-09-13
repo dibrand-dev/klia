@@ -18,14 +18,18 @@ export async function GET(request: NextRequest) {
 
   // Modo batch: reconstruir macros de alimentos ya elegidos (al cargar un plan
   // existente), sin límite de 40 ni búsqueda por nombre.
-  let query = db.from('vademecum_alimentos').select('id, fuente, nombre')
+  let query = db.from('vademecum_alimentos').select('id, fuente, nombre, grupo')
 
   if (idsParam) {
     const ids = idsParam.split(',').map((s) => s.trim()).filter(Boolean)
     query = query.in('id', ids)
+  } else if (q) {
+    // Con término de búsqueda: lista plana, sin necesidad de orden por grupo.
+    query = query.ilike('nombre', `%${q}%`).order('nombre').limit(LIMITE)
   } else {
-    query = query.order('nombre').limit(LIMITE)
-    if (q) query = query.ilike('nombre', `%${q}%`)
+    // Sin término: orden por grupo primero para que los headers de categoría
+    // en el dropdown queden contiguos (no repetidos ni intercalados).
+    query = query.order('grupo').order('nombre').limit(LIMITE)
   }
 
   const { data: alimentos, error } = await query
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
       id: a.id,
       fuente: a.fuente,
       nombre: a.nombre,
+      grupo: a.grupo,
       kcalPor100g: macros.ENERC_KCAL ?? null,
       proteinasPor100g: macros.PROTCNT ?? null,
       grasasPor100g: macros.FAT ?? null,
