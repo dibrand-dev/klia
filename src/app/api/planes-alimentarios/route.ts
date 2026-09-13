@@ -76,15 +76,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[planes-alimentarios POST] DB error:', error)
-    return NextResponse.json({
-      error: 'Error al crear el plan',
-      debug: {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      },
-    }, { status: 500 })
+    return NextResponse.json({ error: 'Error al crear el plan' }, { status: 500 })
   }
 
   return NextResponse.json({ plan })

@@ -11,11 +11,11 @@ interface Props {
   onCreado: (planId: string) => void
 }
 
-type Modo = 'formula' | 'simple'
+type Modo = 'formula_desarrollada' | 'simple'
 
 export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, onClose, onCreado }: Props) {
   const [nombre, setNombre] = useState('')
-  const [modo, setModo] = useState<Modo>('formula')
+  const [modo, setModo] = useState<Modo>('formula_desarrollada')
   const [creando, setCreando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,7 +39,7 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
         return
       }
       setNombre('')
-      setModo('formula')
+      setModo('formula_desarrollada')
       onCreado(data.plan.id)
     } catch {
       setError('Error de conexión. Intentá nuevamente.')
@@ -98,7 +98,7 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
           Modo de carga
         </label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(['formula', 'simple'] as Modo[]).map((m) => {
+          {(['formula_desarrollada', 'simple'] as Modo[]).map((m) => {
             const sel = modo === m
             return (
               <button
@@ -119,10 +119,10 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
                 }} />
                 <span>
                   <b style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: 'var(--ink, #0B1220)', marginBottom: 2 }}>
-                    {m === 'formula' ? 'Fórmula desarrollada' : 'Simple'}
+                    {m === 'formula_desarrollada' ? 'Fórmula desarrollada' : 'Simple'}
                   </b>
                   <span style={{ display: 'block', fontSize: 12, color: 'var(--muted, #5B6472)', lineHeight: 1.5 }}>
-                    {m === 'formula'
+                    {m === 'formula_desarrollada'
                       ? 'Cargás cada alimento en gramos y KLIA calcula energía y macros en vivo.'
                       : 'Escribís cada comida en texto libre, sin cálculo de macros.'}
                   </span>
