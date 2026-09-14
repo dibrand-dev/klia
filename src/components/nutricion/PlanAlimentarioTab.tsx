@@ -101,7 +101,7 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
   function registrarAlimento(a: AlimentoVademecum) {
     setMacrosPorAlimento((prev) => {
       const next = new Map(prev)
-      next.set(a.id, a)
+      next.set(String(a.id), a)
       return next
     })
   }
@@ -374,6 +374,9 @@ function MacrosCard({
   const totales = scope === 'day' ? totalesDia : (promedioPlan?.totales ?? null)
   const kcal = totales ? Math.round(totales.energia) : 0
   const kcalFromMacros = totales ? MACRO_DEFS.reduce((s, m) => s + (totales[m.key] ?? 0) * (m.key === 'grasas' ? 9 : 4), 0) : 0
+  // s/d (sin dato) solo cuando NINGÚN ítem que aporta al scope tiene dato real
+  // para esa macro puntual — si al menos uno sí lo tiene, se muestra la suma.
+  const kcalSinDato = totales ? (totales.energia === 0 && (totales.energiaSinDato ?? 0) > 0) : false
 
   return (
     <div style={{ background: 'var(--surface, #fff)', border: '1px solid var(--border, #E7E9EE)', borderRadius: 'var(--r-lg, 12px)', boxShadow: 'var(--shadow-sm, 0 1px 2px rgba(16,24,40,.04))', padding: 16 }}>
@@ -399,8 +402,14 @@ function MacrosCard({
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginBottom: 3 }}>
-            <b style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--ink, #0B1220)' }}>{kcal.toLocaleString('es-AR')}</b>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-2, #8A93A1)' }}>kcal</span>
+            {kcalSinDato ? (
+              <b style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--muted-3, #AEB5C0)' }}>s/d</b>
+            ) : (
+              <>
+                <b style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--ink, #0B1220)' }}>{kcal.toLocaleString('es-AR')}</b>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-2, #8A93A1)' }}>kcal</span>
+              </>
+            )}
           </div>
           <p style={{ fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', marginBottom: 14 }}>
             {scope === 'day' ? `${diaLabel} · ${comidasDelDia} comidas` : `Promedio de ${promedioPlan?.diasConDatos ?? 0} ${(promedioPlan?.diasConDatos ?? 0) === 1 ? 'día cargado' : 'días cargados'}`}
@@ -415,14 +424,20 @@ function MacrosCard({
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {MACRO_DEFS.map((m, i) => {
               const g = totales ? (totales[m.key] ?? 0) : 0
+              const sinDatoKey = `${m.key}SinDato`
+              const sinDato = totales ? (g === 0 && (totales[sinDatoKey] ?? 0) > 0) : false
               const kpg = m.key === 'grasas' ? 9 : 4
               const pct = kcalFromMacros > 0 ? ((g * kpg) / kcalFromMacros) * 100 : null
               return (
                 <div key={m.key} style={{ display: 'grid', gridTemplateColumns: '9px 1fr auto auto', gap: 9, alignItems: 'center', padding: '8px 0', borderBottom: i < MACRO_DEFS.length - 1 ? '1px solid var(--surface-3, #F1F3F6)' : 'none' }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: m.color }} />
                   <span style={{ fontSize: 12.5, color: 'var(--ink-2, #1F2937)' }}>{m.nombre}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: 'var(--ink, #0B1220)', minWidth: 52, textAlign: 'right' }}>{Math.round(g)} g</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--muted-2, #8A93A1)', minWidth: 34, textAlign: 'right' }}>{pct == null ? '—' : `${Math.round(pct)}%`}</span>
+                  {sinDato ? (
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: 'var(--muted-3, #AEB5C0)', minWidth: 52, textAlign: 'right' }}>s/d</span>
+                  ) : (
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 500, color: 'var(--ink, #0B1220)', minWidth: 52, textAlign: 'right' }}>{Math.round(g)} g</span>
+                  )}
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--muted-2, #8A93A1)', minWidth: 34, textAlign: 'right' }}>{sinDato || pct == null ? '—' : `${Math.round(pct)}%`}</span>
                 </div>
               )
             })}

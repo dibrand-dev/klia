@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   const resultado = (alimentos ?? []).map((a) => {
     const macros = macrosPorAlimento.get(String(a.id)) ?? {}
     return {
-      id: a.id,
+      id: String(a.id),
       fuente: a.fuente,
       nombre: a.nombre,
       grupo: a.grupo,

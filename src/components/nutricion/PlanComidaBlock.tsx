@@ -382,6 +382,7 @@ function ItemRow({
           value={busquedaAlimento}
           onChange={(e) => { setBusquedaAlimento(e.target.value); setDropOpen(true); buscar(e.target.value) }}
           onFocus={() => { setDropOpen(true); buscar(busquedaAlimento) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && resultados.length > 0) { e.preventDefault(); elegirAlimento(resultados[0]) } }}
           placeholder="Buscar alimento…"
           autoComplete="off"
           aria-label="Alimento"
@@ -515,6 +516,7 @@ function DraftAlimentoRow({
           value={busqueda}
           onChange={(e) => { setBusqueda(e.target.value); setDropOpen(true); buscar(e.target.value) }}
           onFocus={() => setDropOpen(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && resultados.length > 0) { e.preventDefault(); elegir(resultados[0]) } }}
           placeholder="Buscar alimento…"
           autoComplete="off"
           aria-label="Alimento"

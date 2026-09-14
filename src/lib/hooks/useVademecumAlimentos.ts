@@ -31,7 +31,7 @@ async function fetchAlimentos(q: string): Promise<AlimentoVademecum[]> {
     .then((data) => {
       const alimentos: AlimentoVademecum[] = data.alimentos ?? []
       cache.set(key, alimentos)
-      for (const a of alimentos) cachePorId.set(a.id, a)
+      for (const a of alimentos) cachePorId.set(String(a.id), a)
       return alimentos
     })
     .catch((err) => {
@@ -51,7 +51,7 @@ export async function buscarAlimentosPorIds(ids: string[]): Promise<Map<string, 
     const res = await fetch(`/api/vademecum/alimentos?ids=${faltantes.join(',')}`)
     const data = await res.json()
     for (const a of (data.alimentos ?? []) as AlimentoVademecum[]) {
-      cachePorId.set(a.id, a)
+      cachePorId.set(String(a.id), a)
     }
   }
   const resultado = new Map<string, AlimentoVademecum>()
