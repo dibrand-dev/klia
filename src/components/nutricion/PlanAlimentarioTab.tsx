@@ -118,24 +118,11 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
   async function agregarPrimeraComida() {
     if (!planActivo) return
     const dia = DIAS_VALUE[dayIdx]
-    const res = await fetch(`/api/planes-alimentarios/${planActivo.id}/comidas`, {
+    await fetch(`/api/planes-alimentarios/${planActivo.id}/comidas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dia_semana: dia, tipo_comida: 'Desayuno', hora: '08:00', orden: 0 }),
     })
-    const data = await jsonOrNull(res)
-    const comidaId = data?.comida?.id
-    if (comidaId) {
-      await fetch(`/api/plan-comidas/${comidaId}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          planActivo.modo === 'simple'
-            ? { tipo: 'texto_libre', contenido_texto: '' }
-            : { tipo: 'alimento', alimento_fuente: 'argenfood', alimento_id: null, cantidad_gramos: 100 }
-        ),
-      })
-    }
     refetch()
   }
 
