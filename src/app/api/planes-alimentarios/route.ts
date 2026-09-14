@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
 
   if (!paciente) return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
 
+  const { error: demoteError } = await db
+    .from('planes_alimentarios')
+    .update({ estado: 'pasado', updated_at: new Date().toISOString() })
+    .eq('paciente_id', pacienteId)
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .eq('estado', 'activo')
+
+  if (demoteError) {
+    console.error('[planes-alimentarios POST] Error al demover el plan activo:', demoteError)
+    return NextResponse.json({ error: 'Error al crear el plan' }, { status: 500 })
+  }
+
   const { data: plan, error } = await db
     .from('planes_alimentarios')
     .insert({

@@ -22,6 +22,7 @@ interface Props {
   macrosPorAlimento: Map<string, AlimentoVademecum>
   onRegistrarAlimento: (a: AlimentoVademecum) => void
   onChanged: () => void
+  readOnly?: boolean
 }
 
 const ICON = {
@@ -68,7 +69,7 @@ async function jsonOrNull(res: Response) {
 }
 
 export default function PlanComidaBlock({
-  comida, modo, diasSemana, diaActual, macrosPorAlimento, onRegistrarAlimento, onChanged,
+  comida, modo, diasSemana, diaActual, macrosPorAlimento, onRegistrarAlimento, onChanged, readOnly = false,
 }: Props) {
   const [colapsado, setColapsado] = useState(false)
   const [nombre, setNombre] = useState(comida.tipo_comida)
@@ -191,19 +192,22 @@ export default function PlanComidaBlock({
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             onBlur={commitNombre}
+            readOnly={readOnly}
             aria-label="Nombre de la comida"
-            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', font: 'inherit', fontSize: 14.5, fontWeight: 600, color: 'var(--ink, #0B1220)', padding: '3px 6px', margin: '-3px -6px', minWidth: 60, outline: 'none' }}
+            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', font: 'inherit', fontSize: 14.5, fontWeight: 600, color: readOnly ? 'var(--ink-2, #1F2937)' : 'var(--ink, #0B1220)', padding: '3px 6px', margin: '-3px -6px', minWidth: 60, outline: 'none', pointerEvents: readOnly ? 'none' : undefined }}
           />
           <input
             type="time"
             value={hora}
             onChange={(e) => setHora(e.target.value)}
             onBlur={commitHora}
+            readOnly={readOnly}
             aria-label="Horario"
-            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', padding: '3px 5px', width: 84, outline: 'none' }}
+            style={{ border: '1px solid transparent', background: 'transparent', borderRadius: 'var(--r-sm, 6px)', fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', padding: '3px 5px', width: 84, outline: 'none', pointerEvents: readOnly ? 'none' : undefined }}
           />
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', whiteSpace: 'nowrap' }}>{resumen}</span>
         </div>
+        {!readOnly && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
           <button type="button" onClick={() => setPopOpen((o) => !o)} title="Copiar a otro día" style={ibtnStyle}>
             {ICON.copy}
@@ -244,12 +248,13 @@ export default function PlanComidaBlock({
             {ICON.trash}
           </button>
         </div>
+        )}
       </div>
 
       {!colapsado && (
         <div style={{ borderTop: '1px solid var(--border, #E7E9EE)', padding: '10px 12px 12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {items.length === 0 && draftIds.length === 0 && (
+            {items.length === 0 && draftIds.length === 0 && !readOnly && (
               <p style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Sin ítems todavía.</p>
             )}
             {items.map((item) => (
@@ -260,9 +265,10 @@ export default function PlanComidaBlock({
                 onRegistrarAlimento={onRegistrarAlimento}
                 onEliminar={() => eliminarItem(item.id)}
                 onChanged={onChanged}
+                readOnly={readOnly}
               />
             ))}
-            {draftIds.map((draftId) => (
+            {!readOnly && draftIds.map((draftId) => (
               <DraftAlimentoRow
                 key={draftId}
                 comidaId={comida.id}
@@ -272,12 +278,14 @@ export default function PlanComidaBlock({
               />
             ))}
           </div>
+          {!readOnly && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             {modo === 'formula' && (
               <button type="button" onClick={agregarBorradorAlimento} style={miniStyle}>{ICON.plus}Alimento</button>
             )}
             <button type="button" onClick={agregarItemTexto} style={miniStyle}>{ICON.plus}Texto libre</button>
           </div>
+          )}
         </div>
       )}
     </div>
@@ -296,13 +304,14 @@ const miniStyle: React.CSSProperties = {
 }
 
 function ItemRow({
-  item, alimento, onRegistrarAlimento, onEliminar, onChanged,
+  item, alimento, onRegistrarAlimento, onEliminar, onChanged, readOnly = false,
 }: {
   item: PlanComidaItem
   alimento: AlimentoVademecum | undefined
   onRegistrarAlimento: (a: AlimentoVademecum) => void
   onEliminar: () => void
   onChanged: () => void
+  readOnly?: boolean
 }) {
   const [textoLibre, setTextoLibre] = useState(item.contenido_texto ?? '')
   const [busquedaAlimento, setBusquedaAlimento] = useState(alimento?.nombre ?? '')
@@ -355,16 +364,17 @@ function ItemRow({
 
   if (item.tipo === 'texto_libre') {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 28px', gap: 8, alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: readOnly ? 'minmax(0,1fr)' : 'minmax(0,1fr) 28px', gap: 8, alignItems: 'center' }}>
         <input
           value={textoLibre}
           onChange={(e) => setTextoLibre(e.target.value)}
           onBlur={commitTexto}
+          readOnly={readOnly}
           placeholder="Ej.: 1 taza de arroz integral con verduras"
           aria-label="Texto libre"
-          style={inpStyle}
+          style={{ ...inpStyle, ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
-        <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
+        {!readOnly && <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>}
       </div>
     )
   }
@@ -375,7 +385,7 @@ function ItemRow({
     : <><b style={{ color: 'var(--ink-2, #1F2937)', fontWeight: 500 }}>{Math.round(val)}</b>{unit}</>
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: readOnly ? 'minmax(0,1fr) 84px auto' : 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
       <div ref={wrapRef} style={{ position: 'relative' }}>
         {ICON.mag}
         <input
@@ -383,12 +393,13 @@ function ItemRow({
           onChange={(e) => { setBusquedaAlimento(e.target.value); setDropOpen(true); buscar(e.target.value) }}
           onFocus={() => { setDropOpen(true); buscar(busquedaAlimento) }}
           onKeyDown={(e) => { if (e.key === 'Enter' && resultados.length > 0) { e.preventDefault(); elegirAlimento(resultados[0]) } }}
+          readOnly={readOnly}
           placeholder="Buscar alimento…"
           autoComplete="off"
           aria-label="Alimento"
-          style={{ ...inpStyle, paddingLeft: 32 }}
+          style={{ ...inpStyle, paddingLeft: 32, ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
-        {dropOpen && (
+        {!readOnly && dropOpen && (
           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
             {buscando && (
               <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Buscando…</div>
@@ -439,8 +450,9 @@ function ItemRow({
           value={cantidad}
           onChange={(e) => setCantidad(Math.max(0, Number(e.target.value) || 0))}
           onBlur={() => commitCantidad(cantidad)}
+          readOnly={readOnly}
           aria-label="Cantidad en gramos"
-          style={{ ...inpStyle, paddingRight: 26, textAlign: 'right' }}
+          style={{ ...inpStyle, paddingRight: 26, textAlign: 'right', ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', pointerEvents: 'none' }}>g</span>
       </div>
@@ -454,7 +466,7 @@ function ItemRow({
       ) : (
         <div style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
       )}
-      <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
+      {!readOnly && <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>}
     </div>
   )
 }
