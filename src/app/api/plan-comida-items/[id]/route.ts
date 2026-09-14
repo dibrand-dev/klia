@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       { status: 400 }
     )
   }
-  if (tipo === 'texto_libre' && !contenidoTexto) {
+  if (tipo === 'texto_libre' && (contenidoTexto === undefined || contenidoTexto === null)) {
     return NextResponse.json({ error: 'Para tipo=texto_libre, contenido_texto es requerido' }, { status: 400 })
   }
 

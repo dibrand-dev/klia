@@ -76,8 +76,8 @@ export default function NavigationDrawer({
       className={`flex flex-col h-screen fixed left-0 top-0 p-6 z-40 overflow-y-auto bg-surface-container-lowest shadow-[8px_0_24px_rgba(0,26,72,0.06)] w-[260px] rounded-r-xl transition-transform duration-300 md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
     >
       {/* Logo */}
-      <Link href="/dashboard" className="mb-8 block" onClick={onClose}>
-        <Logo className="h-14 w-auto" />
+      <Link href="/dashboard" className="mb-4 block" onClick={onClose}>
+        <Logo className="h-7 w-auto" />
       </Link>
 
       {/* User Profile Card */}

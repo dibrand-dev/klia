@@ -30,6 +30,19 @@ function aFormatoAmigable(totales: Record<NutrienteCodigo, number>): Record<'ene
   return resultado
 }
 
+// Conteo paralelo, por macro, de cuántos ítems de la comida/día no tienen
+// dato real para esa macro puntual (a diferencia de un valor medido en 0).
+// Se usa en el frontend para decidir "s/d" vs "0 g": s/d solo cuando NINGÚN
+// ítem tiene dato real (sinDato === cantidad de ítems que aportan a esa macro).
+function aSinDatoAmigable(counts: Record<NutrienteCodigo, number>): Record<'energiaSinDato' | 'proteinasSinDato' | 'grasasSinDato' | 'carbohidratosSinDato', number> {
+  return {
+    energiaSinDato: counts.ENERC_KCAL,
+    proteinasSinDato: counts.PROTCNT,
+    grasasSinDato: counts.FAT,
+    carbohidratosSinDato: counts.CHOCDF,
+  }
+}
+
 type ItemRow = {
   id: string
   comida_id: string
@@ -116,57 +129,113 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
   }
 
-  function sumarNutrientesItem(item: ItemRow): Record<NutrienteCodigo, number> | null {
+  // Por-nutriente: a diferencia de sumarNutrientesItem (todo-o-nada), acá cada
+  // macro se resuelve individualmente — un ítem puede tener kcal y proteínas
+  // pero no carbohidratos (falta la fila puntual en vademecum_alimento_nutrientes).
+  // `null` = sin dato real para esa macro puntual (no es lo mismo que medir 0).
+  function macrosItem(item: ItemRow): Record<NutrienteCodigo, number | null> {
     if (item.tipo !== 'alimento' || item.alimento_fuente !== 'argenfood' || !item.alimento_id || item.cantidad_gramos == null) {
-      return null
+      return { ENERC_KCAL: null, PROTCNT: null, FAT: null, CHOCDF: null }
     }
     const valores = valorPor100g.get(String(item.alimento_id))
-    if (!valores) return null
     const factor = item.cantidad_gramos / 100
-    const resultado = totalesVacios()
+    const resultado = {} as Record<NutrienteCodigo, number | null>
     for (const codigo of NUTRIENTES_CODIGOS) {
-      resultado[codigo] = (valores.get(codigo) ?? 0) * factor
+      const v = valores?.get(codigo)
+      resultado[codigo] = v == null ? null : v * factor
     }
     return resultado
   }
 
-  const totalPlan = totalesVacios()
+  function nuevoAcumulador() {
+    return { totales: totalesVacios(), sinDato: { ENERC_KCAL: 0, PROTCNT: 0, FAT: 0, CHOCDF: 0 } as Record<NutrienteCodigo, number> }
+  }
+
+  function acumular(acc: ReturnType<typeof nuevoAcumulador>, item: ItemRow) {
+    const aporte = macrosItem(item)
+    for (const codigo of NUTRIENTES_CODIGOS) {
+      const v = aporte[codigo]
+      if (v == null) acc.sinDato[codigo] += 1
+      else acc.totales[codigo] += v
+    }
+  }
+
+  const acumuladorPlan = nuevoAcumulador()
 
   const porDia = comidas
     .map((comida) => {
-      const totalComida = totalesVacios()
+      const acumuladorComida = nuevoAcumulador()
       const itemsSinDatos: string[] = []
 
       for (const item of comida.plan_comida_items ?? []) {
         if (item.tipo === 'texto_libre') {
           itemsSinDatos.push(item.id)
-          continue
-        }
-        const aporte = sumarNutrientesItem(item)
-        if (!aporte) {
+        } else if (item.alimento_fuente !== 'argenfood' || !item.alimento_id || item.cantidad_gramos == null) {
           itemsSinDatos.push(item.id)
-          continue
         }
-        for (const codigo of NUTRIENTES_CODIGOS) {
-          totalComida[codigo] += aporte[codigo]
-          totalPlan[codigo] += aporte[codigo]
-        }
+        acumular(acumuladorComida, item)
+        acumular(acumuladorPlan, item)
       }
 
       return {
         comidaId: comida.id,
         diaSemana: comida.dia_semana,
         tipoComida: comida.tipo_comida,
-        totales: aFormatoAmigable(totalComida),
+        totales: { ...aFormatoAmigable(acumuladorComida.totales), ...aSinDatoAmigable(acumuladorComida.sinDato) },
         itemsSinDatosNutricionales: itemsSinDatos,
       }
     })
     .sort((a, b) => ORDEN_DIAS.indexOf(a.diaSemana) - ORDEN_DIAS.indexOf(b.diaSemana))
 
+  // Agregación por día (para el scope "Día" del selector de macros): suma los
+  // totales de todas las comidas de cada dia_semana que tenga al menos una.
+  const acumuladoresPorDiaSemana = new Map<string, ReturnType<typeof nuevoAcumulador>>()
+  for (const comida of comidas) {
+    if (!acumuladoresPorDiaSemana.has(comida.dia_semana)) {
+      acumuladoresPorDiaSemana.set(comida.dia_semana, nuevoAcumulador())
+    }
+    const acumulado = acumuladoresPorDiaSemana.get(comida.dia_semana)!
+    for (const item of comida.plan_comida_items ?? []) {
+      acumular(acumulado, item)
+    }
+  }
+
+  const porDiaAgregado = ORDEN_DIAS
+    .filter((dia) => acumuladoresPorDiaSemana.has(dia))
+    .map((dia) => ({
+      diaSemana: dia,
+      totales: { ...aFormatoAmigable(acumuladoresPorDiaSemana.get(dia)!.totales), ...aSinDatoAmigable(acumuladoresPorDiaSemana.get(dia)!.sinDato) },
+    }))
+
+  // Promedio del plan: promedio de los totales diarios sobre la cantidad de
+  // días con al menos una comida — no sobre 7, y no recalculado en el cliente.
+  // El conteo "sin dato" del promedio se suma (no se promedia) — indica si a
+  // lo largo del plan hubo ítems sin esa macro, sin importar en qué día cayeron.
+  const diasConDatos = porDiaAgregado.length
+  const promedioAcumulado = totalesVacios()
+  const sinDatoAcumulado: Record<NutrienteCodigo, number> = { ENERC_KCAL: 0, PROTCNT: 0, FAT: 0, CHOCDF: 0 }
+  acumuladoresPorDiaSemana.forEach((acc, dia) => {
+    if (!ORDEN_DIAS.includes(dia)) return
+    for (const codigo of NUTRIENTES_CODIGOS) {
+      promedioAcumulado[codigo] += acc.totales[codigo]
+      sinDatoAcumulado[codigo] += acc.sinDato[codigo]
+    }
+  })
+  if (diasConDatos > 0) {
+    for (const codigo of NUTRIENTES_CODIGOS) {
+      promedioAcumulado[codigo] = promedioAcumulado[codigo] / diasConDatos
+    }
+  }
+
   return NextResponse.json({
     planId: params.id,
     porDia,
-    total: aFormatoAmigable(totalPlan),
+    total: { ...aFormatoAmigable(acumuladorPlan.totales), ...aSinDatoAmigable(acumuladorPlan.sinDato) },
     avisos: sinDatos,
+    porDiaAgregado,
+    promedioPlan: {
+      diasConDatos,
+      totales: { ...aFormatoAmigable(promedioAcumulado), ...aSinDatoAmigable(sinDatoAcumulado) },
+    },
   })
 }

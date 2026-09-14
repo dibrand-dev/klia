@@ -1804,6 +1804,7 @@ export type Database = {
           terapeuta_id: string
           dia_semana: string
           tipo_comida: string
+          hora: string | null
           orden: number
           created_at: string
         }
@@ -1813,12 +1814,14 @@ export type Database = {
           terapeuta_id: string
           dia_semana: string
           tipo_comida: string
+          hora?: string | null
           orden?: number
           created_at?: string
         }
         Update: {
           dia_semana?: string
           tipo_comida?: string
+          hora?: string | null
           orden?: number
         }
         Relationships: [
