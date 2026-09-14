@@ -118,7 +118,8 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
       if (cancelado) return
       setPlanes(lista)
       if (lista.length > 0) {
-        await cargarPlanActivo(lista[0].id)
+        const activo = lista.find((p) => p.estado === 'activo') ?? lista[0]
+        await cargarPlanActivo(activo.id)
       }
       if (!cancelado) setLoading(false)
     }
