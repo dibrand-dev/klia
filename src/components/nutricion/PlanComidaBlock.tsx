@@ -376,7 +376,7 @@ function ItemRow({
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
-      <div ref={wrapRef} style={{ position: 'relative' }}>
+      <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input
           value={busquedaAlimento}
@@ -386,7 +386,7 @@ function ItemRow({
           placeholder="Buscar alimento…"
           autoComplete="off"
           aria-label="Alimento"
-          style={{ ...inpStyle, paddingLeft: 32 }}
+          style={{ ...inpStyle, paddingLeft: 32, textOverflow: 'ellipsis' }}
         />
         {dropOpen && (
           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
@@ -510,7 +510,7 @@ function DraftAlimentoRow({
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
-      <div ref={wrapRef} style={{ position: 'relative' }}>
+      <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input
           value={busqueda}
@@ -522,7 +522,7 @@ function DraftAlimentoRow({
           aria-label="Alimento"
           disabled={creando}
           autoFocus
-          style={{ ...inpStyle, paddingLeft: 32 }}
+          style={{ ...inpStyle, paddingLeft: 32, textOverflow: 'ellipsis' }}
         />
         {dropOpen && (
           <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
