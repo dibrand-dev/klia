@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { parseISO, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toZonedTime } from 'date-fns-tz'
-import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { ARGENTINA_TZ } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -44,12 +44,13 @@ export async function POST(req: NextRequest) {
   // por Mercado Pago confirma automáticamente. La transferencia espera confirmación
   // manual del profesional en Agenda.
 
-  try {
-    await sincronizarTurnoCreado(turno.id, turno.terapeuta_id)
-  } catch (err) {
-    console.error('🔴 GCAL SYNC FAILED:', err instanceof Error ? err.message : err)
-    // non-critical — GCal sync failure must not break booking
-  }
+  const referencia = hash ?? turno.id
+
+  await finalizarReservaConfirmada(turno.id, turno.terapeuta_id, 'transferencia', {
+    monto: turno.monto ?? 0,
+    moneda: turno.moneda,
+    referencia,
+  })
 
   const fechaLocal = toZonedTime(parseISO(turno.fecha_hora), ARGENTINA_TZ)
 
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     duracion: turno.duracion_min,
     monto: turno.monto ?? 0,
     moneda: turno.moneda,
-    referencia: hash ?? turno.id,
+    referencia,
     medio_pago: 'transferencia' as const,
   })
 }

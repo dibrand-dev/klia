@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { parseISO, addMinutes, format } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
-import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { ARGENTINA_TZ } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -218,12 +218,7 @@ export async function POST(req: NextRequest) {
   // profesional (solo un pago real por MP, o una transferencia confirmada a mano,
   // confirma automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
   if (!profile.booking_requiere_pago || !precio || (!profile.mp_access_token && !tieneTransferencia) || !esParticular) {
-    try {
-      await sincronizarTurnoCreado(turno.id, profile.id)
-    } catch (err) {
-      console.error('🔴 GCAL SYNC FAILED:', err instanceof Error ? err.message : err)
-      // non-critical — GCal sync failure must not break booking
-    }
+    await finalizarReservaConfirmada(turno.id, profile.id, 'sin_pago', null)
 
     return NextResponse.json({
       hash,
