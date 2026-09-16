@@ -1760,6 +1760,103 @@ export type Database = {
       // NOTA: tipado manual — estas tablas se crearon directo en el SQL Editor
       // (mismo patrón sin migración versionada que otras tablas de este repo).
       // Verificar contra el esquema real antes de asumir nombres/tipos exactos.
+      habitos_comidas: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          comida: string
+          hora_semana: string | null
+          hora_finde: string | null
+          descripcion: string | null
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          comida: string
+          hora_semana?: string | null
+          hora_finde?: string | null
+          descripcion?: string | null
+        }
+        Update: {
+          hora_semana?: string | null
+          hora_finde?: string | null
+          descripcion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'habitos_comidas_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      habitos_generales: {
+        Row: {
+          paciente_id: string
+          terapeuta_id: string
+          actividad_fisica: boolean | null
+          actividad_frecuencia_dias: number | null
+          actividad_tipo: string | null
+          agua_cantidad: number | null
+          agua_unidad: string | null
+          sueno_horas: number | null
+          gaseosas_frecuencia: string | null
+          alcohol_frecuencia: string | null
+          tabaco: boolean | null
+          tabaco_cantidad: number | null
+          drogas_consumo: string | null
+          drogas_detalle: string | null
+          notas_generales: string | null
+          updated_at: string
+        }
+        Insert: {
+          paciente_id: string
+          terapeuta_id: string
+          actividad_fisica?: boolean | null
+          actividad_frecuencia_dias?: number | null
+          actividad_tipo?: string | null
+          agua_cantidad?: number | null
+          agua_unidad?: string | null
+          sueno_horas?: number | null
+          gaseosas_frecuencia?: string | null
+          alcohol_frecuencia?: string | null
+          tabaco?: boolean | null
+          tabaco_cantidad?: number | null
+          drogas_consumo?: string | null
+          drogas_detalle?: string | null
+          notas_generales?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actividad_fisica?: boolean | null
+          actividad_frecuencia_dias?: number | null
+          actividad_tipo?: string | null
+          agua_cantidad?: number | null
+          agua_unidad?: string | null
+          sueno_horas?: number | null
+          gaseosas_frecuencia?: string | null
+          alcohol_frecuencia?: string | null
+          tabaco?: boolean | null
+          tabaco_cantidad?: number | null
+          drogas_consumo?: string | null
+          drogas_detalle?: string | null
+          notas_generales?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'habitos_generales_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: true
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       planes_alimentarios: {
         Row: {
           id: string
@@ -2040,6 +2137,8 @@ export type DistribucionMacros = Database['public']['Tables']['distribucion_macr
 export type PlanAlimentario = Database['public']['Tables']['planes_alimentarios']['Row']
 export type PlanComida = Database['public']['Tables']['plan_comidas']['Row']
 export type PlanComidaItem = Database['public']['Tables']['plan_comida_items']['Row']
+export type HabitoComida = Database['public']['Tables']['habitos_comidas']['Row']
+export type HabitosGenerales = Database['public']['Tables']['habitos_generales']['Row']
 export type VademecumAlimento = Database['public']['Tables']['vademecum_alimentos']['Row']
 export type VademecumNutriente = Database['public']['Tables']['vademecum_nutrientes']['Row']
 export type VademecumAlimentoNutriente = Database['public']['Tables']['vademecum_alimento_nutrientes']['Row']
