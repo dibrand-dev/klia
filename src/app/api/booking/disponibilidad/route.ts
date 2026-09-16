@@ -131,9 +131,9 @@ async function getAvailableSlots(
   }
   const allSlots: string[] = allSlotsMin.map(minToTime)
 
-  // Filter past slots (if today)
+  // Filter past slots (if today) — hora Argentina, no la del servidor (UTC)
   const nowMin = (() => {
-    const now = new Date()
+    const now = toZonedTime(new Date(), ARGENTINA_TZ)
     const todayStr = format(now, 'yyyy-MM-dd')
     if (todayStr !== fecha) return -1
     return now.getHours() * 60 + now.getMinutes() + anticipacion
