@@ -186,7 +186,8 @@ export default function HabitosTab({ paciente }: { paciente: Paciente }) {
       setH(nuevo)
       setSavedJson(JSON.stringify(nuevo))
       const { done: d, total: t } = counts(nuevo)
-      toast(d < t ? `Guardado. Faltan ${t - d} bloques por relevar.` : 'Relevamiento guardado.')
+      const faltan = t - d
+      toast(faltan > 0 ? `Guardado. ${faltan === 1 ? 'Falta 1 bloque' : `Faltan ${faltan} bloques`} por relevar.` : 'Relevamiento guardado.')
     } finally {
       setGuardando(false)
     }
