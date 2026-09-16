@@ -1,11 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { differenceInYears, parseISO } from 'date-fns'
 import type { Paciente, PlanAlimentario } from '@/types/database'
 import PlanComidaBlock, { type ComidaConItems } from './PlanComidaBlock'
 import SlideOverNuevoPlan from './SlideOverNuevoPlan'
 import { buscarAlimentosPorIds, type AlimentoVademecum } from '@/lib/hooks/useVademecumAlimentos'
+
+const fmtFecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
 
 const DIAS_VALUE = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 const DIAS_LABEL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -28,6 +30,11 @@ const MACRO_DEFS: { key: 'carbohidratos' | 'proteinas' | 'grasas'; nombre: strin
 
 const ICON_PLUS = <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M12 5v14M5 12h14" /></svg>
 const ICON_COPY = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M4 16V5a1 1 0 0 1 1-1h11" /></svg>
+const ICON_CHEV = <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 2, fill: 'none', flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
+const ICON_ARCHIVE = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v12h14V8M10 12h4" /></svg>
+const ICON_UNARCHIVE = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M12 20V9M8 13l4-4 4 4" /><rect x="3" y="3" width="18" height="4" rx="1" /></svg>
+const ICON_CLOCK = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--muted, #5B6472)', strokeWidth: 1.9, fill: 'none', flexShrink: 0 }}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.5" /></svg>
+const ICON_WARN = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--warn, #A65A06)', strokeWidth: 1.9, fill: 'none', flexShrink: 0 }}><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v12h14V8M10 12h4" /></svg>
 
 async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
@@ -42,6 +49,27 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
   const [dayIdx, setDayIdx] = useState(0)
   const [scope, setScope] = useState<'day' | 'plan'>('day')
   const [soOpen, setSoOpen] = useState(false)
+  const [planPopOpen, setPlanPopOpen] = useState(false)
+  const [showArch, setShowArch] = useState(false)
+  const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set())
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const popRef = useRef<HTMLDivElement>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  function toast(msg: string) {
+    setToastMsg(msg)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToastMsg(null), 2600)
+  }
+
+  useEffect(() => {
+    if (!planPopOpen) return
+    function onDocClick(e: MouseEvent) {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setPlanPopOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [planPopOpen])
 
   const cargarPlanes = useCallback(async () => {
     const res = await fetch(`/api/planes-alimentarios?paciente_id=${paciente.id}`)
@@ -90,13 +118,25 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
       if (cancelado) return
       setPlanes(lista)
       if (lista.length > 0) {
-        await cargarPlanActivo(lista[0].id)
+        const activo = lista.find((p) => p.estado === 'activo') ?? lista[0]
+        await cargarPlanActivo(activo.id)
       }
       if (!cancelado) setLoading(false)
     }
     init()
     return () => { cancelado = true }
   }, [cargarPlanes, cargarPlanActivo])
+
+  // Al cambiar de plan (selección desde el popover, "Ir al vigente", o alta de
+  // uno nuevo), arrancar en el primer día con comidas cargadas — igual que el
+  // prototipo (selectPlan / dayIdx = plan.findIndex(d => d.length)).
+  useEffect(() => {
+    if (!planActivo) return
+    const idx = DIAS_VALUE.findIndex((d) => planActivo.plan_comidas.some((c) => c.dia_semana === d))
+    setDayIdx(idx >= 0 ? idx : 0)
+    setScope('day')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planActivo?.id])
 
   function registrarAlimento(a: AlimentoVademecum) {
     setMacrosPorAlimento((prev) => {
@@ -110,9 +150,61 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
     setSoOpen(false)
     const lista = await cargarPlanes()
     setPlanes(lista)
-    setDayIdx(0)
-    setScope('day')
     await cargarPlanActivo(planId)
+    toast('Plan creado. El anterior quedó como plan anterior.')
+  }
+
+  async function seleccionarPlan(planId: string) {
+    setPlanPopOpen(false)
+    await cargarPlanActivo(planId)
+  }
+
+  async function irAlVigente() {
+    const activo = planes.find((p) => p.estado === 'activo')
+    if (activo) await seleccionarPlan(activo.id)
+  }
+
+  async function cambiarEstadoPlan(planId: string, accion: 'activar' | 'archivar' | 'desarchivar') {
+    const res = await fetch(`/api/planes-alimentarios/${planId}/estado`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accion }),
+    })
+    const data = await jsonOrNull(res)
+    if (!res.ok || data?.error) {
+      return { error: data?.error ?? 'Error al cambiar el estado del plan' as string }
+    }
+    const lista = await cargarPlanes()
+    setPlanes(lista)
+    if (planActivo?.id === planId) await cargarPlanActivo(planId)
+    return { error: null }
+  }
+
+  async function onArchivar(p: PlanAlimentario) {
+    const { error } = await cambiarEstadoPlan(p.id, 'archivar')
+    if (error) { toast(error); return }
+    setShowArch(true)
+    toast(`«${p.nombre}» archivado. Podés recuperarlo cuando quieras.`)
+    if (p.id === planActivo?.id) {
+      const activo = planes.find((x) => x.estado === 'activo' && x.id !== p.id)
+      if (activo) await seleccionarPlan(activo.id)
+    }
+  }
+
+  async function onDesarchivar(p: PlanAlimentario) {
+    await cambiarEstadoPlan(p.id, 'desarchivar')
+  }
+
+  async function onActivar(p: PlanAlimentario) {
+    const { error } = await cambiarEstadoPlan(p.id, 'activar')
+    if (error) { toast(error); return }
+    setUnlockedIds((prev) => { const next = new Set(prev); next.delete(p.id); return next })
+    toast(`«${p.nombre}» es ahora el plan vigente.`)
+  }
+
+  function onDesbloquear(p: PlanAlimentario) {
+    setUnlockedIds((prev) => new Set(prev).add(p.id))
+    toast('Edición habilitada sobre un plan anterior.')
   }
 
   async function agregarPrimeraComida() {
@@ -210,11 +302,81 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
 
   const macrosPorDiaMap = new Map((macros?.porDiaAgregado ?? []).map((d) => [d.diaSemana, d.totales]))
 
+  const ro = planActivo.estado !== 'activo' && !unlockedIds.has(planActivo.id)
+  const visibles = planes.filter((p) => p.estado !== 'archivado')
+  const idxVisible = visibles.findIndex((p) => p.id === planActivo.id)
+  const contadorPlan = idxVisible < 0 ? 'archivado' : `${idxVisible + 1} de ${visibles.length}`
+  const activos = planes.filter((p) => p.estado === 'activo')
+  const pasados = planes.filter((p) => p.estado === 'pasado')
+  const archivados = planes.filter((p) => p.estado === 'archivado')
+
   return (
-    <div style={{ padding: '4px 0 40px' }}>
+    <div style={{ padding: '4px 0 40px', position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink, #0B1220)' }}>{planActivo.nombre}</h1>
+          <div ref={popRef} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setPlanPopOpen((o) => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, border: '1px solid transparent', background: 'transparent',
+                borderRadius: 'var(--r-md, 8px)', padding: '3px 8px', margin: '-3px -8px', cursor: 'pointer', font: 'inherit',
+                textAlign: 'left', maxWidth: '100%',
+              }}
+            >
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink, #0B1220)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{planActivo.nombre}</h1>
+              {planes.length > 1 && (
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2, #8A93A1)', background: 'var(--surface-3, #F1F3F6)', borderRadius: 100, padding: '2px 7px', flexShrink: 0 }}>{contadorPlan}</span>
+              )}
+              {ICON_CHEV}
+            </button>
+
+            {planPopOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, width: 352, maxWidth: 'calc(100vw - 40px)', background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-lg, 12px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 30, padding: 7 }}>
+                {activos.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '9px 8px 4px' }}>Plan vigente</div>
+                    {activos.map((p) => <PlanRow key={p.id} p={p} sel={p.id === planActivo.id} onSelect={seleccionarPlan} onArchivar={onArchivar} onDesarchivar={onDesarchivar} />)}
+                  </>
+                )}
+                {pasados.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '9px 8px 4px' }}>Planes anteriores</div>
+                    {pasados.map((p) => <PlanRow key={p.id} p={p} sel={p.id === planActivo.id} onSelect={seleccionarPlan} onArchivar={onArchivar} onDesarchivar={onDesarchivar} />)}
+                  </>
+                )}
+                {showArch && archivados.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '9px 8px 4px' }}>Archivados</div>
+                    {archivados.map((p) => <PlanRow key={p.id} p={p} sel={p.id === planActivo.id} onSelect={seleccionarPlan} onArchivar={onArchivar} onDesarchivar={onDesarchivar} />)}
+                  </>
+                )}
+                <div style={{ borderTop: '1px solid var(--border, #E7E9EE)', marginTop: 6, paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {archivados.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowArch((v) => !v)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', border: 'none', background: 'transparent', font: 'inherit', fontSize: 12.5, fontWeight: 500, color: 'var(--muted, #5B6472)', padding: '8px 9px', borderRadius: 'var(--r-md, 8px)', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      {ICON_ARCHIVE}{showArch ? 'Ocultar archivados' : 'Ver archivados'}
+                      <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)' }}>{archivados.length}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setPlanPopOpen(false); setSoOpen(true) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', border: 'none', background: 'transparent', font: 'inherit', fontSize: 12.5, fontWeight: 600, color: 'var(--accent-ink, #1F4FD9)', padding: '8px 9px', borderRadius: 'var(--r-md, 8px)', cursor: 'pointer', textAlign: 'left' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {ICON_PLUS}Nuevo plan alimentario
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5, fontSize: 12.5, color: 'var(--muted, #5B6472)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 100, background: 'var(--accent-soft, #EAF0FE)', color: 'var(--accent-ink, #1F4FD9)' }}>
               {planActivo.modo === 'simple' ? 'Simple' : 'Fórmula desarrollada'}
@@ -225,10 +387,46 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
             <span>{diasConComidas.size} de 7 días cargados</span>
           </div>
         </div>
-        <button type="button" onClick={() => setSoOpen(true)} className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          {ICON_PLUS}Nuevo plan
-        </button>
+        {!ro && (
+          <button type="button" onClick={() => setSoOpen(true)} className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {ICON_PLUS}Nuevo plan
+          </button>
+        )}
       </div>
+
+      {ro && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 11, flexWrap: 'wrap', padding: '11px 14px', borderRadius: 'var(--r-lg, 12px)',
+          border: planActivo.estado === 'archivado' ? '1px solid transparent' : '1px solid var(--border, #E7E9EE)',
+          background: planActivo.estado === 'archivado' ? 'var(--warn-soft, #FEF3E2)' : 'var(--surface-2, #F6F7F9)', marginBottom: 14,
+        }}>
+          {planActivo.estado === 'archivado' ? ICON_WARN : ICON_CLOCK}
+          <span style={{ flex: 1, minWidth: 180, fontSize: 12.5, color: planActivo.estado === 'archivado' ? '#7A4405' : 'var(--muted, #5B6472)', lineHeight: 1.5 }}>
+            {planActivo.estado === 'archivado' ? (
+              <><b style={{ color: '#7A4405', fontWeight: 600 }}>Plan archivado</b> · {fmtFecha(planActivo.created_at)}. No aparece en la ficha del paciente y no se puede editar.</>
+            ) : (
+              <><b style={{ color: 'var(--ink-2, #1F2937)', fontWeight: 600 }}>Plan anterior · solo lectura</b> — creado el {fmtFecha(planActivo.created_at)}, {diasConComidas.size} {diasConComidas.size === 1 ? 'día cargado' : 'días cargados'}. Se conserva como registro del tratamiento.</>
+            )}
+          </span>
+          <span style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {planActivo.estado === 'archivado' ? (
+              <button type="button" onClick={() => onDesarchivar(planActivo)} className="btn" style={{ padding: '5px 11px', fontSize: 12.5 }}>Desarchivar</button>
+            ) : (
+              <>
+                <button type="button" onClick={() => onDesbloquear(planActivo)} className="btn" style={{ padding: '5px 11px', fontSize: 12.5 }}>Editar de todos modos</button>
+                <button type="button" onClick={() => onActivar(planActivo)} className="btn" style={{ padding: '5px 11px', fontSize: 12.5 }}>Marcar como vigente</button>
+              </>
+            )}
+            {activos.length > 0 && <button type="button" onClick={irAlVigente} className="btn" style={{ padding: '5px 11px', fontSize: 12.5 }}>Ir al vigente</button>}
+          </span>
+        </div>
+      )}
+
+      {toastMsg && (
+        <div style={{ position: 'fixed', left: '50%', bottom: 26, transform: 'translateX(-50%)', background: '#0B1220', color: '#fff', fontSize: 12.5, padding: '9px 15px', borderRadius: 100, boxShadow: '0 14px 34px rgba(11,18,32,.3)', zIndex: 70, maxWidth: '86vw', textAlign: 'center' }}>
+          {toastMsg}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 304px', gap: 20, alignItems: 'start' }}>
         <div>
@@ -266,18 +464,20 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
             <div style={{ background: 'var(--surface, #fff)', border: '1px dashed var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-xl, 16px)', padding: '38px 24px', textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 5px', fontSize: 15, fontWeight: 600, color: 'var(--ink, #0B1220)' }}>{DIAS_LABEL[dayIdx]} todavía no tiene comidas</h3>
               <p style={{ margin: '0 auto 16px', fontSize: 13, color: 'var(--muted, #5B6472)', maxWidth: 360, lineHeight: 1.6 }}>
-                Agregá la primera comida del día, o copiá un día que ya tengas armado para no empezar de cero.
+                {ro ? `Este plan no tenía comidas cargadas para ${DIAS_LABEL[dayIdx].toLowerCase()}.` : 'Agregá la primera comida del día, o copiá un día que ya tengas armado para no empezar de cero.'}
               </p>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button type="button" onClick={agregarPrimeraComida} className="btn primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {ICON_PLUS}Agregar primera comida
-                </button>
-                {diasConComidas.size > 0 && (
-                  <button type="button" onClick={copiarDeOtroDia} className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {ICON_COPY}Copiar de otro día
+              {!ro && (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={agregarPrimeraComida} className="btn primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {ICON_PLUS}Agregar primera comida
                   </button>
-                )}
-              </div>
+                  {diasConComidas.size > 0 && (
+                    <button type="button" onClick={copiarDeOtroDia} className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {ICON_COPY}Copiar de otro día
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -292,14 +492,17 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
                     macrosPorAlimento={macrosPorAlimento}
                     onRegistrarAlimento={registrarAlimento}
                     onChanged={refetch}
+                    readOnly={ro}
                   />
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                <button type="button" onClick={agregarComida} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 100, border: '1px dashed var(--border-strong, #D6DAE1)', background: 'transparent', fontSize: 12.5, fontWeight: 500, color: 'var(--muted, #5B6472)', cursor: 'pointer' }}>
-                  {ICON_PLUS}Agregar comida
-                </button>
-              </div>
+              {!ro && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                  <button type="button" onClick={agregarComida} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 100, border: '1px dashed var(--border-strong, #D6DAE1)', background: 'transparent', fontSize: 12.5, fontWeight: 500, color: 'var(--muted, #5B6472)', cursor: 'pointer' }}>
+                    {ICON_PLUS}Agregar comida
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -342,6 +545,51 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
         onClose={() => setSoOpen(false)}
         onCreado={onPlanCreado}
       />
+    </div>
+  )
+}
+
+function PlanRow({
+  p, sel, onSelect, onArchivar, onDesarchivar,
+}: {
+  p: PlanAlimentario
+  sel: boolean
+  onSelect: (id: string) => void
+  onArchivar: (p: PlanAlimentario) => void
+  onDesarchivar: (p: PlanAlimentario) => void
+}) {
+  const archivado = p.estado === 'archivado'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, borderRadius: 'var(--r-md, 8px)', paddingRight: 4, background: sel ? 'var(--accent-soft, #EAF0FE)' : 'transparent' }}
+      onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
+      onMouseLeave={(e) => { if (!sel) e.currentTarget.style.background = 'transparent' }}
+    >
+      <button
+        type="button"
+        onClick={() => onSelect(p.id)}
+        style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 9, border: 'none', background: 'transparent', font: 'inherit', textAlign: 'left', padding: '8px 6px 8px 9px', cursor: 'pointer', borderRadius: 'var(--r-md, 8px)' }}
+      >
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <b style={{ display: 'block', fontSize: 13.5, fontWeight: archivado ? 500 : 600, color: archivado ? 'var(--muted, #5B6472)' : 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</b>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', marginTop: 1 }}>{fmtFecha(p.created_at)} · {p.modo === 'simple' ? 'Simple' : 'Fórmula desarrollada'}</span>
+        </span>
+        {p.estado === 'activo' && (
+          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 100, background: 'var(--ok-soft, #DFF3E8)', color: 'var(--ok-ink, #17663F)' }}>Vigente</span>
+        )}
+        {archivado && (
+          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 100, background: 'var(--surface-3, #F1F3F6)', color: 'var(--muted, #5B6472)' }}>Archivado</span>
+        )}
+      </button>
+      <button
+        type="button"
+        title={archivado ? 'Desarchivar' : 'Archivar plan'}
+        onClick={() => archivado ? onDesarchivar(p) : onArchivar(p)}
+        style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0, color: 'var(--muted, #5B6472)' }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-3, #F1F3F6)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+      >
+        {archivado ? ICON_UNARCHIVE : ICON_ARCHIVE}
+      </button>
     </div>
   )
 }

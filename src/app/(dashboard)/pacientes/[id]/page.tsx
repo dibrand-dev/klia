@@ -137,6 +137,7 @@ export default async function PacienteDetallePage({
     searchParams.tab === 'admision' ||
     searchParams.tab === 'composicion' ||
     searchParams.tab === 'plan-alimentario' ||
+    searchParams.tab === 'habitos' ||
     searchParams.tab === 'refraccion' ||
     searchParams.tab === 'facturacion' ||
     searchParams.tab === 'interconsultas'
