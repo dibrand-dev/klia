@@ -240,7 +240,7 @@ export async function GET(request: NextRequest) {
     if (!y || !m) return NextResponse.json({ availableDays: [] })
 
     const daysInMonth = new Date(y, m, 0).getDate()
-    const today = new Date()
+    const today = toZonedTime(new Date(), ARGENTINA_TZ)
     const todayDateStr = format(today, 'yyyy-MM-dd')
 
     const results = await Promise.all(
