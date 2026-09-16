@@ -243,7 +243,7 @@ export async function POST(req: NextRequest) {
   try {
     const { data: tokens } = await db.from('google_calendar_tokens' as never)
       .select('access_token, refresh_token')
-      .eq('user_id', efectivo.terapeutaId)
+      .eq('terapeuta_id', efectivo.terapeutaId)
       .single()
 
     const t = tokens as { access_token: string; refresh_token: string } | null
