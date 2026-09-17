@@ -21,6 +21,9 @@ export type ConfirmacionData = {
   moneda: string
   referencia: string
   medio_pago: 'mp' | 'transferencia' | 'sin_costo'
+  google_event_id: string | null
+  meet_link: string | null
+  calendar_event_url: string | null
 }
 
 type StepKey = 'tipo' | 'sede' | 'fecha' | 'hora' | 'datos' | 'pago'

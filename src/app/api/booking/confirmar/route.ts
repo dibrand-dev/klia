@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   if (sesion.estado === 'pagado') {
     // Already confirmed (idempotent)
-    const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min').eq('id', sesion.turno_id).single()
+    const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min, google_event_id, meet_link').eq('id', sesion.turno_id).single()
     const fechaHora = turno?.fecha_hora ?? ''
     const d = parseISO(fechaHora)
     return NextResponse.json({
@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
       moneda: sesion.moneda,
       referencia: sesion.mp_payment_id ?? hash,
       medio_pago: 'mp' as const,
+      google_event_id: turno?.google_event_id ?? null,
+      meet_link: turno?.meet_link ?? null,
+      calendar_event_url: null,
     })
   }
 
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest) {
   const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
   const horaFmt = format(d, 'HH:mm')
 
-  await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
+  const { googleEventId, meetLink, calendarEventUrl } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
     monto: sesion.monto,
     moneda: sesion.moneda,
     referencia: mpPaymentId ?? hash,
@@ -134,5 +137,8 @@ export async function POST(req: NextRequest) {
     moneda: sesion.moneda,
     referencia: mpPaymentId ?? hash,
     medio_pago: 'mp' as const,
+    google_event_id: googleEventId,
+    meet_link: meetLink,
+    calendar_event_url: calendarEventUrl,
   })
 }

@@ -16,14 +16,26 @@ function db() {
 export type MedioPago = 'mercadopago' | 'transferencia' | 'sin_pago'
 export type DatosPago = { monto: number; moneda: string; referencia: string } | null
 
+// Formato de link directo a un evento de Google Calendar: eid= es el base64 de
+// "{event_id} {calendar_id}" (no el event_id solo) — sin el calendar_id correcto
+// el link no abre el evento real. calendar_id viene de sincronizarTurnoCreado
+// (tokens.calendar_id || 'primary' — el mismo valor con el que se creó el evento).
+function buildGoogleCalendarEventUrl(eventId: string, calendarId: string): string {
+  const eid = Buffer.from(`${eventId} ${calendarId}`).toString('base64')
+  return `https://calendar.google.com/calendar/event?eid=${encodeURIComponent(eid)}`
+}
+
 // Sibling de sincronizarTurnoCreado (mismo patrón: busca todo lo que necesita
 // por turnoId/terapeutaId, no recibe el turno ya cargado — cada función queda
 // autocontenida para que finalizarReservaConfirmada pueda aislar sus fallos).
+// meetLink llega ya resuelto por finalizarReservaConfirmada (viene de la sync
+// de Calendar que corrió justo antes, en el mismo request) — no se relee acá.
 async function enviarEmailConfirmacionTurno(
   turnoId: string,
   terapeutaId: string,
   medioPago: MedioPago,
   pago: DatosPago,
+  meetLink: string | null,
 ) {
   const supabase = db()
 
@@ -59,6 +71,7 @@ async function enviarEmailConfirmacionTurno(
       monto: pago?.monto,
       moneda: pago?.moneda,
       referencia: pago?.referencia,
+      meetLink,
     }),
   })
 
@@ -82,30 +95,54 @@ async function enviarEmailConfirmacionTurno(
 
 // Punto único de entrada para "un turno quedó confirmado" en los 3 caminos de
 // booking público (crear sin pago, confirmar-transferencia, confirmar con MP).
-// Las dos mitades del trabajo (Google Calendar + email al paciente) corren en
-// paralelo y completamente aisladas entre sí — si una falla, la otra igual
-// queda hecha. Nunca lanza: un fallo acá no debe romper la respuesta HTTP del
-// endpoint que llama, que ya tiene el turno confirmado en la base.
+// Secuencial a propósito, no Promise.allSettled: el email necesita el meetLink
+// que produce la sync de Calendar, así que Calendar va primero. Cada mitad
+// tiene su propio try/catch — si Calendar falla, el email se manda igual (sin
+// meetLink, ya que el insert nunca se hizo). Nunca lanza: un fallo acá no debe
+// romper la respuesta HTTP del endpoint que llama, que ya tiene el turno
+// confirmado en la base.
 export async function finalizarReservaConfirmada(
   turnoId: string,
   terapeutaId: string,
   medioPago: MedioPago,
   pago: DatosPago = null,
-): Promise<{ calendarSync: boolean; emailEnviado: boolean }> {
-  const [calendarSync, emailEnviado] = await Promise.allSettled([
-    sincronizarTurnoCreado(turnoId, terapeutaId),
-    enviarEmailConfirmacionTurno(turnoId, terapeutaId, medioPago, pago),
-  ])
+): Promise<{
+  calendarSync: boolean
+  emailEnviado: boolean
+  googleEventId: string | null
+  meetLink: string | null
+  calendarEventUrl: string | null
+}> {
+  let calendarSync = false
+  let googleEventId: string | null = null
+  let meetLink: string | null = null
+  let calendarId: string | null = null
 
-  if (calendarSync.status === 'rejected') {
-    console.error('[finalizarReservaConfirmada] error sincronizando Google Calendar:', calendarSync.reason)
+  try {
+    const resultado = await sincronizarTurnoCreado(turnoId, terapeutaId)
+    if (resultado) {
+      googleEventId = resultado.googleEventId
+      meetLink = resultado.meetLink
+      calendarId = resultado.calendarId
+    }
+    calendarSync = true
+  } catch (err) {
+    console.error('[finalizarReservaConfirmada] error sincronizando Google Calendar:', err)
   }
-  if (emailEnviado.status === 'rejected') {
-    console.error('[finalizarReservaConfirmada] error enviando email de confirmación:', emailEnviado.reason)
+
+  let emailEnviado = false
+  try {
+    await enviarEmailConfirmacionTurno(turnoId, terapeutaId, medioPago, pago, meetLink)
+    emailEnviado = true
+  } catch (err) {
+    console.error('[finalizarReservaConfirmada] error enviando email de confirmación:', err)
   }
 
   return {
-    calendarSync: calendarSync.status === 'fulfilled',
-    emailEnviado: emailEnviado.status === 'fulfilled',
+    calendarSync,
+    emailEnviado,
+    googleEventId,
+    meetLink,
+    calendarEventUrl: googleEventId && calendarId ? buildGoogleCalendarEventUrl(googleEventId, calendarId) : null,
   }
 }

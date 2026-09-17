@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
   // profesional (solo un pago real por MP, o una transferencia confirmada a mano,
   // confirma automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
   if (!profile.booking_requiere_pago || !precio || (!profile.mp_access_token && !tieneTransferencia) || !esParticular) {
-    await finalizarReservaConfirmada(turno.id, profile.id, 'sin_pago', null)
+    const { googleEventId, meetLink, calendarEventUrl } = await finalizarReservaConfirmada(turno.id, profile.id, 'sin_pago', null)
 
     return NextResponse.json({
       hash,
@@ -232,6 +232,9 @@ export async function POST(req: NextRequest) {
       duracion,
       moneda,
       referencia: hash,
+      google_event_id: googleEventId,
+      meet_link: meetLink,
+      calendar_event_url: calendarEventUrl,
     })
   }
 

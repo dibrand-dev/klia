@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   const referencia = hash ?? turno.id
 
-  await finalizarReservaConfirmada(turno.id, turno.terapeuta_id, 'transferencia', {
+  const { googleEventId, meetLink, calendarEventUrl } = await finalizarReservaConfirmada(turno.id, turno.terapeuta_id, 'transferencia', {
     monto: turno.monto ?? 0,
     moneda: turno.moneda,
     referencia,
@@ -64,5 +64,8 @@ export async function POST(req: NextRequest) {
     moneda: turno.moneda,
     referencia,
     medio_pago: 'transferencia' as const,
+    google_event_id: googleEventId,
+    meet_link: meetLink,
+    calendar_event_url: calendarEventUrl,
   })
 }

@@ -63,7 +63,11 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
       )}`
     : null
 
-  const gCalUrl = (() => {
+  // Si la sync con Calendar generó el evento, se linkea directo a ese evento real
+  // (calendar_event_url, ya armado en el server con el eid correcto). Si la sync
+  // falló o el profesional no tiene Calendar conectado, buildGCalUrl arma un evento
+  // genérico como antes — para no dejar al paciente sin ninguna opción de agendar.
+  const gCalUrl = confirmacion.calendar_event_url ?? (() => {
     const [y, m, d] = fecha.split('-').map(Number)
     const [h, min] = hora.split(':').map(Number)
     const start = new Date(y, m - 1, d, h, min)
