@@ -40,11 +40,12 @@ async function enviarEmailConfirmacionTurno(
   const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
   const horaFmt = format(d, 'HH:mm')
   const tipoLabel = turno.notas?.includes('Entrevista') ? 'Entrevista inicial' : 'Sesión'
+  const asunto = `Reserva confirmada con ${profile.nombre} ${profile.apellido} — KLIA`
 
-  await enviarEmail({
+  const { messageId } = await enviarEmail({
     destinatario: paciente.email as string,
     nombreDestinatario: `${paciente.nombre as string} ${paciente.apellido as string}`,
-    asunto: `Reserva confirmada con ${profile.nombre} ${profile.apellido} — KLIA`,
+    asunto,
     htmlContent: emailBookingConfirmacion({
       pacienteNombre: `${paciente.nombre as string} ${paciente.apellido as string}`,
       profesionalNombre: `${profile.nombre} ${profile.apellido}`,
@@ -60,6 +61,23 @@ async function enviarEmailConfirmacionTurno(
       referencia: pago?.referencia,
     }),
   })
+
+  // Logueo en email_log separado del envío en sí — mismo patrón defensivo que
+  // bloquear-trials/route.ts: si el insert falla, no debe tumbar un mail que
+  // ya salió con éxito.
+  try {
+    await supabase.from('email_log').insert({
+      terapeuta_id: terapeutaId,
+      tipo: 'confirmacion_turno',
+      asunto,
+      brevo_message_id: messageId,
+      paciente_id: turno.paciente_id,
+      turno_id: turnoId,
+      destinatario_email: paciente.email as string,
+    })
+  } catch (err) {
+    console.error('[enviarEmailConfirmacionTurno] error registrando email_log:', err)
+  }
 }
 
 // Punto único de entrada para "un turno quedó confirmado" en los 3 caminos de

@@ -1002,29 +1002,38 @@ export type Database = {
         Row: {
           id: string
           terapeuta_id: string
-          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad' | 'confirmacion_turno'
           asunto: string
           brevo_message_id: string | null
           enviado_at: string
           opened_at: string | null
+          paciente_id: string | null
+          turno_id: string | null
+          destinatario_email: string | null
         }
         Insert: {
           id?: string
           terapeuta_id: string
-          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          tipo: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad' | 'confirmacion_turno'
           asunto: string
           brevo_message_id?: string | null
           enviado_at?: string
           opened_at?: string | null
+          paciente_id?: string | null
+          turno_id?: string | null
+          destinatario_email?: string | null
         }
         Update: {
           id?: string
           terapeuta_id?: string
-          tipo?: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad'
+          tipo?: 'trial_d7' | 'trial_d14' | 'trial_d3' | 'trial_d1' | 'bloqueada' | 'inactividad' | 'confirmacion_turno'
           asunto?: string
           brevo_message_id?: string | null
           enviado_at?: string
           opened_at?: string | null
+          paciente_id?: string | null
+          turno_id?: string | null
+          destinatario_email?: string | null
         }
         Relationships: [
           {
@@ -1032,6 +1041,20 @@ export type Database = {
             columns: ['terapeuta_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'email_log_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'email_log_turno_id_fkey'
+            columns: ['turno_id']
+            isOneToOne: false
+            referencedRelation: 'turnos'
             referencedColumns: ['id']
           },
         ]

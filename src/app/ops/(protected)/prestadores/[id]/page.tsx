@@ -16,9 +16,10 @@ const TIPO_EMAIL_LABEL: Record<EmailLog['tipo'], string> = {
   trial_d1: '1 día restante',
   bloqueada: 'Cuenta bloqueada',
   inactividad: 'Aviso de inactividad',
+  confirmacion_turno: 'Confirmación de turno (paciente)',
 }
 
-const ORDEN_TIPO_EMAIL: EmailLog['tipo'][] = ['trial_d7', 'trial_d14', 'trial_d3', 'trial_d1', 'inactividad', 'bloqueada']
+const ORDEN_TIPO_EMAIL: EmailLog['tipo'][] = ['trial_d7', 'trial_d14', 'trial_d3', 'trial_d1', 'inactividad', 'bloqueada', 'confirmacion_turno']
 
 export default async function PrestadorDetallePage({
   params,
