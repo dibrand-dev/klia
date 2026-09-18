@@ -110,7 +110,10 @@ async function getAvailableSlots(
     ])
     const todosFeriados = [...nacionales, ...provinciales]
     const fechaObj = new Date(fecha + 'T12:00:00')
-    if (esFeriado(fechaObj, todosFeriados)) return []
+    if (esFeriado(fechaObj, todosFeriados)) {
+      console.log('[debug] bloqueado por feriado')
+      return []
+    }
   }
 
   const duracion: number = tipo === 'sesion'
@@ -143,7 +146,10 @@ async function getAvailableSlots(
     ? allSlots.filter(s => timeToMin(s) > nowMin)
     : allSlots
 
-  if (futureSlots.length === 0) return []
+  if (futureSlots.length === 0) {
+    console.log('[debug] sin slots futuros — nowMin:', nowMin, '| allSlots:', allSlots)
+    return []
+  }
 
   // Get occupied turnos for this day (límites del día en hora Argentina, convertidos a UTC)
   const dayStart = fromZonedTime(`${fecha}T00:00:00`, ARGENTINA_TZ).toISOString()
@@ -197,7 +203,10 @@ async function getAvailableSlots(
       )
 
       // Un evento de todo el día (vacaciones, congreso, etc.) bloquea el día completo.
-      if (eventosDiaCompleto.length > 0) return []
+      if (eventosDiaCompleto.length > 0) {
+        console.log('[debug] bloqueado por evento de todo el día en Google Calendar:', eventosDiaCompleto)
+        return []
+      }
 
       for (const ev of eventosConHora) {
         const inicioLocal = toZonedTime(ev.inicio, ARGENTINA_TZ)
