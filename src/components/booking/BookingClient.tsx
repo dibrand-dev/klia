@@ -350,6 +350,7 @@ export default function BookingClient({ profile }: Props) {
                 modalidad={modalidad}
                 confirmacion={confirmacion}
                 datosForm={datosForm}
+                sede={sede}
               />
             </div>
           )}

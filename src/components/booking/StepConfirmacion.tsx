@@ -1,6 +1,6 @@
 'use client'
 
-import type { ProfileData } from '@/app/p/[slug]/page'
+import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
@@ -20,6 +20,7 @@ interface Props {
   modalidad: string
   confirmacion: ConfirmacionData
   datosForm: DatosForm
+  sede: SedePublica | null
 }
 
 // Deja solo dígitos y valida un largo razonable para un número con código de
@@ -39,7 +40,18 @@ function formatFecha(fechaStr: string): string {
     .replace(/^\w/, c => c.toUpperCase())
 }
 
-export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm }: Props) {
+function buildGCalUrl(params: { title: string; start: string; end: string; details: string }): string {
+  const fmt = (s: string) => s.replace(/[-:]/g, '').replace('.000Z', 'Z')
+  const q = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: params.title,
+    dates: `${fmt(params.start)}/${fmt(params.end)}`,
+    details: params.details,
+  })
+  return `https://calendar.google.com/calendar/render?${q}`
+}
+
+export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm, sede }: Props) {
   const t = getTerminologia(profile.terminologia)
   const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
   const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
@@ -51,6 +63,37 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
         `Hola ${profile.nombre}, te envío el comprobante de mi transferencia por el turno del ${formatFecha(fecha).toLowerCase()} a las ${hora} hs a nombre de ${datosForm.nombre} ${datosForm.apellido}.`
       )}`
     : null
+
+  // details es un parámetro de URL plano — Google Calendar no interpreta HTML ahí,
+  // pero sí auto-detecta y linkea URLs sueltas al mostrar el evento, así que el link
+  // de Meet va como texto plano, no como <a>. Prioridad: Meet (videollamada) > sede
+  // elegida explícitamente > sede única del profesional (no pasó por el paso de elegir
+  // sede porque no había otra opción, pero el dato real existe igual) > texto genérico.
+  const detailsGCal = (() => {
+    if (modalidad === 'videollamada' && confirmacion.meet_link) {
+      return `${tipoLabel} de ${confirmacion.duracion} min por videollamada. Unite acá: ${confirmacion.meet_link}`
+    }
+    if (modalidad === 'presencial') {
+      const sedeConDireccion = sede ?? (profile.sedes.length === 1 ? profile.sedes[0] : null)
+      if (sedeConDireccion) {
+        return `${tipoLabel} de ${confirmacion.duracion} min en ${sedeConDireccion.nombre}${sedeConDireccion.direccion ? ` — ${sedeConDireccion.direccion}` : ''}`
+      }
+    }
+    return `${tipoLabel} de ${confirmacion.duracion} min · ${modalidadLabel[modalidad] ?? modalidad}`
+  })()
+
+  const gCalUrl = (() => {
+    const [y, m, d] = fecha.split('-').map(Number)
+    const [h, min] = hora.split(':').map(Number)
+    const start = new Date(y, m - 1, d, h, min)
+    const end = new Date(start.getTime() + confirmacion.duracion * 60000)
+    return buildGCalUrl({
+      title: `${tipoLabel} con ${profile.nombre} ${profile.apellido}`,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      details: detailsGCal,
+    })
+  })()
 
   return (
     <>
@@ -174,6 +217,26 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
 
         {/* Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <a
+            href={gCalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '11px 16px',
+              background: '#0B1220',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 9,
+              fontSize: 13.5,
+              fontWeight: 600,
+              textDecoration: 'none',
+              fontFamily: 'Inter, system-ui, sans-serif',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+            Agregar a Google Calendar
+          </a>
           {confirmacion.mp_payment_id && (
             <a
               href={`/api/booking/comprobante?ref=${confirmacion.referencia}`}
