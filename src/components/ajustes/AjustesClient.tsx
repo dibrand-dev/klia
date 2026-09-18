@@ -971,12 +971,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </section>
 
           {/* ═══ SEDES Y HORARIOS POR SEDE (solo 2+ sedes reales — ver SedesHorariosSection) ═══ */}
-          <div className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="sedes-horarios">
+          <div className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios">
             <SedesHorariosSection plan={profile.plan} onMultiChange={setMultiSede} />
           </div>
 
           {/* ═══ HORARIOS (experiencia actual — 1 sola sede) ═══ */}
-          <section className={multiSede ? 'hidden' : `ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios" style={secStyle}>
+          <section className={multiSede ? 'hidden' : `ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios-simple" style={secStyle}>
             <div style={secHdrStyle}>
               <div style={icnStyle('#FFF4E4', 'var(--warn)')}>{ICONS.horarios}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
