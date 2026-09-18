@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
       medio_pago: 'mp' as const,
       google_event_id: turno?.google_event_id ?? null,
       meet_link: turno?.meet_link ?? null,
-      calendar_event_url: null,
     })
   }
 
@@ -120,7 +119,7 @@ export async function POST(req: NextRequest) {
   const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
   const horaFmt = format(d, 'HH:mm')
 
-  const { googleEventId, meetLink, calendarEventUrl } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
+  const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
     monto: sesion.monto,
     moneda: sesion.moneda,
     referencia: mpPaymentId ?? hash,
@@ -139,6 +138,5 @@ export async function POST(req: NextRequest) {
     medio_pago: 'mp' as const,
     google_event_id: googleEventId,
     meet_link: meetLink,
-    calendar_event_url: calendarEventUrl,
   })
 }

@@ -39,17 +39,6 @@ function formatFecha(fechaStr: string): string {
     .replace(/^\w/, c => c.toUpperCase())
 }
 
-function buildGCalUrl(params: { title: string; start: string; end: string; details: string }): string {
-  const fmt = (s: string) => s.replace(/[-:]/g, '').replace('.000Z', 'Z')
-  const q = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: params.title,
-    dates: `${fmt(params.start)}/${fmt(params.end)}`,
-    details: params.details,
-  })
-  return `https://calendar.google.com/calendar/render?${q}`
-}
-
 export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm }: Props) {
   const t = getTerminologia(profile.terminologia)
   const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
@@ -62,23 +51,6 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
         `Hola ${profile.nombre}, te envío el comprobante de mi transferencia por el turno del ${formatFecha(fecha).toLowerCase()} a las ${hora} hs a nombre de ${datosForm.nombre} ${datosForm.apellido}.`
       )}`
     : null
-
-  // Si la sync con Calendar generó el evento, se linkea directo a ese evento real
-  // (calendar_event_url, ya armado en el server con el eid correcto). Si la sync
-  // falló o el profesional no tiene Calendar conectado, buildGCalUrl arma un evento
-  // genérico como antes — para no dejar al paciente sin ninguna opción de agendar.
-  const gCalUrl = confirmacion.calendar_event_url ?? (() => {
-    const [y, m, d] = fecha.split('-').map(Number)
-    const [h, min] = hora.split(':').map(Number)
-    const start = new Date(y, m - 1, d, h, min)
-    const end = new Date(start.getTime() + confirmacion.duracion * 60000)
-    return buildGCalUrl({
-      title: `${tipoLabel} con ${profile.nombre} ${profile.apellido}`,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      details: `${tipoLabel} de ${confirmacion.duracion} min · ${modalidadLabel[modalidad] ?? modalidad}`,
-    })
-  })()
 
   return (
     <>
@@ -202,26 +174,6 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
 
         {/* Actions */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <a
-            href={gCalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              padding: '11px 16px',
-              background: '#0B1220',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 9,
-              fontSize: 13.5,
-              fontWeight: 600,
-              textDecoration: 'none',
-              fontFamily: 'Inter, system-ui, sans-serif',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
-            Agregar a Google Calendar
-          </a>
           {confirmacion.mp_payment_id && (
             <a
               href={`/api/booking/comprobante?ref=${confirmacion.referencia}`}

@@ -16,15 +16,6 @@ function db() {
 export type MedioPago = 'mercadopago' | 'transferencia' | 'sin_pago'
 export type DatosPago = { monto: number; moneda: string; referencia: string } | null
 
-// Formato de link directo a un evento de Google Calendar: eid= es el base64 de
-// "{event_id} {calendar_id}" (no el event_id solo) — sin el calendar_id correcto
-// el link no abre el evento real. calendar_id viene de sincronizarTurnoCreado
-// (tokens.calendar_id || 'primary' — el mismo valor con el que se creó el evento).
-function buildGoogleCalendarEventUrl(eventId: string, calendarId: string): string {
-  const eid = Buffer.from(`${eventId} ${calendarId}`).toString('base64')
-  return `https://calendar.google.com/calendar/event?eid=${encodeURIComponent(eid)}`
-}
-
 // Sibling de sincronizarTurnoCreado (mismo patrón: busca todo lo que necesita
 // por turnoId/terapeutaId, no recibe el turno ya cargado — cada función queda
 // autocontenida para que finalizarReservaConfirmada pueda aislar sus fallos).
@@ -111,19 +102,16 @@ export async function finalizarReservaConfirmada(
   emailEnviado: boolean
   googleEventId: string | null
   meetLink: string | null
-  calendarEventUrl: string | null
 }> {
   let calendarSync = false
   let googleEventId: string | null = null
   let meetLink: string | null = null
-  let calendarId: string | null = null
 
   try {
     const resultado = await sincronizarTurnoCreado(turnoId, terapeutaId)
     if (resultado) {
       googleEventId = resultado.googleEventId
       meetLink = resultado.meetLink
-      calendarId = resultado.calendarId
     }
     calendarSync = true
   } catch (err) {
@@ -143,6 +131,5 @@ export async function finalizarReservaConfirmada(
     emailEnviado,
     googleEventId,
     meetLink,
-    calendarEventUrl: googleEventId && calendarId ? buildGoogleCalendarEventUrl(googleEventId, calendarId) : null,
   }
 }
