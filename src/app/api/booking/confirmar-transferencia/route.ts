@@ -44,6 +44,16 @@ export async function POST(req: NextRequest) {
   // por Mercado Pago confirma automáticamente. La transferencia espera confirmación
   // manual del profesional en Agenda.
 
+  // vence_en: nunca más de 24hs, y nunca después de la hora de la cita — si el turno
+  // es en menos de 24hs, no tiene sentido dar una ventana de comprobante más larga que
+  // la cita misma. El cron de vencer-turnos-transferencia cancela automáticamente los
+  // turnos 'pendiente' que superen este timestamp sin haber sido confirmados a mano.
+  const veinticuatroHs = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  const fechaCita = parseISO(turno.fecha_hora)
+  const venceEn = (fechaCita < veinticuatroHs ? fechaCita : veinticuatroHs).toISOString()
+
+  await db.from('turnos').update({ vence_en: venceEn }).eq('id', turno.id)
+
   const referencia = hash ?? turno.id
 
   const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, turno.terapeuta_id, 'transferencia', {

@@ -448,6 +448,7 @@ export type Database = {
           monto_pagado: number | null
           es_sobreturno: boolean
           sucursal_id: string | null
+          vence_en: string | null
           created_at: string
           updated_at: string
         }
@@ -475,6 +476,7 @@ export type Database = {
           monto_pagado?: number | null
           es_sobreturno?: boolean
           sucursal_id?: string | null
+          vence_en?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -502,6 +504,7 @@ export type Database = {
           serie_recurrente_id?: string | null
           google_event_id?: string | null
           meet_link?: string | null
+          vence_en?: string | null
           created_at?: string
           updated_at?: string
         }

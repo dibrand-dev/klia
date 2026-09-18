@@ -521,6 +521,23 @@ export function emailPagoSesionVencida(params: {
   `, 'Tu reserva venció — KLIA')
 }
 
+export function emailTurnoTransferenciaVencido(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  fecha: string
+  bookingSlug: string | null
+}): string {
+  const reservarUrl = params.bookingSlug ? `https://app.klia.com.ar/p/${params.bookingSlug}` : null
+  return baseTemplate(`
+    ${icon('⏰', '#FEF3C7')}
+    ${h1('Tu reserva venció')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, no recibimos el comprobante de tu transferencia a tiempo para tu sesión del ${params.fecha} con <strong style="color:#2b2f38;font-weight:600;">${params.profesionalNombre}</strong>.`)}
+    ${infoBox('Tu horario fue liberado. Si todavía querés agendar, podés volver a reservar cuando quieras.', '#FFFBEB', '#F59E0B', '#92400E')}
+    ${reservarUrl ? cta('Reservar de nuevo &rarr;', reservarUrl) : ''}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Tu reserva venció — KLIA')
+}
+
 export function emailRecuperacionContrasena(nombre: string, resetUrl: string): string {
   return baseTemplate(`
     ${icon('🔐', '#EFF6FF')}
