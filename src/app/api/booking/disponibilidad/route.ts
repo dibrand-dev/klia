@@ -26,11 +26,16 @@ function pad(n: number) { return String(n).padStart(2, '0') }
 function timeToMin(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 function minToTime(m: number) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}` }
 
+// debugInfo: out-param opcional, solo para diagnóstico temporal — permite
+// leer desde el caller cuál de los "return []" se ejecutó, sin cambiar el tipo
+// de retorno de la función ni tocar los call sites existentes (view=mes sigue
+// llamando sin pasar este argumento, ignora el debug por completo).
 async function getAvailableSlots(
   slug: string,
   fecha: string,  // YYYY-MM-DD
   tipo: string,
   sedeId?: string | null,
+  debugInfo?: { reason?: string },
 ): Promise<string[]> {
   const db = serviceClient()
 
@@ -112,6 +117,7 @@ async function getAvailableSlots(
     const fechaObj = new Date(fecha + 'T12:00:00')
     if (esFeriado(fechaObj, todosFeriados)) {
       console.log('[debug] bloqueado por feriado')
+      if (debugInfo) debugInfo.reason = 'feriado'
       return []
     }
   }
@@ -148,6 +154,7 @@ async function getAvailableSlots(
 
   if (futureSlots.length === 0) {
     console.log('[debug] sin slots futuros — nowMin:', nowMin, '| allSlots:', allSlots)
+    if (debugInfo) debugInfo.reason = `sin_slots_futuros (nowMin=${nowMin}, allSlots=${allSlots.length})`
     return []
   }
 
@@ -205,6 +212,7 @@ async function getAvailableSlots(
       // Un evento de todo el día (vacaciones, congreso, etc.) bloquea el día completo.
       if (eventosDiaCompleto.length > 0) {
         console.log('[debug] bloqueado por evento de todo el día en Google Calendar:', eventosDiaCompleto)
+        if (debugInfo) debugInfo.reason = `evento_dia_completo (${eventosDiaCompleto.length})`
         return []
       }
 
@@ -271,8 +279,11 @@ export async function GET(request: NextRequest) {
 
   // Day view: YYYY-MM-DD
   try {
-    const slots = await getAvailableSlots(slug, fecha, tipo, sedeId)
-    return NextResponse.json({ slots })
+    const debugInfo: { reason?: string } = {}
+    const slots = await getAvailableSlots(slug, fecha, tipo, sedeId, debugInfo)
+    const res = NextResponse.json({ slots })
+    if (slots.length === 0 && debugInfo.reason) res.headers.set('X-Debug-Reason', debugInfo.reason)
+    return res
   } catch (err) {
     if (err instanceof GoogleAvailabilityError) {
       return NextResponse.json({ error: err.message }, { status: 503 })
