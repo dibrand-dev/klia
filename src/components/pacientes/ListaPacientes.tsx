@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { format, parseISO, isToday, isYesterday } from 'date-fns'
+import { format, parseISO, isToday, isYesterday, isTomorrow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -12,14 +12,19 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 
-type PacienteListado = Paciente & { ultima_cita: string | null }
+type PacienteListado = Paciente & { ultima_cita: string | null; proxima_sesion?: string | null }
 
-function formatUltimaCita(fecha: string | null): string {
-  if (!fecha) return 'Sin citas registradas'
+function formatFechaCorta(fecha: string): string {
   const d = parseISO(fecha)
-  if (isToday(d)) return 'Última cita: Hoy'
-  if (isYesterday(d)) return 'Última cita: Ayer'
-  return `Última cita: ${format(d, "d MMM yyyy", { locale: es })}`
+  if (isToday(d)) return 'Hoy'
+  if (isYesterday(d)) return 'Ayer'
+  return format(d, "d MMM", { locale: es })
+}
+
+function formatProximaSesion(fecha: string): string {
+  const d = parseISO(fecha)
+  const diaLabel = isToday(d) ? 'Hoy' : isTomorrow(d) ? 'Mañana' : format(d, "d MMM", { locale: es })
+  return `${diaLabel} · ${format(d, 'HH:mm')}`
 }
 
 export default function ListaPacientes({
@@ -37,8 +42,6 @@ export default function ListaPacientes({
   currentPage?: number
   pageSize?: number
   estadoActual?: string
-  // Recibida pero todavía sin usar en este paso — el <select> de "Última Cita"
-  // se conecta en el próximo paso, esto solo evita un excess-property-check de TS.
   ultimaCitaActual?: string
 }) {
   const router = useRouter()
@@ -151,6 +154,7 @@ export default function ListaPacientes({
                 onChange={(e) => {
                   const params = new URLSearchParams()
                   if (e.target.value) params.set('estado', e.target.value)
+                  if (ultimaCitaActual) params.set('ultima_cita', ultimaCitaActual)
                   router.push(`/pacientes${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
                 }}
                 className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
@@ -164,19 +168,23 @@ export default function ListaPacientes({
               </span>
             </div>
             <div className="relative flex-1 md:flex-none">
-              {/* Deshabilitado a propósito — este filtro necesita rediseñarse desde
-                  cero (criterio de fecha sobre ultima_cita, hoy calculado en memoria a
-                  partir de turnos, no una columna de pacientes) junto con el rediseño
-                  completo de la pantalla. Antes solo cambiaba state sin filtrar nada. */}
               <select
-                disabled
-                defaultValue=""
-                title="Próximamente"
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface-variant font-medium opacity-50 cursor-not-allowed"
+                value={ultimaCitaActual}
+                onChange={(e) => {
+                  const params = new URLSearchParams()
+                  if (estadoActual) params.set('estado', estadoActual)
+                  if (e.target.value) params.set('ultima_cita', e.target.value)
+                  router.push(`/pacientes${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+                }}
+                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
               >
                 <option value="">Última Cita</option>
+                <option value="7">En los últimos 7 días</option>
+                <option value="30">En los últimos 30 días</option>
+                <option value="60">Hace más de 60 días</option>
+                <option value="sin_consultas">Sin consultas registradas</option>
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none opacity-50">
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
                 arrow_drop_down
               </span>
             </div>
@@ -190,11 +198,11 @@ export default function ListaPacientes({
               group
             </span>
             <p className="font-semibold text-on-surface mb-1">
-              {busqueda || estadoActual
+              {busqueda || estadoActual || ultimaCitaActual
                 ? 'No se encontraron pacientes'
                 : 'Todavía no tenés pacientes cargados'}
             </p>
-            {!busqueda && !estadoActual && (
+            {!busqueda && !estadoActual && !ultimaCitaActual && (
               <Link href="/pacientes/nuevo" className="btn-primary inline-flex mt-4">
                 <span className="material-symbols-outlined text-sm">add</span>
                 Agregar primer paciente
@@ -302,7 +310,6 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
 
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
   const motivo = paciente.motivo_consulta?.trim() || paciente.notas?.split('\n')[0]?.trim() || null
-  const ultimaCitaStr = formatUltimaCita(paciente.ultima_cita)
   const autorizacion = estadoAutorizacion(paciente.autorizacion_vigencia_hasta)
 
   useEffect(() => {
@@ -330,7 +337,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
       className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_rgba(0,26,72,0.06)] hover:shadow-[0_12px_32px_rgba(0,26,72,0.08)] transition-all cursor-pointer border border-outline-variant/10 relative group block"
     >
       {/* Card header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${getAvatarClasses(paciente.genero)}`}>
             {iniciales}
@@ -376,42 +383,64 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
         </div>
       </div>
 
-      {/* Card info */}
-      <div className="space-y-3 mb-4">
-        <div className="flex items-center text-sm text-on-surface-variant">
-          <span className="material-symbols-outlined mr-2 text-[16px]">calendar_month</span>
-          <span>{ultimaCitaStr}</span>
-        </div>
-        {motivo && (
-          <div className="flex items-center text-sm text-on-surface-variant">
-            <span className="material-symbols-outlined mr-2 text-[16px]">stethoscope</span>
-            <span className="truncate">{motivo}</span>
-          </div>
+      {/* Badges de estado — debajo del nombre, no al pie */}
+      <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+        {paciente.activo ? (
+          <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">
+            EN TRATAMIENTO
+          </span>
+        ) : (
+          <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-surface-container text-on-surface-variant">
+            ALTA
+          </span>
+        )}
+        {autorizacion && (
+          <span
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${
+              autorizacion.tono === 'vencida' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
+            }`}
+          >
+            {autorizacion.label}
+          </span>
         )}
       </div>
 
-      {/* Card footer */}
-      <div className="pt-4 border-t border-surface-container-low flex justify-between items-center gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {paciente.activo ? (
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">
-              EN TRATAMIENTO
-            </span>
+      {/* Card facts — última consulta y próxima sesión, cada uno con su estado vacío explícito */}
+      <div className="grid gap-1.5 mt-3 pt-3 border-t border-surface-container-low">
+        <div className="flex items-center gap-2 text-sm text-on-surface-variant min-w-0">
+          <span className="material-symbols-outlined text-[15px] text-on-surface-variant/70 shrink-0">schedule</span>
+          {paciente.ultima_cita ? (
+            <span className="truncate">Última consulta <span className="text-on-surface font-medium">{formatFechaCorta(paciente.ultima_cita)}</span></span>
           ) : (
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-surface-container text-on-surface-variant">
-              ALTA
-            </span>
-          )}
-          {autorizacion && (
-            <span
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${
-                autorizacion.tono === 'vencida' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {autorizacion.label}
-            </span>
+            <span className="truncate">Aún sin consultas registradas</span>
           )}
         </div>
+        <div className="flex items-center gap-2 text-sm text-on-surface-variant min-w-0">
+          <span className="material-symbols-outlined text-[15px] text-on-surface-variant/70 shrink-0">calendar_month</span>
+          {paciente.proxima_sesion ? (
+            <span className="truncate">Próxima <span className="text-on-surface font-medium">{formatProximaSesion(paciente.proxima_sesion)}</span></span>
+          ) : (
+            <span className="truncate">Sin próxima sesión agendada</span>
+          )}
+        </div>
+      </div>
+
+      {/* Motivo de consulta — line-clamp a 2 líneas, altura fija para parejar la card */}
+      {motivo ? (
+        <p
+          className="text-xs text-on-surface-variant mt-3 leading-relaxed"
+          style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: 32 }}
+        >
+          {motivo}
+        </p>
+      ) : (
+        <p className="text-xs text-on-surface-variant/70 italic mt-3 leading-relaxed" style={{ minHeight: 32 }}>
+          Sin motivo de consulta cargado todavía.
+        </p>
+      )}
+
+      {/* Card footer */}
+      <div className="pt-4 mt-1 border-t border-surface-container-low flex justify-end items-center">
         <span className="text-sm font-semibold text-primary group-hover:text-primary-container transition-colors">
           Ver Perfil
         </span>
