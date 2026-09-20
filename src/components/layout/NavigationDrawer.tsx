@@ -114,7 +114,7 @@ export default function NavigationDrawer({
                 }
               >
                 <span
-                  className="material-symbols-outlined text-xl"
+                  className="material-symbols-outlined text-lg"
                   style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
                 >
                   {item.icon}
