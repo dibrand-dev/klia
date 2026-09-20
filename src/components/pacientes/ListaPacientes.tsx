@@ -28,17 +28,18 @@ export default function ListaPacientes({
   totalCount = 0,
   currentPage = 1,
   pageSize = 12,
+  estadoActual = '',
 }: {
   pacientes: PacienteListado[]
   profile: Profile | null
   totalCount?: number
   currentPage?: number
   pageSize?: number
+  estadoActual?: string
 }) {
+  const router = useRouter()
   const { terapeutaId } = useEffectiveTerapeutaId()
   const [busqueda, setBusqueda] = useState('')
-  const [estadoFilter, setEstadoFilter] = useState('')
-  const [ordenFilter, setOrdenFilter] = useState('')
   const [resultadosBusqueda, setResultadosBusqueda] = useState<PacienteListado[] | null>(null)
   const [buscando, setBuscando] = useState(false)
 
@@ -90,14 +91,9 @@ export default function ListaPacientes({
     return () => { cancelado = true; clearTimeout(timer) }
   }, [busqueda, terapeutaId])
 
-  const baseList = resultadosBusqueda ?? pacientes
-  const filtrados = baseList.filter((p) => {
-    const matchEstado =
-      estadoFilter === '' ||
-      (estadoFilter === 'activo' && p.activo) ||
-      (estadoFilter === 'inactivo' && !p.activo)
-    return matchEstado
-  })
+  // El filtro de estado ya se aplica server-side (page.tsx, vía ?estado=) antes de
+  // paginar — acá no hay que volver a filtrar, solo elegir búsqueda vs. listado.
+  const filtrados = resultadosBusqueda ?? pacientes
 
   const initials = profile
     ? `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
@@ -147,8 +143,12 @@ export default function ListaPacientes({
           <div className="flex gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:flex-none">
               <select
-                value={estadoFilter}
-                onChange={(e) => setEstadoFilter(e.target.value)}
+                value={estadoActual}
+                onChange={(e) => {
+                  const params = new URLSearchParams()
+                  if (e.target.value) params.set('estado', e.target.value)
+                  router.push(`/pacientes${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+                }}
                 className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
               >
                 <option value="">Estado</option>
@@ -160,17 +160,19 @@ export default function ListaPacientes({
               </span>
             </div>
             <div className="relative flex-1 md:flex-none">
+              {/* Deshabilitado a propósito — este filtro necesita rediseñarse desde
+                  cero (criterio de fecha sobre ultima_cita, hoy calculado en memoria a
+                  partir de turnos, no una columna de pacientes) junto con el rediseño
+                  completo de la pantalla. Antes solo cambiaba state sin filtrar nada. */}
               <select
-                value={ordenFilter}
-                onChange={(e) => setOrdenFilter(e.target.value)}
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
+                disabled
+                defaultValue=""
+                title="Próximamente"
+                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface-variant font-medium opacity-50 cursor-not-allowed"
               >
                 <option value="">Última Cita</option>
-                <option value="esta_semana">Esta semana</option>
-                <option value="este_mes">Este mes</option>
-                <option value="antiguos">Más antiguos</option>
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
+              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none opacity-50">
                 arrow_drop_down
               </span>
             </div>
@@ -184,11 +186,11 @@ export default function ListaPacientes({
               group
             </span>
             <p className="font-semibold text-on-surface mb-1">
-              {busqueda || estadoFilter
+              {busqueda || estadoActual
                 ? 'No se encontraron pacientes'
                 : 'Todavía no tenés pacientes cargados'}
             </p>
-            {!busqueda && !estadoFilter && (
+            {!busqueda && !estadoActual && (
               <Link href="/pacientes/nuevo" className="btn-primary inline-flex mt-4">
                 <span className="material-symbols-outlined text-sm">add</span>
                 Agregar primer paciente

@@ -14,7 +14,7 @@ const PAGE_SIZE = 12
 export default async function PacientesPage({
   searchParams,
 }: {
-  searchParams: { page?: string }
+  searchParams: { page?: string; estado?: string }
 }) {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
@@ -23,6 +23,8 @@ export default async function PacientesPage({
   const pageNum = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1)
   const from = (pageNum - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
+  const estadoParam = searchParams.estado === 'activo' || searchParams.estado === 'inactivo' ? searchParams.estado : null
+  const activoFilter = estadoParam === 'activo' ? true : estadoParam === 'inactivo' ? false : null
 
   let pacientes: Paciente[] | null
   let totalCount: number
@@ -46,7 +48,12 @@ export default async function PacientesPage({
     // (a propósito, por las columnas clínicas) — su acceso pasa por esta
     // función, que sí valida la colaboración activa server-side.
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
-    const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    const todosPacientesRPC = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    // Filtro de estado ANTES de ordenar/paginar — el RPC no acepta filtros server-side,
+    // así que hay que aplicarlo acá para que totalCount y el slice queden consistentes.
+    const todosPacientes = activoFilter === null
+      ? todosPacientesRPC
+      : todosPacientesRPC.filter((p) => p.activo === activoFilter)
     const ordenados = todosPacientes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     totalCount = ordenados.length
     pacientes = ordenados.slice(from, to + 1).map((p) => ({
@@ -58,10 +65,12 @@ export default async function PacientesPage({
       fecha_inicio_tratamiento: null,
     })) as Paciente[]
   } else {
-    const { data, count } = await supabase
+    let query = supabase
       .from('pacientes')
       .select('*', { count: 'exact' })
       .eq('terapeuta_id', efectivo.terapeutaId)
+    if (activoFilter !== null) query = query.eq('activo', activoFilter)
+    const { data, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to)
     pacientes = data
@@ -87,6 +96,7 @@ export default async function PacientesPage({
       totalCount={totalCount ?? 0}
       currentPage={pageNum}
       pageSize={PAGE_SIZE}
+      estadoActual={estadoParam ?? ''}
     />
   )
 }
