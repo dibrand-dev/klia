@@ -47,7 +47,7 @@ export default async function PacientesPage({
     // función, que sí valida la colaboración activa server-side.
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
     const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
-    const ordenados = todosPacientes.sort((a, b) => a.apellido.localeCompare(b.apellido))
+    const ordenados = todosPacientes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     totalCount = ordenados.length
     pacientes = ordenados.slice(from, to + 1).map((p) => ({
       ...p,
@@ -62,7 +62,7 @@ export default async function PacientesPage({
       .from('pacientes')
       .select('*', { count: 'exact' })
       .eq('terapeuta_id', efectivo.terapeutaId)
-      .order('apellido')
+      .order('created_at', { ascending: false })
       .range(from, to)
     pacientes = data
     totalCount = count ?? 0
