@@ -29,6 +29,7 @@ export default function ListaPacientes({
   currentPage = 1,
   pageSize = 12,
   estadoActual = '',
+  ultimaCitaActual = '',
 }: {
   pacientes: PacienteListado[]
   profile: Profile | null
@@ -36,6 +37,9 @@ export default function ListaPacientes({
   currentPage?: number
   pageSize?: number
   estadoActual?: string
+  // Recibida pero todavía sin usar en este paso — el <select> de "Última Cita"
+  // se conecta en el próximo paso, esto solo evita un excess-property-check de TS.
+  ultimaCitaActual?: string
 }) {
   const router = useRouter()
   const { terapeutaId } = useEffectiveTerapeutaId()
