@@ -1891,6 +1891,10 @@ export type Database = {
           nombre: string
           estado: string
           modo: string
+          objetivo_titulo: string | null
+          objetivo_nota: string | null
+          indicaciones: string | null
+          fecha_fin: string | null
           created_at: string
           updated_at: string
         }
@@ -1901,6 +1905,10 @@ export type Database = {
           nombre: string
           estado?: string
           modo?: string
+          objetivo_titulo?: string | null
+          objetivo_nota?: string | null
+          indicaciones?: string | null
+          fecha_fin?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1908,6 +1916,10 @@ export type Database = {
           nombre?: string
           estado?: string
           modo?: string
+          objetivo_titulo?: string | null
+          objetivo_nota?: string | null
+          indicaciones?: string | null
+          fecha_fin?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1928,6 +1940,7 @@ export type Database = {
           dia_semana: string
           tipo_comida: string
           hora: string | null
+          nota: string | null
           orden: number
           created_at: string
         }
@@ -1938,6 +1951,7 @@ export type Database = {
           dia_semana: string
           tipo_comida: string
           hora?: string | null
+          nota?: string | null
           orden?: number
           created_at?: string
         }
@@ -1945,6 +1959,7 @@ export type Database = {
           dia_semana?: string
           tipo_comida?: string
           hora?: string | null
+          nota?: string | null
           orden?: number
         }
         Relationships: [
