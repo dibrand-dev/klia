@@ -131,9 +131,9 @@ async function getAvailableSlots(
   }
   const allSlots: string[] = allSlotsMin.map(minToTime)
 
-  // Filter past slots (if today)
+  // Filter past slots (if today) — hora Argentina, no la del servidor (UTC)
   const nowMin = (() => {
-    const now = new Date()
+    const now = toZonedTime(new Date(), ARGENTINA_TZ)
     const todayStr = format(now, 'yyyy-MM-dd')
     if (todayStr !== fecha) return -1
     return now.getHours() * 60 + now.getMinutes() + anticipacion
@@ -240,7 +240,7 @@ export async function GET(request: NextRequest) {
     if (!y || !m) return NextResponse.json({ availableDays: [] })
 
     const daysInMonth = new Date(y, m, 0).getDate()
-    const today = new Date()
+    const today = toZonedTime(new Date(), ARGENTINA_TZ)
     const todayDateStr = format(today, 'yyyy-MM-dd')
 
     const results = await Promise.all(

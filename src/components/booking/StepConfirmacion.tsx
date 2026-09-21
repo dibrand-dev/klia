@@ -1,6 +1,6 @@
 'use client'
 
-import type { ProfileData } from '@/app/p/[slug]/page'
+import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 import type { ConfirmacionData } from './BookingClient'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
@@ -20,6 +20,7 @@ interface Props {
   modalidad: string
   confirmacion: ConfirmacionData
   datosForm: DatosForm
+  sede: SedePublica | null
 }
 
 // Deja solo dígitos y valida un largo razonable para un número con código de
@@ -50,7 +51,7 @@ function buildGCalUrl(params: { title: string; start: string; end: string; detai
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
-export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm }: Props) {
+export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm, sede }: Props) {
   const t = getTerminologia(profile.terminologia)
   const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
   const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
@@ -63,6 +64,24 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
       )}`
     : null
 
+  // details es un parámetro de URL plano — Google Calendar no interpreta HTML ahí,
+  // pero sí auto-detecta y linkea URLs sueltas al mostrar el evento, así que el link
+  // de Meet va como texto plano, no como <a>. Prioridad: Meet (videollamada) > sede
+  // elegida explícitamente > sede única del profesional (no pasó por el paso de elegir
+  // sede porque no había otra opción, pero el dato real existe igual) > texto genérico.
+  const detailsGCal = (() => {
+    if (modalidad === 'videollamada' && confirmacion.meet_link) {
+      return `${tipoLabel} de ${confirmacion.duracion} min por videollamada. Unite acá: ${confirmacion.meet_link}`
+    }
+    if (modalidad === 'presencial') {
+      const sedeConDireccion = sede ?? (profile.sedes.length === 1 ? profile.sedes[0] : null)
+      if (sedeConDireccion) {
+        return `${tipoLabel} de ${confirmacion.duracion} min en ${sedeConDireccion.nombre}${sedeConDireccion.direccion ? ` — ${sedeConDireccion.direccion}` : ''}`
+      }
+    }
+    return `${tipoLabel} de ${confirmacion.duracion} min · ${modalidadLabel[modalidad] ?? modalidad}`
+  })()
+
   const gCalUrl = (() => {
     const [y, m, d] = fecha.split('-').map(Number)
     const [h, min] = hora.split(':').map(Number)
@@ -72,7 +91,7 @@ export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad
       title: `${tipoLabel} con ${profile.nombre} ${profile.apellido}`,
       start: start.toISOString(),
       end: end.toISOString(),
-      details: `${tipoLabel} de ${confirmacion.duracion} min · ${modalidadLabel[modalidad] ?? modalidad}`,
+      details: detailsGCal,
     })
   })()
 

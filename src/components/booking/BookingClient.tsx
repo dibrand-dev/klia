@@ -21,6 +21,8 @@ export type ConfirmacionData = {
   moneda: string
   referencia: string
   medio_pago: 'mp' | 'transferencia' | 'sin_costo'
+  google_event_id: string | null
+  meet_link: string | null
 }
 
 type StepKey = 'tipo' | 'sede' | 'fecha' | 'hora' | 'datos' | 'pago'
@@ -348,6 +350,7 @@ export default function BookingClient({ profile }: Props) {
                 modalidad={modalidad}
                 confirmacion={confirmacion}
                 datosForm={datosForm}
+                sede={sede}
               />
             </div>
           )}

@@ -42,6 +42,7 @@ export default function PacienteHeader({
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ align: 'left' | 'right'; maxWidth: number } | null>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -51,6 +52,20 @@ export default function PacienteHeader({
     }
     if (menuOpen) document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!menuOpen || !menuRef.current) return
+    const rect = menuRef.current.getBoundingClientRect()
+    const margen = 16
+    // Anclado a la derecha (right:0), el menú crece hacia la izquierda del botón:
+    // el espacio disponible es el que hay entre el borde derecho del botón y el borde izquierdo de la pantalla.
+    const espacioAnclandoDerecha = rect.right - margen
+    // Anclado a la izquierda (left:0), el menú crece hacia la derecha del botón.
+    const espacioAnclandoIzquierda = window.innerWidth - rect.left - margen
+    const align = espacioAnclandoDerecha >= espacioAnclandoIzquierda ? 'right' : 'left'
+    const maxWidth = Math.max(180, align === 'right' ? espacioAnclandoDerecha : espacioAnclandoIzquierda)
+    setMenuPos({ align, maxWidth })
   }, [menuOpen])
 
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
@@ -154,7 +169,16 @@ export default function PacienteHeader({
               >
                 <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none" /></svg>
               </button>
-              <div className={`ph-menu ${menuOpen ? 'open' : ''}`} role="menu">
+              <div
+                className={`ph-menu ${menuOpen ? 'open' : ''}`}
+                role="menu"
+                style={menuPos ? {
+                  left: menuPos.align === 'left' ? 0 : 'auto',
+                  right: menuPos.align === 'right' ? 0 : 'auto',
+                  maxWidth: menuPos.maxWidth,
+                  minWidth: Math.min(220, menuPos.maxWidth),
+                } : undefined}
+              >
                 <button
                   className="ph-menu-item"
                   role="menuitem"

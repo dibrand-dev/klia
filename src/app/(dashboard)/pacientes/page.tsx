@@ -10,11 +10,13 @@ export const metadata = { title: 'Pacientes — KLIA' }
 export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
+const ULTIMA_CITA_VALORES = ['7', '30', '60', 'sin_consultas'] as const
+type UltimaCitaFiltro = (typeof ULTIMA_CITA_VALORES)[number]
 
 export default async function PacientesPage({
   searchParams,
 }: {
-  searchParams: { page?: string }
+  searchParams: { page?: string; estado?: string; ultima_cita?: string }
 }) {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
@@ -23,22 +25,30 @@ export default async function PacientesPage({
   const pageNum = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1)
   const from = (pageNum - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
+  const estadoParam = searchParams.estado === 'activo' || searchParams.estado === 'inactivo' ? searchParams.estado : null
+  const activoFilter = estadoParam === 'activo' ? true : estadoParam === 'inactivo' ? false : null
+  const ultimaCitaParam = (ULTIMA_CITA_VALORES as readonly string[]).includes(searchParams.ultima_cita ?? '')
+    ? (searchParams.ultima_cita as UltimaCitaFiltro)
+    : null
 
-  let pacientes: Paciente[] | null
-  let totalCount: number
+  let pacientesBase: Paciente[]
 
-  const [{ data: profile }, { data: turnos }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', efectivo.terapeutaId)
-      .single(),
+  const ahoraISO = new Date().toISOString()
+
+  const [{ data: turnosPasados }, { data: turnosFuturos }] = await Promise.all([
     supabase
       .from('turnos')
       .select('paciente_id, fecha_hora')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('estado', 'realizado')
       .order('fecha_hora', { ascending: false }),
+    supabase
+      .from('turnos')
+      .select('paciente_id, fecha_hora')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .gte('fecha_hora', ahoraISO)
+      .not('estado', 'in', '("cancelado")')
+      .order('fecha_hora', { ascending: true }),
   ])
 
   if (efectivo.esColaborador) {
@@ -46,10 +56,8 @@ export default async function PacientesPage({
     // (a propósito, por las columnas clínicas) — su acceso pasa por esta
     // función, que sí valida la colaboración activa server-side.
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
-    const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
-    const ordenados = todosPacientes.sort((a, b) => a.apellido.localeCompare(b.apellido))
-    totalCount = ordenados.length
-    pacientes = ordenados.slice(from, to + 1).map((p) => ({
+    const todosPacientesRPC = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
+    pacientesBase = todosPacientesRPC.map((p) => ({
       ...p,
       notas: null,
       motivo_consulta: null,
@@ -58,35 +66,89 @@ export default async function PacientesPage({
       fecha_inicio_tratamiento: null,
     })) as Paciente[]
   } else {
-    const { data, count } = await supabase
+    // Traemos TODOS los pacientes (sin filtrar por estado en la query): el filtro
+    // de estado se aplica en memoria más abajo, junto con el de última cita, así el
+    // header puede mostrar el total real del consultorio sin que el filtro activo lo achique.
+    const { data } = await supabase
       .from('pacientes')
-      .select('*', { count: 'exact' })
+      .select('*')
       .eq('terapeuta_id', efectivo.terapeutaId)
-      .order('apellido')
-      .range(from, to)
-    pacientes = data
-    totalCount = count ?? 0
+    pacientesBase = data ?? []
   }
 
+  const totalGeneral = pacientesBase.length
+  const enTratamientoGeneral = pacientesBase.filter((p) => p.activo).length
+
+  // Filtro de estado — en memoria para los dos casos (RPC de colaboradora no acepta
+  // filtros server-side, y para el profesional lo dejamos sin filtrar arriba para
+  // poder calcular los totales generales del header).
+  const filtradosPorEstado = activoFilter === null
+    ? pacientesBase
+    : pacientesBase.filter((p) => p.activo === activoFilter)
+
   const ultimaCitaMap = new Map<string, string>()
-  for (const t of turnos ?? []) {
+  for (const t of turnosPasados ?? []) {
     if (!ultimaCitaMap.has(t.paciente_id)) {
       ultimaCitaMap.set(t.paciente_id, t.fecha_hora)
     }
   }
 
-  const pacientesListado = (pacientes ?? []).map((p) => ({
+  const proximaSesionMap = new Map<string, string>()
+  for (const t of turnosFuturos ?? []) {
+    if (!proximaSesionMap.has(t.paciente_id)) {
+      proximaSesionMap.set(t.paciente_id, t.fecha_hora)
+    }
+  }
+
+  const conActividad = filtradosPorEstado.map((p) => ({
     ...p,
     ultima_cita: ultimaCitaMap.get(p.id) ?? null,
+    proxima_sesion: proximaSesionMap.get(p.id) ?? null,
   }))
+
+  // Filtro de "Última Cita" — se calcula sobre ultima_cita (derivado de turnos, no
+  // una columna de pacientes), así que solo puede aplicarse acá, en memoria, después
+  // de tener el dato calculado — no hay forma de resolverlo con un .eq()/.gte() en
+  // la query de pacientes.
+  const ahoraMs = Date.now()
+  function diasDesde(fechaISO: string): number {
+    return Math.floor((ahoraMs - new Date(fechaISO).getTime()) / (24 * 60 * 60 * 1000))
+  }
+
+  const filtradosPorUltimaCita = ultimaCitaParam === null
+    ? conActividad
+    : conActividad.filter((p) => {
+        if (ultimaCitaParam === 'sin_consultas') return p.ultima_cita === null
+        if (p.ultima_cita === null) return false
+        const dias = diasDesde(p.ultima_cita)
+        if (ultimaCitaParam === '7') return dias <= 7
+        if (ultimaCitaParam === '30') return dias <= 30
+        if (ultimaCitaParam === '60') return dias > 60
+        return true
+      })
+
+  // Orden: sin ninguna consulta registrada primero (son los que más necesitan
+  // atención/seguimiento), después por ultima_cita descendente (más reciente arriba).
+  const ordenados = [...filtradosPorUltimaCita].sort((a, b) => {
+    if (a.ultima_cita === null && b.ultima_cita === null) return 0
+    if (a.ultima_cita === null) return -1
+    if (b.ultima_cita === null) return 1
+    return new Date(b.ultima_cita).getTime() - new Date(a.ultima_cita).getTime()
+  })
+
+  const totalCount = ordenados.length
+  const pacientesListado = ordenados.slice(from, to + 1)
 
   return (
     <ListaPacientes
       pacientes={pacientesListado}
-      profile={profile}
-      totalCount={totalCount ?? 0}
+      totalCount={totalCount}
+      totalGeneral={totalGeneral}
+      enTratamientoGeneral={enTratamientoGeneral}
       currentPage={pageNum}
       pageSize={PAGE_SIZE}
+      estadoActual={estadoParam ?? ''}
+      ultimaCitaActual={ultimaCitaParam ?? ''}
     />
   )
 }

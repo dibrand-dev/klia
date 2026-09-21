@@ -521,6 +521,23 @@ export function emailPagoSesionVencida(params: {
   `, 'Tu reserva venció — KLIA')
 }
 
+export function emailTurnoTransferenciaVencido(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  fecha: string
+  bookingSlug: string | null
+}): string {
+  const reservarUrl = params.bookingSlug ? `https://app.klia.com.ar/p/${params.bookingSlug}` : null
+  return baseTemplate(`
+    ${icon('⏰', '#FEF3C7')}
+    ${h1('Tu reserva venció')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, no recibimos el comprobante de tu transferencia a tiempo para tu sesión del ${params.fecha} con <strong style="color:#2b2f38;font-weight:600;">${params.profesionalNombre}</strong>.`)}
+    ${infoBox('Tu horario fue liberado. Si todavía querés agendar, podés volver a reservar cuando quieras.', '#FFFBEB', '#F59E0B', '#92400E')}
+    ${reservarUrl ? cta('Reservar de nuevo &rarr;', reservarUrl) : ''}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Tu reserva venció — KLIA')
+}
+
 export function emailRecuperacionContrasena(nombre: string, resetUrl: string): string {
   return baseTemplate(`
     ${icon('🔐', '#EFF6FF')}
@@ -552,24 +569,39 @@ export function emailBookingConfirmacion(params: {
   hora: string        // 'HH:MM'
   duracion: number    // minutes
   modalidad: string   // 'presencial' | 'videollamada' | 'telefonica'
-  monto: number
-  moneda: string
-  referencia: string  // short hash
+  medioPago: 'mercadopago' | 'transferencia' | 'sin_pago'
+  monto?: number
+  moneda?: string
+  referencia?: string  // short hash
+  meetLink?: string | null
 }): string {
   const modalidadLabel: Record<string, string> = {
     presencial: 'Presencial',
     videollamada: 'Videollamada',
     telefonica: 'Telefónica',
   }
-  const sym = params.moneda === 'USD' ? 'US$' : params.moneda === 'EUR' ? '€' : '$'
-  const montoFmt = `${sym}${params.monto.toLocaleString('es-AR')} ${params.moneda}`
   const modalidadFmt = modalidadLabel[params.modalidad] ?? params.modalidad
   const firstName = params.pacienteNombre.split(' ')[0]
+
+  // El copy de esta primera línea depende del medio de pago — con transferencia el
+  // pago todavía no está verificado (queda a confirmación manual del profesional en
+  // Agenda), y sin_pago directamente no hay monto involucrado. Decir "pago procesado"
+  // en esos dos casos sería falso, no una simplificación aceptable.
+  const introTexto: Record<typeof params.medioPago, string> = {
+    mercadopago: `tu ${params.tipo.toLowerCase()} fue agendada y el pago procesado correctamente.`,
+    transferencia: `tu ${params.tipo.toLowerCase()} fue agendada. Recordá enviar el comprobante de tu transferencia para confirmar el pago.`,
+    sin_pago: `tu ${params.tipo.toLowerCase()} fue agendada.`,
+  }
+
+  const tienePago = params.monto != null && params.moneda != null
+  const sym = params.moneda === 'USD' ? 'US$' : params.moneda === 'EUR' ? '€' : '$'
+  const montoFmt = tienePago ? `${sym}${params.monto!.toLocaleString('es-AR')} ${params.moneda}` : null
+  const montoLabel = params.medioPago === 'transferencia' ? 'Monto a transferir' : 'Total abonado'
 
   return baseTemplate(`
     ${icon('✅', '#DCFCE7')}
     ${h1('¡Reserva confirmada!')}
-    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${firstName}</strong>, tu ${params.tipo.toLowerCase()} fue agendada y el pago procesado correctamente.`)}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${firstName}</strong>, ${introTexto[params.medioPago]}`)}
 
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
       style="background-color:#F6F7F9;border-radius:12px;border:1px solid #E7E9EE;margin-top:24px;">
@@ -600,19 +632,28 @@ export function emailBookingConfirmacion(params: {
             <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A93A1;">Modalidad</td>
             <td style="padding:6px 0;border-bottom:1px solid #E7E9EE;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#0B1220;text-align:right;">${modalidadFmt}</td>
           </tr>
-          <tr>
-            <td style="padding:10px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1220;">Total abonado</td>
+          ${tienePago ? `<tr>
+            <td style="padding:10px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1220;">${montoLabel}</td>
             <td style="padding:10px 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#047857;text-align:right;">${montoFmt}</td>
-          </tr>
+          </tr>` : ''}
         </table>
       </td></tr>
     </table>
 
-    ${infoBox(`
+    ${params.modalidad === 'videollamada' && params.meetLink ? `
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto 0;">
+      <tr>
+        <td align="center" bgcolor="#1F4FD9" style="background-color:#1F4FD9;border-radius:12px;">
+          <a href="${params.meetLink}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">🎥 Unirse a la videollamada</a>
+        </td>
+      </tr>
+    </table>` : ''}
+
+    ${params.referencia ? infoBox(`
       <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#0f3a27;">Referencia de pago</p>
       <p style="margin:0;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:600;color:#1d4a36;letter-spacing:0.06em;">${params.referencia}</p>
       <p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#2d6a4f;">Guardá este código como comprobante de tu reserva.</p>
-    `, '#f0fdf4', '#10b981', '#1d4a36')}
+    `, '#f0fdf4', '#10b981', '#1d4a36') : ''}
 
     ${help('¿Necesitás cancelar o reprogramar? Contactá directamente al profesional o escribinos a <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>')}
   `, `¡Reserva confirmada! — ${params.tipo} con ${params.profesionalNombre}`)

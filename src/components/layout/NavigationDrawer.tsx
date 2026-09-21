@@ -94,7 +94,7 @@ export default function NavigationDrawer({
       )}
 
       {/* Navigation Menu */}
-      <ul className="flex flex-col gap-2 flex-1">
+      <ul className="flex flex-col gap-1 flex-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (
             item.href !== '/dashboard' &&
@@ -109,13 +109,13 @@ export default function NavigationDrawer({
                 onClick={onClose}
                 className={
                   isActive
-                    ? 'flex items-center gap-3 bg-surface-container-lowest text-primary font-bold rounded-lg px-4 py-3 shadow-sm hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98]'
-                    : 'flex items-center gap-3 text-on-surface-variant font-medium px-4 py-3 rounded-lg hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98]'
+                    ? 'flex items-center gap-3 bg-surface-container-lowest text-primary font-bold rounded-lg px-4 py-2 shadow-sm hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98]'
+                    : 'flex items-center gap-3 text-on-surface-variant font-medium px-4 py-2 rounded-lg hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98]'
                 }
               >
                 <span
-                  className="material-symbols-outlined text-xl"
-                  style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '18px', ...(isActive ? { fontVariationSettings: "'FILL' 1" } : {}) }}
                 >
                   {item.icon}
                 </span>

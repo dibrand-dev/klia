@@ -265,7 +265,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
         // Orden importa: refresh() invalida el cache de la ruta actual, no la de destino.
         // Hay que navegar primero y refrescar después para que /pacientes (Router Cache
         // del cliente) no sirva la lista stale sin el paciente recién creado.
-        router.push('/pacientes')
+        router.push(`/pacientes/${newPacienteId}`)
         router.refresh()
       }, 1200)
     } catch (err) {

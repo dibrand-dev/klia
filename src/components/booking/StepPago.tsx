@@ -405,6 +405,8 @@ export default function StepPago({
             moneda: profile.booking_moneda,
             referencia: data.hash ?? '',
             medio_pago: 'sin_costo',
+            google_event_id: data.google_event_id ?? null,
+            meet_link: data.meet_link ?? null,
           })
           return
         }

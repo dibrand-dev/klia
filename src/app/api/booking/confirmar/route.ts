@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { enviarEmail } from '@/lib/brevo'
-import { emailBookingConfirmacion } from '@/lib/email-templates'
+import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { parseISO, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -38,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   if (sesion.estado === 'pagado') {
     // Already confirmed (idempotent)
-    const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min').eq('id', sesion.turno_id).single()
+    const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min, google_event_id, meet_link').eq('id', sesion.turno_id).single()
     const fechaHora = turno?.fecha_hora ?? ''
     const d = parseISO(fechaHora)
     return NextResponse.json({
@@ -52,6 +51,8 @@ export async function POST(req: NextRequest) {
       moneda: sesion.moneda,
       referencia: sesion.mp_payment_id ?? hash,
       medio_pago: 'mp' as const,
+      google_event_id: turno?.google_event_id ?? null,
+      meet_link: turno?.meet_link ?? null,
     })
   }
 
@@ -112,38 +113,17 @@ export async function POST(req: NextRequest) {
       .eq('id', turno.id),
   ])
 
-  // 5. Send confirmation email
+  // 5. Sincronizar Google Calendar (con Meet si aplica) y mandar el email de
+  // confirmación al paciente — ambas partes aisladas entre sí.
   const d = parseISO(turno.fecha_hora)
   const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
   const horaFmt = format(d, 'HH:mm')
-  const paciente = turno.paciente as Record<string, unknown> | null
-  const tipoLabel = turno.notas?.includes('Entrevista') ? 'Entrevista inicial' : 'Sesión'
-  const modalidadMap: Record<string, string> = { presencial: 'Presencial', videollamada: 'Videollamada', telefonica: 'Telefónica' }
 
-  if (paciente?.email) {
-    try {
-      await enviarEmail({
-        destinatario: paciente.email as string,
-        nombreDestinatario: `${paciente.nombre as string} ${paciente.apellido as string}`,
-        asunto: `Reserva confirmada con ${profile.nombre} ${profile.apellido} — KLIA`,
-        htmlContent: emailBookingConfirmacion({
-          pacienteNombre: `${paciente.nombre as string} ${paciente.apellido as string}`,
-          profesionalNombre: `${profile.nombre} ${profile.apellido}`,
-          especialidad: profile.especialidad ?? '',
-          tipo: tipoLabel,
-          fecha: fechaFmt,
-          hora: horaFmt,
-          duracion: turno.duracion_min,
-          modalidad: modalidadMap[turno.modalidad] ?? turno.modalidad,
-          monto: sesion.monto,
-          moneda: sesion.moneda,
-          referencia: mpPaymentId ?? hash,
-        }),
-      })
-    } catch (e) {
-      console.error('[booking/confirmar] email error:', e)
-    }
-  }
+  const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
+    monto: sesion.monto,
+    moneda: sesion.moneda,
+    referencia: mpPaymentId ?? hash,
+  })
 
   return NextResponse.json({
     ok: true,
@@ -156,5 +136,7 @@ export async function POST(req: NextRequest) {
     moneda: sesion.moneda,
     referencia: mpPaymentId ?? hash,
     medio_pago: 'mp' as const,
+    google_event_id: googleEventId,
+    meet_link: meetLink,
   })
 }

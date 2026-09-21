@@ -15,7 +15,14 @@ function db() {
   )
 }
 
-export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: string) {
+// Devuelve el resultado de la sincronización (o null si no aplica: sin tokens,
+// turno inexistente, etc.) en vez de Promise<void> — finalizarReservaConfirmada
+// lo usa para pasarle meetLink al email de confirmación, sin tener que releer
+// el turno de la base una segunda vez.
+export async function sincronizarTurnoCreado(
+  turnoId: string,
+  terapeutaId: string,
+): Promise<{ googleEventId: string; meetLink: string | null } | null> {
   const supabase = db()
 
   const { data: tokens } = await supabase
@@ -25,7 +32,7 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
     .eq('sync_enabled', true)
     .single()
 
-  if (!tokens) return
+  if (!tokens) return null
 
   const { data: turno } = await supabase
     .from('turnos')
@@ -33,9 +40,9 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
     .eq('id', turnoId)
     .single()
 
-  if (!turno) return
+  if (!turno) return null
   const paciente = turno.paciente as { nombre: string; apellido: string } | null
-  if (!paciente) return
+  if (!paciente) return null
 
   const calendarClient = await getAuthenticatedClient(tokens, terapeutaId)
   const fecha = format(parseISO(turno.fecha_hora), 'yyyy-MM-dd')
@@ -55,6 +62,8 @@ export async function sincronizarTurnoCreado(turnoId: string, terapeutaId: strin
   )
 
   await supabase.from('turnos').update({ google_event_id: googleEventId, meet_link: meetLink }).eq('id', turnoId)
+
+  return { googleEventId, meetLink }
 }
 
 export async function sincronizarTurnoCancelado(turnoId: string, terapeutaId: string) {

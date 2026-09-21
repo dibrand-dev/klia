@@ -3,42 +3,101 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { format, parseISO, isToday, isYesterday } from 'date-fns'
+import { format, parseISO, isToday, isYesterday, isTomorrow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { formatNombreCompleto, getAvatarClasses } from '@/lib/utils'
+import { formatNombreCompleto } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import type { Paciente, Profile } from '@/types/database'
+import type { Paciente } from '@/types/database'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
+import './directorio.css'
 
-type PacienteListado = Paciente & { ultima_cita: string | null }
+type PacienteListado = Paciente & { ultima_cita: string | null; proxima_sesion?: string | null }
 
-function formatUltimaCita(fecha: string | null): string {
-  if (!fecha) return 'Sin citas registradas'
+const AVBG = ['#D6E0F5', '#FFD3CC', '#D5EFDF', '#FFF1D6', '#E8DAFF', '#DCEEF2']
+
+const ESTADOS: [string, string][] = [
+  ['', 'Estado: todos'],
+  ['activo', 'En tratamiento'],
+  ['inactivo', 'De alta'],
+]
+
+const SEG: [string, string][] = [
+  ['', 'Última cita: todas'],
+  ['7', 'En los últimos 7 días'],
+  ['30', 'En los últimos 30 días'],
+  ['60', 'Hace más de 60 días'],
+  ['sin_consultas', 'Sin consultas registradas'],
+]
+
+function initials(nombre: string, apellido: string) {
+  return `${nombre[0] ?? ''}${apellido[0] ?? ''}`.toUpperCase()
+}
+
+function hashStr(s: string) {
+  let h = 0
+  for (const c of s) h += c.charCodeAt(0)
+  return h
+}
+
+function formatFechaCorta(fecha: string): string {
   const d = parseISO(fecha)
-  if (isToday(d)) return 'Última cita: Hoy'
-  if (isYesterday(d)) return 'Última cita: Ayer'
-  return `Última cita: ${format(d, "d MMM yyyy", { locale: es })}`
+  if (isToday(d)) return 'Hoy'
+  if (isYesterday(d)) return 'Ayer'
+  return format(d, 'd MMM', { locale: es })
+}
+
+function formatProximaSesion(fecha: string): string {
+  const d = parseISO(fecha)
+  const diaLabel = isToday(d) ? 'Hoy' : isTomorrow(d) ? 'Mañana' : format(d, 'd MMM', { locale: es })
+  return `${diaLabel} · ${format(d, 'HH:mm')}`
+}
+
+function diasDesde(fechaISO: string): number {
+  return Math.floor((Date.now() - new Date(fechaISO).getTime()) / (24 * 60 * 60 * 1000))
+}
+
+function diasHasta(fechaISO: string): number {
+  return Math.floor((new Date(fechaISO).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+}
+
+// Misma regla de bucketing que page.tsx (server) — se repite acá para poder aplicar
+// el filtro de "Última cita" también sobre los resultados de la búsqueda en vivo,
+// que no pasan por esa query.
+function matchesUltimaCita(ultimaCita: string | null, filtro: string): boolean {
+  if (!filtro) return true
+  if (filtro === 'sin_consultas') return ultimaCita === null
+  if (ultimaCita === null) return false
+  const dias = diasDesde(ultimaCita)
+  if (filtro === '7') return dias <= 7
+  if (filtro === '30') return dias <= 30
+  if (filtro === '60') return dias > 60
+  return true
 }
 
 export default function ListaPacientes({
   pacientes,
-  profile,
   totalCount = 0,
+  totalGeneral = 0,
+  enTratamientoGeneral = 0,
   currentPage = 1,
   pageSize = 12,
+  estadoActual = '',
+  ultimaCitaActual = '',
 }: {
   pacientes: PacienteListado[]
-  profile: Profile | null
   totalCount?: number
+  totalGeneral?: number
+  enTratamientoGeneral?: number
   currentPage?: number
   pageSize?: number
+  estadoActual?: string
+  ultimaCitaActual?: string
 }) {
+  const router = useRouter()
   const { terapeutaId } = useEffectiveTerapeutaId()
   const [busqueda, setBusqueda] = useState('')
-  const [estadoFilter, setEstadoFilter] = useState('')
-  const [ordenFilter, setOrdenFilter] = useState('')
   const [resultadosBusqueda, setResultadosBusqueda] = useState<PacienteListado[] | null>(null)
   const [buscando, setBuscando] = useState(false)
 
@@ -60,16 +119,18 @@ export default function ListaPacientes({
       }
       if (cancelado) return
       const supabase = createClient()
-      const { data } = await supabase
+      let query = supabase
         .from('pacientes')
         .select('*')
         .eq('terapeuta_id', terapeutaId)
         .or(`nombre.ilike.%${texto}%,apellido.ilike.%${texto}%,dni.ilike.%${texto}%`)
         .order('apellido')
         .limit(50)
+      if (estadoActual) query = query.eq('activo', estadoActual === 'activo')
+      const { data } = await query
       if (cancelado) return
       const encontrados = data ?? []
-      let ultimaCitaMap = new Map<string, string>()
+      const ultimaCitaMap = new Map<string, string>()
       if (encontrados.length > 0) {
         const { data: turnos } = await supabase
           .from('turnos')
@@ -83,145 +144,221 @@ export default function ListaPacientes({
         }
       }
       if (cancelado) return
-      setResultadosBusqueda(encontrados.map((p) => ({ ...p, ultima_cita: ultimaCitaMap.get(p.id) ?? null })) as PacienteListado[])
+      const conActividad = encontrados.map((p) => ({ ...p, ultima_cita: ultimaCitaMap.get(p.id) ?? null })) as PacienteListado[]
+      const conUltimaCita = ultimaCitaActual
+        ? conActividad.filter((p) => matchesUltimaCita(p.ultima_cita, ultimaCitaActual))
+        : conActividad
+      setResultadosBusqueda(conUltimaCita)
       setBuscando(false)
     }, 300)
 
     return () => { cancelado = true; clearTimeout(timer) }
-  }, [busqueda, terapeutaId])
+  }, [busqueda, terapeutaId, estadoActual, ultimaCitaActual])
 
-  const baseList = resultadosBusqueda ?? pacientes
-  const filtrados = baseList.filter((p) => {
-    const matchEstado =
-      estadoFilter === '' ||
-      (estadoFilter === 'activo' && p.activo) ||
-      (estadoFilter === 'inactivo' && !p.activo)
-    return matchEstado
-  })
+  // Estado y última cita ya se aplican server-side (page.tsx, vía ?estado= y
+  // ?ultima_cita=) antes de paginar — acá no hay que volver a filtrar por eso,
+  // salvo cuando hay búsqueda de texto activa (esa sí es un query aparte).
+  const filtrados = resultadosBusqueda ?? pacientes
+  const hasTexto = !!busqueda.trim()
+  const hasFiltros = !!estadoActual || !!ultimaCitaActual
+  const resCount = hasTexto ? filtrados.length : totalCount
 
-  const initials = profile
-    ? `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
-    : 'U'
+  function pushParams(estado: string, ultimaCita: string) {
+    const params = new URLSearchParams()
+    if (estado) params.set('estado', estado)
+    if (ultimaCita) params.set('ultima_cita', ultimaCita)
+    router.push(`/pacientes${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+  }
+
+  function limpiarTodo() {
+    setBusqueda('')
+    router.push('/pacientes', { scroll: false })
+  }
 
   return (
-    <>
-      {/* TopAppBar */}
-      <header className="sticky top-0 w-full z-40 bg-[#f7f9fb]/80 backdrop-blur-md shadow-[0_8px_24px_rgba(0,26,72,0.06)] flex items-center justify-between px-8 py-6">
-        <div className="flex items-center">
-          <h2 className="text-2xl font-bold tracking-tighter text-primary">
-            Directorio de Pacientes
-          </h2>
+    <div className="dir-wrap">
+      <div className="dir-pg-hd">
+        <div className="tx">
+          <h1>Pacientes</h1>
+          <p>
+            {totalGeneral === 0 ? (
+              'Todavía no cargaste ningún paciente.'
+            ) : (
+              <>
+                <b>{totalGeneral}</b> pacientes en tu consultorio · <b>{enTratamientoGeneral}</b> en tratamiento activo
+              </>
+            )}
+          </p>
         </div>
-        <div className="flex items-center space-x-4">
-          <Link
-            href="/pacientes/nuevo"
-            className="bg-primary text-on-primary py-2 px-4 rounded-xl font-medium text-sm flex items-center hover:bg-primary-container transition-colors shadow-[0_8px_24px_rgba(0,26,72,0.06)]"
-          >
-            <span className="material-symbols-outlined mr-2 text-[18px]">add</span>
-            Nuevo Paciente
-          </Link>
-        </div>
-      </header>
+        <Link href="/pacientes/nuevo" className="btn primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 5v14M5 12h14" /></svg>
+          Nuevo paciente
+        </Link>
+      </div>
 
-      {/* Divider */}
-      <div className="w-full bg-[#f2f4f6] h-[1px]" />
-
-      {/* Content Canvas */}
-      <div className="p-8 max-w-7xl mx-auto w-full flex-1">
-        {/* Toolbar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-surface-container-low p-4 rounded-xl shadow-[0_8px_24px_rgba(0,26,72,0.03)] border border-outline-variant/15">
-          <div className="relative w-full md:w-96">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-on-surface-variant">
-              <span className={`material-symbols-outlined text-[20px] leading-none ${buscando ? 'animate-spin' : ''}`}>
-                {buscando ? 'progress_activity' : 'search'}
-              </span>
-            </span>
-            <input
-              type="text"
-              placeholder="Buscar pacientes..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-surface-container-lowest border border-outline-variant/30 rounded-lg text-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-            />
-          </div>
-          <div className="flex gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:flex-none">
-              <select
-                value={estadoFilter}
-                onChange={(e) => setEstadoFilter(e.target.value)}
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
-              >
-                <option value="">Estado</option>
-                <option value="activo">En Tratamiento</option>
-                <option value="inactivo">Alta</option>
-              </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
-                arrow_drop_down
-              </span>
+      {totalGeneral > 0 && (
+        <>
+          <div className="dir-tools">
+            <div className={`dir-srch${hasTexto ? ' has' : ''}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+              <input
+                type="search"
+                placeholder="Buscar por nombre, apellido o DNI"
+                autoComplete="off"
+                aria-label="Buscar pacientes"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+              {buscando ? (
+                <span className="dir-spin" aria-hidden="true" />
+              ) : hasTexto ? (
+                <button className="dir-clr" aria-label="Limpiar búsqueda" onClick={() => setBusqueda('')}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              ) : null}
             </div>
-            <div className="relative flex-1 md:flex-none">
+            <div className="dir-sel">
               <select
-                value={ordenFilter}
-                onChange={(e) => setOrdenFilter(e.target.value)}
-                className="w-full appearance-none bg-surface-container-lowest border border-outline-variant/30 rounded-lg py-2.5 pl-4 pr-10 text-sm text-on-surface font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer"
+                aria-label="Estado"
+                className={estadoActual ? 'on' : ''}
+                value={estadoActual}
+                onChange={(e) => pushParams(e.target.value, ultimaCitaActual)}
               >
-                <option value="">Última Cita</option>
-                <option value="esta_semana">Esta semana</option>
-                <option value="este_mes">Este mes</option>
-                <option value="antiguos">Más antiguos</option>
+                {ESTADOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">
-                arrow_drop_down
-              </span>
+            </div>
+            <div className="dir-sel">
+              <select
+                aria-label="Última cita"
+                className={ultimaCitaActual ? 'on' : ''}
+                value={ultimaCitaActual}
+                onChange={(e) => pushParams(estadoActual, e.target.value)}
+              >
+                {SEG.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
             </div>
           </div>
-        </div>
 
-        {/* Patient Grid */}
-        {filtrados.length === 0 ? (
-          <div className="text-center py-20 text-on-surface-variant">
-            <span className="material-symbols-outlined text-5xl mb-4 block opacity-40">
-              group
-            </span>
-            <p className="font-semibold text-on-surface mb-1">
-              {busqueda || estadoFilter
-                ? 'No se encontraron pacientes'
-                : 'Todavía no tenés pacientes cargados'}
-            </p>
-            {!busqueda && !estadoFilter && (
-              <Link href="/pacientes/nuevo" className="btn-primary inline-flex mt-4">
-                <span className="material-symbols-outlined text-sm">add</span>
-                Agregar primer paciente
-              </Link>
+          <div className="dir-resbar">
+            <span className="cnt"><b>{resCount}</b> {resCount === 1 ? 'paciente' : 'pacientes'}</span>
+            {hasTexto || hasFiltros ? (
+              <>
+                <span className="and">que cumplen</span>
+                {hasTexto && (
+                  <span className="dir-chip q">
+                    <i>Texto:</i><span>{busqueda.trim()}</span>
+                    <button aria-label="Quitar búsqueda" onClick={() => setBusqueda('')}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </span>
+                )}
+                {estadoActual && (
+                  <span className="dir-chip">
+                    <span>{ESTADOS.find(([v]) => v === estadoActual)?.[1]}</span>
+                    <button aria-label="Quitar filtro de estado" onClick={() => pushParams('', ultimaCitaActual)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </span>
+                )}
+                {ultimaCitaActual && (
+                  <span className="dir-chip">
+                    <span>{SEG.find(([v]) => v === ultimaCitaActual)?.[1]}</span>
+                    <button aria-label="Quitar filtro de última cita" onClick={() => pushParams(estadoActual, '')}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </span>
+                )}
+                <button className="dir-lnk" onClick={limpiarTodo}>Limpiar todo</button>
+              </>
+            ) : (
+              <span>· sin filtros aplicados</span>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </>
+      )}
+
+      {totalGeneral === 0 ? (
+        <div className="dir-blank">
+          <div className="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><circle cx="12" cy="8" r="3.6" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>
+          </div>
+          <h3>Tu directorio todavía está vacío</h3>
+          <p>Acá vas a ver a todos tus pacientes, con su última consulta y su próxima sesión. Cargá el primero y aparece en la agenda, en cobros y en los informes automáticamente.</p>
+          <div className="acts">
+            <Link href="/pacientes/nuevo" className="btn primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 5v14M5 12h14" /></svg>
+              Cargar primer paciente
+            </Link>
+          </div>
+        </div>
+      ) : filtrados.length === 0 ? (
+        <div className="dir-blank neutral">
+          <div className="ic">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          </div>
+          <h3>Ningún paciente cumple con todo lo que pediste</h3>
+          <p>
+            La búsqueda se aplica <em>dentro</em> de los filtros activos.{' '}
+            {hasTexto
+              ? <>No hay coincidencias de <em>&ldquo;{busqueda.trim()}&rdquo;</em> entre los pacientes filtrados.</>
+              : 'Probá aflojar alguno de los filtros.'}
+          </p>
+          <div className="acts">
+            {hasTexto && hasFiltros && (
+              <button className="btn primary" onClick={() => pushParams('', '')}>
+                Buscar &ldquo;{busqueda.trim()}&rdquo; en todos los pacientes
+              </button>
+            )}
+            <button className="btn" onClick={limpiarTodo}>Limpiar filtros</button>
+            <Link href="/pacientes/nuevo" className="btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 5v14M5 12h14" /></svg>
+              Crear paciente nuevo
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="dir-grid">
             {filtrados.map((paciente) => (
               <PacienteCard key={paciente.id} paciente={paciente} />
             ))}
           </div>
-        )}
 
-        {!resultadosBusqueda && totalCount > pageSize && (
-          <Paginador
-            currentPage={currentPage}
-            totalPages={Math.ceil(totalCount / pageSize)}
-          />
-        )}
-      </div>
-    </>
+          {!resultadosBusqueda && totalCount > pageSize && (
+            <Paginador
+              currentPage={currentPage}
+              totalPages={Math.ceil(totalCount / pageSize)}
+              estadoActual={estadoActual}
+              ultimaCitaActual={ultimaCitaActual}
+            />
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
-function Paginador({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+function Paginador({
+  currentPage,
+  totalPages,
+  estadoActual,
+  ultimaCitaActual,
+}: {
+  currentPage: number
+  totalPages: number
+  estadoActual: string
+  ultimaCitaActual: string
+}) {
   const router = useRouter()
 
   function goTo(page: number) {
-    router.push(`/pacientes?page=${page}`)
+    const params = new URLSearchParams()
+    if (estadoActual) params.set('estado', estadoActual)
+    if (ultimaCitaActual) params.set('ultima_cita', ultimaCitaActual)
+    params.set('page', String(page))
+    router.push(`/pacientes?${params.toString()}`)
   }
 
-  // Build page number list with ellipsis
   function pageNumbers(): (number | '…')[] {
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
     const pages: (number | '…')[] = [1]
@@ -234,55 +371,17 @@ function Paginador({ currentPage, totalPages }: { currentPage: number; totalPage
     return pages
   }
 
-  const btnBase: React.CSSProperties = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    minWidth: 36, height: 36, borderRadius: 8, border: '1px solid var(--border, #E7E9EE)',
-    background: 'var(--surface, #fff)', color: 'var(--ink-2, #1F2937)',
-    fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-    padding: '0 8px', transition: 'background 0.12s',
-  }
-  const btnActive: React.CSSProperties = {
-    ...btnBase,
-    background: 'var(--accent, #2563EB)', color: '#fff',
-    border: '1px solid transparent', fontWeight: 700,
-  }
-  const btnDisabled: React.CSSProperties = {
-    ...btnBase, opacity: 0.38, cursor: 'not-allowed',
-  }
-
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32, paddingBottom: 8 }}>
-      <button
-        style={currentPage <= 1 ? btnDisabled : btnBase}
-        disabled={currentPage <= 1}
-        onClick={() => goTo(currentPage - 1)}
-        aria-label="Página anterior"
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
-      </button>
-
+    <div className="dir-pager">
+      <button className="pg" disabled={currentPage <= 1} onClick={() => goTo(currentPage - 1)} aria-label="Página anterior">‹</button>
       {pageNumbers().map((p, i) =>
         p === '…' ? (
-          <span key={`ell-${i}`} style={{ ...btnBase, border: 'none', background: 'transparent', cursor: 'default', color: 'var(--muted, #5B6472)' }}>…</span>
+          <span key={`ell-${i}`} className="gap">…</span>
         ) : (
-          <button
-            key={p}
-            style={p === currentPage ? btnActive : btnBase}
-            onClick={() => p !== currentPage && goTo(p as number)}
-          >
-            {p}
-          </button>
+          <button key={p} className={`pg${p === currentPage ? ' on' : ''}`} onClick={() => p !== currentPage && goTo(p as number)}>{p}</button>
         )
       )}
-
-      <button
-        style={currentPage >= totalPages ? btnDisabled : btnBase}
-        disabled={currentPage >= totalPages}
-        onClick={() => goTo(currentPage + 1)}
-        aria-label="Página siguiente"
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
-      </button>
+      <button className="pg" disabled={currentPage >= totalPages} onClick={() => goTo(currentPage + 1)} aria-label="Página siguiente">›</button>
     </div>
   )
 }
@@ -294,10 +393,10 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
+  const nombre = formatNombreCompleto(paciente.nombre, paciente.apellido)
   const motivo = paciente.motivo_consulta?.trim() || paciente.notas?.split('\n')[0]?.trim() || null
-  const ultimaCitaStr = formatUltimaCita(paciente.ultima_cita)
   const autorizacion = estadoAutorizacion(paciente.autorizacion_vigencia_hasta)
+  const proximaEnPocosDias = paciente.proxima_sesion ? diasHasta(paciente.proxima_sesion) <= 7 : false
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -319,49 +418,42 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
 
   return (
     <>
-    <Link
-      href={`/pacientes/${paciente.id}`}
-      className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_rgba(0,26,72,0.06)] hover:shadow-[0_12px_32px_rgba(0,26,72,0.08)] transition-all cursor-pointer border border-outline-variant/10 relative group block"
+    <div
+      className="dir-pcard"
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(`/pacientes/${paciente.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          router.push(`/pacientes/${paciente.id}`)
+        }
+      }}
     >
-      {/* Card header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${getAvatarClasses(paciente.genero)}`}>
-            {iniciales}
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-on-surface">
-              {formatNombreCompleto(paciente.nombre, paciente.apellido)}
-            </h3>
-            <p className="text-xs text-on-surface-variant font-medium tracking-wide">
-              PAC-{paciente.id.slice(0, 8).toUpperCase()}
-            </p>
-          </div>
+      <div className="dir-pc-top">
+        <div className="dir-av" style={{ background: AVBG[hashStr(nombre) % AVBG.length] }}>{initials(paciente.nombre, paciente.apellido)}</div>
+        <div className="dir-pc-id">
+          <h3>{nombre}</h3>
+          <span className="code">PAC-{paciente.id.slice(0, 8).toUpperCase()}</span>
         </div>
 
-        {/* 3-dot menu */}
-        <div ref={menuRef} className="relative">
+        <div ref={menuRef} className="dir-menu-wrap">
           <button
-            className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity hover:bg-surface-container-low p-1.5 rounded-full"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen((v) => !v) }}
+            className={`dir-menu-btn${menuOpen ? ' open' : ''}`}
+            aria-label={`Más acciones para ${nombre}`}
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
           >
-            <span className="material-symbols-outlined text-[20px]">more_vert</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="5" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="12" cy="19" r="1.3" /></svg>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-8 w-44 bg-white rounded-xl shadow-lg border border-outline-variant/20 overflow-hidden z-20">
-              <button
-                className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/pacientes/${paciente.id}?edit=1`) }}
-              >
-                <span className="material-symbols-outlined text-[18px]">edit</span>
+            <div className="dir-menu">
+              <button onClick={(e) => { e.stopPropagation(); setMenuOpen(false); router.push(`/pacientes/${paciente.id}?edit=1`) }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                 Editar
               </button>
               {!esColaborador && (
-                <button
-                  className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left border-t border-outline-variant/10"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(false); setConfirmOpen(true) }}
-                >
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                <button className="danger" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); setConfirmOpen(true) }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
                   Eliminar
                 </button>
               )}
@@ -370,51 +462,55 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
         </div>
       </div>
 
-      {/* Card info */}
-      <div className="space-y-3 mb-4">
-        <div className="flex items-center text-sm text-on-surface-variant">
-          <span className="material-symbols-outlined mr-2 text-[16px]">calendar_month</span>
-          <span>{ultimaCitaStr}</span>
-        </div>
-        {motivo && (
-          <div className="flex items-center text-sm text-on-surface-variant">
-            <span className="material-symbols-outlined mr-2 text-[16px]">stethoscope</span>
-            <span className="truncate">{motivo}</span>
+      <div className="dir-pc-badges">
+        {paciente.activo ? <span className="dir-bdg trat">En tratamiento</span> : <span className="dir-bdg alta">De alta</span>}
+        {autorizacion && (
+          <span className={`dir-bdg ${autorizacion.tono === 'vencida' ? 'alert' : 'porvencer'}`}>{autorizacion.label}</span>
+        )}
+      </div>
+
+      <div className="dir-pc-facts">
+        {paciente.ultima_cita ? (
+          <div className="dir-fact">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 1.8" /></svg>
+            <span>Última consulta</span><b>{formatFechaCorta(paciente.ultima_cita)}</b>
+          </div>
+        ) : (
+          <div className="dir-fact none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 1.8" /></svg>
+            <span>Aún sin consultas registradas</span>
+          </div>
+        )}
+        {paciente.proxima_sesion ? (
+          <div className={`dir-fact${proximaEnPocosDias ? ' soon' : ''}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>
+            <span>Próxima</span><b>{formatProximaSesion(paciente.proxima_sesion)}</b>
+          </div>
+        ) : (
+          <div className="dir-fact none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>
+            <span>Sin próxima sesión agendada</span>
           </div>
         )}
       </div>
 
-      {/* Card footer */}
-      <div className="pt-4 border-t border-surface-container-low flex justify-between items-center gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {paciente.activo ? (
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-tertiary-fixed text-on-tertiary-fixed-variant">
-              EN TRATAMIENTO
-            </span>
-          ) : (
-            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase bg-surface-container text-on-surface-variant">
-              ALTA
-            </span>
-          )}
-          {autorizacion && (
-            <span
-              className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase ${
-                autorizacion.tono === 'vencida' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {autorizacion.label}
-            </span>
-          )}
-        </div>
-        <span className="text-sm font-semibold text-primary group-hover:text-primary-container transition-colors">
-          Ver Perfil
+      {motivo ? (
+        <p className="dir-pc-note">{motivo}</p>
+      ) : (
+        <p className="dir-pc-note none">Sin motivo de consulta cargado todavía.</p>
+      )}
+
+      <div className="dir-pc-foot">
+        <span className="go">
+          Ver perfil
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 6l6 6-6 6" /></svg>
         </span>
       </div>
-    </Link>
+    </div>
 
     <ConfirmDialog
       open={confirmOpen}
-      title={`Eliminar a ${formatNombreCompleto(paciente.nombre, paciente.apellido)}`}
+      title={`Eliminar a ${nombre}`}
       message="Esta acción no se puede deshacer."
       confirmLabel="Eliminar"
       variant="danger"
