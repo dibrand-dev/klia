@@ -102,7 +102,7 @@ export async function buscarPaginaOFF(params: {
   if (sortByLastModified) url.searchParams.set('sort_by', 'last_modified_t')
 
   const res = await fetch(url.toString(), {
-    headers: { 'User-Agent': 'KLIA - Vademecum Import - hola@klia.com.ar' },
+    headers: { 'User-Agent': 'KLIA-Vademecum/1.0 (https://klia.com.ar; hola@klia.com.ar)' },
   })
   if (!res.ok) {
     throw new Error(`Open Food Facts respondió ${res.status} para page=${page}`)
