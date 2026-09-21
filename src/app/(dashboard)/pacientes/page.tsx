@@ -35,12 +35,7 @@ export default async function PacientesPage({
 
   const ahoraISO = new Date().toISOString()
 
-  const [{ data: profile }, { data: turnosPasados }, { data: turnosFuturos }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', efectivo.terapeutaId)
-      .single(),
+  const [{ data: turnosPasados }, { data: turnosFuturos }] = await Promise.all([
     supabase
       .from('turnos')
       .select('paciente_id, fecha_hora')
@@ -62,12 +57,7 @@ export default async function PacientesPage({
     // función, que sí valida la colaboración activa server-side.
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
     const todosPacientesRPC = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
-    // Filtro de estado ANTES de calcular ultima_cita/orden — el RPC no acepta
-    // filtros server-side, así que hay que aplicarlo acá.
-    const filtradosPorEstado = activoFilter === null
-      ? todosPacientesRPC
-      : todosPacientesRPC.filter((p) => p.activo === activoFilter)
-    pacientesBase = filtradosPorEstado.map((p) => ({
+    pacientesBase = todosPacientesRPC.map((p) => ({
       ...p,
       notas: null,
       motivo_consulta: null,
@@ -76,18 +66,25 @@ export default async function PacientesPage({
       fecha_inicio_tratamiento: null,
     })) as Paciente[]
   } else {
-    // Sin .range() acá: traemos TODOS los pacientes filtrados por estado — el corte
-    // a la página actual pasa a hacerse en memoria, después de calcular ultima_cita/
-    // proxima_sesion y aplicar el nuevo orden (sin actividad primero). Paginar en la
-    // base antes de eso daría páginas inconsistentes con el orden real.
-    let query = supabase
+    // Traemos TODOS los pacientes (sin filtrar por estado en la query): el filtro
+    // de estado se aplica en memoria más abajo, junto con el de última cita, así el
+    // header puede mostrar el total real del consultorio sin que el filtro activo lo achique.
+    const { data } = await supabase
       .from('pacientes')
       .select('*')
       .eq('terapeuta_id', efectivo.terapeutaId)
-    if (activoFilter !== null) query = query.eq('activo', activoFilter)
-    const { data } = await query
     pacientesBase = data ?? []
   }
+
+  const totalGeneral = pacientesBase.length
+  const enTratamientoGeneral = pacientesBase.filter((p) => p.activo).length
+
+  // Filtro de estado — en memoria para los dos casos (RPC de colaboradora no acepta
+  // filtros server-side, y para el profesional lo dejamos sin filtrar arriba para
+  // poder calcular los totales generales del header).
+  const filtradosPorEstado = activoFilter === null
+    ? pacientesBase
+    : pacientesBase.filter((p) => p.activo === activoFilter)
 
   const ultimaCitaMap = new Map<string, string>()
   for (const t of turnosPasados ?? []) {
@@ -103,7 +100,7 @@ export default async function PacientesPage({
     }
   }
 
-  const conActividad = pacientesBase.map((p) => ({
+  const conActividad = filtradosPorEstado.map((p) => ({
     ...p,
     ultima_cita: ultimaCitaMap.get(p.id) ?? null,
     proxima_sesion: proximaSesionMap.get(p.id) ?? null,
@@ -145,8 +142,9 @@ export default async function PacientesPage({
   return (
     <ListaPacientes
       pacientes={pacientesListado}
-      profile={profile}
       totalCount={totalCount}
+      totalGeneral={totalGeneral}
+      enTratamientoGeneral={enTratamientoGeneral}
       currentPage={pageNum}
       pageSize={PAGE_SIZE}
       estadoActual={estadoParam ?? ''}
