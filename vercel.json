@@ -5,6 +5,7 @@
     { "path": "/api/cron/recordatorios", "schedule": "0 9 * * *" },
     { "path": "/api/cron/aviso-deuda", "schedule": "0 10 * * *" },
     { "path": "/api/cron/autorizaciones-por-vencer", "schedule": "0 10 * * *" },
-    { "path": "/api/cron/inactividad-trial", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/inactividad-trial", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/vademecum-off-sync", "schedule": "0 5 1 * *" }
   ]
 }

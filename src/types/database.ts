@@ -1979,14 +1979,17 @@ export type Database = {
           id: string
           fuente: string
           nombre: string
+          grupo: string
         }
         Insert: {
           id?: string
           fuente: string
           nombre: string
+          grupo: string
         }
         Update: {
           nombre?: string
+          grupo?: string
         }
         Relationships: []
       }
@@ -2032,6 +2035,23 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      vademecum_off_sync_control: {
+        Row: {
+          id: string
+          ultima_sync_exitosa: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ultima_sync_exitosa?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ultima_sync_exitosa?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
