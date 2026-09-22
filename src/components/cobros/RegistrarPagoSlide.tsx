@@ -291,7 +291,8 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
             <div style={{ marginTop: '4px', padding: '10px 12px', background: quedaPagada ? '#DCFCE7' : '#FEF3C7', borderRadius: '8px', fontSize: '12.5px', color: quedaPagada ? '#047857' : '#B45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {quedaPagada ? (
                 <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5"/></svg>
-                  Tras registrar, esta sesión quedará marcada como <b>Pagada</b>.</>
+                  Tras registrar, esta sesión quedará marcada como <b>Pagada</b>.
+                  {montoNum > saldo && ' El excedente se aplicará automáticamente a las próximas sesiones pendientes de esta paciente.'}</>
               ) : (
                 <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>
                   Tras registrar, esta sesión quedará como <b>Pago parcial</b>. Saldo: {sym} {fmtNum(nuevoSaldo)}.</>
