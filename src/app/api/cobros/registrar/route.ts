@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   // Get the turno (verify ownership)
   const { data: turno, error: turnoError } = await supabase
     .from('turnos')
-    .select('id, monto, monto_pagado, estado_pago, paciente_id, terapeuta_id, moneda')
+    .select('id, fecha_hora, monto, monto_pagado, estado_pago, paciente_id, terapeuta_id, moneda')
     .eq('id', turno_id)
     .eq('terapeuta_id', efectivo.terapeutaId)
     .single()
@@ -36,42 +36,82 @@ export async function POST(req: NextRequest) {
   const moneda = turno.moneda ?? 'ARS'
   const fechaCobroFinal = fecha_cobro ?? new Date().toISOString().slice(0, 10)
 
-  // Insert cobro
-  const { error: cobroError } = await supabase
-    .from('cobros')
-    .insert({
-      turno_id,
+  const saldoTurnoActual = (turno.monto ?? 0) - (turno.monto_pagado ?? 0)
+
+  // Sesiones a las que aplicar el cobro: primero la sesión sobre la que se tocó
+  // "Cobrar", y si el monto ingresado la excede, se sigue con las siguientes
+  // sesiones pendientes de la misma paciente (más antiguas primero — mismo
+  // criterio que /api/cobros/pago-a-cuenta), para no dejar el excedente pegado
+  // a una sola sesión.
+  type TurnoAAplicar = { id: string; monto: number; monto_pagado: number }
+  const turnosAAplicar: TurnoAAplicar[] = [
+    { id: turno.id, monto: turno.monto ?? 0, monto_pagado: turno.monto_pagado ?? 0 },
+  ]
+
+  if (monto_cobrado > saldoTurnoActual) {
+    const { data: otrosTurnos } = await supabase
+      .from('turnos')
+      .select('id, monto, monto_pagado')
+      .eq('paciente_id', turno.paciente_id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .neq('id', turno.id)
+      .in('estado_pago', ['pendiente', 'pago_parcial'])
+      .in('estado', ['realizado', 'no_asistio'])
+      .order('fecha_hora', { ascending: true })
+
+    for (const t of otrosTurnos ?? []) {
+      turnosAAplicar.push({ id: t.id, monto: t.monto ?? 0, monto_pagado: t.monto_pagado ?? 0 })
+    }
+  }
+
+  let restante = monto_cobrado
+  const cobrosBatch: object[] = []
+  const turnosUpdates: { id: string; monto_pagado: number; estado_pago: string; pagado: boolean }[] = []
+  let estadoPagoTurnoPrincipal: string = turno.estado_pago
+
+  for (let i = 0; i < turnosAAplicar.length; i++) {
+    const t = turnosAAplicar[i]
+    if (restante <= 0) break
+    const saldo = t.monto - t.monto_pagado
+    if (saldo <= 0) continue
+
+    const montoAplicado = Math.min(restante, saldo)
+    restante -= montoAplicado
+
+    const newMontoPagado = t.monto_pagado + montoAplicado
+    const newEstado = newMontoPagado >= t.monto ? 'pagado' : 'pago_parcial'
+
+    cobrosBatch.push({
+      turno_id: t.id,
       terapeuta_id: efectivo.terapeutaId,
       paciente_id: turno.paciente_id,
-      monto_cobrado,
+      monto_cobrado: montoAplicado,
       moneda,
       medio_pago,
       fecha_cobro: fechaCobroFinal,
-      notas: notas ?? null,
+      notas: i === 0 ? (notas ?? null) : null,
     })
+    turnosUpdates.push({ id: t.id, monto_pagado: newMontoPagado, estado_pago: newEstado, pagado: newEstado === 'pagado' })
 
+    if (t.id === turno.id) estadoPagoTurnoPrincipal = newEstado
+  }
+
+  const { error: cobroError } = await supabase.from('cobros').insert(cobrosBatch)
   if (cobroError) {
     return NextResponse.json({ error: cobroError.message }, { status: 500 })
   }
 
-  // Update turno
-  const prevPagado = turno.monto_pagado ?? 0
-  const newMontoPagado = prevPagado + monto_cobrado
-  const montoTotal = turno.monto ?? 0
-  const newEstado = newMontoPagado >= montoTotal ? 'pagado' : 'pago_parcial'
-
-  const { error: updateError } = await supabase
-    .from('turnos')
-    .update({
-      monto_pagado: newMontoPagado,
-      estado_pago: newEstado,
-      pagado: newEstado === 'pagado',
-    })
-    .eq('id', turno_id)
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  for (const { id, ...fields } of turnosUpdates) {
+    const { error: updateError } = await supabase.from('turnos').update(fields).eq('id', id)
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
   }
 
-  return NextResponse.json({ ok: true, estado_pago: newEstado })
+  return NextResponse.json({
+    ok: true,
+    estado_pago: estadoPagoTurnoPrincipal,
+    sesiones_actualizadas: turnosUpdates.length,
+    monto_restante: restante,
+  })
 }
