@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       .select('id, monto, monto_pagado')
       .eq('paciente_id', turno.paciente_id)
       .eq('terapeuta_id', efectivo.terapeutaId)
+      .eq('moneda', moneda)
       .neq('id', turno.id)
       .in('estado_pago', ['pendiente', 'pago_parcial'])
       .in('estado', ['realizado', 'no_asistio'])
@@ -62,6 +63,20 @@ export async function POST(req: NextRequest) {
     for (const t of otrosTurnos ?? []) {
       turnosAAplicar.push({ id: t.id, monto: t.monto ?? 0, monto_pagado: t.monto_pagado ?? 0 })
     }
+  }
+
+  // El excedente solo puede repartirse entre las sesiones pendientes que
+  // efectivamente se están considerando (turnosAAplicar) — si el monto
+  // ingresado supera esa deuda total, no hay dónde aplicar la diferencia.
+  // El esquema no soporta saldo a favor, así que se rechaza en vez de
+  // perder la diferencia en silencio.
+  const deudaTotalDisponible = turnosAAplicar.reduce((acc, t) => acc + Math.max(0, t.monto - t.monto_pagado), 0)
+  if (monto_cobrado > deudaTotalDisponible) {
+    const deudaFmt = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(deudaTotalDisponible)
+    return NextResponse.json(
+      { error: `El monto ingresado supera la deuda total pendiente de la paciente. Máximo: $${deudaFmt}` },
+      { status: 400 },
+    )
   }
 
   let restante = monto_cobrado
