@@ -1,4 +1,7 @@
-import { PDFDocument, StandardFonts, rgb, PDFPage, PDFFont, PDFImage, LineCapStyle } from 'pdf-lib'
+import { PDFDocument, rgb, PDFPage, PDFFont, PDFImage, LineCapStyle } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
+import fs from 'fs'
+import path from 'path'
 
 // ── Datos de entrada ─────────────────────────────────────────────────────────
 
@@ -154,7 +157,43 @@ async function embedImg(doc: PDFDocument, buf: Buffer): Promise<PDFImage | null>
   }
 }
 
-interface Fonts { reg: PDFFont; bold: PDFFont; obl: PDFFont }
+// Fuentes reales del diseño (Klia — Geist/Geist Mono/Inter/Instrument Serif),
+// embebidas vía @pdf-lib/fontkit. Mapeo por clase CSS del template:
+// - geist/geistBold: h1/h2/.disp/.nm/.val/.big/.nm2/.ttl/.nmx (Geist, weight 400/600)
+// - mono/monoMedium: .lbl/.eyebrow/.meta/.mn/.kc/.hr/.pc/.gr/.dt/.mnx/.rf (Geist Mono)
+// - inter/interBold: cuerpo — p/li/.sub/.note/dd/.tip/.conf, <b> dentro de body = interBold
+// - signature: .fx (firma manuscrita), único uso de Instrument Serif itálica
+interface Fonts {
+  geist: PDFFont
+  geistBold: PDFFont
+  mono: PDFFont
+  monoMedium: PDFFont
+  inter: PDFFont
+  interBold: PDFFont
+  signature: PDFFont
+}
+
+const FONTS_DIR = path.join(process.cwd(), 'public', 'fonts', 'plan-alimentario')
+
+/**
+ * Todas las fuentes se embeben como .ttf (no .woff2). El subsetter de
+ * @pdf-lib/fontkit ("TTFSubset") crashea con "RangeError: Index out of
+ * range" al hacer doc.save() con los .woff2 originales de Inter/Instrument
+ * Serif (confirmado en runtime — ni tsc ni next build lo detectan, solo
+ * aparece al ejecutar el subsetting real). Probar con subset:false evitaba
+ * el crash pero producía glifos corruptos en runtime (confirmado con
+ * pdfjs-dist getTextContent: el "." se renderizaba como un carácter
+ * random) — el bug real estaba en cómo fontkit arma la tabla "loca" para
+ * TrueType embebido desde un .woff2 sin pasar por el subsetter. Fix real:
+ * decodificar los .woff2 a .ttf de antemano (fontTools, Python) y commitear
+ * los .ttf ya descomprimidos — con eso el subsetter funciona igual de bien
+ * que con los .ttf nativos de Geist (confirmado con el mismo test de
+ * extracción de texto, incluyendo el punto final que antes se corrompía).
+ */
+async function embedFontFile(doc: PDFDocument, filename: string): Promise<PDFFont> {
+  const bytes = fs.readFileSync(path.join(FONTS_DIR, filename))
+  return doc.embedFont(bytes, { subset: true })
+}
 
 /** Envuelve texto a un ancho máximo, devolviendo un array de líneas. */
 function wrapText(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
@@ -224,15 +263,59 @@ function drawWrappedRuns(page: PDFPage, lineas: PalabraWrap[][], x: number, kitY
   })
 }
 
-function drawIcon(
+interface IconDef {
+  circle?: { cx: number; cy: number; r: number }
+  rect?: { x: number; y: number; w: number; h: number }
+  path?: string
+}
+
+/**
+ * Rectángulo con esquinas redondeadas — el diseño usa border-radius:14px en
+ * prácticamente todas las cards (.goal/.vct/.macros/.panel/.vig/.contact) y
+ * pdf-lib no tiene un drawRoundedRectangle nativo. Se arma como un SVG path
+ * (mismo mecanismo que los íconos: drawSvgPath con origen top-left y flip de
+ * Y automático) en vez de drawRectangle, que solo dibuja esquinas a 90°.
+ */
+function drawRoundedRect(
   page: PDFPage,
-  tipoComida: string,
-  kitX: number,
-  kitY: number, // top del ícono
-  size: number,
-  color = C_PRO,
+  opts: {
+    kitX: number; kitY: number; width: number; height: number; radius: number
+    color?: ReturnType<typeof rgb>; borderColor?: ReturnType<typeof rgb>; borderWidth?: number
+    // Qué esquinas redondear — por defecto las 4. Se usa con solo algunas
+    // activas para la barra de macros (.mbar del diseño: border-radius:8px
+    // con overflow:hidden en el CONTENEDOR completo, no en cada segmento —
+    // acá se aproxima redondeando solo el extremo izquierdo del primer
+    // segmento y el derecho del último, dejando los del medio rectos).
+    corners?: { tl?: boolean; tr?: boolean; br?: boolean; bl?: boolean }
+  },
 ) {
-  const def = ICON_PATHS[tipoComida] ?? ICON_GENERICO
+  const { kitX, kitY, width: w, height: h, radius: r } = opts
+  const c = { tl: true, tr: true, br: true, bl: true, ...opts.corners }
+  const arc = (rx: number) => `A${rx},${rx} 0 0 1`
+  const path = [
+    `M${c.tl ? r : 0},0`,
+    `L${c.tr ? w - r : w},0`,
+    c.tr ? `${arc(r)} ${w},${r}` : '',
+    `L${w},${c.br ? h - r : h}`,
+    c.br ? `${arc(r)} ${w - r},${h}` : '',
+    `L${c.bl ? r : 0},${h}`,
+    c.bl ? `${arc(r)} 0,${h - r}` : '',
+    `L0,${c.tl ? r : 0}`,
+    c.tl ? `${arc(r)} ${r},0` : '',
+    'Z',
+  ].filter(Boolean).join(' ')
+  page.drawSvgPath(path, {
+    x: kitX,
+    y: yb(kitY),
+    scale: 1,
+    color: opts.color,
+    borderColor: opts.borderColor,
+    borderWidth: opts.borderWidth,
+  })
+}
+
+/** Dibuja un ícono definido en coordenadas de viewBox 0 0 24 24 (mismo sistema que los SVG del diseño). */
+function drawSvgIcon(page: PDFPage, def: IconDef, kitX: number, kitY: number, size: number, color = C_PRO) {
   const scale = size / 24
   const originY = yb(kitY) // pdf-lib y del origen SVG (0,0) del ícono
 
@@ -247,6 +330,17 @@ function drawIcon(
       borderWidth: 1.6 * scale,
     })
   }
+  if (def.rect) {
+    const { x, y, w, h } = def.rect
+    page.drawRectangle({
+      x: kitX + x * scale,
+      y: originY - (y + h) * scale,
+      width: w * scale,
+      height: h * scale,
+      borderColor: color,
+      borderWidth: 1.6 * scale,
+    })
+  }
   if (def.path) {
     page.drawSvgPath(def.path, {
       x: kitX,
@@ -257,6 +351,22 @@ function drawIcon(
       borderLineCap: LineCapStyle.Round,
     })
   }
+}
+
+// Íconos standalone del diseño (no ligados a un tipo de comida).
+const ICON_CHECK: IconDef = { path: 'M20 6 9 17l-5-5' }
+const ICON_INFO: IconDef = { circle: { cx: 12, cy: 12, r: 9 }, path: 'M12 8h.01M11 12h1v4h1' }
+const ICON_LOCK: IconDef = { rect: { x: 4, y: 10.5, w: 16, h: 10.5 }, path: 'M8 10.5V7a4 4 0 0 1 8 0v3.5' }
+
+function drawIcon(
+  page: PDFPage,
+  tipoComida: string,
+  kitX: number,
+  kitY: number, // top del ícono
+  size: number,
+  color = C_PRO,
+) {
+  drawSvgIcon(page, ICON_PATHS[tipoComida] ?? ICON_GENERICO, kitX, kitY, size, color)
 }
 
 function formatFechaLarga(iso: string): string {
@@ -309,17 +419,17 @@ function drawRunningHeader(page: PDFPage, ctx: RunningCtx) {
     page.drawImage(ctx.avatarImg, { x: circleCx - side / 2, y: circleCy - side / 2, width: side, height: side })
   } else {
     const iniciales = ctx.profesionalNombreCorto.replace(/^Lic\.|^Dr\.|^Dra\.|^Mg\./i, '').trim().split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase()
-    const inicialesW = ctx.fonts.bold.widthOfTextAtSize(iniciales, 11)
-    page.drawText(iniciales, { x: circleCx - inicialesW / 2, y: circleCy - 4, font: ctx.fonts.bold, size: 11, color: C_PRO })
+    const inicialesW = ctx.fonts.geistBold.widthOfTextAtSize(iniciales, 11)
+    page.drawText(iniciales, { x: circleCx - inicialesW / 2, y: circleCy - 4, font: ctx.fonts.geistBold, size: 11, color: C_PRO })
   }
 
   const textX = L + circleR * 2 + 9
-  page.drawText(ctx.profesionalNombreCorto, { x: textX, y: yb(kitY + 16, 12.5), font: ctx.fonts.bold, size: 12.5, color: C_INK })
-  page.drawText(`${ctx.especialidad} · ${ctx.matricula}`, { x: textX, y: yb(kitY + 30, 9.5), font: ctx.fonts.reg, size: 9.5, color: C_SLATE })
+  page.drawText(ctx.profesionalNombreCorto, { x: textX, y: yb(kitY + 8, 12.5), font: ctx.fonts.geistBold, size: 12.5, color: C_INK })
+  page.drawText(`${ctx.especialidad} · ${ctx.matricula}`, { x: textX, y: yb(kitY + 30, 9.5), font: ctx.fonts.mono, size: 9.5, color: C_SLATE })
 
   const rightText = `Emitido ${ctx.fechaEmision}`
-  const rightW = ctx.fonts.reg.widthOfTextAtSize(rightText, 9.5)
-  page.drawText(rightText, { x: R - rightW, y: yb(kitY + 30, 9.5), font: ctx.fonts.reg, size: 9.5, color: C_SLATE })
+  const rightW = ctx.fonts.mono.widthOfTextAtSize(rightText, 9.5)
+  page.drawText(rightText, { x: R - rightW, y: yb(kitY + 30, 9.5), font: ctx.fonts.mono, size: 9.5, color: C_SLATE })
 }
 
 function drawRunningFooter(page: PDFPage, ctx: RunningCtx, pageNum: number) {
@@ -328,21 +438,26 @@ function drawRunningFooter(page: PDFPage, ctx: RunningCtx, pageNum: number) {
   page.drawLine({ start: { x: L, y: lineY }, end: { x: R, y: lineY }, thickness: 0.75, color: C_LINE })
 
   const left = 'Plan alimentario · Documento de uso personal'
-  page.drawText(left, { x: L, y: yb(kitY + 15, 8.5), font: ctx.fonts.reg, size: 8.5, color: C_SLATE2 })
+  page.drawText(left, { x: L, y: yb(kitY + 15, 8.5), font: ctx.fonts.mono, size: 8.5, color: C_SLATE2 })
 
   const right = `${ctx.profesionalNombreCorto} · ${ctx.matricula} · Página ${pageNum}`
-  const rightW = ctx.fonts.reg.widthOfTextAtSize(right, 8.5)
-  page.drawText(right, { x: R - rightW, y: yb(kitY + 15, 8.5), font: ctx.fonts.reg, size: 8.5, color: C_SLATE2 })
+  const rightW = ctx.fonts.mono.widthOfTextAtSize(right, 8.5)
+  page.drawText(right, { x: R - rightW, y: yb(kitY + 15, 8.5), font: ctx.fonts.mono, size: 8.5, color: C_SLATE2 })
 }
 
 // ── Generador principal ───────────────────────────────────────────────────────
 
 export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create()
+  pdfDoc.registerFontkit(fontkit)
   const fonts: Fonts = {
-    reg: await pdfDoc.embedFont(StandardFonts.Helvetica),
-    bold: await pdfDoc.embedFont(StandardFonts.HelveticaBold),
-    obl: await pdfDoc.embedFont(StandardFonts.HelveticaOblique),
+    geist: await embedFontFile(pdfDoc, 'Geist-Regular.ttf'),
+    geistBold: await embedFontFile(pdfDoc, 'Geist-SemiBold.ttf'),
+    mono: await embedFontFile(pdfDoc, 'GeistMono-Regular.ttf'),
+    monoMedium: await embedFontFile(pdfDoc, 'GeistMono-Medium.ttf'),
+    inter: await embedFontFile(pdfDoc, 'Inter-Regular.ttf'),
+    interBold: await embedFontFile(pdfDoc, 'Inter-SemiBold.ttf'),
+    signature: await embedFontFile(pdfDoc, 'InstrumentSerif-Italic.ttf'),
   }
 
   const [firmaBuf, avatarBuf] = await Promise.all([
@@ -389,21 +504,22 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
   newPage()
 
   // Eyebrow
-  page!.drawEllipse({ x: L + 2.5, y: yb(cy, -3), xScale: 2.5, yScale: 2.5, color: C_PRO })
-  page!.drawText('PLAN ALIMENTARIO PERSONALIZADO', { x: L + 12, y: yb(cy, 9.5), font: fonts.bold, size: 9.5, color: C_PRO })
+  page!.drawEllipse({ x: L + 2.5, y: yb(cy, 6.5), xScale: 2.5, yScale: 2.5, color: C_PRO })
+  page!.drawText('PLAN ALIMENTARIO PERSONALIZADO', { x: L + 12, y: yb(cy, 9.5), font: fonts.mono, size: 9.5, color: C_PRO })
   cy += 22
 
   // H1
   const h1Size = 26
-  page!.drawText(datos.pacienteNombreCompleto, { x: L, y: yb(cy, h1Size), font: fonts.bold, size: h1Size, color: C_INK })
+  page!.drawText(datos.pacienteNombreCompleto, { x: L, y: yb(cy, h1Size), font: fonts.geistBold, size: h1Size, color: C_INK })
   cy += h1Size + 6
-  page!.drawText('tu plan de la semana', { x: L, y: yb(cy, 18), font: fonts.obl, size: 18, color: C_PRO })
+  // .serif — Geist regular (weight 500 en el diseño), NO itálica
+  page!.drawText('tu plan de la semana', { x: L, y: yb(cy, 18), font: fonts.geist, size: 18, color: C_PRO })
   cy += 26
 
   const vigenciaTxt = datos.fechaFin
     ? `Preparado el ${formatFechaLarga(datos.fechaPreparacion)} · Vigente hasta el ${formatFechaCorta(datos.fechaFin)}`
     : `Preparado el ${formatFechaLarga(datos.fechaPreparacion)}`
-  page!.drawText(vigenciaTxt, { x: L, y: yb(cy, 10.5), font: fonts.reg, size: 10.5, color: C_SLATE })
+  page!.drawText(vigenciaTxt, { x: L, y: yb(cy, 10.5), font: fonts.inter, size: 10.5, color: C_SLATE })
   cy += 28
 
   // Hero: Objetivo + Valor calórico (lado a lado) — alto calculado del
@@ -413,47 +529,61 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
   const vctW = W - goalW - 18
   const objetivoTitulo = datos.objetivoTitulo ?? 'Sin definir'
   const tituloStartKitY = 38
-  const tituloLineH = fonts.bold.heightAtSize(15, { descender: true })
+  const tituloLineH = fonts.geistBold.heightAtSize(15, { descender: true })
   const tituloLineStep = tituloLineH + 2
-  const tituloLines = wrapText(fonts.bold, objetivoTitulo, 15, goalW - 32)
+  const tituloLines = wrapText(fonts.geistBold, objetivoTitulo, 15, goalW - 32)
   const tituloBottomKitY = tituloStartKitY + (tituloLines.length - 1) * tituloLineStep + tituloLineH
 
-  const notaLines = datos.objetivoNota ? wrapText(fonts.reg, datos.objetivoNota, 9.5, goalW - 32) : []
+  const notaLines = datos.objetivoNota ? wrapText(fonts.inter, datos.objetivoNota, 9.5, goalW - 32) : []
   const notaStartKitY = tituloBottomKitY + 12 // aire real entre la última línea del título y la nota
   const notaLineStep = 13
   const goalContentBottomKitY = notaLines.length > 0
-    ? notaStartKitY + (notaLines.length - 1) * notaLineStep + fonts.reg.heightAtSize(9.5, { descender: true })
+    ? notaStartKitY + (notaLines.length - 1) * notaLineStep + fonts.inter.heightAtSize(9.5, { descender: true })
     : tituloBottomKitY
   const goalCardH = goalContentBottomKitY + 18 // padding inferior
 
   const kcalNumKitY = 52
-  const kcalNumH = fonts.bold.heightAtSize(30, { descender: true })
+  const kcalNumH = fonts.geistBold.heightAtSize(30, { descender: true })
   const kcalUnitKitY = kcalNumKitY + kcalNumH + 6 // 6pt de aire real entre el número y la unidad
-  const kcalUnitH = fonts.reg.heightAtSize(8.5, { descender: true })
-  const vctCardH = kcalUnitKitY + kcalUnitH + 16 // padding inferior
+  const kcalUnitH = fonts.mono.heightAtSize(8.5, { descender: true })
+  const fineTxt = 'Referencia diaria promedio. Puede variar ±100 Kcal según el día.'
+  const fineLines = wrapText(fonts.inter, fineTxt, 8, vctW - 40)
+  const fineStartKitY = kcalUnitKitY + kcalUnitH + 10
+  const fineLineStep = 10.5
+  const vctCardH = fineStartKitY + (fineLines.length - 1) * fineLineStep + fonts.inter.heightAtSize(8, { descender: true }) + 16 // padding inferior
 
   const heroH = Math.max(goalCardH, vctCardH, 92) // 92 = piso visual del diseño original
 
-  page!.drawRectangle({ x: L, y: yb(cy, heroH), width: goalW, height: heroH, color: C_PRO_SOFT, borderColor: C_PRO_LINE, borderWidth: 1 })
-  page!.drawText('OBJETIVO DEL PLAN', { x: L + 16, y: yb(cy + 20, 8), font: fonts.bold, size: 8, color: C_PRO })
+  // La portada no paginaba nunca — con un objetivo/nota largos el contenido
+  // podía terminar desbordando por debajo del footer (confirmado por
+  // coordenadas reales). Mismo mecanismo de ensureSpace que ya usan las
+  // páginas de comidas.
+  ensureSpace(heroH)
+
+  drawRoundedRect(page!, { kitX: L, kitY: cy, width: goalW, height: heroH, radius: 14, color: C_PRO_SOFT, borderColor: C_PRO_LINE, borderWidth: 1 })
+  page!.drawText('OBJETIVO DEL PLAN', { x: L + 16, y: yb(cy + 20, 8), font: fonts.mono, size: 8, color: C_PRO })
   tituloLines.forEach((line, i) => {
-    page!.drawText(line, { x: L + 16, y: yb(cy + tituloStartKitY + i * tituloLineStep, 15), font: fonts.bold, size: 15, color: C_INK })
+    page!.drawText(line, { x: L + 16, y: yb(cy + tituloStartKitY + i * tituloLineStep, 15), font: fonts.geistBold, size: 15, color: C_INK })
   })
   notaLines.forEach((line, i) => {
-    page!.drawText(line, { x: L + 16, y: yb(cy + notaStartKitY + i * notaLineStep, 9.5), font: fonts.reg, size: 9.5, color: C_GOAL_NOTE })
+    page!.drawText(line, { x: L + 16, y: yb(cy + notaStartKitY + i * notaLineStep, 9.5), font: fonts.inter, size: 9.5, color: C_GOAL_NOTE })
   })
 
   const vctX = L + goalW + 18
-  page!.drawRectangle({ x: vctX, y: yb(cy, heroH), width: vctW, height: heroH, color: C_WHITE, borderColor: C_LINE, borderWidth: 1 })
+  drawRoundedRect(page!, { kitX: vctX, kitY: cy, width: vctW, height: heroH, radius: 14, color: C_WHITE, borderColor: C_LINE, borderWidth: 1 })
   const vctLbl = 'VALOR CALÓRICO TOTAL DIARIO'
-  const vctLblW = fonts.bold.widthOfTextAtSize(vctLbl, 7.5)
-  page!.drawText(vctLbl, { x: vctX + (vctW - vctLblW) / 2, y: yb(cy + 18, 7.5), font: fonts.bold, size: 7.5, color: C_PRO })
+  const vctLblW = fonts.mono.widthOfTextAtSize(vctLbl, 7.5)
+  page!.drawText(vctLbl, { x: vctX + (vctW - vctLblW) / 2, y: yb(cy + 18, 7.5), font: fonts.mono, size: 7.5, color: C_PRO })
   const kcalTxt = datos.kcalObjetivo != null ? Math.round(datos.kcalObjetivo).toLocaleString('es-AR') : '—'
-  const kcalW = fonts.bold.widthOfTextAtSize(kcalTxt, 30)
-  page!.drawText(kcalTxt, { x: vctX + (vctW - kcalW) / 2, y: yb(cy + kcalNumKitY, 30), font: fonts.bold, size: 30, color: C_PRO })
+  const kcalW = fonts.geistBold.widthOfTextAtSize(kcalTxt, 30)
+  page!.drawText(kcalTxt, { x: vctX + (vctW - kcalW) / 2, y: yb(cy + kcalNumKitY, 30), font: fonts.geistBold, size: 30, color: C_PRO })
   const kcalUnit = 'KCAL / DÍA'
-  const kcalUnitW = fonts.reg.widthOfTextAtSize(kcalUnit, 8.5)
-  page!.drawText(kcalUnit, { x: vctX + (vctW - kcalUnitW) / 2, y: yb(cy + kcalUnitKitY, 8.5), font: fonts.reg, size: 8.5, color: C_SLATE })
+  const kcalUnitW = fonts.mono.widthOfTextAtSize(kcalUnit, 8.5)
+  page!.drawText(kcalUnit, { x: vctX + (vctW - kcalUnitW) / 2, y: yb(cy + kcalUnitKitY, 8.5), font: fonts.mono, size: 8.5, color: C_SLATE })
+  fineLines.forEach((line, i) => {
+    const lineW = fonts.inter.widthOfTextAtSize(line, 8)
+    page!.drawText(line, { x: vctX + (vctW - lineW) / 2, y: yb(cy + fineStartKitY + i * fineLineStep, 8), font: fonts.inter, size: 8, color: C_SLATE2 })
+  })
 
   cy += heroH + 22
 
@@ -464,60 +594,71 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
     { key: 'grasas', label: 'Grasas', sub: 'Palta, frutos secos, aceite de oliva', pct: datos.porcentajeGrasas },
   ]
   const macrosBoxH = 34 + 18 + macroDefs.length * 34 + 20
-  page!.drawRectangle({ x: L, y: yb(cy, macrosBoxH), width: W, height: macrosBoxH, borderColor: C_LINE, borderWidth: 1 })
+  ensureSpace(macrosBoxH)
+  drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: macrosBoxH, radius: 14, borderColor: C_LINE, borderWidth: 1 })
   let barX = L + 20
   const barY = cy + 20
   const barW = W - 40
   const barH = 26
-  for (const m of macroDefs) {
+  macroDefs.forEach((m, mi) => {
     const segW = (m.pct / 100) * barW
     const textColor = m.key === 'grasas' ? C_INK : C_WHITE
-    page!.drawRectangle({ x: barX, y: yb(barY, barH), width: segW, height: barH, color: MACRO_COLORS[m.key] })
+    drawRoundedRect(page!, {
+      kitX: barX, kitY: barY, width: segW, height: barH, radius: 8, color: MACRO_COLORS[m.key],
+      corners: { tl: mi === 0, bl: mi === 0, tr: mi === macroDefs.length - 1, br: mi === macroDefs.length - 1 },
+    })
     const pctTxt = `${Math.round(m.pct)} %`
-    const pctW = fonts.bold.widthOfTextAtSize(pctTxt, 9.5)
+    const pctW = fonts.monoMedium.widthOfTextAtSize(pctTxt, 9.5)
     if (segW > pctW + 8) {
-      page!.drawText(pctTxt, { x: barX + segW / 2 - pctW / 2, y: yb(barY + barH / 2 + 4, 9.5), font: fonts.bold, size: 9.5, color: textColor })
+      page!.drawText(pctTxt, { x: barX + segW / 2 - pctW / 2, y: yb(barY + barH / 2 + 1, 9.5), font: fonts.monoMedium, size: 9.5, color: textColor })
     }
     barX += segW
-  }
+  })
 
   let mY = barY + barH + 18
-  for (const m of macroDefs) {
-    page!.drawRectangle({ x: L + 20, y: yb(mY, 12), width: 12, height: 12, color: MACRO_COLORS[m.key], borderColor: C_INK, borderWidth: 0.5 })
-    page!.drawText(m.label, { x: L + 42, y: yb(mY + 2, 11), font: fonts.bold, size: 11, color: C_INK })
-    page!.drawText(m.sub, { x: L + 42, y: yb(mY + 16, 8.5), font: fonts.reg, size: 8.5, color: C_SLATE })
+  macroDefs.forEach((m, mi) => {
+    drawRoundedRect(page!, { kitX: L + 20, kitY: mY, width: 12, height: 12, radius: 4, color: MACRO_COLORS[m.key], borderColor: C_INK, borderWidth: 0.5 })
+    page!.drawText(m.label, { x: L + 42, y: yb(mY + 2, 11), font: fonts.geistBold, size: 11, color: C_INK })
+    page!.drawText(m.sub, { x: L + 42, y: yb(mY + 16, 8.5), font: fonts.inter, size: 8.5, color: C_SLATE })
     const pctTxt = `${Math.round(m.pct)} %`
-    const pctW = fonts.bold.widthOfTextAtSize(pctTxt, 11)
-    page!.drawText(pctTxt, { x: R - 20 - 60 - pctW, y: yb(mY + 8, 11), font: fonts.bold, size: 11, color: C_INK })
+    const pctW = fonts.mono.widthOfTextAtSize(pctTxt, 11)
+    page!.drawText(pctTxt, { x: R - 20 - 60 - pctW, y: yb(mY + 8, 11), font: fonts.mono, size: 11, color: C_INK })
     const gramos = datos.kcalObjetivo != null ? Math.round((datos.kcalObjetivo * (m.pct / 100)) / (m.key === 'grasas' ? 9 : 4)) : null
     const gramosTxt = gramos != null ? `${gramos} g` : '—'
-    const gramosW = fonts.reg.widthOfTextAtSize(gramosTxt, 9.5)
-    page!.drawText(gramosTxt, { x: R - 20 - gramosW, y: yb(mY + 8, 9.5), font: fonts.reg, size: 9.5, color: C_SLATE })
+    const gramosW = fonts.mono.widthOfTextAtSize(gramosTxt, 9.5)
+    page!.drawText(gramosTxt, { x: R - 20 - gramosW, y: yb(mY + 8, 9.5), font: fonts.mono, size: 9.5, color: C_SLATE })
+    // Separador entre filas (.m{border-bottom:1px solid var(--line-2)} del
+    // diseño) — no en la última fila, igual que .m:last-child{border-bottom:0}.
+    if (mi < macroDefs.length - 1) {
+      page!.drawLine({ start: { x: L + 20, y: yb(mY + 27) }, end: { x: R - 20, y: yb(mY + 27) }, thickness: 0.75, color: C_LINE2 })
+    }
     mY += 34
-  }
+  })
   cy += macrosBoxH + 18
 
   // Panel "Indicaciones para arrancar"
   if (datos.indicaciones.length > 0) {
     const indLineH = 12.5
-    const indBullets = datos.indicaciones.map((txt) => wrapText(fonts.reg, txt, 9.7, W - 66))
+    const indBullets = datos.indicaciones.map((txt) => wrapText(fonts.inter, txt, 9.7, W - 66))
     const indH = 40 + indBullets.reduce((acc, lines) => acc + lines.length * indLineH + 5, 0)
-    page!.drawRectangle({ x: L, y: yb(cy, indH), width: W, height: indH, color: C_WARM, borderColor: C_LINE, borderWidth: 1 })
-    page!.drawText('Indicaciones para arrancar', { x: L + 18, y: yb(cy + 24, 10.5), font: fonts.bold, size: 10.5, color: C_INK })
+    ensureSpace(indH)
+    drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: indH, radius: 14, color: C_WARM, borderColor: C_LINE, borderWidth: 1 })
+    page!.drawText('Indicaciones para arrancar', { x: L + 18, y: yb(cy + 24, 10.5), font: fonts.geistBold, size: 10.5, color: C_INK })
     let iY = cy + 42
     for (const lines of indBullets) {
-      page!.drawEllipse({ x: L + 22, y: yb(iY + 5, -2), xScale: 2, yScale: 2, color: C_PRO })
+      drawSvgIcon(page!, ICON_CHECK, L + 18, iY + 1, 11, C_PRO)
       lines.forEach((line, li) => {
-        page!.drawText(line, { x: L + 34, y: yb(iY + li * indLineH, 9.7), font: fonts.reg, size: 9.7, color: C_INK2 })
+        page!.drawText(line, { x: L + 34, y: yb(iY + li * indLineH, 9.7), font: fonts.inter, size: 9.7, color: C_INK2 })
       })
       iY += lines.length * indLineH + 5
     }
     cy += indH + 16
   }
 
-  // Bloque de vigencia
-  const vigH = 46
-  page!.drawRectangle({ x: L, y: yb(cy, vigH), width: W, height: vigH, color: C_WHITE, borderColor: C_PRO_LINE, borderWidth: 1 })
+  // Bloque de vigencia — alto dinámico: un valor largo (ej. rango de fechas)
+  // puede necesitar 2 líneas según cuántas columnas entren; la caja tiene que
+  // crecer para esas 2 líneas, si no el texto de abajo queda pisado (mismo
+  // tipo de bug ya corregido en el hero, acá se había quedado un alto fijo).
   const vigItems: { label: string; value: string }[] = []
   vigItems.push({
     label: 'VIGENCIA DEL PLAN',
@@ -538,12 +679,19 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
     vigItems.push({ label: 'PRÓXIMO CONTROL', value: 'Sin turno agendado' })
   }
   const vigColW = W / vigItems.length
+  const vigItemsWrapped = vigItems.map((it) => wrapText(fonts.geistBold, it.value, 10, vigColW - 28).slice(0, 2))
+  const vigMaxLines = Math.max(1, ...vigItemsWrapped.map((lines) => lines.length))
+  const vigH = 32 + vigMaxLines * 12 + 6 // 32 = offset del label a la 1ª línea de valor
+
+  // +20 de margen: deja lugar también para la nota de "modalidad y dirección"
+  // que se dibuja justo debajo, para que no quede sola en una página nueva.
+  ensureSpace(vigH + 20)
+  drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: vigH, radius: 14, color: C_WHITE, borderColor: C_PRO_LINE, borderWidth: 1 })
   vigItems.forEach((it, i) => {
     const x = L + i * vigColW + 16
-    page!.drawText(it.label, { x, y: yb(cy + 18, 7.5), font: fonts.bold, size: 7.5, color: C_PRO })
-    const valueLines = wrapText(fonts.bold, it.value, 10, vigColW - 28).slice(0, 2)
-    valueLines.forEach((line, li) => {
-      page!.drawText(line, { x, y: yb(cy + 32 + li * 12, 10), font: fonts.bold, size: 10, color: C_INK })
+    page!.drawText(it.label, { x, y: yb(cy + 18, 7.5), font: fonts.mono, size: 7.5, color: C_PRO })
+    vigItemsWrapped[i].forEach((line, li) => {
+      page!.drawText(line, { x, y: yb(cy + 32 + li * 12, 10), font: fonts.geistBold, size: 10, color: C_INK })
     })
     if (i > 0) {
       page!.drawLine({ start: { x: L + i * vigColW, y: yb(cy + 8) }, end: { x: L + i * vigColW, y: yb(cy + vigH - 8) }, thickness: 0.5, color: C_LINE })
@@ -553,7 +701,7 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
 
   if (datos.proximoTurno) {
     page!.drawText('La modalidad y la dirección corresponden a la sede del próximo turno agendado.', {
-      x: L, y: yb(cy, 8), font: fonts.obl, size: 8, color: C_SLATE2,
+      x: L, y: yb(cy, 8), font: fonts.inter, size: 8, color: C_SLATE2,
     })
   }
 
@@ -572,15 +720,18 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
 
     function drawDayHeader() {
       const hdH = 40
-      page!.drawRectangle({ x: L, y: yb(cy, hdH), width: W, height: hdH, color: tema.bg, borderColor: tema.border, borderWidth: 1 })
-      page!.drawRectangle({ x: L, y: yb(cy, hdH), width: 4, height: hdH, color: tema.left })
-      page!.drawText(DIA_LABEL[dia] ?? dia, { x: L + 18, y: yb(cy + 26, 15), font: fonts.bold, size: 15, color: C_INK })
+      drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: hdH, radius: 12, color: tema.bg, borderColor: tema.border, borderWidth: 1 })
+      // Insetado verticalmente para no sobresalir de las esquinas redondeadas
+      // del fondo (un border-left CSS real queda clippeado por el radius del
+      // contenedor; acá se aproxima achicando la barra en vez de recortarla).
+      page!.drawRectangle({ x: L, y: yb(cy + 12, hdH - 24), width: 4, height: hdH - 24, color: tema.left })
+      page!.drawText(DIA_LABEL[dia] ?? dia, { x: L + 18, y: yb(cy + 26, 15), font: fonts.geistBold, size: 15, color: C_INK })
       const kcalDia = datos.kcalPorDia[dia]
       const kcalTxtDia = kcalDia != null && kcalDia > 0
         ? `~ ${Math.round(kcalDia).toLocaleString('es-AR')} Kcal · ${comidasDelDia.length} comida${comidasDelDia.length === 1 ? '' : 's'}`
         : `${comidasDelDia.length} comida${comidasDelDia.length === 1 ? '' : 's'}`
-      const kcalTxtW = fonts.reg.widthOfTextAtSize(kcalTxtDia, 9)
-      page!.drawText(kcalTxtDia, { x: R - 18 - kcalTxtW, y: yb(cy + 24, 9), font: fonts.reg, size: 9, color: tema.kc })
+      const kcalTxtW = fonts.mono.widthOfTextAtSize(kcalTxtDia, 9)
+      page!.drawText(kcalTxtDia, { x: R - 18 - kcalTxtW, y: yb(cy + 24, 9), font: fonts.mono, size: 9, color: tema.kc })
       cy += hdH + 16
     }
 
@@ -596,13 +747,13 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
       const itemsWrapped = comida.items.map((it) => {
         const runs: RunDeTexto[] = it.tipo === 'alimento' && it.cantidadGramos != null
           ? [
-              { text: it.nombre, font: fonts.bold, color: C_INK },
-              { text: `— ${it.cantidadGramos} g`, font: fonts.reg, color: C_INK2 },
+              { text: it.nombre, font: fonts.interBold, color: C_INK },
+              { text: `— ${it.cantidadGramos} g`, font: fonts.inter, color: C_INK2 },
             ]
-          : [{ text: it.nombre, font: fonts.reg, color: C_INK2 }]
+          : [{ text: it.nombre, font: fonts.inter, color: C_INK2 }]
         return wrapRuns(runs, 10.5, itemsMaxWidth)
       })
-      const notaLines = comida.nota ? wrapText(fonts.reg, comida.nota, 9, itemsMaxWidth - 1) : []
+      const notaLines = comida.nota ? wrapText(fonts.inter, comida.nota, 9, itemsMaxWidth - 1) : []
 
       // Chequeo blando: evita arrancar el título de la comida pegado al pie
       // de página, aunque después la lista de ítems sí puede paginar sola.
@@ -611,9 +762,9 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
 
       const mealTop = cy
       drawIcon(page!, comida.tipoComida, L, mealTop, 15, C_PRO)
-      page!.drawText(comida.tipoComida, { x: L + 22, y: yb(mealTop + 2, 11), font: fonts.bold, size: 11, color: C_INK })
+      page!.drawText(comida.tipoComida, { x: L + 22, y: yb(mealTop + 2, 11), font: fonts.geistBold, size: 11, color: C_INK })
       if (comida.hora) {
-        page!.drawText(comida.hora, { x: L + 22, y: yb(mealTop + 17, 8.5), font: fonts.reg, size: 8.5, color: C_SLATE2 })
+        page!.drawText(comida.hora, { x: L + 22, y: yb(mealTop + 17, 8.5), font: fonts.mono, size: 8.5, color: C_SLATE2 })
       }
 
       let itemY = mealTop
@@ -630,7 +781,7 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
           drawDayHeader()
           const contTop = cy
           drawIcon(page!, comida.tipoComida, L, contTop, 15, C_PRO)
-          page!.drawText(`${comida.tipoComida} (continuación)`, { x: L + 22, y: yb(contTop + 2, 11), font: fonts.bold, size: 11, color: C_INK })
+          page!.drawText(`${comida.tipoComida} (continuación)`, { x: L + 22, y: yb(contTop + 2, 11), font: fonts.geistBold, size: 11, color: C_INK })
           itemY = contTop + 22
         }
 
@@ -648,9 +799,9 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
           itemY = cy
         }
         itemY += 7
-        page!.drawEllipse({ x: itemsX + 6, y: yb(itemY + 6, -2), xScale: 5.5, yScale: 5.5, borderColor: C_SLATE2, borderWidth: 1 })
+        drawSvgIcon(page!, ICON_INFO, itemsX, itemY - 1, 12, C_SLATE2)
         notaLines.forEach((line, li) => {
-          page!.drawText(line, { x: itemsX + 18, y: yb(itemY + li * 11, 9), font: fonts.obl, size: 9, color: C_SLATE })
+          page!.drawText(line, { x: itemsX + 18, y: yb(itemY + li * 11, 9), font: fonts.inter, size: 9, color: C_SLATE })
         })
         itemY += notaLines.length * 11
       }
@@ -666,14 +817,13 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
   // ── Página de cierre ──────────────────────────────────────────────────────
   newPage()
 
-  page!.drawEllipse({ x: L + 2.5, y: yb(cy, -3), xScale: 2.5, yScale: 2.5, color: C_PRO })
-  page!.drawText('CIERRE Y CONTACTO', { x: L + 12, y: yb(cy, 9.5), font: fonts.bold, size: 9.5, color: C_PRO })
+  page!.drawEllipse({ x: L + 2.5, y: yb(cy, 6.5), xScale: 2.5, yScale: 2.5, color: C_PRO })
+  page!.drawText('CIERRE Y CONTACTO', { x: L + 12, y: yb(cy, 9.5), font: fonts.mono, size: 9.5, color: C_PRO })
   cy += 26
-  page!.drawText('Contacto', { x: L, y: yb(cy, 22), font: fonts.obl, size: 22, color: C_PRO })
+  // .serif — Geist regular, NO itálica (misma clase que "tu plan de la semana")
+  page!.drawText('Contacto', { x: L, y: yb(cy, 22), font: fonts.geist, size: 22, color: C_PRO })
   cy += 40
 
-  const contactH = 96
-  page!.drawRectangle({ x: L, y: yb(cy, contactH), width: W, height: contactH, color: C_WHITE, borderColor: C_PRO_LINE, borderWidth: 1 })
   const colW = W / 2
   const contactLeft: [string, string][] = [
     ['PROFESIONAL', datos.profesionalNombreCorto],
@@ -684,11 +834,17 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
     ['TELÉFONO / WHATSAPP', datos.telefono ?? '—'],
     ['EMAIL', datos.email ?? '—'],
   ]
+  // Alto dinámico según la columna con más filas (antes era un valor fijo
+  // que no alcanzaba para las 3 filas de la izquierda — "MATRÍCULA" se salía
+  // de la caja).
+  const contactMaxRows = Math.max(contactLeft.length, contactRight.length)
+  const contactH = 22 + contactMaxRows * 30 + 4
+  drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: contactH, radius: 14, color: C_WHITE, borderColor: C_PRO_LINE, borderWidth: 1 })
   function drawContactCol(items: [string, string][], x: number) {
     let y = cy + 22
     for (const [label, value] of items) {
-      page!.drawText(label, { x: x + 20, y: yb(y, 7.5), font: fonts.bold, size: 7.5, color: C_SLATE2 })
-      page!.drawText(value, { x: x + 20, y: yb(y + 15, 10.5), font: fonts.reg, size: 10.5, color: C_INK })
+      page!.drawText(label, { x: x + 20, y: yb(y, 7.5), font: fonts.mono, size: 7.5, color: C_SLATE2 })
+      page!.drawText(value, { x: x + 20, y: yb(y + 15, 10.5), font: fonts.inter, size: 10.5, color: C_INK })
       y += 30
     }
   }
@@ -698,15 +854,16 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
 
   // Confidencialidad
   const confTxt = 'Confidencialidad. Este documento es de uso personal del paciente arriba mencionado. Contiene datos de salud protegidos por la Ley 25.326 de Protección de Datos Personales. No constituye una indicación válida para terceros.'
-  const confLines = wrapText(fonts.reg, confTxt, 9, W - 45)
+  const confLines = wrapText(fonts.inter, confTxt, 9, W - 60)
   const confH = confLines.length * 12 + 20
-  page!.drawRectangle({ x: L, y: yb(cy, confH), width: W, height: confH, color: hex('#F7F8FB'), borderColor: C_LINE, borderWidth: 1 })
+  drawRoundedRect(page!, { kitX: L, kitY: cy, width: W, height: confH, radius: 10, color: hex('#F7F8FB'), borderColor: C_LINE, borderWidth: 1 })
   page!.drawRectangle({ x: L, y: yb(cy, confH), width: 2.5, height: confH, color: C_SLATE2 })
+  drawSvgIcon(page!, ICON_LOCK, L + 15, cy + 12, 12, C_SLATE2)
   confLines.forEach((line, i) => {
     const isFirst = i === 0
     page!.drawText(
       isFirst ? line.replace('Confidencialidad. ', '') : line,
-      { x: L + 15, y: yb(cy + 14 + i * 12, 9), font: isFirst ? fonts.bold : fonts.reg, size: 9, color: C_SLATE },
+      { x: L + 30, y: yb(cy + 14 + i * 12, 9), font: isFirst ? fonts.interBold : fonts.inter, size: 9, color: C_SLATE },
     )
   })
   cy += confH + 24
@@ -714,17 +871,31 @@ export async function generarPdfPlanAlimentario(datos: DatosPlanAlimentario): Pr
   // Firma
   page!.drawLine({ start: { x: L, y: yb(cy) }, end: { x: R, y: yb(cy) }, thickness: 0.75, color: C_PRO_LINE })
   cy += 20
-  page!.drawText(datos.profesionalNombreCorto, { x: L, y: yb(cy, 13), font: fonts.bold, size: 13, color: C_INK })
-  page!.drawText(`${datos.especialidad} · ${datos.matricula}`, { x: L, y: yb(cy + 16, 8.5), font: fonts.reg, size: 8.5, color: C_SLATE })
+  page!.drawText(datos.profesionalNombreCorto, { x: L, y: yb(cy, 13), font: fonts.geistBold, size: 13, color: C_INK })
+  page!.drawText(`${datos.especialidad} · ${datos.matricula}`, { x: L, y: yb(cy + 16, 8.5), font: fonts.mono, size: 8.5, color: C_SLATE })
 
   const sigBoxW = 190
   const sigBoxX = R - sigBoxW
+  const sigLineKitY = cy + 38 // línea sobre la que se apoya la firma
   if (firmaImg) {
-    const dims = imgScale(firmaImg, sigBoxW - 10, 40)
-    page!.drawImage(firmaImg, { x: sigBoxX + (sigBoxW - dims.width) / 2, y: yb(cy + 30, dims.height), width: dims.width, height: dims.height })
+    const dims = imgScale(firmaImg, sigBoxW - 10, 34)
+    page!.drawImage(firmaImg, { x: sigBoxX + (sigBoxW - dims.width) / 2, y: yb(sigLineKitY - 2, 0), width: dims.width, height: dims.height })
+  } else {
+    // .fx del diseño: firma estilizada en Instrument Serif itálica cuando no
+    // hay imagen de firma/sello real cargada (ej. "V. Ocampo"). Tamaño
+    // moderado (20, no 26) y suficiente aire hasta la línea de abajo — los
+    // descendentes de una itálica script bajan bastante más que en una
+    // fuente de texto normal.
+    const partes = datos.profesionalNombreCorto.replace(/^Lic\.|^Dr\.|^Dra\.|^Mg\./i, '').trim().split(/\s+/)
+    const firmaTxt = partes.length > 1 ? `${partes[0][0]}. ${partes.slice(1).join(' ')}` : partes[0]
+    const firmaSize = 20
+    const firmaW = fonts.signature.widthOfTextAtSize(firmaTxt, firmaSize)
+    // Baseline ~6pt arriba de la línea — kitY_param = sigLineKitY - size - 6
+    // (yb(kitY,size) = PAGE_H - kitY - size es la baseline en espacio pdf-lib).
+    page!.drawText(firmaTxt, { x: sigBoxX + (sigBoxW - firmaW) / 2, y: yb(sigLineKitY - firmaSize - 6, firmaSize), font: fonts.signature, size: firmaSize, color: C_PRO })
   }
-  page!.drawLine({ start: { x: sigBoxX, y: yb(cy + 34) }, end: { x: R, y: yb(cy + 34) }, thickness: 0.75, color: C_LINE })
-  page!.drawText('Firma del profesional', { x: sigBoxX, y: yb(cy + 46, 8), font: fonts.obl, size: 8, color: C_SLATE2 })
+  page!.drawLine({ start: { x: sigBoxX, y: yb(sigLineKitY) }, end: { x: R, y: yb(sigLineKitY) }, thickness: 0.75, color: C_LINE })
+  page!.drawText('Firma del profesional', { x: sigBoxX, y: yb(sigLineKitY + 12, 8), font: fonts.inter, size: 8, color: C_SLATE2 })
 
   finishPage()
 
