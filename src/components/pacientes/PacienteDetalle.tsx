@@ -15,7 +15,7 @@ import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import MontoInput from '@/components/ui/MontoInput'
-import { type Moneda, formatearMonto } from '@/lib/monedas'
+import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
 import InformesTab from './InformesTab'
@@ -65,7 +65,7 @@ function buildForm(p: Paciente) {
     autorizacion_vigencia_hasta: p.autorizacion_vigencia_hasta ?? '',
     modalidad_tratamiento: p.modalidad_tratamiento ?? '',
     frecuencia_sesiones: p.frecuencia_sesiones ?? '',
-    honorarios: p.honorarios != null ? String(p.honorarios) : '',
+    honorarios: formatearMontoInputInicial(p.honorarios),
     moneda_preferida: (p.moneda_preferida ?? 'ARS') as Moneda,
     cobrar_inasistencias: p.cobrar_inasistencias ?? null,
     motivo_consulta: p.motivo_consulta ?? '',
@@ -236,7 +236,7 @@ export default function PacienteDetalle({
       autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
       modalidad_tratamiento: form.modalidad_tratamiento || null,
       frecuencia_sesiones: form.frecuencia_sesiones || null,
-      honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+      honorarios: parsearMontoInput(form.honorarios),
       moneda_preferida: form.moneda_preferida || 'ARS',
       cobrar_inasistencias: form.cobrar_inasistencias,
       activo,
@@ -558,7 +558,7 @@ export default function PacienteDetalle({
                   name="honorarios"
                   value={form.honorarios}
                   onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
-                  className={inputCls}
+                  className={`${inputCls} flex-1 min-w-0`}
                 />
               </div>
             </div>

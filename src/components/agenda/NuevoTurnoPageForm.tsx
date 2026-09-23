@@ -14,7 +14,7 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import type { Moneda } from '@/lib/monedas'
+import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
 const DURACIONES = [30, 45, 50, 60, 90]
@@ -93,7 +93,7 @@ export default function NuevoTurnoPageForm({
     hora: horaParam,
     duracion_min: 50,
     modalidad: 'presencial' as ModalidadTurno,
-    monto: pacienteInicial?.honorarios ? String(pacienteInicial.honorarios) : '',
+    monto: formatearMontoInputInicial(pacienteInicial?.honorarios),
     notas: '',
   })
   const [moneda, setMoneda] = useState<Moneda>((pacienteInicial?.moneda_preferida as Moneda) ?? 'ARS')
@@ -130,11 +130,11 @@ export default function NuevoTurnoPageForm({
     const semana = frecuencia !== 'semanal' ? semanaDelMes : undefined
     const serieId = await crearRegistroSerie(
       terapeutaId, form.paciente_id, diaSemana, form.hora,
-      Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null,
+      Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto),
       new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase, frecuencia, semana
     )
     await crearSerieTurnos(serieId, terapeutaId, form.paciente_id, fechas,
-      form.hora, Number(form.duracion_min), form.modalidad, form.monto ? Number(form.monto) : null, supabase, moneda)
+      form.hora, Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto), supabase, moneda)
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -298,7 +298,7 @@ export default function NuevoTurnoPageForm({
         duracion_min: Number(form.duracion_min),
         modalidad: form.modalidad,
         estado: 'pendiente',
-        monto: form.monto ? Number(form.monto) : null,
+        monto: parsearMontoInput(form.monto),
         moneda,
         notas: form.notas || null,
         es_sobreturno: esSobreturno,
@@ -594,7 +594,7 @@ export default function NuevoTurnoPageForm({
                 setForm((prev) => ({
                   ...prev,
                   paciente_id: id,
-                  monto: prev.monto || (p?.honorarios ? String(p.honorarios) : ''),
+                  monto: prev.monto || formatearMontoInputInicial(p?.honorarios),
                 }))
                 if (p?.moneda_preferida) setMoneda(p.moneda_preferida as Moneda)
               }}

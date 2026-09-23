@@ -16,7 +16,7 @@ import { DIAS_SEMANA } from '@/lib/recurrentes'
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
 import ConflictosPanel from './ConflictosPanel'
-import { type Moneda, formatearMonto } from '@/lib/monedas'
+import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
 interface TurnoDetalleModalProps {
@@ -83,7 +83,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     hora: format(fecha, 'HH:mm'),
     duracion_min: turno.duracion_min,
     modalidad: turno.modalidad,
-    monto: turno.monto != null ? String(turno.monto) : '',
+    monto: formatearMontoInputInicial(turno.monto),
     notas: turno.notas ?? '',
   })
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
@@ -351,7 +351,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         fecha_hora: fechaHora.toISOString(),
         duracion_min: Number(editForm.duracion_min),
         modalidad: editForm.modalidad,
-        monto: editForm.monto ? Number(editForm.monto) : null,
+        monto: parsearMontoInput(editForm.monto),
         notas: editForm.notas || null,
       })
       .eq('id', turno.id)
@@ -366,7 +366,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       fecha_hora: fechaHora.toISOString(),
       duracion_min: Number(editForm.duracion_min),
       modalidad: editForm.modalidad,
-      monto: editForm.monto ? Number(editForm.monto) : null,
+      monto: parsearMontoInput(editForm.monto),
       notas: editForm.notas || null,
     })
     setModo('ver')
