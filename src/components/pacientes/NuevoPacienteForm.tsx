@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import type { ProfesionalObraSocial } from '@/types/database'
 import MonedaSelector from '@/components/ui/MonedaSelector'
+import MontoInput from '@/components/ui/MontoInput'
 import type { Moneda } from '@/lib/monedas'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
@@ -43,47 +44,6 @@ const EMPTY_FORM = {
   notas: '',
   codigo_diagnostico: '',
   gravedad_estimada: '',
-}
-
-function CurrencyInput({
-  value,
-  onChange,
-  className,
-}: {
-  value: string
-  onChange: (raw: string) => void
-  className?: string
-}) {
-  const [focused, setFocused] = useState(false)
-
-  const displayValue =
-    !focused && value
-      ? new Intl.NumberFormat('es-AR', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(parseFloat(value) || 0)
-      : value
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    let raw = e.target.value.replace(/[^\d.,]/g, '')
-    raw = raw.replace(',', '.')
-    const parts = raw.split('.')
-    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('')
-    onChange(raw)
-  }
-
-  return (
-    <input
-      type="text"
-      value={displayValue}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onChange={handleChange}
-      placeholder="0,00"
-      className={className}
-      inputMode="decimal"
-    />
-  )
 }
 
 type MedicacionForm = { farmaco: string; dosis: string; frecuencia: string; prescriptor: string }
@@ -507,7 +467,8 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>Honorarios por sesión</label>
-                <CurrencyInput
+                <MontoInput
+                  name="honorarios"
                   value={form.honorarios}
                   onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
                   className="mono"

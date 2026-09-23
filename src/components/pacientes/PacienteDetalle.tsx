@@ -14,6 +14,7 @@ import { useCie10 } from '@/lib/hooks/useCie10'
 import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
+import MontoInput from '@/components/ui/MontoInput'
 import { type Moneda, formatearMonto } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
@@ -32,47 +33,6 @@ const inputCls =
   'w-full bg-surface-container-high border border-outline-variant/15 text-on-surface rounded-lg px-4 py-3 text-sm focus:bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary transition-colors outline-none'
 const labelCls =
   'block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-2'
-
-function CurrencyInput({
-  value,
-  onChange,
-  className,
-}: {
-  value: string
-  onChange: (raw: string) => void
-  className?: string
-}) {
-  const [focused, setFocused] = useState(false)
-
-  const displayValue =
-    !focused && value
-      ? new Intl.NumberFormat('es-AR', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(parseFloat(value) || 0)
-      : value
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    let raw = e.target.value.replace(/[^\d.,]/g, '')
-    raw = raw.replace(',', '.')
-    const parts = raw.split('.')
-    if (parts.length > 2) raw = parts[0] + '.' + parts.slice(1).join('')
-    onChange(raw)
-  }
-
-  return (
-    <input
-      type="text"
-      value={displayValue}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      onChange={handleChange}
-      placeholder="0,00"
-      className={className}
-      inputMode="decimal"
-    />
-  )
-}
 
 function normalizePhone(t: string | null | undefined): string | null {
   if (!t) return null
@@ -594,7 +554,8 @@ export default function PacienteDetalle({
                   onChange={(m) => setForm((prev) => ({ ...prev, moneda_preferida: m }))}
                   className="shrink-0"
                 />
-                <CurrencyInput
+                <MontoInput
+                  name="honorarios"
                   value={form.honorarios}
                   onChange={(val) => setForm((prev) => ({ ...prev, honorarios: val }))}
                   className={inputCls}

@@ -145,7 +145,8 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       if (fechas.length > 0) {
         await crearSerieTurnos(
           serieData.id, turno.terapeuta_id, turno.paciente_id,
-          fechas, serieData.hora, turno.duracion_min, serieData.modalidad, serieData.monto, supabase
+          fechas, serieData.hora, turno.duracion_min, serieData.modalidad, serieData.monto, supabase,
+          turno.paciente?.moneda_preferida ?? 'ARS'
         )
       }
       setSerieData({ ...serieData, fecha_fin: finStr })
@@ -239,7 +240,8 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       if (fechas.length > 0) {
         idsNuevos = await crearSerieTurnos(
           serieData.id, turno.terapeuta_id, turno.paciente_id,
-          fechas, hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase
+          fechas, hora, turno.duracion_min, serieData.modalidad, turno.monto, supabase,
+          turno.paciente?.moneda_preferida ?? 'ARS'
         )
       }
 

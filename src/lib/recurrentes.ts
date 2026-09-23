@@ -196,7 +196,7 @@ export async function crearSerieTurnos(
   modalidad: string,
   monto: number | null,
   supabase: any,
-  moneda = 'ARS'
+  moneda: string
 ): Promise<string[]> {
   if (fechas.length === 0) return []
 
