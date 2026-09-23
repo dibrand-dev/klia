@@ -7,7 +7,7 @@ import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import type { ProfesionalObraSocial } from '@/types/database'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import MontoInput from '@/components/ui/MontoInput'
-import type { Moneda } from '@/lib/monedas'
+import { type Moneda, parsearMontoInput } from '@/lib/monedas'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { useCie10 } from '@/lib/hooks/useCie10'
@@ -146,7 +146,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
         autorizacion_vigencia_hasta: form.autorizacion_vigencia_hasta || null,
         modalidad_tratamiento: form.modalidad_tratamiento || null,
         frecuencia_sesiones: form.frecuencia_sesiones || null,
-        honorarios: form.honorarios ? parseFloat(form.honorarios) : null,
+        honorarios: parsearMontoInput(form.honorarios),
         moneda_preferida: monedaPreferida,
       }
 

@@ -23,6 +23,18 @@ function formatPesos(raw: string): string {
   }).format(num)
 }
 
+// DEUDA TÉCNICA CONOCIDA (2026-09-23): el campo solo acepta coma como
+// separador decimal — el punto se descarta siempre como separador de miles,
+// sin fallback. En un teclado numérico que no ofrezca coma (poco frecuente
+// con inputMode="decimal" + locale es-AR, pero no garantizado en todos los
+// dispositivos), no hay forma de ingresar un decimal. No se agrega un
+// fallback de punto porque reabriría la ambigüedad del bug de hoy: un punto
+// interpretado como decimal haría que "65.000" (que un profesional escribe
+// queriendo decir sesenta y cinco mil) se guarde como 65. Una heurística por
+// cantidad de dígitos después del punto (3 = miles, 1-2 = decimal) resolvería
+// esto, pero se decidió no implementarla sin pensarla con más calma — agrega
+// el mismo tipo de parseo silencioso con casos borde no obvios que causó el
+// incidente original.
 export default function MontoInput({ name, value, onChange, placeholder, className, style }: MontoInputProps) {
   const [focused, setFocused] = useState(false)
 
@@ -36,7 +48,14 @@ export default function MontoInput({ name, value, onChange, placeholder, classNa
     if (primeraComa !== -1) {
       raw = raw.slice(0, primeraComa + 1) + raw.slice(primeraComa + 1).replace(/,/g, '')
     }
-    onChange(raw.replace(',', '.'))
+    // No convertir la coma a punto acá: el punto se sigue descartando
+    // siempre como separador de miles en cada tecla (línea de arriba), así
+    // que si emitiéramos "150." el punto que nosotros mismos pusimos se
+    // borraría en la tecla siguiente ("150." + "5" = "150.5" → el `replace`
+    // de arriba lo deja en "1505", perdiendo el decimal). parsearMontoInput
+    // (src/lib/monedas.ts) hace la conversión coma→punto en el único punto
+    // de salida (al guardar), no acá en cada tecla.
+    onChange(raw)
   }
 
   return (
