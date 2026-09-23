@@ -66,6 +66,13 @@ export default function NuevoTurnoPageForm({
     ? format(fechaInicial, 'HH:mm')
     : (searchParams.get('hora') ?? '09:00')
 
+  // Cuando el paciente viene preseleccionado por prop (ej. "Nuevo turno" desde
+  // la ficha del paciente), el onChange de PacienteSearchInput —único lugar que
+  // precarga honorarios/moneda_preferida— nunca se dispara porque el usuario no
+  // llega a elegir manualmente. Sin este lookup, el turno se crea en ARS con
+  // monto vacío pese a que el paciente tiene una moneda/honorario configurados.
+  const pacienteInicial = pacienteIdInicial ? pacientes.find((p) => p.id === pacienteIdInicial) : undefined
+
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
   const [entrevistaForm, setEntrevistaForm] = useState({
     nombre: '',
@@ -86,10 +93,10 @@ export default function NuevoTurnoPageForm({
     hora: horaParam,
     duracion_min: 50,
     modalidad: 'presencial' as ModalidadTurno,
-    monto: '',
+    monto: pacienteInicial?.honorarios ? String(pacienteInicial.honorarios) : '',
     notas: '',
   })
-  const [moneda, setMoneda] = useState<Moneda>('ARS')
+  const [moneda, setMoneda] = useState<Moneda>((pacienteInicial?.moneda_preferida as Moneda) ?? 'ARS')
   const [esFijo, setEsFijo] = useState(false)
   const [frecuencia, setFrecuencia] = useState<'semanal' | 'quincenal' | 'mensual'>('semanal')
   const [diaSemana, setDiaSemana] = useState(diaDeFecha(fechaParam))
