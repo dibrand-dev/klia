@@ -1347,13 +1347,26 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
     const inicioMes = new Date(anio, mes, 1).toISOString()
     const finMes = new Date(anio, mes + 1, 0, 23, 59, 59).toISOString()
     const estadosAMarcar = cobrarInasistencia ? ['realizado', 'no_asistio'] : ['realizado']
-    await supabase
+    // monto_pagado varía por turno, así que no alcanza un solo UPDATE masivo
+    // con un valor fijo — hay que traer cada turno y setear su propio monto.
+    // Antes esto dejaba pagado=true/estado_pago='pagado' sin tocar
+    // monto_pagado, generando filas donde el monto adeudado no coincidía
+    // con el estado (la misma divergencia que causaba el bug del contador
+    // de sesiones pendientes).
+    const { data: turnosAMarcar } = await supabase
       .from('turnos')
-      .update({ pagado: true, estado_pago: 'pagado' })
+      .select('id, monto')
       .eq('paciente_id', paciente.id)
       .in('estado', estadosAMarcar)
       .gte('fecha_hora', inicioMes)
       .lte('fecha_hora', finMes)
+
+    for (const t of turnosAMarcar ?? []) {
+      await supabase
+        .from('turnos')
+        .update({ pagado: true, estado_pago: 'pagado', monto_pagado: t.monto ?? 0 })
+        .eq('id', t.id)
+    }
     setPagando(false)
     setShowConfirm(false)
     setMesPagado(true)
