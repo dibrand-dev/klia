@@ -97,9 +97,8 @@ export default function RegistrarPagoSlide({ open, onClose, turno, onSuccess }: 
   const sym = getCurrencySymbol(turno.moneda)
 
   const dt = new Date(turno.fecha_hora)
-  const dtArg = new Date(dt.getTime() - 3 * 60 * 60 * 1000)
-  const fechaStr = dtArg.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })
-  const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  const fechaStr = dt.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' })
+  const horaStr = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
 
   const av = getAvatarStyle(`${turno.paciente_nombre}${turno.paciente_apellido}`)
 

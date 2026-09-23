@@ -614,9 +614,8 @@ export default function CobrosClient({ turnos, top3, summary, terapeutaId, moned
                       <tbody style={{ background: '#F9FAFC' }}>
                         {group.sessions.map((t, idx) => {
                           const dt = new Date(t.fecha_hora)
-                          const dtArg = new Date(dt.getTime() - 3 * 60 * 60 * 1000)
-                          const fechaStr = dtArg.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
-                          const horaStr = dtArg.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+                          const fechaStr = dt.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+                          const horaStr = dt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
                           const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
                           const isBonificado = t.estado_pago === 'bonificado'
                           const sym = getCurrencySymbol(t.moneda)
