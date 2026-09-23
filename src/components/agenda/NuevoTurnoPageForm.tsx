@@ -630,7 +630,10 @@ export default function NuevoTurnoPageForm({
               Honorarios <span className="text-gray-400 font-normal">opcional</span>
             </label>
             <div className="flex gap-2">
-              <MonedaSelector value={moneda} onChange={setMoneda} className="w-40 shrink-0" />
+              {/* w-52: ancho mínimo para que la opción más larga del select
+                  ("U$S USD — Dólares") no se corte. MontoInput con flex-1 al
+                  lado cede el espacio sobrante en vez de dejarlo vacío. */}
+              <MonedaSelector value={moneda} onChange={setMoneda} className="w-52 shrink-0" />
               <MontoInput
                 name="monto"
                 value={form.monto}
