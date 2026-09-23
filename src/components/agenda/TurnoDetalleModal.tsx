@@ -473,10 +473,14 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   }
 
   async function togglePagado() {
+    if (turno.estado_pago === 'pago_parcial') return
     const nuevoPagado = !turno.pagado
     const supabase = createClient()
-    await supabase.from('turnos').update({ pagado: nuevoPagado }).eq('id', turno.id)
-    onTurnoActualizado({ ...turno, pagado: nuevoPagado })
+    const update = nuevoPagado
+      ? { pagado: true, estado_pago: 'pagado' as const, monto_pagado: turno.monto ?? 0 }
+      : { pagado: false, estado_pago: 'pendiente' as const, monto_pagado: 0 }
+    await supabase.from('turnos').update(update).eq('id', turno.id)
+    onTurnoActualizado({ ...turno, ...update })
     router.refresh()
   }
 
@@ -1027,14 +1031,18 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
           <div>
             <p className="text-sm font-medium text-gray-900">Honorarios</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {turno.pagado ? 'Marcado como pagado' : 'Pendiente de pago'}
+              {turno.estado_pago === 'pago_parcial'
+                ? 'Este turno tiene un pago parcial registrado, gestioná el cobro desde Cobros'
+                : turno.pagado ? 'Marcado como pagado' : 'Pendiente de pago'}
             </p>
           </div>
           <button
             onClick={togglePagado}
+            disabled={turno.estado_pago === 'pago_parcial'}
             className={cn(
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-              turno.pagado ? 'bg-green-500' : 'bg-gray-300'
+              turno.pagado ? 'bg-green-500' : 'bg-gray-300',
+              turno.estado_pago === 'pago_parcial' && 'opacity-50 cursor-not-allowed'
             )}
           >
             <span className={cn(
