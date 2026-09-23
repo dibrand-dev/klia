@@ -105,7 +105,23 @@ export async function buscarPaginaOFF(params: {
     headers: { 'User-Agent': 'KLIA-Vademecum/1.0 (https://klia.com.ar; hola@klia.com.ar)' },
   })
   if (!res.ok) {
-    throw new Error(`Open Food Facts respondió ${res.status} para page=${page}`)
+    // DEBUG temporal (2026-09-23): el 401 propagado como 502 no tenía body
+    // ni headers de respuesta, solo el status — sin eso es imposible saber
+    // si es rate-limit, un mensaje de error de OFF, o algo del lado nuestro.
+    // Remover una vez identificada la causa real.
+    const bodyTexto = await res.text().catch((e) => `[no se pudo leer el body: ${(e as Error)?.message}]`)
+    const headersRespuesta: Record<string, string> = {}
+    res.headers.forEach((value, key) => { headersRespuesta[key] = value })
+    console.error('[OFF] Respuesta de error', {
+      page,
+      status: res.status,
+      statusText: res.statusText,
+      headers: headersRespuesta,
+      body: bodyTexto,
+    })
+    throw new Error(
+      `Open Food Facts respondió ${res.status} para page=${page} — headers=${JSON.stringify(headersRespuesta)} body=${bodyTexto}`
+    )
   }
   return (await res.json()) as OFFSearchResponse
 }
