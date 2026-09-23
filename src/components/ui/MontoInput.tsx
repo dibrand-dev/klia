@@ -27,15 +27,22 @@ export default function MontoInput({ name, value, onChange, placeholder, classNa
   const [focused, setFocused] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Solo dígitos y separador decimal
-    const raw = e.target.value.replace(/[^\d]/g, '')
-    onChange(raw)
+    // Solo dígitos y coma (separador decimal argentino) — el punto se
+    // descarta siempre como separador de miles, nunca se interpreta como
+    // decimal (evita el truncamiento de "65.000" a 65). Se admite una sola
+    // coma; cualquier coma adicional se descarta.
+    let raw = e.target.value.replace(/[^\d,]/g, '')
+    const primeraComa = raw.indexOf(',')
+    if (primeraComa !== -1) {
+      raw = raw.slice(0, primeraComa + 1) + raw.slice(primeraComa + 1).replace(/,/g, '')
+    }
+    onChange(raw.replace(',', '.'))
   }
 
   return (
     <input
       type="text"
-      inputMode="numeric"
+      inputMode="decimal"
       name={name}
       value={focused ? value : formatPesos(value)}
       onChange={handleChange}
