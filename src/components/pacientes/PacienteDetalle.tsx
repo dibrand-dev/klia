@@ -1,7 +1,7 @@
 'use client'
 
 import './facturacion.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO, differenceInYears } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -1231,9 +1231,15 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [localEstados, setLocalEstados] = useState<Record<string, string>>({})
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
   const [registrarPagoTurno, setRegistrarPagoTurno] = useState<TurnoDeuda | null>(null)
+  const confirmWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    function closeAll() {
+    function closeAll(e: MouseEvent) {
+      // No cerrar el popover si el click cayó dentro de él (ej. el botón
+      // "Sí, marcar pagado") — de lo contrario este listener global lo
+      // cierra en el mousedown, antes de que el click del botón llegue a
+      // dispararse, y handleMarcarPagado nunca se ejecuta.
+      if (confirmWrapRef.current?.contains(e.target as Node)) return
       setOpenDrop(null)
       setShowConfirm(false)
     }
@@ -1619,7 +1625,7 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
                 <button type="button" className="fac-btn" onClick={() => setPagoParcialesOpen(true)}>
                   Pago parcial del mes
                 </button>
-                <div className={`confirm-wrap${showConfirm ? ' open' : ''}`}>
+                <div ref={confirmWrapRef} className={`confirm-wrap${showConfirm ? ' open' : ''}`}>
                   <button
                     type="button"
                     className="fac-btn fac-btn-blue"
