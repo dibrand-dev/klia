@@ -2,3 +2,8 @@
 @media (max-width: 720px) {
   .pa-grid { grid-template-columns: 1fr; }
 }
+
+.pa-title { min-width: 300px; }
+@media (max-width: 480px) {
+  .pa-title { min-width: 160px; }
+}
