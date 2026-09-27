@@ -430,7 +430,7 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
       )}
 
       <div className="pa-grid" style={{ display: 'grid', gap: 20, alignItems: 'start' }}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '3px 3px 9px', margin: '0 -3px 14px' }}>
             {DIAS_LABEL.map((_, i) => {
               const dia = DIAS_VALUE[i]
