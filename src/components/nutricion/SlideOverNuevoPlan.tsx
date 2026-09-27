@@ -41,6 +41,7 @@ export default function SlideOverNuevoPlan({ pacienteId, pacienteNombre, open, o
       setNombre('')
       setModo('formula_desarrollada')
       onCreado(data.plan.id)
+      setCreando(false)
     } catch {
       setError('Error de conexión. Intentá nuevamente.')
       setCreando(false)
