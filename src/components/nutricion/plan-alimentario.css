@@ -6,4 +6,6 @@
 .pa-title { min-width: 300px; }
 @media (max-width: 480px) {
   .pa-title { min-width: 160px; }
+  .pa-header-row { flex-direction: column; align-items: stretch !important; }
+  .pa-header-cta { align-self: flex-start; }
 }

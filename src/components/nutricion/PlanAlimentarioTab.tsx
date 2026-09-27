@@ -313,7 +313,7 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
 
   return (
     <div style={{ padding: '4px 0 40px', position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
+      <div className="pa-header-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div ref={popRef} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
             <button
@@ -389,7 +389,7 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
           </div>
         </div>
         {!ro && (
-          <button type="button" onClick={() => setSoOpen(true)} className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" onClick={() => setSoOpen(true)} className="btn pa-header-cta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {ICON_PLUS}Nuevo plan
           </button>
         )}
