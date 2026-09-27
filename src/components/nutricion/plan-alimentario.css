@@ -1,0 +1,4 @@
+.pa-grid { grid-template-columns: minmax(0,1fr) 304px; }
+@media (max-width: 720px) {
+  .pa-grid { grid-template-columns: 1fr; }
+}
