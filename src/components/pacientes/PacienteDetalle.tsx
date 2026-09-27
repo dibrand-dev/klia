@@ -546,13 +546,19 @@ export default function PacienteDetalle({
                 <option value="a_demanda">A demanda</option>
               </select>
             </div>
-            <div>
+            {/* col-span-2: en una sola de 3 columnas (~34px a 1024px, medido con
+                Playwright contra el CSS compilado real) el select de moneda
+                (ancho nativo variable, hasta "U$S USD — Dólares") se come casi
+                toda la celda y no deja espacio para el input aunque tenga
+                flex-1 — no hay espacio que ceder. Ancho fijo w-48 en el select
+                además de compartir 2 columnas, no una. */}
+            <div className="sm:col-span-2 lg:col-span-2">
               <label className={labelCls}>Honorarios por sesión</label>
               <div className="flex gap-2">
                 <MonedaSelector
                   value={form.moneda_preferida as Moneda}
                   onChange={(m) => setForm((prev) => ({ ...prev, moneda_preferida: m }))}
-                  className="shrink-0"
+                  className="w-48 shrink-0"
                 />
                 <MontoInput
                   name="honorarios"
