@@ -8,6 +8,7 @@
   margin-top: 28px;
   overflow-x: auto;
   white-space: nowrap;
+  touch-action: pan-x;
 }
 .tab {
   padding: 10px 14px;
