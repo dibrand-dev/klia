@@ -324,7 +324,7 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
                 textAlign: 'left', maxWidth: '100%',
               }}
             >
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink, #0B1220)', minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={planActivo.nombre}>{planActivo.nombre}</h1>
+              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--ink, #0B1220)', minWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={planActivo.nombre}>{planActivo.nombre}</h1>
               {planes.length > 1 && (
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2, #8A93A1)', background: 'var(--surface-3, #F1F3F6)', borderRadius: 100, padding: '2px 7px', flexShrink: 0 }}>{contadorPlan}</span>
               )}
