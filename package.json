@@ -27,6 +27,7 @@
     "date-fns-tz": "^3.2.0",
     "geist": "^1.7.2",
     "googleapis": "^171.4.0",
+    "libphonenumber-js": "^1.13.14",
     "mercadopago": "^2.12.0",
     "next": "14.2.35",
     "pdf-lib": "^1.17.1",
