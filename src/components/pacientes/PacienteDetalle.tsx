@@ -1,6 +1,9 @@
 'use client'
 
 import './facturacion.css'
+import './phone-input.css'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, parseISO, differenceInYears } from 'date-fns'
@@ -400,7 +403,13 @@ export default function PacienteDetalle({
             </div>
             <div>
               <label className={labelCls}>Teléfono</label>
-              <input name="telefono" type="tel" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" className={inputCls} />
+              <PhoneInput
+                defaultCountry="AR"
+                value={form.telefono}
+                onChange={(val) => setForm((prev) => ({ ...prev, telefono: val ?? '' }))}
+                placeholder="Ej.: 11 1234-5678"
+                className="pd-phone-field"
+              />
             </div>
             <div>
               <label className={labelCls}>Email</label>

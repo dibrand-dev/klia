@@ -1,8 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { parsePhoneNumberFromString } from 'libphonenumber-js/min'
 import SlideOver from '@/components/ui/SlideOver'
 import type { PlanAlimentario, Paciente } from '@/types/database'
+
+// 'AR' como país default: hoy no guardamos el país del paciente en la ficha,
+// así que asumimos Argentina (caso dominante en KLIA). Revisar esto cuando se
+// agregue el selector de país al formulario de pacientes.
+function telefonoWhatsappValido(telefono: string | null): string | null {
+  if (!telefono) return null
+  const numero = parsePhoneNumberFromString(telefono, 'AR')
+  if (!numero || !numero.isValid()) return null
+  return numero.number
+}
 
 interface ShareRow {
   token: string
@@ -91,7 +102,11 @@ export default function SlideOverCompartirPlan({ plan, paciente, readOnly, open,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mailOpen])
 
+  const telefonoE164 = telefonoWhatsappValido(paciente.telefono)
+
   function shareUrl(s: ShareRow) { return `${appUrl}/p/plan/${s.token}` }
+  // wa.me quiere el número en dígitos, sin el "+" del formato E.164.
+  function waHref(s: ShareRow) { return `https://wa.me/${telefonoE164!.replace('+', '')}?text=${encodeURIComponent(waMsg(s))}` }
   function waMsg(s: ShareRow) {
     return `Hola ${pacientePrimer}, te comparto tu plan alimentario: ${shareUrl(s)}\nLo podés abrir desde el celular cuando quieras. Si hago cambios, los vas a ver en el mismo link.${profesionalNombre ? `\n${profesionalNombre}` : ''}`
   }
@@ -239,13 +254,24 @@ export default function SlideOverCompartirPlan({ plan, paciente, readOnly, open,
                 >
                   {flash === 'link' ? ICON_CHECK : ICON_COPY}{flash === 'link' ? 'Link copiado' : 'Copiar link'}
                 </button>
+                {telefonoE164 && (
+                  <a
+                    href={waHref(share)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn"
+                    style={{ height: 38, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+                  >
+                    {ICON_CHAT}Enviar por WhatsApp
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => { copyText(waMsg(share)); setFlash('wa'); setTimeout(() => setFlash(null), 1800) }}
                   className="btn"
                   style={{ height: 38, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, ...(flash === 'wa' ? { background: 'var(--ok-soft, #DFF3E8)', borderColor: 'transparent', color: 'var(--ok-ink, #17663F)' } : {}) }}
                 >
-                  {flash === 'wa' ? ICON_CHECK : ICON_CHAT}{flash === 'wa' ? 'Mensaje copiado' : 'Copiar mensaje para WhatsApp'}
+                  {flash === 'wa' ? ICON_CHECK : ICON_COPY}{flash === 'wa' ? 'Mensaje copiado' : (telefonoE164 ? 'Copiar mensaje para WhatsApp' : 'Copiar mensaje para WhatsApp (sin teléfono en la ficha)')}
                 </button>
               </div>
               <div style={{ margin: '12px 0 18px', padding: '10px 12px', borderRadius: 'var(--r-md, 8px)', border: '1px dashed var(--border-strong, #D6DAE1)' }}>
