@@ -5,6 +5,8 @@ import { differenceInYears, parseISO } from 'date-fns'
 import type { Paciente, PlanAlimentario } from '@/types/database'
 import PlanComidaBlock, { type ComidaConItems } from './PlanComidaBlock'
 import SlideOverNuevoPlan from './SlideOverNuevoPlan'
+import SlideOverDetallesPlan from './SlideOverDetallesPlan'
+import SlideOverCompartirPlan from './SlideOverCompartirPlan'
 import { buscarAlimentosPorIds, type AlimentoVademecum } from '@/lib/hooks/useVademecumAlimentos'
 
 const fmtFecha = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -35,6 +37,8 @@ const ICON_ARCHIVE = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, st
 const ICON_UNARCHIVE = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M12 20V9M8 13l4-4 4 4" /><rect x="3" y="3" width="18" height="4" rx="1" /></svg>
 const ICON_CLOCK = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--muted, #5B6472)', strokeWidth: 1.9, fill: 'none', flexShrink: 0 }}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="2.5" /></svg>
 const ICON_WARN = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--warn, #A65A06)', strokeWidth: 1.9, fill: 'none', flexShrink: 0 }}><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v12h14V8M10 12h4" /></svg>
+const ICON_DETAILS = <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 1.8, fill: 'none', marginRight: -2 }}><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg>
+const ICON_SHARE = <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 1.8, fill: 'none', marginRight: -2 }}><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" /><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" /></svg>
 
 async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
@@ -49,6 +53,9 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
   const [dayIdx, setDayIdx] = useState(0)
   const [scope, setScope] = useState<'day' | 'plan'>('day')
   const [soOpen, setSoOpen] = useState(false)
+  const [detOpen, setDetOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareActivo, setShareActivo] = useState(false)
   const [planPopOpen, setPlanPopOpen] = useState(false)
   const [showArch, setShowArch] = useState(false)
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set())
@@ -136,6 +143,15 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
     setDayIdx(idx >= 0 ? idx : 0)
     setScope('day')
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planActivo?.id])
+
+  useEffect(() => {
+    if (!planActivo) { setShareActivo(false); return }
+    let cancelado = false
+    fetch(`/api/planes-alimentarios/${planActivo.id}/compartir`)
+      .then((r) => jsonOrNull(r))
+      .then((data) => { if (!cancelado) setShareActivo(!!data?.share) })
+    return () => { cancelado = true }
   }, [planActivo?.id])
 
   function registrarAlimento(a: AlimentoVademecum) {
@@ -310,10 +326,13 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
   const pasados = planes.filter((p) => p.estado === 'pasado')
   const archivados = planes.filter((p) => p.estado === 'archivado')
 
+  const detallesPendientes = !planActivo.objetivo_titulo?.trim() && !planActivo.objetivo_nota?.trim() && !planActivo.fecha_fin && !planActivo.indicaciones?.trim()
+
   return (
     <div style={{ padding: '4px 0 40px', position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap', marginBottom: 18 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
           <div ref={popRef} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
             <button
               type="button"
@@ -376,6 +395,29 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
                 </div>
               </div>
             )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setDetOpen(true)}
+            className="btn sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12.5, position: 'relative' }}
+          >
+            {ICON_DETAILS}Detalles del plan
+            {detallesPendientes && !ro && (
+              <i style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--warn, #A65A06)' }} title="Sin completar" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="btn sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12.5, position: 'relative' }}
+          >
+            {ICON_SHARE}Compartir
+            {shareActivo && (
+              <i style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok, #10B981)' }} title="Link activo" />
+            )}
+          </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5, fontSize: 12.5, color: 'var(--muted, #5B6472)' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 100, background: 'var(--accent-soft, #EAF0FE)', color: 'var(--accent-ink, #1F4FD9)' }}>
@@ -544,6 +586,22 @@ export default function PlanAlimentarioTab({ paciente }: { paciente: Paciente })
         open={soOpen}
         onClose={() => setSoOpen(false)}
         onCreado={onPlanCreado}
+      />
+      <SlideOverDetallesPlan
+        plan={planActivo}
+        readOnly={ro}
+        open={detOpen}
+        onClose={() => setDetOpen(false)}
+        onSaved={refetch}
+      />
+      <SlideOverCompartirPlan
+        plan={planActivo}
+        paciente={paciente}
+        readOnly={ro}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        onAbrirDetalles={() => { setShareOpen(false); setDetOpen(true) }}
+        onShareChanged={setShareActivo}
       />
     </div>
   )

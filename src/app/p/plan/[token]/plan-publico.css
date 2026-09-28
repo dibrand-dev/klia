@@ -1,0 +1,177 @@
+/* Página pública del plan alimentario — calcada de "Plan Alimentario - Link
+   público.html" (Claude Design). Tokens propios (paleta cálida, sin marca
+   KLIA), distintos de los que usa el resto de la app — ver colors.css del
+   diseño original para el origen de cada valor. */
+.pp-root {
+  --pro: #3F519E;
+  --pro-soft: #F4F6FC;
+  --pro-line: #D5DCF0;
+  --warm: #FBFAF7;
+  --mono: var(--font-geist-mono, 'Geist Mono'), ui-monospace, monospace;
+  --geist: var(--font-geist-sans, 'Geist'), 'Inter', sans-serif;
+  --ink: #0E1430;
+  --ink-2: #2A2F4A;
+  --slate: #5A607A;
+  --slate-2: #8990AA;
+  --line: #E5E7EF;
+  --line-2: #EFF1F7;
+  --bg-alt: #F7F8FB;
+}
+.pp-root * { box-sizing: border-box; }
+.pp-root { -webkit-text-size-adjust: 100%; }
+.pp-root { margin: 0; font-family: 'Inter', system-ui, sans-serif; color: var(--ink); background: #fff; -webkit-font-smoothing: antialiased; }
+.pp-root a { color: var(--pro); }
+.pp-root a:hover { color: var(--ink); }
+.pp-root h1, .pp-root h2, .pp-root h3 { font-family: var(--geist); font-weight: 600; }
+.pp-root p { margin: 0; }
+.pp-root .sheet { max-width: 780px; margin: 0 auto; background: #fff; }
+.pp-root .pad { padding: 0 20px; }
+@media (min-width: 820px) {
+  .pp-root { background: var(--bg-alt); }
+  .pp-root .sheet { margin: 28px auto 40px; border: 1px solid var(--line); border-radius: 22px; overflow: clip; }
+  .pp-root .pad { padding: 0 44px; }
+}
+/* top */
+.pp-root .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--pro-line); }
+.pp-root .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pp-root .mark { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; background: var(--pro-soft); border: 1px solid var(--pro-line); position: relative; }
+.pp-root .mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-root .mark .fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--pro); }
+.pp-root .who .nm { font-family: var(--geist); font-weight: 600; font-size: 14px; letter-spacing: -0.01em; line-height: 1.2; }
+.pp-root .who .mn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate); margin-top: 2px; }
+.pp-root .pdf-btn { display: inline-flex; align-items: center; gap: 7px; flex: none; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
+.pp-root .pdf-btn:hover { background: var(--bg-alt); }
+.pp-root .pdf-btn svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+@media (max-width: 380px) { .pp-root .pdf-btn .lg { display: none; } }
+/* cover */
+.pp-root .cover { padding-top: 26px; }
+.pp-root .eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pro); display: flex; align-items: center; gap: 7px; margin: 0 0 10px; }
+.pp-root .eyebrow::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--pro); flex: none; }
+.pp-root h1.title { font-size: clamp(30px, 8vw, 40px); line-height: 1.04; letter-spacing: -0.03em; margin: 0 0 8px; }
+.pp-root h1.title .ac { color: var(--pro); font-weight: 500; letter-spacing: -0.025em; }
+.pp-root .sub { font-size: 14px; color: var(--slate); line-height: 1.5; }
+.pp-root .hero { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 22px 0 0; }
+@media (min-width: 600px) { .pp-root .hero { grid-template-columns: 1.15fr .85fr; gap: 18px; } }
+.pp-root .goal { border: 1px solid var(--pro-line); border-radius: 14px; background: var(--pro-soft); padding: 18px 20px; }
+.pp-root .lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pro); }
+.pp-root .goal .val { font-family: var(--geist); font-weight: 600; font-size: 23px; letter-spacing: -0.02em; line-height: 1.15; margin: 5px 0 0; }
+.pp-root .goal .note { font-size: 13.5px; color: #3A4577; margin: 8px 0 0; line-height: 1.55; text-wrap: pretty; }
+.pp-root .vct { border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
+.pp-root .vct .big { font-family: var(--geist); font-weight: 600; font-size: 40px; letter-spacing: -0.035em; line-height: 1; color: var(--pro); }
+.pp-root .vct .u { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; color: var(--slate); text-transform: uppercase; margin-top: 4px; }
+.pp-root .vct .fine { font-size: 12px; color: var(--slate-2); line-height: 1.45; margin-top: 6px; }
+@media (min-width: 600px) { .pp-root .vct { flex-direction: column; justify-content: center; text-align: center; gap: 0; } }
+.pp-root .macros { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.pp-root .mbar { display: flex; height: 32px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(14,20,48,.10); }
+.pp-root .mbar span { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.06em; color: #fff; white-space: nowrap; }
+.pp-root .mbar span.dk { color: var(--ink); }
+.pp-root .mlist { display: flex; flex-direction: column; gap: 11px; }
+.pp-root .m { display: grid; grid-template-columns: 14px minmax(0,1fr) auto auto; gap: 11px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line-2); }
+.pp-root .m:last-child { border-bottom: 0; padding-bottom: 0; }
+.pp-root .sw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(14,20,48,.16); }
+.pp-root .m .nm2 { font-family: var(--geist); font-weight: 600; font-size: 14.5px; letter-spacing: -0.01em; }
+.pp-root .m .nm2 small { display: block; font-family: 'Inter', sans-serif; font-weight: 400; font-size: 12px; color: var(--slate); letter-spacing: 0; margin-top: 1px; }
+.pp-root .m .pc { font-family: var(--mono); font-size: 14px; font-weight: 500; min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.pp-root .m .gr { font-family: var(--mono); font-size: 12px; color: var(--slate); min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+.pp-root .panel { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; background: var(--warm); }
+.pp-root .panel h3 { font-size: 15px; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.pp-root .panel h3 svg { color: var(--pro); flex: none; }
+.pp-root .ind { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.pp-root .ind li { display: grid; grid-template-columns: 15px 1fr; gap: 10px; font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+.pp-root .ind li svg { color: var(--pro); margin-top: 3px; }
+.pp-root .vig { margin: 14px 0 0; border: 1px solid var(--pro-line); border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; }
+.pp-root .vig .it { padding: 13px 16px; display: flex; flex-direction: column; gap: 3px; border-top: 1px solid var(--line); }
+.pp-root .vig .it:nth-child(-n+2) { border-top: 0; }
+.pp-root .vig .it:nth-child(2n) { border-left: 1px solid var(--line); }
+.pp-root .vig .it b { font-family: var(--geist); font-weight: 600; font-size: 14px; letter-spacing: -0.01em; line-height: 1.35; }
+.pp-root .vig .it.w { grid-column: 1/-1; border-left: 0; }
+@media (min-width: 680px) {
+  .pp-root .vig { grid-template-columns: auto auto auto 1fr; }
+  .pp-root .vig .it { border-top: 0; border-left: 1px solid var(--line); }
+  .pp-root .vig .it:first-child { border-left: 0; }
+  .pp-root .vig .it.w { grid-column: auto; border-left: 1px solid var(--line); }
+}
+.pp-root .vig-note { margin: 7px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--slate-2); }
+/* day nav */
+.pp-root .daynav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.94); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); margin-top: 34px; }
+.pp-root .daynav .in { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-top: 10px; padding-bottom: 10px; scrollbar-width: none; }
+.pp-root .daynav .in::-webkit-scrollbar { display: none; }
+.pp-root .daynav .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--slate-2); flex: none; margin-right: 4px; }
+.pp-root .chip { flex: none; height: 36px; min-width: 52px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.pp-root .chip:hover { border-color: var(--pro-line); background: var(--pro-soft); }
+.pp-root .chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+/* days */
+.pp-root .day { padding-top: 22px; scroll-margin-top: 64px; }
+.pp-root .prh { display: none; }
+.pp-root .day-hd { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 11px 16px; border-radius: 12px; border: 1px solid var(--pro-line); border-left: 5px solid var(--pro); background: var(--pro-soft); margin: 0 0 6px; }
+.pp-root .day-hd h2 { font-size: 21px; letter-spacing: -0.02em; margin: 0; flex: 1; }
+.pp-root .day-hd .kc { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #3A4577; font-variant-numeric: tabular-nums; }
+.pp-root .day.t2 .day-hd { border-color: #DDD9EC; border-left-color: #6E5FB0; background: #F4F2FB; } .pp-root .day.t2 .day-hd .kc { color: #4E4383; }
+.pp-root .day.t3 .day-hd { border-color: #D6E0EC; border-left-color: #41608A; background: #EEF3F8; } .pp-root .day.t3 .day-hd .kc { color: #3B5474; }
+.pp-root .meal { display: grid; grid-template-columns: 1fr; gap: 9px; padding: 16px 2px; border-bottom: 1px solid var(--line-2); }
+.pp-root .meal:last-child { border-bottom: 0; }
+.pp-root .meal .side { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pp-root .meal .ttl { display: flex; align-items: center; gap: 8px; font-family: var(--geist); font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+.pp-root .meal .ttl svg { color: var(--pro); flex: none; }
+.pp-root .meal .hr { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em; color: var(--slate); background: var(--bg-alt); border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
+@media (min-width: 640px) {
+  .pp-root .meal { grid-template-columns: 140px 1fr; gap: 20px; }
+  .pp-root .meal .side { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; }
+  .pp-root .meal .ttl { font-size: 15px; }
+  .pp-root .meal .hr { background: none; padding: 0 0 0 25px; font-size: 10.5px; color: var(--slate-2); }
+}
+.pp-root .items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 7px; }
+.pp-root .items li { position: relative; padding-left: 19px; font-size: 15px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.pp-root .items li::before { content: ''; position: absolute; left: 2px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: #AEB8DF; }
+.pp-root .items li b { font-weight: 600; color: var(--ink); }
+.pp-root .tip { margin: 9px 0 0; font-size: 13px; line-height: 1.5; color: var(--slate); display: grid; grid-template-columns: 14px 1fr; gap: 8px; padding: 9px 11px; background: var(--bg-alt); border-radius: 10px; }
+.pp-root .tip svg { color: var(--slate-2); margin-top: 2px; }
+/* close */
+.pp-root .close { padding-top: 40px; padding-bottom: 30px; }
+.pp-root .close h2 { font-size: 26px; letter-spacing: -0.025em; margin: 0 0 16px; font-weight: 500; }
+.pp-root .contact { display: grid; grid-template-columns: 1fr; gap: 12px; border: 1px solid var(--pro-line); border-radius: 14px; padding: 18px 20px; }
+@media (min-width: 600px) { .pp-root .contact { grid-template-columns: 1fr 1fr; gap: 20px; } }
+.pp-root .contact dl { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.pp-root .contact dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--slate-2); }
+.pp-root .contact dd { margin: 2px 0 0; font-size: 15px; color: var(--ink); }
+.pp-root .contact dd a { color: var(--pro); text-decoration: none; font-weight: 500; }
+.pp-root .sign { margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--pro-line); display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.pp-root .sign .nmx { font-family: var(--geist); font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
+.pp-root .sign .mnx { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate); margin-top: 3px; }
+.pp-root .sign .fx { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 26px; color: var(--pro); line-height: 1; padding-bottom: 3px; border-bottom: 1px solid var(--line); min-width: 170px; text-align: center; }
+.pp-root .sign .fx img { max-height: 40px; max-width: 170px; object-fit: contain; }
+.pp-root .conf { margin: 22px 0 0; padding: 13px 16px; border: 1px solid var(--line); border-left: 3px solid var(--slate-2); border-radius: 10px; background: var(--bg-alt); font-size: 12.5px; line-height: 1.5; color: var(--slate); display: grid; grid-template-columns: 15px 1fr; gap: 10px; }
+.pp-root .conf svg { color: var(--slate-2); margin-top: 1px; }
+.pp-root .conf b { color: var(--ink-2); }
+.pp-root .foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 14px; padding-bottom: calc(22px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate-2); }
+/* impresión: A4, un día por página */
+@page { size: A4; margin: 14mm 14mm 15mm; }
+@media print {
+  .pp-root { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pp-root .pdf-btn, .pp-root .daynav { display: none !important; }
+  .pp-root .sheet { max-width: none; margin: 0; border: 0; border-radius: 0; }
+  .pp-root .pad { padding: 0; }
+  .pp-root .cover { padding-top: 18px; }
+  .pp-root h1.title { font-size: 34px; }
+  .pp-root .hero { grid-template-columns: 1.15fr .85fr; gap: 16px; }
+  .pp-root .vct { flex-direction: column; justify-content: center; text-align: center; gap: 0; }
+  .pp-root .vig { grid-template-columns: auto auto auto 1fr; }
+  .pp-root .vig .it { border-top: 0; border-left: 1px solid var(--line); }
+  .pp-root .vig .it:first-child { border-left: 0; }
+  .pp-root .vig .it.w { grid-column: auto; border-left: 1px solid var(--line); }
+  .pp-root .hero, .pp-root .macros, .pp-root .panel, .pp-root .vig, .pp-root .contact, .pp-root .sign, .pp-root .conf { break-inside: avoid; }
+  .pp-root .day { break-before: page; padding-top: 0; }
+  .pp-root .prh { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; padding-bottom: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--pro-line); font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate); }
+  .pp-root .prh b { font-family: var(--geist); font-size: 11.5px; letter-spacing: -0.01em; text-transform: none; color: var(--ink); }
+  .pp-root .day-hd { break-after: avoid; margin-bottom: 4px; }
+  .pp-root .meal { grid-template-columns: 130px 1fr; gap: 18px; padding: 12px 0; break-inside: avoid; }
+  .pp-root .meal .side { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 3px; }
+  .pp-root .meal .ttl { font-size: 14px; }
+  .pp-root .meal .hr { background: none; padding: 0 0 0 25px; font-size: 10px; color: var(--slate-2); }
+  .pp-root .items li { font-size: 13.5px; }
+  .pp-root .tip { font-size: 12px; background: none; padding: 0; }
+  .pp-root .close { break-before: page; padding-top: 0; }
+  .pp-root .contact { grid-template-columns: 1fr 1fr; }
+  .pp-root .contact dd a { color: var(--ink); font-weight: 400; }
+  .pp-root .foot { padding-bottom: 0; }
+}

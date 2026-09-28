@@ -10,6 +10,7 @@ export type ComidaConItems = {
   dia_semana: string
   tipo_comida: string
   hora: string | null
+  nota: string | null
   orden: number
   plan_comida_items: PlanComidaItem[]
 }
@@ -34,6 +35,7 @@ const ICON = {
   check: <svg viewBox="0 0 24 24" style={{ width: 10, height: 10, stroke: '#fff', strokeWidth: 3, fill: 'none' }}><path d="M20 6L9 17l-5-5" /></svg>,
   chev: (open: boolean) => <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none', transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .16s ease' }}><path d="M6 9l6 6 6-6" /></svg>,
   mag: <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 1.9, fill: 'none', position: 'absolute', left: 11, top: 11, pointerEvents: 'none' }}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>,
+  note: <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'var(--muted-2, #8A93A1)', strokeWidth: 1.8, fill: 'none', flexShrink: 0 }}><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></svg>,
 }
 
 function round1(n: number): number { return Math.round(n * 10) / 10 }
@@ -78,9 +80,13 @@ export default function PlanComidaBlock({
   const [diasSel, setDiasSel] = useState<Set<string>>(new Set())
   const [copiando, setCopiando] = useState(false)
   const [draftIds, setDraftIds] = useState<string[]>([])
+  const [notaAbierta, setNotaAbierta] = useState(comida.nota != null)
+  const [notaValor, setNotaValor] = useState(comida.nota ?? '')
+  const notaInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setNombre(comida.tipo_comida) }, [comida.tipo_comida])
   useEffect(() => { setHora(comida.hora ?? '') }, [comida.hora])
+  useEffect(() => { setNotaAbierta(comida.nota != null); setNotaValor(comida.nota ?? '') }, [comida.nota])
 
   const items = comida.plan_comida_items ?? []
   const { kcal, foods } = sumKcalComida(items, macrosPorAlimento)
@@ -104,6 +110,35 @@ export default function PlanComidaBlock({
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hora: hora || null }),
+    })
+    onChanged()
+  }
+
+  function agregarNota() {
+    setNotaAbierta(true)
+    setNotaValor('')
+    setTimeout(() => notaInputRef.current?.focus(), 0)
+  }
+
+  async function commitNota() {
+    const valor = notaValor.trim()
+    if (valor === (comida.nota ?? '')) return
+    await fetch(`/api/plan-comidas/${comida.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nota: valor === '' ? null : valor }),
+    })
+    onChanged()
+  }
+
+  async function quitarNota() {
+    setNotaAbierta(false)
+    setNotaValor('')
+    if (comida.nota == null) return
+    await fetch(`/api/plan-comidas/${comida.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nota: null }),
     })
     onChanged()
   }
@@ -278,12 +313,35 @@ export default function PlanComidaBlock({
               />
             ))}
           </div>
+          {notaAbierta && (!readOnly || notaValor.trim()) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, padding: '3px 4px 3px 10px', borderRadius: 'var(--r-md, 8px)', background: 'var(--surface-2, #F6F7F9)' }}>
+              {ICON.note}
+              <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>Nota</span>
+              <input
+                ref={notaInputRef}
+                value={notaValor}
+                onChange={(e) => setNotaValor(e.target.value)}
+                onBlur={commitNota}
+                readOnly={readOnly}
+                maxLength={140}
+                placeholder="Ej.: Podés dejar la avena en remojo la noche anterior"
+                aria-label="Nota de la comida"
+                style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12.5, color: 'var(--ink-2, #1F2937)', outline: 'none', height: 28, padding: '0 2px', pointerEvents: readOnly ? 'none' : undefined }}
+              />
+              {!readOnly && (
+                <button type="button" onClick={quitarNota} title="Quitar nota" style={{ ...ibtnStyle, width: 24, height: 24, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
+              )}
+            </div>
+          )}
           {!readOnly && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             {modo === 'formula' && (
               <button type="button" onClick={agregarBorradorAlimento} style={miniStyle}>{ICON.plus}Alimento</button>
             )}
             <button type="button" onClick={agregarItemTexto} style={miniStyle}>{ICON.plus}Texto libre</button>
+            {!notaAbierta && (
+              <button type="button" onClick={agregarNota} style={miniStyle}>{ICON.plus}Nota</button>
+            )}
           </div>
           )}
         </div>

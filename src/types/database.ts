@@ -2015,6 +2015,45 @@ export type Database = {
           },
         ]
       }
+      plan_compartidos: {
+        Row: {
+          id: string
+          plan_id: string
+          terapeuta_id: string
+          token: string
+          creado_en: string
+          vence_en: string | null
+          revocado_en: string | null
+          enviado_a: string | null
+          enviado_en: string | null
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          terapeuta_id: string
+          token: string
+          creado_en?: string
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Update: {
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plan_compartidos_plan_id_fkey'
+            columns: ['plan_id']
+            isOneToOne: false
+            referencedRelation: 'planes_alimentarios'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       vademecum_alimentos: {
         Row: {
           id: string
@@ -2198,6 +2237,7 @@ export type DistribucionMacros = Database['public']['Tables']['distribucion_macr
 export type PlanAlimentario = Database['public']['Tables']['planes_alimentarios']['Row']
 export type PlanComida = Database['public']['Tables']['plan_comidas']['Row']
 export type PlanComidaItem = Database['public']['Tables']['plan_comida_items']['Row']
+export type PlanCompartido = Database['public']['Tables']['plan_compartidos']['Row']
 export type HabitoComida = Database['public']['Tables']['habitos_comidas']['Row']
 export type HabitosGenerales = Database['public']['Tables']['habitos_generales']['Row']
 export type VademecumAlimento = Database['public']['Tables']['vademecum_alimentos']['Row']
