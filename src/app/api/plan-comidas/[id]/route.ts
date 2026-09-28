@@ -19,7 +19,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 
   const body = await request.json()
-  const { dia_semana: diaSemana, tipo_comida: tipoComida, hora, orden } = body
+  const { dia_semana: diaSemana, tipo_comida: tipoComida, hora, orden, nota } = body
+
+  if (nota !== undefined && nota !== null && String(nota).length > 140) {
+    return NextResponse.json({ error: 'La nota no puede superar los 140 caracteres' }, { status: 400 })
+  }
 
   const { data: comidaActualizada, error } = await db
     .from('plan_comidas')
@@ -28,6 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       ...(tipoComida !== undefined ? { tipo_comida: tipoComida } : {}),
       ...(hora !== undefined ? { hora } : {}),
       ...(orden !== undefined ? { orden } : {}),
+      ...(nota !== undefined ? { nota } : {}),
     })
     .eq('id', params.id)
     .select()

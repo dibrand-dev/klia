@@ -1891,6 +1891,10 @@ export type Database = {
           nombre: string
           estado: string
           modo: string
+          objetivo_titulo: string | null
+          objetivo_nota: string | null
+          indicaciones: string | null
+          fecha_fin: string | null
           created_at: string
           updated_at: string
         }
@@ -1901,6 +1905,10 @@ export type Database = {
           nombre: string
           estado?: string
           modo?: string
+          objetivo_titulo?: string | null
+          objetivo_nota?: string | null
+          indicaciones?: string | null
+          fecha_fin?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1908,6 +1916,10 @@ export type Database = {
           nombre?: string
           estado?: string
           modo?: string
+          objetivo_titulo?: string | null
+          objetivo_nota?: string | null
+          indicaciones?: string | null
+          fecha_fin?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1928,6 +1940,7 @@ export type Database = {
           dia_semana: string
           tipo_comida: string
           hora: string | null
+          nota: string | null
           orden: number
           created_at: string
         }
@@ -1938,6 +1951,7 @@ export type Database = {
           dia_semana: string
           tipo_comida: string
           hora?: string | null
+          nota?: string | null
           orden?: number
           created_at?: string
         }
@@ -1945,6 +1959,7 @@ export type Database = {
           dia_semana?: string
           tipo_comida?: string
           hora?: string | null
+          nota?: string | null
           orden?: number
         }
         Relationships: [
@@ -2000,19 +2015,61 @@ export type Database = {
           },
         ]
       }
+      plan_compartidos: {
+        Row: {
+          id: string
+          plan_id: string
+          terapeuta_id: string
+          token: string
+          creado_en: string
+          vence_en: string | null
+          revocado_en: string | null
+          enviado_a: string | null
+          enviado_en: string | null
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          terapeuta_id: string
+          token: string
+          creado_en?: string
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Update: {
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plan_compartidos_plan_id_fkey'
+            columns: ['plan_id']
+            isOneToOne: false
+            referencedRelation: 'planes_alimentarios'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       vademecum_alimentos: {
         Row: {
           id: string
           fuente: string
           nombre: string
+          grupo: string
         }
         Insert: {
           id?: string
           fuente: string
           nombre: string
+          grupo: string
         }
         Update: {
           nombre?: string
+          grupo?: string
         }
         Relationships: []
       }
@@ -2058,6 +2115,23 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      vademecum_off_sync_control: {
+        Row: {
+          id: string
+          ultima_sync_exitosa: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ultima_sync_exitosa?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ultima_sync_exitosa?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -2163,6 +2237,7 @@ export type DistribucionMacros = Database['public']['Tables']['distribucion_macr
 export type PlanAlimentario = Database['public']['Tables']['planes_alimentarios']['Row']
 export type PlanComida = Database['public']['Tables']['plan_comidas']['Row']
 export type PlanComidaItem = Database['public']['Tables']['plan_comida_items']['Row']
+export type PlanCompartido = Database['public']['Tables']['plan_compartidos']['Row']
 export type HabitoComida = Database['public']['Tables']['habitos_comidas']['Row']
 export type HabitosGenerales = Database['public']['Tables']['habitos_generales']['Row']
 export type VademecumAlimento = Database['public']['Tables']['vademecum_alimentos']['Row']

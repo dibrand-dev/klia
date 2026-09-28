@@ -747,3 +747,25 @@ export function emailAutorizacionesPorVencer(
     ${cta('Ver pacientes &rarr;', 'https://app.klia.com.ar/pacientes')}
   `, 'Autorizaciones de obra social por vencer — KLIA')
 }
+
+export function emailPlanAlimentarioCompartido(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  planUrl: string
+  mensajePersonalizado: string
+}): string {
+  return baseTemplate(`
+    ${icon('🥗', '#EFF4FF')}
+    ${h1('Tu plan alimentario')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, ${params.profesionalNombre} te comparte tu plan alimentario.`)}
+    ${params.mensajePersonalizado ? infoBox(`💬 ${params.mensajePersonalizado}`, '#F0F4FF', '#2563EB', '#1E3A8A') : ''}
+    ${cta('Ver mi plan alimentario', params.planUrl)}
+    ${para('Lo podés abrir desde el celular cuando quieras, sin crear cuenta. Si tu profesional hace cambios, los vas a ver en el mismo link.')}
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;border-top:1px solid #e8eaf0;">
+      <tr><td style="padding:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#7a7f8a;text-align:center;">
+        Si el botón no funciona, copiá y pegá este enlace:<br>
+        <a href="${params.planUrl}" style="color:#2563EB;word-break:break-all;font-size:11px;">${params.planUrl}</a>
+      </td></tr>
+    </table>
+  `, 'Tu plan alimentario')
+}

@@ -17,17 +17,20 @@ export async function enviarEmail({
   nombreDestinatario,
   asunto,
   htmlContent,
+  replyTo,
 }: {
   destinatario: string
   nombreDestinatario: string
   asunto: string
   htmlContent: string
+  replyTo?: { email: string; name?: string }
 }): Promise<{ messageId: string | null }> {
   const result = await client.transactionalEmails.sendTransacEmail({
     sender: REMITENTE,
     to: [{ email: destinatario, name: nombreDestinatario }],
     subject: asunto,
     htmlContent,
+    ...(replyTo ? { replyTo } : {}),
   })
   return { messageId: result.messageId ?? null }
 }
