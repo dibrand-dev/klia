@@ -27,23 +27,36 @@ async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
 }
 
+interface Indicacion { id: number; texto: string }
+
+// Ids estables por línea (no el índice del array) — con key={i}, insertar una
+// línea en el medio hacía que React reconciliara por posición y reutilizara
+// el nodo <input> ya enfocado para la fila nueva en vez de crear uno propio:
+// el foco visualmente "no se movía" y el texto tipeado después terminaba
+// mezclado con la línea de al lado. Con un id propio por línea, cada fila es
+// su propio nodo DOM sin importar dónde se inserte o borre.
+function lineasDesdeTexto(texto: string | null, nextId: () => number): Indicacion[] {
+  if (!texto) return []
+  return texto.split('\n').filter((s) => s.trim() !== '').map((t) => ({ id: nextId(), texto: t }))
+}
+
 export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, onSaved }: Props) {
   const [objetivo, setObjetivo] = useState(plan.objetivo_titulo ?? '')
   const [objetivoNota, setObjetivoNota] = useState(plan.objetivo_nota ?? '')
   const [fechaFin, setFechaFin] = useState(plan.fecha_fin ?? '')
-  const [indicaciones, setIndicaciones] = useState<string[]>(
-    plan.indicaciones ? plan.indicaciones.split('\n').filter((s) => s.trim() !== '') : [],
-  )
+  const idCounterRef = useRef(0)
+  const nextId = () => idCounterRef.current++
+  const [indicaciones, setIndicaciones] = useState<Indicacion[]>(() => lineasDesdeTexto(plan.indicaciones, nextId))
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([])
+  const inputsRef = useRef<Map<number, HTMLInputElement | null>>(new Map())
 
   useEffect(() => {
     if (!open) return
     setObjetivo(plan.objetivo_titulo ?? '')
     setObjetivoNota(plan.objetivo_nota ?? '')
     setFechaFin(plan.fecha_fin ?? '')
-    setIndicaciones(plan.indicaciones ? plan.indicaciones.split('\n').filter((s) => s.trim() !== '') : [])
+    setIndicaciones(lineasDesdeTexto(plan.indicaciones, nextId))
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, plan.id])
@@ -58,21 +71,27 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
       : `${dias} días${(dias ?? 0) >= 14 ? ` (unas ${Math.round((dias ?? 0) / 7)} semanas)` : ''}. En el PDF: «Del ${fmtFecha(plan.created_at)} al ${fmtFecha(`${fechaFin}T12:00:00`)}».`
 
   function agregarIndicacion(at: number) {
+    const id = nextId()
     setIndicaciones((prev) => {
       const next = [...prev]
-      next.splice(at, 0, '')
+      next.splice(at, 0, { id, texto: '' })
       return next
     })
-    setTimeout(() => inputsRef.current[at]?.focus(), 0)
+    setTimeout(() => inputsRef.current.get(id)?.focus(), 0)
   }
 
-  function actualizarIndicacion(i: number, v: string) {
-    setIndicaciones((prev) => prev.map((t, idx) => (idx === i ? v : t)))
+  function actualizarIndicacion(id: number, v: string) {
+    setIndicaciones((prev) => prev.map((ind) => (ind.id === id ? { ...ind, texto: v } : ind)))
   }
 
-  function quitarIndicacion(i: number) {
-    setIndicaciones((prev) => prev.filter((_, idx) => idx !== i))
-    setTimeout(() => inputsRef.current[Math.max(0, i - 1)]?.focus(), 0)
+  function quitarIndicacion(id: number) {
+    setIndicaciones((prev) => {
+      const idx = prev.findIndex((ind) => ind.id === id)
+      const anterior = prev[Math.max(0, idx - 1)]
+      const next = prev.filter((ind) => ind.id !== id)
+      if (anterior && anterior.id !== id) setTimeout(() => inputsRef.current.get(anterior.id)?.focus(), 0)
+      return next
+    })
   }
 
   async function guardar() {
@@ -86,7 +105,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
           objetivo_titulo: objetivo.trim(),
           objetivo_nota: objetivoNota.trim(),
           fecha_fin: fechaFin || null,
-          indicaciones: indicaciones.map((t) => t.trim()).filter(Boolean).join('\n'),
+          indicaciones: indicaciones.map((ind) => ind.texto.trim()).filter(Boolean).join('\n'),
         }),
       })
       const data = await jsonOrNull(res)
@@ -179,16 +198,16 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
         <label style={labelStyle}>Indicaciones para arrancar {indicaciones.length > 0 && <span style={cntStyle}>{indicaciones.length}</span>}</label>
         {indicaciones.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-            {indicaciones.map((t, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: readOnly ? '16px minmax(0,1fr)' : '16px minmax(0,1fr) 28px', gap: 9, alignItems: 'center' }}>
+            {indicaciones.map((ind, i) => (
+              <div key={ind.id} style={{ display: 'grid', gridTemplateColumns: readOnly ? '16px minmax(0,1fr)' : '16px minmax(0,1fr) 28px', gap: 9, alignItems: 'center' }}>
                 <span style={{ width: 15, height: 15, borderRadius: 4, border: '1.5px solid var(--border-strong, #D6DAE1)' }} />
                 <input
-                  ref={(el) => { inputsRef.current[i] = el }}
-                  value={t}
-                  onChange={(e) => actualizarIndicacion(i, e.target.value)}
+                  ref={(el) => { inputsRef.current.set(ind.id, el) }}
+                  value={ind.texto}
+                  onChange={(e) => actualizarIndicacion(ind.id, e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') { e.preventDefault(); agregarIndicacion(i + 1) }
-                    if (e.key === 'Backspace' && !t) { e.preventDefault(); quitarIndicacion(i) }
+                    if (e.key === 'Backspace' && !ind.texto) { e.preventDefault(); quitarIndicacion(ind.id) }
                   }}
                   readOnly={readOnly}
                   maxLength={90}
@@ -196,7 +215,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
                   style={{ ...inpStyle, height: 38, fontSize: 13.5, ...(readOnly ? roInpStyle : {}) }}
                 />
                 {!readOnly && (
-                  <button type="button" onClick={() => quitarIndicacion(i)} title="Quitar" style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid transparent', background: 'transparent', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--danger, #B42318)' }}>{ICON_X}</button>
+                  <button type="button" onClick={() => quitarIndicacion(ind.id)} title="Quitar" style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid transparent', background: 'transparent', display: 'grid', placeItems: 'center', cursor: 'pointer', color: 'var(--danger, #B42318)' }}>{ICON_X}</button>
                 )}
               </div>
             ))}
