@@ -12,6 +12,8 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { useCie10 } from '@/lib/hooks/useCie10'
 import type { DatosContactoPaciente } from '@/types/database'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 import './nuevo-paciente.css'
 
 const EMPTY_FORM = {
@@ -321,7 +323,12 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>Teléfono</label>
-                <input name="telefono" type="tel" className="mono" value={form.telefono} onChange={handleChange} placeholder="+54 11 1234-5678" />
+                <PhoneInput
+                  defaultCountry="AR"
+                  value={form.telefono}
+                  onChange={(val) => setForm((prev) => ({ ...prev, telefono: val ?? '' }))}
+                  placeholder="Ej.: 11 1234-5678"
+                />
               </div>
               <div className="field">
                 <label>Email</label>

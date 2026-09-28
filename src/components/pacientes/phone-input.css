@@ -1,0 +1,45 @@
+/* Colores literales tomados de tailwind.config.ts (surface-container-high,
+   outline-variant, on-surface, primary) — no son CSS custom properties en
+   este proyecto, son valores de theme de Tailwind, así que no se pueden
+   referenciar con var(). */
+.pd-phone-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: #e6e8ea;
+  border: 1px solid rgba(196, 198, 210, 0.4);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.pd-phone-field.PhoneInput--focus {
+  background: #fff;
+  border-color: #001a48;
+  box-shadow: 0 0 0 1px #001a48;
+}
+.pd-phone-field .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #191c1e;
+}
+.pd-phone-field .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.pd-phone-field .PhoneInputCountrySelect {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.pd-phone-field .PhoneInputCountryIcon {
+  width: 22px;
+}
