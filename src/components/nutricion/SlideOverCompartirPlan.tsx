@@ -91,7 +91,10 @@ export default function SlideOverCompartirPlan({ plan, paciente, readOnly, open,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mailOpen])
 
+  const telefonoLimpio = (paciente.telefono ?? '').replace(/[^\d]/g, '')
+
   function shareUrl(s: ShareRow) { return `${appUrl}/p/plan/${s.token}` }
+  function waHref(s: ShareRow) { return `https://wa.me/${telefonoLimpio}?text=${encodeURIComponent(waMsg(s))}` }
   function waMsg(s: ShareRow) {
     return `Hola ${pacientePrimer}, te comparto tu plan alimentario: ${shareUrl(s)}\nLo podés abrir desde el celular cuando quieras. Si hago cambios, los vas a ver en el mismo link.${profesionalNombre ? `\n${profesionalNombre}` : ''}`
   }
@@ -239,13 +242,24 @@ export default function SlideOverCompartirPlan({ plan, paciente, readOnly, open,
                 >
                   {flash === 'link' ? ICON_CHECK : ICON_COPY}{flash === 'link' ? 'Link copiado' : 'Copiar link'}
                 </button>
+                {telefonoLimpio && (
+                  <a
+                    href={waHref(share)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn"
+                    style={{ height: 38, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+                  >
+                    {ICON_CHAT}Enviar por WhatsApp
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => { copyText(waMsg(share)); setFlash('wa'); setTimeout(() => setFlash(null), 1800) }}
                   className="btn"
                   style={{ height: 38, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, ...(flash === 'wa' ? { background: 'var(--ok-soft, #DFF3E8)', borderColor: 'transparent', color: 'var(--ok-ink, #17663F)' } : {}) }}
                 >
-                  {flash === 'wa' ? ICON_CHECK : ICON_CHAT}{flash === 'wa' ? 'Mensaje copiado' : 'Copiar mensaje para WhatsApp'}
+                  {flash === 'wa' ? ICON_CHECK : ICON_COPY}{flash === 'wa' ? 'Mensaje copiado' : (telefonoLimpio ? 'Copiar mensaje para WhatsApp' : 'Copiar mensaje para WhatsApp (sin teléfono en la ficha)')}
                 </button>
               </div>
               <div style={{ margin: '12px 0 18px', padding: '10px 12px', borderRadius: 'var(--r-md, 8px)', border: '1px dashed var(--border-strong, #D6DAE1)' }}>
