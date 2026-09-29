@@ -25,7 +25,17 @@ export async function GET(request: NextRequest) {
     query = query.in('id', ids)
   } else if (q) {
     // Con término de búsqueda: lista plana, sin necesidad de orden por grupo.
-    query = query.ilike('nombre', `%${q}%`).order('nombre').limit(LIMITE)
+    // order('fuente') prioriza los alimentos genéricos (fuente='argenfood')
+    // por sobre los productos de marca importados de Open Food Facts
+    // (fuente='off') — sin esto, un término común como "pollo" trae decenas
+    // de productos de marca antes que "Pollo, asado a la parrilla", y el
+    // LIMIT 40 corta antes de llegar al genérico. Depende de que
+    // 'argenfood' ordene alfabéticamente antes que 'off' (confirmado: a <
+    // o) — el cliente de Supabase (postgrest-js) no soporta un CASE
+    // explícito en order() sin una vista o RPC aparte, así que esto es un
+    // orden alfabético "a propósito", no una prioridad declarada. Revisar
+    // esta suposición si se agrega una tercera fuente al Vademécum.
+    query = query.ilike('nombre', `%${q}%`).order('fuente', { ascending: true }).order('nombre', { ascending: true }).limit(LIMITE)
   } else {
     // Sin término: orden por grupo primero para que los headers de categoría
     // en el dropdown queden contiguos (no repetidos ni intercalados).
