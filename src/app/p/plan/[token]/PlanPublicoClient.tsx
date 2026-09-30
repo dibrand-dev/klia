@@ -101,8 +101,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
   }
 
   const macros = MACROS_LIST(porcentajeCarbohidratos, porcentajeProteinas, porcentajeGrasas, kcalObjetivo)
-  const partesFirma = profesionalNombreCorto.replace(/^Lic\.|^Dr\.|^Dra\.|^Mg\./i, '').trim().split(/\s+/)
-  const firmaTxt = partesFirma.length > 1 ? `${partesFirma[0][0]}. ${partesFirma.slice(1).join(' ')}` : partesFirma[0]
+  const firmaTxt = profesionalNombreCorto.replace(/^Lic\.|^Dr\.|^Dra\.|^Mg\./i, '').trim()
 
   const vigenciaTxt = fechaFin
     ? `${format(parseISO(fechaPreparacion), 'd MMM', { locale: es })} — ${format(parseISO(`${fechaFin}T12:00:00`), 'd MMM yyyy', { locale: es })}`
