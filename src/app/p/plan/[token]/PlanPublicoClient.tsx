@@ -12,6 +12,28 @@ const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 type ItemPublico = { tipo: string; nombre: string; cantidadGramos: number | null }
 type ComidaPublica = { diaSemana: string; tipoComida: string; hora: string | null; nota: string | null; items: ItemPublico[] }
 
+interface RedesSociales {
+  instagram_url: string | null
+  facebook_url: string | null
+  x_url: string | null
+  tiktok_url: string | null
+  linkedin_url: string | null
+}
+
+// Orden fijo de visualización — Instagram, Facebook, X, TikTok, LinkedIn —
+// nunca el orden en que el profesional las cargó en Ajustes.
+const SOC_ORDEN = ['instagram', 'facebook', 'x', 'tiktok', 'linkedin'] as const
+const SOC_NOMBRE: Record<(typeof SOC_ORDEN)[number], string> = {
+  instagram: 'Instagram', facebook: 'Facebook', x: 'X', tiktok: 'TikTok', linkedin: 'LinkedIn',
+}
+const SOC_ICON: Record<(typeof SOC_ORDEN)[number], React.ReactNode> = {
+  instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><path d="M17.5 6.5h.01" /></>,
+  facebook: <path d="M15 3h-2.5A4.5 4.5 0 0 0 8 7.5V10H5.5v4H8v7h4v-7h3l.5-4H12V7.5c0-.6.4-1 1-1h2z" />,
+  x: <><path d="M4 4l11.7 16H20L8.3 4z" /><path d="M4 20l6.8-6.8M20 4l-6.6 6.6" /></>,
+  tiktok: <><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 3c.4 2.6 2.3 4.4 5 4.6" /></>,
+  linkedin: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 10.5V17M8 7.2v.01M12 17v-6.5M12 13.5a2.5 2.5 0 0 1 5 0V17" /></>,
+}
+
 export interface PlanPublicoProps {
   profesionalNombreCorto: string
   especialidad: string
@@ -35,6 +57,7 @@ export interface PlanPublicoProps {
   proximoTurno: { fechaHora: string; modalidad: string; direccionSede: string | null } | null
   comidas: ComidaPublica[]
   kcalPorDia: Record<string, number>
+  redes: RedesSociales
 }
 
 const ICON_MEAL: Record<string, JSX.Element> = {
@@ -70,8 +93,16 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
     profesionalNombreCorto, especialidad, matricula, telefono, email, firmaSelloUrl, avatarUrl,
     pacientePrimerNombre, pacienteNombreCompleto, objetivoTitulo, objetivoNota, kcalObjetivo,
     porcentajeCarbohidratos, porcentajeProteinas, porcentajeGrasas, indicaciones,
-    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia,
+    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia, redes,
   } = props
+
+  const redesConValor = SOC_ORDEN
+    .map((k) => ({ net: k, url: redes[`${k}_url`] }))
+    .filter((r): r is { net: (typeof SOC_ORDEN)[number]; url: string } => !!r.url)
+    .map((r) => {
+      const handle = r.url.slice(r.url.indexOf('/') + 1)
+      return { ...r, handle: (r.net === 'instagram' || r.net === 'x') ? `@${handle}` : handle }
+    })
 
   const dias = DIAS_VALUE
     .map((v, i) => ({ value: v, label: DIAS_LABEL[i], corto: DIAS_CORTO[i], comidas: comidas.filter((c) => c.diaSemana === v).sort((a, b) => (a.hora ?? '').localeCompare(b.hora ?? '')) }))
@@ -267,6 +298,27 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
                 {telefono && <div><dt>Teléfono / WhatsApp</dt><dd><a href={whatsappHref ?? undefined}>{telefono}</a></dd></div>}
                 {email && <div><dt>Email</dt><dd><a href={`mailto:${email}`}>{email}</a></dd></div>}
               </dl>
+              {redesConValor.length > 0 && (
+                <div className="soc">
+                  <dt>Redes sociales</dt>
+                  <ul>
+                    {redesConValor.map(({ net, url, handle }) => (
+                      <li key={net}>
+                        <a
+                          href={`https://${url}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`${SOC_NOMBRE[net]}: ${handle}`}
+                          aria-label={`${SOC_NOMBRE[net]} de ${profesionalNombreCorto} (se abre en otra pestaña)`}
+                        >
+                          <svg viewBox="0 0 24 24">{SOC_ICON[net]}</svg>
+                          <span className="h">{handle}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="sign">
               <div>
