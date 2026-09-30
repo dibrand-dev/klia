@@ -135,6 +135,13 @@
 .pp-root .contact dt { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.11em; text-transform: uppercase; color: var(--slate-2); }
 .pp-root .contact dd { margin: 2px 0 0; font-size: 15px; color: var(--ink); }
 .pp-root .contact dd a { color: var(--pro); text-decoration: none; font-weight: 500; }
+.pp-root .soc { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--line-2); }
+.pp-root .soc dt { flex: none; }
+.pp-root .soc ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.pp-root .soc a { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--pro-line); background: var(--pro-soft); color: var(--pro); display: grid; place-items: center; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.pp-root .soc a:hover { background: var(--pro); border-color: var(--pro); color: #fff; }
+.pp-root .soc a svg { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.pp-root .soc a .h { display: none; }
 .pp-root .sign { margin: 22px 0 0; padding-top: 16px; border-top: 1px solid var(--pro-line); display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .pp-root .sign .nmx { font-family: var(--geist); font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
 .pp-root .sign .mnx { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate); margin-top: 3px; }
@@ -173,5 +180,9 @@
   .pp-root .close { break-before: page; padding-top: 0; }
   .pp-root .contact { grid-template-columns: 1fr 1fr; }
   .pp-root .contact dd a { color: var(--ink); font-weight: 400; }
+  .pp-root .soc ul { gap: 6px 18px; }
+  .pp-root .soc a { width: auto; height: auto; border: 0; background: none; border-radius: 0; display: flex; align-items: center; gap: 6px; color: var(--ink); text-decoration: none; font-size: 12.5px; }
+  .pp-root .soc a svg { width: 14px; height: 14px; color: var(--pro); }
+  .pp-root .soc a .h { display: inline; }
   .pp-root .foot { padding-bottom: 0; }
 }

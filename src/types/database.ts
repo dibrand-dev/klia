@@ -67,6 +67,11 @@ export type Database = {
           transferencia_banco: string | null
           transferencia_alias: string | null
           transferencia_titular: string | null
+          instagram_url: string | null
+          facebook_url: string | null
+          x_url: string | null
+          tiktok_url: string | null
+          linkedin_url: string | null
           created_at: string
           updated_at: string
         }
@@ -132,6 +137,11 @@ export type Database = {
           transferencia_banco?: string | null
           transferencia_alias?: string | null
           transferencia_titular?: string | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          x_url?: string | null
+          tiktok_url?: string | null
+          linkedin_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -197,6 +207,11 @@ export type Database = {
           transferencia_banco?: string | null
           transferencia_alias?: string | null
           transferencia_titular?: string | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          x_url?: string | null
+          tiktok_url?: string | null
+          linkedin_url?: string | null
           created_at?: string
           updated_at?: string
         }

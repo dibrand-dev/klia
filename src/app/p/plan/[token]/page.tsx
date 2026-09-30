@@ -23,9 +23,14 @@ export default async function PlanPublicoPage({ params }: { params: { token: str
   const vencido = !!share?.vence_en && new Date(share.vence_en) <= new Date()
   if (!share || share.revocado_en || vencido) notFound()
 
-  const [datos, { data: plan }] = await Promise.all([
+  const [datos, { data: plan }, { data: redes }] = await Promise.all([
     obtenerDatosPlanAlimentario(db, share.plan_id, share.terapeuta_id),
     db.from('planes_alimentarios').select('paciente_id, updated_at').eq('id', share.plan_id).single(),
+    // Redes sociales del profesional — no forman parte de DatosPlanAlimentario
+    // (ese tipo vive en plan-alimentario.ts, el generador de PDF, congelado y
+    // sin usar desde la UI) así que se resuelven acá aparte, solo para el
+    // link público.
+    db.from('profiles').select('instagram_url, facebook_url, x_url, tiktok_url, linkedin_url').eq('id', share.terapeuta_id).maybeSingle(),
   ])
 
   if (!datos || !plan) notFound()
@@ -38,6 +43,13 @@ export default async function PlanPublicoPage({ params }: { params: { token: str
       {...datos}
       pacientePrimerNombre={paciente.nombre.split(' ')[0]}
       fechaActualizacion={plan.updated_at}
+      redes={{
+        instagram_url: redes?.instagram_url ?? null,
+        facebook_url: redes?.facebook_url ?? null,
+        x_url: redes?.x_url ?? null,
+        tiktok_url: redes?.tiktok_url ?? null,
+        linkedin_url: redes?.linkedin_url ?? null,
+      }}
     />
   )
 }

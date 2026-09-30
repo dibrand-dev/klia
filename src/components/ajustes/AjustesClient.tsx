@@ -10,6 +10,7 @@ import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
 import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
+import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import type { Profile, ProfesionalObraSocial } from '@/types/database'
@@ -227,6 +228,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     direccion: profile.direccion ?? '',
     terminologia: (profile.terminologia ?? 'sesion') as 'sesion' | 'consulta',
   })
+  const redesRef = useRef<RedesSociales>({
+    instagram_url: profile.instagram_url ?? null,
+    facebook_url: profile.facebook_url ?? null,
+    x_url: profile.x_url ?? null,
+    tiktok_url: profile.tiktok_url ?? null,
+    linkedin_url: profile.linkedin_url ?? null,
+  })
   const [perfilLoading, setPerfilLoading] = useState(false)
   const [perfilSaved, setPerfilSaved] = useState(false)
   const [perfilError, setPerfilError] = useState<string | null>(null)
@@ -388,6 +396,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       localidad: perfilForm.localidad || null,
       direccion: perfilForm.direccion || null,
       terminologia: perfilForm.terminologia,
+      ...redesRef.current,
     }).eq('id', profile.id)
     if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
     setPerfilSaved(true); setPerfilLoading(false); router.refresh()
@@ -870,6 +879,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <label style={labelStyle}>Dirección donde realiza la prestación</label>
                   <input style={inputStyle} type="text" placeholder="Av. Corrientes 1234, Piso 3" value={perfilForm.direccion} onChange={e => setPerfilForm(p => ({ ...p, direccion: e.target.value }))} />
                   <span style={hintStyle}>Se usa en las planillas de asistencia para obras sociales.</span>
+                </div>
+                <div className="sm:col-span-2" style={fieldStyle}>
+                  <label style={labelStyle}>Redes sociales</label>
+                  <RedesSocialesField initialValue={redesRef.current} onChange={(v) => { redesRef.current = v }} />
+                  <span style={hintStyle}>Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.</span>
                 </div>
               </div>
 
