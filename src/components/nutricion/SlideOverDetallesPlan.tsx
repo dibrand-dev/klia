@@ -9,7 +9,7 @@ interface Props {
   readOnly: boolean
   open: boolean
   onClose: () => void
-  onSaved: () => void
+  onSaved: () => void | Promise<void>
 }
 
 const ICON_X = <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M6 6l12 12M18 6l-12 12" /></svg>
@@ -61,7 +61,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
     setIndicaciones(lineasDesdeTexto(plan.indicaciones, nextId))
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, plan.id])
+  }, [open, plan.id, plan.objetivo_titulo, plan.objetivo_nota, plan.fecha_fin, plan.indicaciones, plan.mostrar_macros_paciente])
 
   const inicioISO = plan.created_at.slice(0, 10)
   const dias = fechaFin ? dayDiff(inicioISO, fechaFin) : null
@@ -117,7 +117,8 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
         setGuardando(false)
         return
       }
-      onSaved()
+      await onSaved()
+      setGuardando(false)
       onClose()
     } catch {
       setError('Error de conexión. Intentá nuevamente.')
