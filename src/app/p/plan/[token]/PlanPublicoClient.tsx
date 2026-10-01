@@ -57,6 +57,7 @@ export interface PlanPublicoProps {
   proximoTurno: { fechaHora: string; modalidad: string; direccionSede: string | null } | null
   comidas: ComidaPublica[]
   kcalPorDia: Record<string, number>
+  mostrarMacros: boolean
   redes: RedesSociales
 }
 
@@ -93,7 +94,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
     profesionalNombreCorto, especialidad, matricula, telefono, email, firmaSelloUrl, avatarUrl,
     pacientePrimerNombre, pacienteNombreCompleto, objetivoTitulo, objetivoNota, kcalObjetivo,
     porcentajeCarbohidratos, porcentajeProteinas, porcentajeGrasas, indicaciones,
-    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia, redes,
+    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia, mostrarMacros, redes,
   } = props
 
   const redesConValor = SOC_ORDEN
@@ -186,6 +187,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
                 <p className="fine">Promedio de referencia. Puede variar ±100 kcal según el día.</p>
               </div>
             </div>
+            {mostrarMacros && (
             <div className="macros">
               <div className="mbar" role="img" aria-label={`Distribución de macronutrientes: ${porcentajeCarbohidratos}% carbohidratos, ${porcentajeProteinas}% proteínas, ${porcentajeGrasas}% grasas`}>
                 {macros.map((m) => <span key={m.key} className={m.key === 'gra' ? 'dk' : undefined} style={{ width: `${m.pct}%`, background: m.color }}>{m.pct} %</span>)}
@@ -201,6 +203,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
                 ))}
               </div>
             </div>
+            )}
             {indicaciones.length > 0 && (
               <div className="panel">
                 <h3>

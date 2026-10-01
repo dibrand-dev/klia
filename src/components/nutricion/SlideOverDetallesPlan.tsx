@@ -44,6 +44,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
   const [objetivo, setObjetivo] = useState(plan.objetivo_titulo ?? '')
   const [objetivoNota, setObjetivoNota] = useState(plan.objetivo_nota ?? '')
   const [fechaFin, setFechaFin] = useState(plan.fecha_fin ?? '')
+  const [mostrarMacros, setMostrarMacros] = useState(plan.mostrar_macros_paciente)
   const idCounterRef = useRef(0)
   const nextId = () => idCounterRef.current++
   const [indicaciones, setIndicaciones] = useState<Indicacion[]>(() => lineasDesdeTexto(plan.indicaciones, nextId))
@@ -56,6 +57,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
     setObjetivo(plan.objetivo_titulo ?? '')
     setObjetivoNota(plan.objetivo_nota ?? '')
     setFechaFin(plan.fecha_fin ?? '')
+    setMostrarMacros(plan.mostrar_macros_paciente)
     setIndicaciones(lineasDesdeTexto(plan.indicaciones, nextId))
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,6 +108,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
           objetivo_nota: objetivoNota.trim(),
           fecha_fin: fechaFin || null,
           indicaciones: indicaciones.map((ind) => ind.texto.trim()).filter(Boolean).join('\n'),
+          mostrar_macros_paciente: mostrarMacros,
         }),
       })
       const data = await jsonOrNull(res)
@@ -229,8 +232,33 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
           </button>
         )}
         <p style={helpStyle}>Una por línea, cortas y accionables. En el PDF salen como checklist.</p>
-        {error && <p style={{ fontSize: 12.5, color: 'var(--danger, #B42318)', marginTop: 10 }}>{error}</p>}
       </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0 2px', borderTop: '1px solid var(--border, #E7E9EE)' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink, #0B1220)' }}>Mostrar distribución de macros al paciente</div>
+          <p style={{ ...helpStyle, marginTop: 3 }}>Afecta solo lo que ve el paciente en el link público. El dato se sigue calculando y mostrando en el editor.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => !readOnly && setMostrarMacros((v) => !v)}
+          disabled={readOnly}
+          aria-pressed={mostrarMacros}
+          style={{
+            position: 'relative', width: 38, height: 22, flexShrink: 0, border: 'none',
+            background: mostrarMacros ? 'var(--ink, #0B1220)' : 'var(--border-strong, #D6DAE1)',
+            borderRadius: 100, cursor: readOnly ? 'default' : 'pointer', transition: 'background .15s ease',
+            opacity: readOnly ? 0.6 : 1,
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: 2, left: mostrarMacros ? 18 : 2, width: 18, height: 18, borderRadius: '50%',
+            background: '#fff', transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.15)', display: 'block',
+          }} />
+        </button>
+      </div>
+
+      {error && <p style={{ fontSize: 12.5, color: 'var(--danger, #B42318)', marginTop: 14 }}>{error}</p>}
     </SlideOver>
   )
 }

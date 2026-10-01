@@ -25,7 +25,7 @@ export default async function PlanPublicoPage({ params }: { params: { token: str
 
   const [datos, { data: plan }, { data: redes }] = await Promise.all([
     obtenerDatosPlanAlimentario(db, share.plan_id, share.terapeuta_id),
-    db.from('planes_alimentarios').select('paciente_id, updated_at').eq('id', share.plan_id).single(),
+    db.from('planes_alimentarios').select('paciente_id, updated_at, mostrar_macros_paciente').eq('id', share.plan_id).single(),
     // Redes sociales del profesional — no forman parte de DatosPlanAlimentario
     // (ese tipo vive en plan-alimentario.ts, el generador de PDF, congelado y
     // sin usar desde la UI) así que se resuelven acá aparte, solo para el
@@ -43,6 +43,7 @@ export default async function PlanPublicoPage({ params }: { params: { token: str
       {...datos}
       pacientePrimerNombre={paciente.nombre.split(' ')[0]}
       fechaActualizacion={plan.updated_at}
+      mostrarMacros={plan.mostrar_macros_paciente}
       redes={{
         instagram_url: redes?.instagram_url ?? null,
         facebook_url: redes?.facebook_url ?? null,

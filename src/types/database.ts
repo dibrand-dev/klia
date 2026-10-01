@@ -1910,6 +1910,7 @@ export type Database = {
           objetivo_nota: string | null
           indicaciones: string | null
           fecha_fin: string | null
+          mostrar_macros_paciente: boolean
           created_at: string
           updated_at: string
         }
@@ -1924,6 +1925,7 @@ export type Database = {
           objetivo_nota?: string | null
           indicaciones?: string | null
           fecha_fin?: string | null
+          mostrar_macros_paciente?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1935,6 +1937,7 @@ export type Database = {
           objetivo_nota?: string | null
           indicaciones?: string | null
           fecha_fin?: string | null
+          mostrar_macros_paciente?: boolean
           updated_at?: string
         }
         Relationships: [
