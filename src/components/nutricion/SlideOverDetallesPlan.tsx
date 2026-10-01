@@ -118,6 +118,7 @@ export default function SlideOverDetallesPlan({ plan, readOnly, open, onClose, o
         return
       }
       await onSaved()
+      setGuardando(false)
       onClose()
     } catch {
       setError('Error de conexión. Intentá nuevamente.')
