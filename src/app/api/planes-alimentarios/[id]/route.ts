@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (!planExistente) return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 })
 
   const body = await request.json()
-  const { nombre, estado, modo, objetivo_titulo: objetivoTitulo, objetivo_nota: objetivoNota, fecha_fin: fechaFin, indicaciones } = body
+  const { nombre, estado, modo, objetivo_titulo: objetivoTitulo, objetivo_nota: objetivoNota, fecha_fin: fechaFin, indicaciones, mostrar_macros_paciente: mostrarMacrosPaciente } = body
 
   if (objetivoTitulo !== undefined && objetivoTitulo !== null && String(objetivoTitulo).length > 60) {
     return NextResponse.json({ error: 'El objetivo del plan no puede superar los 60 caracteres' }, { status: 400 })
@@ -88,6 +88,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       ...(objetivoNota !== undefined ? { objetivo_nota: objetivoNota } : {}),
       ...(fechaFin !== undefined ? { fecha_fin: fechaFin } : {}),
       ...(indicacionesTexto !== undefined ? { indicaciones: indicacionesTexto } : {}),
+      ...(mostrarMacrosPaciente !== undefined ? { mostrar_macros_paciente: !!mostrarMacrosPaciente } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.id)
