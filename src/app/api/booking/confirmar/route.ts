@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
-import { parseISO, format } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatFechaHoraArgentina } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -39,13 +38,12 @@ export async function POST(req: NextRequest) {
     // Already confirmed (idempotent)
     const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min, google_event_id, meet_link').eq('id', sesion.turno_id).single()
     const fechaHora = turno?.fecha_hora ?? ''
-    const d = parseISO(fechaHora)
     return NextResponse.json({
       ok: true,
       turno_id: sesion.turno_id,
       mp_payment_id: sesion.mp_payment_id,
-      fecha_fmt: format(d, "EEEE d 'de' MMMM yyyy", { locale: es }),
-      hora: format(d, 'HH:mm'),
+      fecha_fmt: formatFechaHoraArgentina(fechaHora, 'fecha'),
+      hora: formatFechaHoraArgentina(fechaHora, 'hora'),
       duracion: turno?.duracion_min ?? 50,
       monto: sesion.monto,
       moneda: sesion.moneda,
@@ -115,9 +113,8 @@ export async function POST(req: NextRequest) {
 
   // 5. Sincronizar Google Calendar (con Meet si aplica) y mandar el email de
   // confirmación al paciente — ambas partes aisladas entre sí.
-  const d = parseISO(turno.fecha_hora)
-  const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
-  const horaFmt = format(d, 'HH:mm')
+  const fechaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'fecha')
+  const horaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'hora')
 
   const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
     monto: sesion.monto,

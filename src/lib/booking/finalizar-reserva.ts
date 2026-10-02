@@ -1,10 +1,9 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { parseISO, format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailBookingConfirmacion } from '@/lib/email-templates'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+import { formatFechaHoraArgentina } from '@/lib/timezone'
 
 function db() {
   return createServiceClient<Database>(
@@ -39,9 +38,8 @@ async function enviarEmailConfirmacionTurno(
   const paciente = turno.paciente as Record<string, unknown> | null
   if (!paciente?.email) return
 
-  const d = parseISO(turno.fecha_hora)
-  const fechaFmt = format(d, "EEEE d 'de' MMMM yyyy", { locale: es })
-  const horaFmt = format(d, 'HH:mm')
+  const fechaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'fecha')
+  const horaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'hora')
   const tipoLabel = turno.notas?.includes('Entrevista') ? 'Entrevista inicial' : 'Sesión'
   const asunto = `Reserva confirmada con ${profile.nombre} ${profile.apellido} — KLIA`
 

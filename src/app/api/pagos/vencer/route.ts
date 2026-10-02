@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionVencida } from '@/lib/email-templates'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { zonedDateArgentina } from '@/lib/timezone'
 import type { Database } from '@/types/database'
 
 function serviceClient() {
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest) {
 
     try {
       const fecha = turno?.fecha_hora
-        ? format(parseISO(turno.fecha_hora as string), "EEEE d 'de' MMMM", { locale: es })
+        ? format(zonedDateArgentina(turno.fecha_hora as string), "EEEE d 'de' MMMM", { locale: es })
         : ''
 
       await enviarEmail({
