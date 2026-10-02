@@ -217,6 +217,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // Perfil state
   const [perfilForm, setPerfilForm] = useState({
     especialidad: profile.especialidad ?? '',
+    titulo_credencial_adicional: profile.titulo_credencial_adicional ?? '',
     dni: profile.dni ?? '',
     matricula: profile.matricula ?? '',
     matricula_tipo: (profile as Record<string, unknown>).matricula_tipo as string ?? '',
@@ -387,6 +388,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     const { error } = await supabase.from('profiles').update({
       dni: dniClean || null,
       especialidad: perfilForm.especialidad || null,
+      titulo_credencial_adicional: perfilForm.titulo_credencial_adicional || null,
       matricula: perfilForm.matricula || null,
       matricula_tipo: perfilForm.matricula_tipo || null,
       matricula_provincia: perfilForm.matricula_tipo === 'provincial' ? (perfilForm.matricula_provincia || null) : null,
@@ -798,6 +800,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                     <option value="">Sin especificar</option>
                     {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
                   </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Título o credencial adicional <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input style={inputStyle} type="text" placeholder="Ej: Prof. en Educación Física" value={perfilForm.titulo_credencial_adicional} onChange={e => setPerfilForm(p => ({ ...p, titulo_credencial_adicional: e.target.value }))} />
+                  <span style={hintStyle}>Se muestra junto a tu especialidad, ej: &quot;Nutrición · Prof. en Educación Física&quot;.</span>
                 </div>
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Término para los turnos</label>

@@ -12,6 +12,7 @@ export type Database = {
           matricula_tipo: string | null
           matricula_provincia: string | null
           especialidad: string | null
+          titulo_credencial_adicional: string | null
           telefono: string | null
           domicilio: string | null
           direccion: string | null
@@ -85,6 +86,7 @@ export type Database = {
           matricula_tipo?: string | null
           matricula_provincia?: string | null
           especialidad?: string | null
+          titulo_credencial_adicional?: string | null
           telefono?: string | null
           direccion?: string | null
           provincia?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           matricula_tipo?: string | null
           matricula_provincia?: string | null
           especialidad?: string | null
+          titulo_credencial_adicional?: string | null
           telefono?: string | null
           direccion?: string | null
           provincia?: string | null
