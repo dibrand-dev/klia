@@ -17,7 +17,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
-const DURACIONES = [30, 45, 50, 60, 90]
+const DURACIONES = [20, 30, 45, 50, 60, 90]
 const MODALIDADES: { value: ModalidadTurno; label: string }[] = [
   { value: 'presencial', label: 'Presencial' },
   { value: 'videollamada', label: 'Videollamada' },

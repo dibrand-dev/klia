@@ -38,7 +38,7 @@ interface TurnoDetalleModalProps {
 }
 
 const ESTADOS_TRANSICION: EstadoTurno[] = ['pendiente', 'confirmado', 'realizado', 'no_asistio', 'cancelado']
-const DURACIONES = [30, 45, 50, 60, 90]
+const DURACIONES = [20, 30, 45, 50, 60, 90]
 
 const MODALIDAD_ICON: Record<string, string> = {
   presencial: '🏢',

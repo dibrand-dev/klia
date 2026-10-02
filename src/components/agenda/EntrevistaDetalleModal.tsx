@@ -24,7 +24,7 @@ const ESTADO_LABELS: Record<string, string> = {
   cancelada: 'Cancelada',
   convertida: 'Convertida',
 }
-const DURACIONES = [30, 45, 50, 60, 90]
+const DURACIONES = [20, 30, 45, 50, 60, 90]
 
 export default function EntrevistaDetalleModal({
   entrevista,
