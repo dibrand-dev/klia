@@ -58,6 +58,7 @@ export interface PlanPublicoProps {
   comidas: ComidaPublica[]
   kcalPorDia: Record<string, number>
   mostrarMacros: boolean
+  tituloCredencialAdicional: string | null
   redes: RedesSociales
 }
 
@@ -94,8 +95,11 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
     profesionalNombreCorto, especialidad, matricula, telefono, email, firmaSelloUrl, avatarUrl,
     pacientePrimerNombre, pacienteNombreCompleto, objetivoTitulo, objetivoNota, kcalObjetivo,
     porcentajeCarbohidratos, porcentajeProteinas, porcentajeGrasas, indicaciones,
-    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia, mostrarMacros, redes,
+    fechaPreparacion, fechaFin, fechaActualizacion, proximoTurno, comidas, kcalPorDia, mostrarMacros,
+    tituloCredencialAdicional, redes,
   } = props
+
+  const especialidadConTitulo = tituloCredencialAdicional ? `${especialidad} · ${tituloCredencialAdicional}` : especialidad
 
   const redesConValor = SOC_ORDEN
     .map((k) => ({ net: k, url: redes[`${k}_url`] }))
@@ -159,7 +163,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
               </span>
               <div style={{ minWidth: 0 }}>
                 <div className="nm">{profesionalNombreCorto}</div>
-                <div className="mn">{especialidad}{matricula ? ` · ${matricula}` : ''}</div>
+                <div className="mn">{especialidadConTitulo}{matricula ? ` · ${matricula}` : ''}</div>
               </div>
             </div>
             <button type="button" className="pdf-btn" title="Guardar como PDF" onClick={() => window.print()}>
@@ -254,7 +258,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
               const kcal = kcalPorDia[d.value]
               return (
                 <section key={d.value} className={`day t${(i % 3) + 1}`} ref={(el) => { sectionRefs.current[i] = el }}>
-                  <div className="prh"><b>{profesionalNombreCorto}</b><span>{especialidad} · Plan alimentario</span></div>
+                  <div className="prh"><b>{profesionalNombreCorto}</b><span>{especialidadConTitulo} · Plan alimentario</span></div>
                   <div className="day-hd">
                     <h2>{d.label}</h2>
                     <span className="kc">{kcal ? `≈ ${Math.round(kcal).toLocaleString('es-AR')} kcal · ` : ''}{d.comidas.length} {d.comidas.length === 1 ? 'comida' : 'comidas'}</span>
@@ -294,7 +298,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
             <div className="contact">
               <dl>
                 <div><dt>Profesional</dt><dd>{profesionalNombreCorto}</dd></div>
-                <div><dt>Especialidad</dt><dd>{especialidad}</dd></div>
+                <div><dt>Especialidad</dt><dd>{especialidadConTitulo}</dd></div>
                 <div><dt>Matrícula</dt><dd>{matricula || '—'}</dd></div>
               </dl>
               <dl>
@@ -326,7 +330,7 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
             <div className="sign">
               <div>
                 <div className="nmx">{profesionalNombreCorto}</div>
-                <div className="mnx">{especialidad}{matricula ? ` · ${matricula}` : ''}</div>
+                <div className="mnx">{especialidadConTitulo}{matricula ? ` · ${matricula}` : ''}</div>
               </div>
               <div className="fx">{firmaSelloUrl ? <img src={firmaSelloUrl} alt="Firma" /> : firmaTxt}</div>
             </div>
