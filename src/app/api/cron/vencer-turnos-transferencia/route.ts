@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { zonedDateArgentina } from '@/lib/timezone'
 import { enviarEmail } from '@/lib/brevo'
 import { emailTurnoTransferenciaVencido } from '@/lib/email-templates'
 import { sincronizarTurnoCancelado } from '@/lib/sync-google-calendar'
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
     if (!profesional) continue
 
     try {
-      const fecha = format(parseISO(turno.fecha_hora), "EEEE d 'de' MMMM", { locale: es })
+      const fecha = format(zonedDateArgentina(turno.fecha_hora), "EEEE d 'de' MMMM", { locale: es })
       await enviarEmail({
         destinatario: paciente.email,
         nombreDestinatario: `${paciente.nombre} ${paciente.apellido}`,
