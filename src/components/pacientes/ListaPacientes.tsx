@@ -123,9 +123,17 @@ export default function ListaPacientes({
         .from('pacientes')
         .select('*')
         .eq('terapeuta_id', terapeutaId)
-        .or(`nombre.ilike.%${texto}%,apellido.ilike.%${texto}%,dni.ilike.%${texto}%`)
-        .order('apellido')
-        .limit(50)
+      // Una palabra por .or() encadenado — postgrest-js agrega cada .or() como
+      // un parámetro `or=` propio en la URL (ver PostgrestFilterBuilder.or()),
+      // y PostgREST combina varios `or=` repetidos con AND entre ellos. Así,
+      // buscar "Roman Avila" exige que CADA palabra matchee nombre/apellido/dni
+      // en cualquier combinación, en vez de buscar el string completo contra
+      // una sola columna (nombre y apellido están separados, nunca iban a
+      // matchear un término con espacio).
+      for (const palabra of texto.split(/\s+/).filter(Boolean)) {
+        query = query.or(`nombre.ilike.%${palabra}%,apellido.ilike.%${palabra}%,dni.ilike.%${palabra}%`)
+      }
+      query = query.order('apellido').limit(50)
       if (estadoActual) query = query.eq('activo', estadoActual === 'activo')
       const { data } = await query
       if (cancelado) return
