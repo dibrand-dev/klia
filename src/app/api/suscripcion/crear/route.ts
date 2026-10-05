@@ -22,36 +22,46 @@ export async function POST(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 
   const preference = new Preference(mpClient)
-  const result = await preference.create({
-    body: {
-      items: [
-        {
-          id: plan,
-          title: `${planInfo.nombre} — ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
-          quantity: 1,
-          unit_price: monto,
-          currency_id: 'ARS',
+  let result
+  try {
+    result = await preference.create({
+      body: {
+        items: [
+          {
+            id: plan,
+            title: `${planInfo.nombre} — ${modalidad === 'mensual' ? 'Mensual' : 'Anual'}`,
+            quantity: 1,
+            unit_price: monto,
+            currency_id: 'ARS',
+          },
+        ],
+        back_urls: {
+          success: `${appUrl}/suscripcion/resultado`,
+          failure: `${appUrl}/suscripcion/resultado`,
+          pending: `${appUrl}/suscripcion/resultado`,
         },
-      ],
-      back_urls: {
-        success: `${appUrl}/suscripcion/resultado`,
-        failure: `${appUrl}/suscripcion/resultado`,
-        pending: `${appUrl}/suscripcion/resultado`,
+        auto_return: 'approved',
+        payment_methods: {
+          excluded_payment_types: [{ id: 'ticket' }],
+        },
+        metadata: {
+          terapeuta_id: user.id,
+          plan,
+          modalidad,
+          monto,
+        },
       },
-      auto_return: 'approved',
-      payment_methods: {
-        excluded_payment_types: [{ id: 'ticket' }],
-      },
-      metadata: {
-        terapeuta_id: user.id,
-        plan,
-        modalidad,
-        monto,
-      },
-    },
-  })
+    })
+  } catch (err) {
+    console.error('[crear] Preference.create falló:', err)
+    return NextResponse.json(
+      { error: 'No pudimos conectar con Mercado Pago. Intentá nuevamente.' },
+      { status: 502 },
+    )
+  }
 
   if (!result.id) {
+    console.error('[crear] Preference creada sin id:', result)
     return NextResponse.json({ error: 'Error al crear preferencia en Mercado Pago' }, { status: 500 })
   }
 

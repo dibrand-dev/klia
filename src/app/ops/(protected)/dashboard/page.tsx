@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { format, parseISO, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { fromZonedTime, toZonedTime } from 'date-fns-tz'
+import { ARGENTINA_TZ } from '@/lib/timezone'
 
 export const metadata = { title: 'Dashboard — Klia Ops' }
 
@@ -10,12 +12,14 @@ function MetricCard({
   label,
   value,
   sub,
+  subNeto,
   icon,
   color = 'text-primary',
 }: {
   label: string
   value: string | number
   sub?: string
+  subNeto?: string
   icon: string
   color?: string
 }) {
@@ -28,6 +32,7 @@ function MetricCard({
         <p className="text-[11px] font-semibold uppercase tracking-widest text-on-surface-variant mb-0.5">{label}</p>
         <p className="text-2xl font-bold text-on-surface">{value}</p>
         {sub && <p className="text-xs text-on-surface-variant mt-0.5">{sub}</p>}
+        {subNeto && <p className="text-xs text-on-surface-variant opacity-70">{subNeto}</p>}
       </div>
     </div>
   )
@@ -37,11 +42,6 @@ const PLAN_LABELS: Record<string, string> = {
   esencial: 'Esencial',
   profesional: 'Profesional',
   premium: 'Premium',
-}
-
-const MODALIDAD_LABELS: Record<string, string> = {
-  mensual: 'Mensual',
-  anual: 'Anual',
 }
 
 function formatMonto(monto: number): string {
@@ -56,7 +56,11 @@ export default async function OpsDashboardPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const inicioMes = startOfMonth(new Date()).toISOString()
+  // Mes calendario actual en hora Argentina, no en UTC (el server corre en
+  // UTC — a las 21-23hs ART del último día del mes, startOfMonth en UTC
+  // todavía cuenta como mes anterior si no se convierte).
+  const ahoraAR = toZonedTime(new Date(), ARGENTINA_TZ)
+  const inicioMes = fromZonedTime(startOfMonth(ahoraAR), ARGENTINA_TZ).toISOString()
 
   const [
     { count: totalPrestadores },
@@ -64,10 +68,10 @@ export default async function OpsDashboardPage() {
     { count: enTrial },
     { count: accesoBloqueado },
     { data: ultimosPrestadores },
-    { data: suscrAutorizadasMes },
+    { data: pagosDelMes },
     { count: debitosRechazados },
     { count: pendientesDePago },
-    { data: ultimasSuscripciones },
+    { data: ultimosPagos },
     { count: totalPacientes },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
@@ -75,32 +79,31 @@ export default async function OpsDashboardPage() {
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('estado_cuenta', 'trial'),
     supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('estado_cuenta', 'bloqueada'),
     supabase.from('profiles').select('id, nombre, apellido, email, especialidad, created_at').order('created_at', { ascending: false }).limit(10),
-    // Autorizadas este mes para calcular ingresos
-    supabase.from('suscripciones').select('monto').eq('estado', 'authorized').gte('suscripcion_inicio', inicioMes),
+    // Pagos aprobados este mes (cobros reales, no altas de suscripción) — excluye cuentas de prueba
+    serviceSupabase
+      .from('pagos_suscripcion')
+      .select('monto_bruto, monto_neto, terapeuta_id, profiles!inner(es_cuenta_prueba)')
+      .eq('estado', 'approved')
+      .eq('profiles.es_cuenta_prueba', false)
+      .gte('fecha_pago', inicioMes),
     // Pausadas este mes (débitos rechazados)
     supabase.from('suscripciones').select('*', { count: 'exact', head: true }).eq('estado', 'paused').gte('updated_at', inicioMes),
     // Pendientes totales
     supabase.from('suscripciones').select('*', { count: 'exact', head: true }).eq('estado', 'pending'),
-    // Últimas suscripciones autorizadas
-    supabase.from('suscripciones').select('id, terapeuta_id, plan, modalidad, monto, suscripcion_inicio').eq('estado', 'authorized').order('suscripcion_inicio', { ascending: false }).limit(8),
+    // Últimos 10 pagos recibidos (cualquier mes) — excluye cuentas de prueba
+    serviceSupabase
+      .from('pagos_suscripcion')
+      .select('id, terapeuta_id, plan, monto_bruto, monto_neto, fecha_pago, profiles!inner(nombre, apellido, es_cuenta_prueba)')
+      .eq('estado', 'approved')
+      .eq('profiles.es_cuenta_prueba', false)
+      .order('fecha_pago', { ascending: false })
+      .limit(10),
     // Total pacientes (service role para bypass RLS)
     serviceSupabase.from('pacientes').select('*', { count: 'exact', head: true }),
   ])
 
-  const ingresosMes = (suscrAutorizadasMes ?? []).reduce((acc, s) => acc + (s.monto ?? 0), 0)
-
-  // Fetch profiles for the last subscriptions
-  const terapeutaIds = (ultimasSuscripciones ?? []).map((s) => s.terapeuta_id).filter(Boolean)
-  const perfilesMap: Record<string, { nombre: string; apellido: string }> = {}
-  if (terapeutaIds.length > 0) {
-    const { data: perfiles } = await supabase
-      .from('profiles')
-      .select('id, nombre, apellido')
-      .in('id', terapeutaIds)
-    for (const p of perfiles ?? []) {
-      perfilesMap[p.id] = { nombre: p.nombre, apellido: p.apellido }
-    }
-  }
+  const ingresosMesBruto = (pagosDelMes ?? []).reduce((acc, p) => acc + Number(p.monto_bruto ?? 0), 0)
+  const ingresosMesNeto = (pagosDelMes ?? []).reduce((acc, p) => acc + Number(p.monto_neto ?? p.monto_bruto ?? 0), 0)
 
   return (
     <div className="px-6 md:px-8 pt-8 pb-20 max-w-[1200px]">
@@ -121,8 +124,9 @@ export default async function OpsDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard
           label="Ingresos del mes"
-          value={ingresosMes > 0 ? formatMonto(ingresosMes) : '—'}
-          sub={ingresosMes > 0 ? `${(suscrAutorizadasMes ?? []).length} pagos recibidos` : 'Sin cobros este mes'}
+          value={ingresosMesBruto > 0 ? formatMonto(ingresosMesBruto) : '—'}
+          sub={ingresosMesBruto > 0 ? `${(pagosDelMes ?? []).length} pagos recibidos` : 'Sin cobros este mes'}
+          subNeto={ingresosMesBruto > 0 ? `Neto: ${formatMonto(ingresosMesNeto)}` : undefined}
           icon="payments"
           color="text-primary"
         />
@@ -195,32 +199,30 @@ export default async function OpsDashboardPage() {
           <div className="px-6 py-4 border-b border-outline-variant/10">
             <h2 className="text-sm font-bold text-on-surface">Últimos pagos recibidos</h2>
           </div>
-          {(ultimasSuscripciones ?? []).length === 0 ? (
+          {(ultimosPagos ?? []).length === 0 ? (
             <div className="px-6 py-10 text-center text-on-surface-variant">
               <span className="material-symbols-outlined text-4xl opacity-20 mb-3 block">payments</span>
               <p className="text-sm">Sin pagos registrados aún.</p>
             </div>
           ) : (
             <ul className="divide-y divide-outline-variant/10">
-              {(ultimasSuscripciones ?? []).map((s) => {
-                const perfil = perfilesMap[s.terapeuta_id]
+              {(ultimosPagos ?? []).map((p) => {
+                const perfil = p.profiles as unknown as { nombre: string; apellido: string } | null
                 return (
-                  <li key={s.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-on-surface truncate">
                         {perfil ? `${perfil.nombre} ${perfil.apellido}` : '—'}
                       </p>
                       <p className="text-xs text-on-surface-variant">
-                        {PLAN_LABELS[s.plan] ?? s.plan} · {MODALIDAD_LABELS[s.modalidad] ?? s.modalidad}
+                        {PLAN_LABELS[p.plan ?? ''] ?? p.plan ?? '—'}
                       </p>
-                      {s.suscripcion_inicio && (
-                        <p className="text-[11px] text-on-surface-variant opacity-60 mt-0.5">
-                          {format(parseISO(s.suscripcion_inicio), "d MMM yyyy", { locale: es })}
-                        </p>
-                      )}
+                      <p className="text-[11px] text-on-surface-variant opacity-60 mt-0.5">
+                        {format(parseISO(p.fecha_pago), "d MMM yyyy", { locale: es })}
+                      </p>
                     </div>
                     <span className="shrink-0 text-sm font-bold text-green-600">
-                      {formatMonto(s.monto)}
+                      {formatMonto(Number(p.monto_bruto))}
                     </span>
                   </li>
                 )
