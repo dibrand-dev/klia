@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { parseISO, addMinutes, format } from 'date-fns'
+import { addMinutes, format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
-import { ARGENTINA_TZ } from '@/lib/timezone'
+import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -33,8 +33,8 @@ async function isSlotAvailable(
   const slotStart = timeToMin(hora)
   const slotEnd = slotStart + duracion
 
-  const dayStart = `${fecha}T00:00:00`
-  const dayEnd = `${fecha}T23:59:59`
+  const dayStart = fromZonedTime(`${fecha}T00:00:00`, ARGENTINA_TZ).toISOString()
+  const dayEnd = fromZonedTime(`${fecha}T23:59:59`, ARGENTINA_TZ).toISOString()
 
   const [{ data: turnos }, { data: entrevistas }] = await Promise.all([
     db.from('turnos')
@@ -51,7 +51,7 @@ async function isSlotAvailable(
   ])
 
   for (const t of turnos ?? []) {
-    const d = parseISO(t.fecha_hora)
+    const d = zonedDateArgentina(t.fecha_hora)
     const oStart = d.getHours() * 60 + d.getMinutes()
     const oEnd = oStart + (t.duracion_min ?? duracion)
     if (slotStart < oEnd && slotEnd > oStart) return false
