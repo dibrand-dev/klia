@@ -309,6 +309,56 @@ export type Database = {
           },
         ]
       }
+      tipos_turno: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          nombre: string
+          duracion_min: number
+          precio: number | null
+          moneda: string
+          activo: boolean
+          visible_en_booking: boolean
+          orden: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          nombre: string
+          duracion_min: number
+          precio?: number | null
+          moneda?: string
+          activo?: boolean
+          visible_en_booking?: boolean
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          nombre?: string
+          duracion_min?: number
+          precio?: number | null
+          moneda?: string
+          activo?: boolean
+          visible_en_booking?: boolean
+          orden?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tipos_turno_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pacientes: {
         Row: {
           id: string
@@ -466,6 +516,7 @@ export type Database = {
           monto_pagado: number | null
           es_sobreturno: boolean
           sucursal_id: string | null
+          tipo_turno_id: string | null
           vence_en: string | null
           created_at: string
           updated_at: string
@@ -494,6 +545,7 @@ export type Database = {
           monto_pagado?: number | null
           es_sobreturno?: boolean
           sucursal_id?: string | null
+          tipo_turno_id?: string | null
           vence_en?: string | null
           created_at?: string
           updated_at?: string
@@ -516,6 +568,7 @@ export type Database = {
           monto_pagado?: number | null
           es_sobreturno?: boolean
           sucursal_id?: string | null
+          tipo_turno_id?: string | null
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
@@ -546,6 +599,13 @@ export type Database = {
             columns: ['sucursal_id']
             isOneToOne: false
             referencedRelation: 'sucursales'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'turnos_tipo_turno_id_fkey'
+            columns: ['tipo_turno_id']
+            isOneToOne: false
+            referencedRelation: 'tipos_turno'
             referencedColumns: ['id']
           },
         ]
@@ -2267,6 +2327,7 @@ export type VademecumAlimentoNutriente = Database['public']['Tables']['vademecum
 export type Testimonio = Database['public']['Tables']['testimonios']['Row']
 export type Sucursal = Database['public']['Tables']['sucursales']['Row']
 export type HorarioSucursal = Database['public']['Tables']['horarios_sucursal']['Row']
+export type TipoTurno = Database['public']['Tables']['tipos_turno']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]
