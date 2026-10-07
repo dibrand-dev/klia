@@ -14,6 +14,11 @@ export function normalizarEmail(email: string | null | undefined): string | null
   return limpio.length > 0 ? limpio : null
 }
 
+// Para usar un valor como filtro ilike sin que %, _ o \ actúen como comodín/escape.
+export function escaparIlike(valor: string): string {
+  return valor.replace(/[\\%_]/g, (c) => `\\${c}`)
+}
+
 // Sin tildes, minúsculas, espacios internos colapsados y recortados en los
 // bordes — para comparar "María José" contra "maria   jose" como la misma
 // persona.

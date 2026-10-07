@@ -104,7 +104,6 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
     if (!form.dni.trim()) {
       setDniDuplicadoActivo(null)
       setDniDuplicadoInactivo(null)
-      setEmailCoincidente(null)
       return
     }
     const resultado = await verificarDuplicados()
@@ -113,6 +112,15 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
     const inactivo = !activo ? resultado.dni.find((p) => !p.activo) ?? null : null
     setDniDuplicadoActivo(activo)
     setDniDuplicadoInactivo(inactivo)
+  }
+
+  async function handleEmailBlur() {
+    if (!form.email.trim()) {
+      setEmailCoincidente(null)
+      return
+    }
+    const resultado = await verificarDuplicados()
+    if (!resultado) return
     setEmailCoincidente(resultado.email[0] ?? null)
   }
 
@@ -160,7 +168,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
       return
     }
 
-    if (form.dni.trim()) {
+    if (form.dni.trim() || form.email.trim()) {
       const resultado = await verificarDuplicados()
       if (resultado) {
         const activo = resultado.dni.find((p) => p.activo) ?? null
@@ -405,7 +413,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>Email</label>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="paciente@email.com" />
+                <input name="email" type="email" value={form.email} onChange={handleChange} onBlur={handleEmailBlur} placeholder="paciente@email.com" />
                 {!form.email && (
                   <span className="hint warn">
                     <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.6 1.6 0 0 0 1.4 2.4h15.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z" /></svg>

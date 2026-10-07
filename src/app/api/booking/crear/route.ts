@@ -4,7 +4,7 @@ import { addMinutes, format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
-import { normalizarEmail, normalizarNombre } from '@/lib/pacientes/duplicados'
+import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
 import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -24,11 +24,6 @@ function shortId(): string {
 function timeToMin(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 function pad(n: number) { return String(n).padStart(2, '0') }
 function minToTime(m: number) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}` }
-
-// Para usar el email como filtro ilike sin que %, _ o \ actúen como comodín/escape.
-function escaparIlike(valor: string): string {
-  return valor.replace(/[\\%_]/g, (c) => `\\${c}`)
-}
 
 async function isSlotAvailable(
   db: ReturnType<typeof serviceClient>,

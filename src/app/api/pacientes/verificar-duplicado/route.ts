@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
-import { normalizarDni, normalizarEmail } from '@/lib/pacientes/duplicados'
+import { normalizarDni, normalizarEmail, escaparIlike } from '@/lib/pacientes/duplicados'
 
 export const runtime = 'nodejs'
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       .from('pacientes')
       .select('id, nombre, apellido, activo')
       .eq('terapeuta_id', efectivo.terapeutaId)
-      .ilike('email', emailBuscado)
+      .ilike('email', escaparIlike(emailBuscado))
     resultado.email = (data ?? []).map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, activo: p.activo }))
   }
 
