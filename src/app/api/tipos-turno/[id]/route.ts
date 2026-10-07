@@ -50,21 +50,28 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   if (!existente) return NextResponse.json({ error: 'Tipo de turno no encontrado' }, { status: 404 })
 
-  const body = await req.json()
+  const body = await req.json() as {
+    nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
+    visible_en_booking?: unknown; activo?: unknown
+  }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
     return NextResponse.json({ error: validado.error }, { status: 400 })
   }
 
+  const update: Record<string, unknown> = {
+    nombre: validado.nombre,
+    duracion_min: validado.duracion_min,
+    precio: validado.precio,
+    moneda: validado.moneda,
+    updated_at: new Date().toISOString(),
+  }
+  if (typeof body.visible_en_booking === 'boolean') update.visible_en_booking = body.visible_en_booking
+  if (typeof body.activo === 'boolean') update.activo = body.activo
+
   const { data: actualizado, error } = await db
     .from('tipos_turno')
-    .update({
-      nombre: validado.nombre,
-      duracion_min: validado.duracion_min,
-      precio: validado.precio,
-      moneda: validado.moneda,
-      updated_at: new Date().toISOString(),
-    })
+    .update(update)
     .eq('id', params.id)
     .select('*')
     .single()

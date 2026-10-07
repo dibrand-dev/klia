@@ -11,9 +11,10 @@ import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
 import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
 import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
+import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
-import type { Profile, ProfesionalObraSocial } from '@/types/database'
+import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
 
 type Suscripcion = {
   estado: string
@@ -39,6 +40,8 @@ interface Props {
   cobrosMoneda: string
   cobrosMessagePaciente: string
   esColaborador?: boolean
+  tiposTurnoHabilitado: boolean
+  tiposTurno: TipoTurno[]
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -208,7 +211,7 @@ const DIAS_SEMANA_CONFIG = [
 ]
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno }: Props) {
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
@@ -591,6 +594,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'perfil', label: 'Perfil profesional' },
     { id: 'recetas', label: 'Recetas electrónicas' },
     { id: 'horarios', label: multiSede ? 'Sedes y horarios' : 'Horarios' },
+    { id: 'tipos-turno', label: 'Tipos de turno' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'transferencia', label: 'Transferencia bancaria' },
     { id: 'aviso-deuda', label: 'Aviso de deuda' },
@@ -1091,6 +1095,16 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 {horarioSaved ? '✓ Guardado' : horarioLoading ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
+          </section>
+
+          {/* ═══ TIPOS DE TURNO ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'tipos-turno' ? ' hidden md:block' : ''}`} id="tipos-turno" style={secStyle}>
+            <TiposTurnoSection
+              plan={profile.plan}
+              habilitado={tiposTurnoHabilitado}
+              tiposIniciales={tiposTurno}
+              terminologia={profile.terminologia ?? undefined}
+            />
           </section>
 
           {/* ═══ COBROS Y PAGOS ═══ */}

@@ -79,7 +79,10 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const body = await req.json()
+  const body = await req.json() as {
+    nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
+    visible_en_booking?: unknown; activo?: unknown
+  }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
     return NextResponse.json({ error: validado.error }, { status: 400 })
@@ -93,6 +96,8 @@ export async function POST(req: NextRequest) {
       duracion_min: validado.duracion_min,
       precio: validado.precio,
       moneda: validado.moneda,
+      visible_en_booking: typeof body.visible_en_booking === 'boolean' ? body.visible_en_booking : true,
+      activo: typeof body.activo === 'boolean' ? body.activo : true,
     })
     .select('*')
     .single()

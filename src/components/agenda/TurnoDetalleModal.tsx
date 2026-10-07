@@ -10,14 +10,23 @@ import {
   ESTADO_TURNO_LABELS, ESTADO_TURNO_DOT,
 } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import type { Turno, EstadoTurno, TurnoRecurrente } from '@/types/database'
+import type { Turno, EstadoTurno, TurnoRecurrente, TipoTurno } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
 import ConflictosPanel from './ConflictosPanel'
+import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/TipoTurnoPicker'
+import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
+
+function pad2(n: number) { return String(n).padStart(2, '0') }
+function sumarMinutos(hora: string, minutos: number): string {
+  const [h, m] = hora.split(':').map(Number)
+  const total = h * 60 + m + minutos
+  return `${pad2(Math.floor(total / 60) % 24)}:${pad2(total % 60)}`
+}
 
 interface TurnoDetalleModalProps {
   turno: Turno
@@ -35,10 +44,10 @@ interface TurnoDetalleModalProps {
   // revisión futura sin la presión de cerrar un caso puntual.
   onSerieActualizada?: (turnosNuevos: Turno[], turnosBorradosIds: string[], eventIdsBorrados: string[]) => void
   terminologia?: 'sesion' | 'consulta'
+  tiposTurno?: TipoTurno[]
 }
 
 const ESTADOS_TRANSICION: EstadoTurno[] = ['pendiente', 'confirmado', 'realizado', 'no_asistio', 'cancelado']
-const DURACIONES = [20, 30, 45, 50, 60, 90]
 
 const MODALIDAD_ICON: Record<string, string> = {
   presencial: '🏢',
@@ -62,7 +71,7 @@ function ModalShell({ children, open, onClose, title, subtitle }: {
   )
 }
 
-export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, onSerieActualizada, terminologia }: TurnoDetalleModalProps) {
+export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, onSerieActualizada, terminologia, tiposTurno = [] }: TurnoDetalleModalProps) {
   const t = getTerminologia(terminologia)
   const router = useRouter()
   const paciente = turno.paciente
@@ -86,6 +95,9 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     monto: formatearMontoInputInicial(turno.monto),
     notas: turno.notas ?? '',
   })
+  const [editTipo, setEditTipo] = useState<'sesion' | 'entrevista'>('sesion')
+  const [editTipoTurnoId, setEditTipoTurnoId] = useState<string | null>(turno.tipo_turno_id ?? null)
+  const tipoTurnoOriginalId = turno.tipo_turno_id ?? null
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
 
   // Serie recurrente
@@ -336,6 +348,37 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     setTimeout(() => setHonorarioExito(false), 3000)
   }
 
+  // Tipo propio elegido en el formulario de edición, para la línea "Ajustado
+  // para este turno" (mismo criterio que NuevoTurnoPageForm).
+  const editTipoPropioSeleccionado = editTipoTurnoId ? tiposTurno.find((t) => t.id === editTipoTurnoId) ?? null : null
+
+  function handlePickTipoEdicion(pick: TipoTurnoPick) {
+    if (pick.tipo === 'entrevista') {
+      // La edición de turnos no soporta pasar a Entrevista (son tablas
+      // distintas) — esta opción no debería mostrarse como seleccionable
+      // acá, pero por si el picker se reutiliza, no hace nada.
+      return
+    }
+    setEditTipo('sesion')
+    setEditTipoTurnoId(pick.tipoTurnoId)
+    if (pick.tipoTurnoId) {
+      setEditForm((prev) => ({
+        ...prev,
+        duracion_min: pick.duracionMin ?? prev.duracion_min,
+        monto: formatearMontoInputInicial(pick.precio ?? null),
+      }))
+    }
+  }
+
+  function restablecerTipoPropioEdicion() {
+    if (!editTipoPropioSeleccionado) return
+    setEditForm((prev) => ({
+      ...prev,
+      duracion_min: editTipoPropioSeleccionado.duracion_min,
+      monto: formatearMontoInputInicial(editTipoPropioSeleccionado.precio),
+    }))
+  }
+
   async function guardarEdicion() {
     setError(null)
     const fechaHora = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
@@ -353,6 +396,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         modalidad: editForm.modalidad,
         monto: parsearMontoInput(editForm.monto),
         notas: editForm.notas || null,
+        tipo_turno_id: editTipoTurnoId,
       })
       .eq('id', turno.id)
     if (dbError) { setError('Error al guardar cambios.'); setLoading(false); return }
@@ -368,6 +412,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       modalidad: editForm.modalidad,
       monto: parsearMontoInput(editForm.monto),
       notas: editForm.notas || null,
+      tipo_turno_id: editTipoTurnoId,
     })
     setModo('ver')
     setLoading(false)
@@ -586,6 +631,35 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         </div>
         <div className="p-5 space-y-4">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
+          {tiposTurno.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de turno</label>
+              <TipoTurnoPicker
+                tiposTurno={tiposTurno}
+                tipo={editTipo}
+                tipoTurnoId={editTipoTurnoId}
+                nombreSesion={t.Sesion}
+                onPick={handlePickTipoEdicion}
+                showEntrevista={false}
+              />
+            </div>
+          )}
+          {editTipoTurnoId !== tipoTurnoOriginalId && (
+            <div className="tt-chg-note">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+              <span>
+                Duración y monto se actualizaron a los de{' '}
+                <b>{editTipoPropioSeleccionado?.nombre ?? t.Sesion}</b>. Podés ajustarlos antes de guardar.
+              </span>
+            </div>
+          )}
+          {editTipoPropioSeleccionado && (Number(editForm.duracion_min) !== editTipoPropioSeleccionado.duracion_min || parsearMontoInput(editForm.monto) !== (editTipoPropioSeleccionado.precio ?? 0)) && (
+            <div className="tt-prefill">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+              <span>Ajustado para este turno · <b>{editTipoPropioSeleccionado.nombre}</b> dura <b>{editTipoPropioSeleccionado.duracion_min} min</b></span>
+              <button type="button" onClick={restablecerTipoPropioEdicion}>Restablecer</button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
@@ -603,11 +677,17 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Duración</label>
-              <select value={editForm.duracion_min}
-                onChange={(e) => setEditForm((p) => ({ ...p, duracion_min: Number(e.target.value) }))}
-                className="input-field">
-                {DURACIONES.map((d) => <option key={d} value={d}>{d} min</option>)}
-              </select>
+              <div className="tt-ig">
+                <input
+                  type="number" min={5} step={5} inputMode="numeric"
+                  value={editForm.duracion_min}
+                  onChange={(e) => setEditForm((p) => ({ ...p, duracion_min: Number(e.target.value) }))}
+                />
+                <span className="tt-sfx">min</span>
+              </div>
+              <p className="tt-dur-end">
+                {Number(editForm.duracion_min) >= 5 ? `Termina a las ${sumarMinutos(editForm.hora, Number(editForm.duracion_min))}` : 'Indicá al menos 5 minutos'}
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modalidad</label>
@@ -785,6 +865,16 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
 
         {/* Info fecha/hora */}
         <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          {turno.tipo_turno_id && (
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <rect x="3" y="4" width="18" height="17" rx="2" strokeWidth={2} />
+                <path strokeLinecap="round" d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7" strokeWidth={2} />
+              </svg>
+              <span>{tiposTurno.find((x) => x.id === turno.tipo_turno_id)?.nombre ?? 'Tipo propio'}</span>
+              <span className="tt-tag2">Tipo propio</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
