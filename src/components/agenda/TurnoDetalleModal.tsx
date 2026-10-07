@@ -97,6 +97,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   })
   const [editTipo, setEditTipo] = useState<'sesion' | 'entrevista'>('sesion')
   const [editTipoTurnoId, setEditTipoTurnoId] = useState<string | null>(turno.tipo_turno_id ?? null)
+  const [editMoneda, setEditMoneda] = useState<Moneda>((turno.moneda as Moneda) ?? 'ARS')
   const tipoTurnoOriginalId = turno.tipo_turno_id ?? null
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
 
@@ -367,6 +368,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         duracion_min: pick.duracionMin ?? prev.duracion_min,
         monto: formatearMontoInputInicial(pick.precio ?? null),
       }))
+      if (pick.moneda) setEditMoneda(pick.moneda as Moneda)
     }
   }
 
@@ -377,6 +379,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       duracion_min: editTipoPropioSeleccionado.duracion_min,
       monto: formatearMontoInputInicial(editTipoPropioSeleccionado.precio),
     }))
+    setEditMoneda(editTipoPropioSeleccionado.moneda as Moneda)
   }
 
   async function guardarEdicion() {
@@ -395,6 +398,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         duracion_min: Number(editForm.duracion_min),
         modalidad: editForm.modalidad,
         monto: parsearMontoInput(editForm.monto),
+        moneda: editMoneda,
         notas: editForm.notas || null,
         tipo_turno_id: editTipoTurnoId,
       })
@@ -411,6 +415,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       duracion_min: Number(editForm.duracion_min),
       modalidad: editForm.modalidad,
       monto: parsearMontoInput(editForm.monto),
+      moneda: editMoneda,
       notas: editForm.notas || null,
       tipo_turno_id: editTipoTurnoId,
     })
@@ -644,7 +649,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
               />
             </div>
           )}
-          {editTipoTurnoId !== tipoTurnoOriginalId && (
+          {editTipoTurnoId !== null && editTipoTurnoId !== tipoTurnoOriginalId && (
             <div className="tt-chg-note">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
               <span>
@@ -701,7 +706,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Honorarios (ARS)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Honorarios ({editMoneda})</label>
             <MontoInput name="monto" value={editForm.monto}
               onChange={(raw) => setEditForm((p) => ({ ...p, monto: raw }))}
               className="input-field" />
@@ -865,16 +870,14 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
 
         {/* Info fecha/hora */}
         <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-          {turno.tipo_turno_id && (
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <rect x="3" y="4" width="18" height="17" rx="2" strokeWidth={2} />
-                <path strokeLinecap="round" d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7" strokeWidth={2} />
-              </svg>
-              <span>{tiposTurno.find((x) => x.id === turno.tipo_turno_id)?.nombre ?? 'Tipo propio'}</span>
-              <span className="tt-tag2">Tipo propio</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <rect x="3" y="4" width="18" height="17" rx="2" strokeWidth={2} />
+              <path strokeLinecap="round" d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7" strokeWidth={2} />
+            </svg>
+            <span>{turno.tipo_turno_id ? (tiposTurno.find((x) => x.id === turno.tipo_turno_id)?.nombre ?? 'Tipo propio') : t.Sesion}</span>
+            {turno.tipo_turno_id && <span className="tt-tag2">Tipo propio</span>}
+          </div>
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

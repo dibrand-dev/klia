@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     // Mismo índice único que en POST — tampoco es parcial por `activo` acá.
     if (error.code === '23505') {
       return NextResponse.json(
-        { error: 'Ya tenés un tipo de turno con ese nombre — incluso si lo desactivaste, el nombre sigue reservado' },
+        { error: 'Ya tenés un tipo con ese nombre (puede estar inactivo)' },
         { status: 409 },
       )
     }

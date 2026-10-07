@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     // dado de baja (activo=false) sigue bloqueando el nombre.
     if (error.code === '23505') {
       return NextResponse.json(
-        { error: 'Ya tenés un tipo de turno con ese nombre — incluso si lo desactivaste, el nombre sigue reservado' },
+        { error: 'Ya tenés un tipo con ese nombre (puede estar inactivo)' },
         { status: 409 },
       )
     }

@@ -188,18 +188,12 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         <div className="tt-list">
           <div className="tt-row tt-fixed">
             <div className="tt-nm"><b>{t.Sesion}</b></div>
-            <div className="tt-vs">
-              <div className="tt-v free">Se define al agendar</div>
-              <div className="tt-v free">Se define al agendar</div>
-            </div>
+            <div className="tt-v free" style={{ gridColumn: 'span 2' }}>Se define al agendar</div>
             <div className="tt-acts"><span className="tt-ro">{ICON_LOCK}Fijo</span></div>
           </div>
           <div className="tt-row tt-fixed">
             <div className="tt-nm"><b>Entrevista</b></div>
-            <div className="tt-vs">
-              <div className="tt-v free">Se define al agendar</div>
-              <div className="tt-v free">Se define al agendar</div>
-            </div>
+            <div className="tt-v free" style={{ gridColumn: 'span 2' }}>Se define al agendar</div>
             <div className="tt-acts"><span className="tt-ro">{ICON_LOCK}Fijo</span></div>
           </div>
         </div>
@@ -270,8 +264,26 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         open={editandoId !== null}
         onClose={cerrar}
         title={editandoId === 'new' ? 'Nuevo tipo de turno' : 'Editar tipo de turno'}
-        subtitle={editandoId === 'new' ? 'Disponible en tu agenda al guardar' : 'Los turnos ya agendados conservan su duración y monto'}
         width="compact"
+        header={(
+          // Header propio — el default de SlideOver aplica `capitalize truncate`
+          // al subtítulo (Title Case + corte), que no corresponde para una
+          // oración como "Disponible en tu agenda al guardar". Solo para este
+          // SlideOver, no se toca el componente para el resto de la app.
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ minWidth: 0, paddingRight: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+                {editandoId === 'new' ? 'Nuevo tipo de turno' : 'Editar tipo de turno'}
+              </h2>
+              <p style={{ fontSize: 12, color: 'var(--muted)', margin: '2px 0 0' }}>
+                {editandoId === 'new' ? 'Disponible en tu agenda al guardar' : 'Los turnos ya agendados conservan su duración y monto'}
+              </p>
+            </div>
+            <button type="button" onClick={cerrar} className="so-close-custom" style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 7, border: 'none', background: 'transparent', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--ink-2)', strokeWidth: 1.9, fill: 'none' }}><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+        )}
         footer={(
           <div style={{ borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1 }} />
@@ -289,7 +301,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
             className={touched && !nombreOk ? 'tt-bad' : ''}
             placeholder="Ej. Examen antropométrico completo"
             value={draft.nombre}
-            onChange={(e) => setDraft((p) => ({ ...p, nombre: e.target.value }))}
+            onChange={(e) => { setDraft((p) => ({ ...p, nombre: e.target.value })); setErrorNombre(null) }}
           />
           {errorNombre && <span className="tt-err">{errorNombre}</span>}
           {touched && !nombreOk && !errorNombre && <span className="tt-err">Ponele un nombre al tipo de turno.</span>}
