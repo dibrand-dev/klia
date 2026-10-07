@@ -676,9 +676,15 @@ export default function NuevoTurnoPageForm({
                 setForm((prev) => ({
                   ...prev,
                   paciente_id: id,
-                  monto: prev.monto || formatearMontoInputInicial(p?.honorarios),
+                  // Con un tipo propio elegido, su monto ya mandó sobre
+                  // prev.monto — no hay que volver a tocarlo con los
+                  // honorarios del paciente, sin importar el orden en que
+                  // se elija cada cosa.
+                  monto: tipoTurnoId ? prev.monto : (prev.monto || formatearMontoInputInicial(p?.honorarios)),
                 }))
-                if (p?.moneda_preferida) setMoneda(p.moneda_preferida as Moneda)
+                // Mismo criterio para la moneda: el tipo propio ya la fijó,
+                // el paciente no la pisa.
+                if (p?.moneda_preferida && !tipoTurnoId) setMoneda(p.moneda_preferida as Moneda)
               }}
               className="input-field"
             />
