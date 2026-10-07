@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import type { TipoTurno } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
+import MontoInput from '@/components/ui/MontoInput'
 import { getTerminologia } from '@/hooks/useTerminologia'
+import { parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import './tipos-turno.css'
 
 interface Props {
@@ -54,7 +56,7 @@ function draftDeTipo(t: TipoTurno): Draft {
   return {
     nombre: t.nombre,
     duracion_min: String(t.duracion_min),
-    precio: t.precio != null ? String(t.precio) : '',
+    precio: formatearMontoInputInicial(t.precio),
     moneda: t.moneda,
     visible_en_booking: t.visible_en_booking,
     activo: t.activo,
@@ -104,7 +106,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
     const body = {
       nombre: draft.nombre,
       duracion_min: Number(draft.duracion_min),
-      precio: draft.precio ? Number(draft.precio) : null,
+      precio: parsearMontoInput(draft.precio),
       moneda: draft.moneda,
       visible_en_booking: draft.visible_en_booking,
       activo: draft.activo,
@@ -326,10 +328,11 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
             <label htmlFor="ttFPrice">Precio</label>
             <div className="tt-ig">
               <span className="tt-pfx">{SYM[draft.moneda] ?? '$'}</span>
-              <input
-                id="ttFPrice" type="number" min={0} step={500} inputMode="numeric" placeholder="0"
+              <MontoInput
+                name="ttFPrice"
                 value={draft.precio}
-                onChange={(e) => setDraft((p) => ({ ...p, precio: e.target.value }))}
+                onChange={(raw) => setDraft((p) => ({ ...p, precio: raw }))}
+                placeholder={draft.moneda === 'ARS' ? 'Ej: 15000' : 'Ej: 150,00'}
               />
             </div>
           </div>
@@ -371,7 +374,10 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
             <div className="tt-pn">{draft.nombre.trim() || 'Nombre del tipo'}</div>
             <div className="tt-pm">{draft.duracion_min ? `${draft.duracion_min} min` : '— min'}</div>
           </div>
-          <div className="tt-pp">{draft.precio && Number(draft.precio) > 0 ? `${SYM[draft.moneda] ?? '$'} ${Number(draft.precio).toLocaleString('es-AR')}` : 'Sin costo'}</div>
+          <div className="tt-pp">{(() => {
+            const precioNum = parsearMontoInput(draft.precio)
+            return precioNum && precioNum > 0 ? `${SYM[draft.moneda] ?? '$'} ${precioNum.toLocaleString('es-AR')}` : 'Sin costo'
+          })()}</div>
         </div>
       </SlideOver>
     </>
