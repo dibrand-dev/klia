@@ -8,6 +8,7 @@ interface Props {
   slug: string
   fecha: string
   tipo: string
+  tipoTurnoId?: string | null
   selectedHora: string | null
   onHora: (h: string) => void
   onNext: () => void
@@ -42,6 +43,7 @@ export default function StepHorario({
   slug,
   fecha,
   tipo,
+  tipoTurnoId,
   selectedHora,
   onHora,
   onNext,
@@ -60,7 +62,8 @@ export default function StepHorario({
     setSlots([])
 
     const sedeParam = sede ? `&sede_id=${sede.id}` : ''
-    fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}${sedeParam}`)
+    const tipoTurnoIdParam = tipoTurnoId ? `&tipo_turno_id=${tipoTurnoId}` : ''
+    fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}${sedeParam}${tipoTurnoIdParam}`)
       .then((r) => {
         if (!r.ok) throw new Error('error')
         return r.json()
@@ -78,7 +81,7 @@ export default function StepHorario({
       })
 
     return () => { cancelled = true }
-  }, [slug, fecha, tipo, sede])
+  }, [slug, fecha, tipo, tipoTurnoId, sede])
 
   const manana = slots.filter((s) => {
     const [h] = s.split(':').map(Number)

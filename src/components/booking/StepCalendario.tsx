@@ -6,6 +6,7 @@ import type { SedePublica } from '@/app/p/[slug]/page'
 
 interface Props {
   tipo: string
+  tipoTurnoId?: string | null
   slug: string
   selectedFecha: string | null
   onFecha: (f: string) => void
@@ -33,6 +34,7 @@ function firstDayOffset(year: number, month: number): number {
 
 export default function StepCalendario({
   tipo,
+  tipoTurnoId,
   slug,
   selectedFecha,
   onFecha,
@@ -56,8 +58,9 @@ export default function StepCalendario({
     try {
       const monthStr = `${viewYear}-${pad(viewMonth)}`
       const sedeParam = sede ? `&sede_id=${sede.id}` : ''
+      const tipoTurnoIdParam = tipoTurnoId ? `&tipo_turno_id=${tipoTurnoId}` : ''
       const res = await fetch(
-        `/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes${sedeParam}`
+        `/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes${sedeParam}${tipoTurnoIdParam}`
       )
       if (res.ok) {
         const data = await res.json()
@@ -68,7 +71,7 @@ export default function StepCalendario({
     } finally {
       setLoading(false)
     }
-  }, [slug, tipo, viewYear, viewMonth, sede])
+  }, [slug, tipo, tipoTurnoId, viewYear, viewMonth, sede])
 
   useEffect(() => {
     fetchAvailable()

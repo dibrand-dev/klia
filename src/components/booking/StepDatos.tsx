@@ -10,9 +10,16 @@ interface FormData {
   coberturaId: string
 }
 
+type TipoResuelto = {
+  duracion: number
+  precio: number | null
+  moneda: string
+  nombre: string
+}
+
 interface Props {
   profile: ProfileData
-  tipo: string
+  tipoResuelto: TipoResuelto
   fecha: string
   hora: string
   modalidad: string
@@ -21,11 +28,6 @@ interface Props {
   onNext: () => void
   onBack: () => void
   sede?: SedePublica | null
-}
-
-const TIPO_LABELS: Record<string, string> = {
-  sesion: 'Sesión',
-  entrevista: 'Entrevista inicial',
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -126,7 +128,7 @@ function InputField({
 
 export default function StepDatos({
   profile,
-  tipo,
+  tipoResuelto,
   fecha,
   hora,
   modalidad,
@@ -136,13 +138,8 @@ export default function StepDatos({
   onBack,
   sede,
 }: Props) {
-  const duracion = tipo === 'sesion'
-    ? profile.booking_duracion_sesion
-    : profile.booking_duracion_entrevista
-
-  const precio = tipo === 'sesion'
-    ? profile.booking_precio_sesion
-    : profile.booking_precio_entrevista
+  const duracion = tipoResuelto.duracion
+  const precio = tipoResuelto.precio
 
   const fechaFmt = formatFecha(fecha)
   const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
@@ -151,7 +148,7 @@ export default function StepDatos({
     onForm({ ...form, [k]: v })
   }
 
-  const sym = profile.booking_moneda === 'USD' ? 'US$' : profile.booking_moneda === 'EUR' ? '€' : '$'
+  const sym = tipoResuelto.moneda === 'USD' ? 'US$' : tipoResuelto.moneda === 'EUR' ? '€' : '$'
 
   return (
     <div>
@@ -301,7 +298,7 @@ export default function StepDatos({
               label="Fecha"
               value={<span style={{ textTransform: 'capitalize' }}>{fechaFmt} · {hora} hs</span>}
             />
-            <ResumenRow label="Duración" value={`${duracion} min · ${TIPO_LABELS[tipo] ?? tipo}`} />
+            <ResumenRow label="Duración" value={`${duracion} min · ${tipoResuelto.nombre}`} />
           </div>
           {precio !== null && (
             <div style={{
@@ -315,7 +312,7 @@ export default function StepDatos({
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{sym}</span>
                     {precio.toLocaleString('es-AR')}
                   </span>
-                  <span style={{ fontSize: 12, color: '#8A93A1', fontWeight: 500 }}>{profile.booking_moneda}</span>
+                  <span style={{ fontSize: 12, color: '#8A93A1', fontWeight: 500 }}>{tipoResuelto.moneda}</span>
                 </>
               ) : (
                 <span style={{ fontSize: 12.5, color: '#5B6472', fontWeight: 500 }}>Este costo lo cubre tu obra social</span>

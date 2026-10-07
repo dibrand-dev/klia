@@ -8,6 +8,7 @@ import type { SedePublica } from '@/app/p/[slug]/page'
 interface Props {
   slug: string
   tipo: string
+  tipoTurnoId?: string | null
   nombreProfesional: string
   sedes: SedePublica[]
   onSede: (sede: SedePublica) => void
@@ -42,7 +43,8 @@ function pad(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-async function buscarProximoTurno(slug: string, tipo: string, sedeId: string): Promise<{ fecha: string; hora: string } | null> {
+async function buscarProximoTurno(slug: string, tipo: string, sedeId: string, tipoTurnoId?: string | null): Promise<{ fecha: string; hora: string } | null> {
+  const tipoTurnoIdParam = tipoTurnoId ? `&tipo_turno_id=${tipoTurnoId}` : ''
   const today = new Date()
   for (let offset = 0; offset < 2; offset++) {
     const d = new Date(today.getFullYear(), today.getMonth() + offset, 1)
@@ -50,13 +52,13 @@ async function buscarProximoTurno(slug: string, tipo: string, sedeId: string): P
     const m = d.getMonth() + 1
     const monthStr = `${y}-${pad(m)}`
     try {
-      const res = await fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes&sede_id=${sedeId}`)
+      const res = await fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${monthStr}&tipo=${tipo}&view=mes&sede_id=${sedeId}${tipoTurnoIdParam}`)
       if (!res.ok) continue
       const data = await res.json()
       const days: number[] = (data.availableDays ?? []).slice().sort((a: number, b: number) => a - b)
       if (days.length === 0) continue
       const fecha = `${y}-${pad(m)}-${pad(days[0])}`
-      const resDia = await fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}&sede_id=${sedeId}`)
+      const resDia = await fetch(`/api/booking/disponibilidad?slug=${slug}&fecha=${fecha}&tipo=${tipo}&sede_id=${sedeId}${tipoTurnoIdParam}`)
       if (!resDia.ok) continue
       const dataDia = await resDia.json()
       const slots: string[] = dataDia.slots ?? []
@@ -76,7 +78,7 @@ function formatProximo(p: { fecha: string; hora: string }): string {
   return `${fmt}, ${p.hora}`
 }
 
-export default function StepSede({ slug, tipo, nombreProfesional, sedes, onSede, onBack }: Props) {
+export default function StepSede({ slug, tipo, tipoTurnoId, nombreProfesional, sedes, onSede, onBack }: Props) {
   const [proximos, setProximos] = useState<Record<string, ProximoTurno>>(() =>
     Object.fromEntries(sedes.map((s) => [s.id, 'loading']))
   )
@@ -85,7 +87,7 @@ export default function StepSede({ slug, tipo, nombreProfesional, sedes, onSede,
     let cancelled = false
     Promise.all(
       sedes.map(async (s) => {
-        const p = await buscarProximoTurno(slug, tipo, s.id)
+        const p = await buscarProximoTurno(slug, tipo, s.id, tipoTurnoId)
         return [s.id, p] as const
       })
     ).then((results) => {
@@ -94,7 +96,7 @@ export default function StepSede({ slug, tipo, nombreProfesional, sedes, onSede,
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, tipo])
+  }, [slug, tipo, tipoTurnoId])
 
   return (
     <div>

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import dynamicImport from 'next/dynamic'
 import Image from 'next/image'
+import { puedeUsarTiposTurno } from '@/lib/modulos'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +38,7 @@ export type ProfileData = {
   terminologia: 'sesion' | 'consulta'
   obrasSociales: { id: string; nombre: string }[]
   sedes: SedePublica[]
+  tiposPropios: TipoPropioPublico[]
 }
 
 export type SedePublica = {
@@ -45,6 +47,14 @@ export type SedePublica = {
   direccion: string | null
   es_online: boolean
   color: string
+}
+
+export type TipoPropioPublico = {
+  id: string
+  nombre: string
+  duracion_min: number
+  precio: number | null
+  moneda: string
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
@@ -99,6 +109,18 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     .eq('activo', true)
     .order('orden')
 
+  let tiposPropios: TipoPropioPublico[] = []
+  if (await puedeUsarTiposTurno(supabase, data.plan ?? '')) {
+    const { data: tipos } = await supabase
+      .from('tipos_turno')
+      .select('id, nombre, duracion_min, precio, moneda')
+      .eq('terapeuta_id', data.id)
+      .eq('activo', true)
+      .eq('visible_en_booking', true)
+      .order('orden')
+    tiposPropios = tipos ?? []
+  }
+
   return {
     id: data.id,
     nombre: data.nombre ?? '',
@@ -127,6 +149,7 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     terminologia: (data.terminologia ?? 'sesion') as 'sesion' | 'consulta',
     obrasSociales: obrasSociales ?? [],
     sedes: sucursales ?? [],
+    tiposPropios,
   }
 }
 

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   const { data: turno } = await db
     .from('turnos')
-    .select('id, terapeuta_id, paciente_id, monto, moneda, estado, tipo_turno')
+    .select('id, terapeuta_id, paciente_id, monto, moneda, estado, tipo_turno, tipo_turno_id, tipo_turno_rel:tipos_turno(nombre)')
     .eq('id', turnoId)
     .single()
 
@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No se pudo determinar el email del paciente' }, { status: 500 })
   }
 
+  const tipoPropio = turno.tipo_turno_rel as { nombre: string } | { nombre: string }[] | null
+  const nombreTipoPropio = Array.isArray(tipoPropio) ? tipoPropio[0]?.nombre : tipoPropio?.nombre
   const esEntrevista = turno.tipo_turno === 'entrevista'
+  const tipoLabel = nombreTipoPropio ?? (esEntrevista ? 'Entrevista inicial' : 'Sesión')
   const venceAt = new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min
 
   const prefRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
@@ -71,7 +74,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       items: [{
-        title: `${esEntrevista ? 'Entrevista inicial' : 'Sesión'} con ${profile.nombre} ${profile.apellido}`,
+        title: `${tipoLabel} con ${profile.nombre} ${profile.apellido}`,
         quantity: 1,
         unit_price: turno.monto,
         currency_id: turno.moneda,

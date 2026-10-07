@@ -6,8 +6,10 @@ import type { ProfileData } from '@/app/p/[slug]/page'
 interface Props {
   profile: ProfileData
   tipo: 'sesion' | 'entrevista'
+  tipoTurnoId: string | null
   modalidad: string
   onTipo: (t: 'sesion' | 'entrevista') => void
+  onTipoPropio: (id: string) => void
   onModalidad: (m: string) => void
   onNext: () => void
   ocultarModalidad?: boolean
@@ -23,6 +25,12 @@ function formatPrice(price: number, moneda: string): string {
   const sym = moneda === 'USD' ? 'US$' : moneda === 'EUR' ? '€' : '$'
   return `${sym}${price.toLocaleString('es-AR')}`
 }
+
+const ICON_CLK_SM = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+  </svg>
+)
 
 function Initials({ nombre, apellido }: { nombre: string; apellido: string }) {
   const initials = `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
@@ -42,8 +50,10 @@ function Initials({ nombre, apellido }: { nombre: string; apellido: string }) {
 export default function StepTipoConsulta({
   profile,
   tipo,
+  tipoTurnoId,
   modalidad,
   onTipo,
+  onTipoPropio,
   onModalidad,
   onNext,
   ocultarModalidad,
@@ -51,6 +61,7 @@ export default function StepTipoConsulta({
   const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined
   const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined
   const showBoth = !hasSesion && !hasEntrevista
+  const tieneTiposPropios = profile.tiposPropios.length > 0
 
   const tipoOptions: Array<{ key: 'sesion' | 'entrevista'; label: string; desc: string; price: number | null; dur: number }> = []
 
@@ -136,59 +147,170 @@ export default function StepTipoConsulta({
       </div>
 
       {/* Session type */}
-      <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
-        Tipo de consulta
-      </p>
-      <div style={{ marginBottom: 18 }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: tipoOptions.length === 1 ? '1fr' : '1fr 1fr',
-          gap: 10,
-        }}>
-          {tipoOptions.map((opt) => {
-            const selected = tipo === opt.key
-            return (
-              <button
-                key={opt.key}
-                onClick={() => onTipo(opt.key)}
-                style={{
-                  background: selected ? '#F4F7FF' : '#F6F7F9',
-                  border: selected ? '2px solid #002d72' : '2px solid transparent',
-                  boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
-                  borderRadius: 14,
-                  padding: '16px 14px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220', marginBottom: 4 }}>
-                  {opt.label}
-                </div>
-                <div style={{ fontSize: 12, color: '#5B6472', marginBottom: 8 }}>
-                  {opt.desc}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {opt.price !== null ? (
-                    <span style={{ fontSize: 16, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220' }}>
-                      {formatPrice(opt.price, profile.booking_moneda)}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 14, color: '#8A93A1' }}>A confirmar</span>
-                  )}
+      {!tieneTiposPropios ? (
+        <>
+          <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+            Tipo de consulta
+          </p>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: tipoOptions.length === 1 ? '1fr' : '1fr 1fr',
+              gap: 10,
+            }}>
+              {tipoOptions.map((opt) => {
+                const selected = tipo === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => onTipo(opt.key)}
+                    style={{
+                      background: selected ? '#F4F7FF' : '#F6F7F9',
+                      border: selected ? '2px solid #002d72' : '2px solid transparent',
+                      boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
+                      borderRadius: 14,
+                      padding: '16px 14px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s',
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220', marginBottom: 4 }}>
+                      {opt.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#5B6472', marginBottom: 8 }}>
+                      {opt.desc}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {opt.price !== null ? (
+                        <span style={{ fontSize: 16, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220' }}>
+                          {formatPrice(opt.price, profile.booking_moneda)}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 14, color: '#8A93A1' }}>A confirmar</span>
+                      )}
+                      <span style={{
+                        fontSize: 11, color: '#8A93A1', background: '#fff',
+                        borderRadius: 20, padding: '2px 8px', fontWeight: 500,
+                      }}>
+                        {opt.dur} min
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+            Elegí el tipo de consulta
+          </p>
+          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#5B6472' }}>
+            Cada tipo tiene su propia duración y precio.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+            {tipoOptions.map((opt) => {
+              const selected = tipoTurnoId === null && tipo === opt.key
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => onTipo(opt.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left',
+                    background: selected ? 'var(--blue-soft-2)' : 'var(--surface)',
+                    border: selected ? '1.5px solid var(--navy-2)' : '1px solid var(--border)',
+                    borderRadius: 14, padding: '14px 16px',
+                    boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'var(--shadow-sm)',
+                    cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: 'border-color .14s ease, box-shadow .14s ease',
+                  }}
+                >
                   <span style={{
-                    fontSize: 11, color: '#8A93A1', background: '#fff',
-                    borderRadius: 20, padding: '2px 8px', fontWeight: 500,
+                    width: 18, height: 18, borderRadius: '50%', flex: 'none',
+                    border: selected ? '1.5px solid var(--navy-2)' : '1.5px solid var(--border-strong)',
+                    background: selected ? 'var(--navy-2)' : 'transparent',
+                    display: 'grid', placeItems: 'center',
                   }}>
-                    {opt.dur} min
+                    {selected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
                   </span>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+                  <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
+                    <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.35 }}>
+                      {opt.label}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
+                      {ICON_CLK_SM}{opt.dur} min
+                    </span>
+                  </span>
+                  <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                    {opt.price !== null ? (
+                      <>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500, marginRight: 1 }}>
+                          {profile.booking_moneda === 'USD' ? 'US$' : profile.booking_moneda === 'EUR' ? '€' : '$'}
+                        </span>
+                        {opt.price.toLocaleString('es-AR')}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted-2)' }}>A confirmar</span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
+
+            {profile.tiposPropios.map((propio) => {
+              const selected = tipoTurnoId === propio.id
+              const sinCosto = propio.precio === null || propio.precio === 0
+              return (
+                <button
+                  key={propio.id}
+                  onClick={() => onTipoPropio(propio.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left',
+                    background: selected ? 'var(--blue-soft-2)' : 'var(--surface)',
+                    border: selected ? '1.5px solid var(--navy-2)' : '1px solid var(--border)',
+                    borderRadius: 14, padding: '14px 16px',
+                    boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'var(--shadow-sm)',
+                    cursor: 'pointer', fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: 'border-color .14s ease, box-shadow .14s ease',
+                  }}
+                >
+                  <span style={{
+                    width: 18, height: 18, borderRadius: '50%', flex: 'none',
+                    border: selected ? '1.5px solid var(--navy-2)' : '1.5px solid var(--border-strong)',
+                    background: selected ? 'var(--navy-2)' : 'transparent',
+                    display: 'grid', placeItems: 'center',
+                  }}>
+                    {selected && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
+                    <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.35 }}>
+                      {propio.nombre}
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
+                      {ICON_CLK_SM}{propio.duracion_min} min
+                    </span>
+                  </span>
+                  <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                    {!sinCosto ? (
+                      <>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500, marginRight: 1 }}>
+                          {propio.moneda === 'USD' ? 'US$' : propio.moneda === 'EUR' ? '€' : '$'}
+                        </span>
+                        {(propio.precio as number).toLocaleString('es-AR')}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--muted-2)' }}>Sin costo</span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {/* Modality — copied from HTML design */}
       {!ocultarModalidad && (

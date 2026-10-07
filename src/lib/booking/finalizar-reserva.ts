@@ -30,7 +30,7 @@ async function enviarEmailConfirmacionTurno(
   const supabase = db()
 
   const [{ data: turno }, { data: profile }] = await Promise.all([
-    supabase.from('turnos').select('*, paciente:pacientes(*)').eq('id', turnoId).single(),
+    supabase.from('turnos').select('*, paciente:pacientes(*), tipo_turno_rel:tipos_turno(nombre)').eq('id', turnoId).single(),
     supabase.from('profiles').select('nombre, apellido, especialidad').eq('id', terapeutaId).single(),
   ])
 
@@ -40,7 +40,9 @@ async function enviarEmailConfirmacionTurno(
 
   const fechaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'fecha')
   const horaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'hora')
-  const tipoLabel = turno.notas?.includes('Entrevista') ? 'Entrevista inicial' : 'Sesión'
+  const tipoPropio = turno.tipo_turno_rel as { nombre: string } | { nombre: string }[] | null
+  const nombreTipoPropio = Array.isArray(tipoPropio) ? tipoPropio[0]?.nombre : tipoPropio?.nombre
+  const tipoLabel = nombreTipoPropio ?? (turno.notas?.includes('Entrevista') ? 'Entrevista inicial' : 'Sesión')
   const asunto = `Reserva confirmada con ${profile.nombre} ${profile.apellido} — KLIA`
 
   const { messageId } = await enviarEmail({

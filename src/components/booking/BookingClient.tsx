@@ -28,7 +28,7 @@ export type ConfirmacionData = {
 type StepKey = 'tipo' | 'sede' | 'fecha' | 'hora' | 'datos' | 'pago'
 type Step = StepKey | 'confirmacion' | 'err-pay' | 'err-slot'
 
-const STEP_NAMES: Record<StepKey, string> = {
+const STEP_NAMES_BASE: Record<StepKey, string> = {
   tipo: 'Profesional',
   sede: 'Sede',
   fecha: 'Fecha',
@@ -52,6 +52,7 @@ export default function BookingClient({ profile }: Props) {
 
   const [step, setStep] = useState<Step>('tipo')
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
+  const [tipoTurnoId, setTipoTurnoId] = useState<string | null>(null)
   const [modalidad, setModalidad] = useState<string>(
     profile.booking_modalidades?.[0] ?? 'presencial'
   )
@@ -66,6 +67,52 @@ export default function BookingClient({ profile }: Props) {
     coberturaId: '',
   })
   const [confirmacion, setConfirmacion] = useState<ConfirmacionData | null>(null)
+
+  // Progress bar label del paso 1: "Tipo de consulta" en vez de "Profesional"
+  // cuando el profesional tiene tipos propios habilitados — sin tipos propios
+  // STEP_NAMES queda idéntico al de siempre.
+  const STEP_NAMES: Record<StepKey, string> = {
+    ...STEP_NAMES_BASE,
+    tipo: profile.tiposPropios.length > 0 ? 'Tipo de consulta' : STEP_NAMES_BASE.tipo,
+  }
+
+  // Tipo propio seleccionado (si hay) — fuente única para duración/precio/
+  // moneda/nombre resueltos del lado del cliente. Es solo para mostrar en la
+  // UI: el servidor (resolverTipoReserva) vuelve a validar todo esto y nunca
+  // confía en lo que viaja desde acá.
+  const tipoPropioSeleccionado = tipoTurnoId
+    ? profile.tiposPropios.find((t) => t.id === tipoTurnoId) ?? null
+    : null
+
+  const tipoResuelto = tipoPropioSeleccionado
+    ? {
+        duracion: tipoPropioSeleccionado.duracion_min,
+        precio: tipoPropioSeleccionado.precio,
+        moneda: tipoPropioSeleccionado.moneda,
+        nombre: tipoPropioSeleccionado.nombre,
+      }
+    : tipo === 'sesion'
+    ? {
+        duracion: profile.booking_duracion_sesion,
+        precio: profile.booking_precio_sesion,
+        moneda: profile.booking_moneda,
+        nombre: 'Sesión',
+      }
+    : {
+        duracion: profile.booking_duracion_entrevista,
+        precio: profile.booking_precio_entrevista,
+        moneda: profile.booking_moneda,
+        nombre: 'Entrevista inicial',
+      }
+
+  function handleTipo(t: 'sesion' | 'entrevista') {
+    setTipoTurnoId(null)
+    setTipo(t)
+  }
+
+  function handleTipoPropio(id: string) {
+    setTipoTurnoId(id)
+  }
 
   const stepIdx = STEPS.indexOf(step as StepKey)
   const showProgress = stepIdx >= 0
@@ -249,8 +296,10 @@ export default function BookingClient({ profile }: Props) {
               <StepTipoConsulta
                 profile={profile}
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
                 modalidad={modalidad}
-                onTipo={setTipo}
+                onTipo={handleTipo}
+                onTipoPropio={handleTipoPropio}
                 onModalidad={setModalidad}
                 onNext={() => goNextFrom('tipo')}
                 ocultarModalidad={multiSede}
@@ -263,6 +312,7 @@ export default function BookingClient({ profile }: Props) {
               <StepSede
                 slug={profile.booking_slug}
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
                 nombreProfesional={profile.nombre}
                 sedes={profile.sedes}
                 onSede={handleSede}
@@ -275,6 +325,7 @@ export default function BookingClient({ profile }: Props) {
             <div key="step-fecha" className="booking-step-in">
               <StepCalendario
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
                 slug={profile.booking_slug}
                 selectedFecha={selectedFecha}
                 onFecha={(f) => { setSelectedFecha(f); setSelectedHora(null) }}
@@ -292,6 +343,7 @@ export default function BookingClient({ profile }: Props) {
                 slug={profile.booking_slug}
                 fecha={selectedFecha}
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
                 selectedHora={selectedHora}
                 onHora={setSelectedHora}
                 onNext={() => goNextFrom('hora')}
@@ -306,7 +358,7 @@ export default function BookingClient({ profile }: Props) {
             <div key="step-datos" className="booking-step-in">
               <StepDatos
                 profile={profile}
-                tipo={tipo}
+                tipoResuelto={tipoResuelto}
                 fecha={selectedFecha}
                 hora={selectedHora}
                 modalidad={modalidad}
@@ -324,6 +376,8 @@ export default function BookingClient({ profile }: Props) {
               <StepPago
                 profile={profile}
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
+                tipoResuelto={tipoResuelto}
                 fecha={selectedFecha}
                 hora={selectedHora}
                 modalidad={modalidad}
@@ -345,6 +399,8 @@ export default function BookingClient({ profile }: Props) {
               <StepConfirmacion
                 profile={profile}
                 tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
+                tipoResuelto={tipoResuelto}
                 fecha={selectedFecha}
                 hora={selectedHora}
                 modalidad={modalidad}

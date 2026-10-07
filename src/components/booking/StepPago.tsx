@@ -27,9 +27,18 @@ interface DatosForm {
   coberturaId: string
 }
 
+type TipoResuelto = {
+  duracion: number
+  precio: number | null
+  moneda: string
+  nombre: string
+}
+
 interface Props {
   profile: ProfileData
   tipo: string
+  tipoTurnoId: string | null
+  tipoResuelto: TipoResuelto
   fecha: string
   hora: string
   modalidad: string
@@ -277,6 +286,8 @@ function TransferenciaBancaria({ banco, alias, titular }: { banco: string; alias
 export default function StepPago({
   profile,
   tipo,
+  tipoTurnoId,
+  tipoResuelto,
   fecha,
   hora,
   modalidad,
@@ -348,12 +359,11 @@ export default function StepPago({
     }
   }
 
-  const duracion = tipo === 'sesion'
-    ? profile.booking_duracion_sesion
-    : profile.booking_duracion_entrevista
+  const duracion = tipoResuelto.duracion
+  const tipoLabel = tipoTurnoId ? tipoResuelto.nombre : (tipo === 'sesion' ? t.Sesion : (TIPO_LABELS[tipo] ?? tipo))
 
   const fechaFmt = formatFecha(fecha)
-  const sym = profile.booking_moneda === 'USD' ? 'US$' : profile.booking_moneda === 'EUR' ? '€' : '$'
+  const sym = tipoResuelto.moneda === 'USD' ? 'US$' : tipoResuelto.moneda === 'EUR' ? '€' : '$'
 
   useEffect(() => {
     let cancelled = false
@@ -375,6 +385,7 @@ export default function StepPago({
             telefono: datosForm.telefono || undefined,
             cobertura_id: datosForm.coberturaId,
             sede_id: sede?.id ?? undefined,
+            tipo_turno_id: tipoTurnoId ?? undefined,
           }),
         })
 
@@ -402,7 +413,7 @@ export default function StepPago({
             hora,
             duracion,
             monto: 0,
-            moneda: profile.booking_moneda,
+            moneda: tipoResuelto.moneda,
             referencia: data.hash ?? '',
             medio_pago: 'sin_costo',
             google_event_id: data.google_event_id ?? null,
@@ -505,7 +516,7 @@ export default function StepPago({
           {datosForm.nombre} {datosForm.apellido}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#5B6472' }}>
-          {tipo === 'sesion' ? t.Sesion : (TIPO_LABELS[tipo] ?? tipo)} con {profile.nombre} {profile.apellido}
+          {tipoLabel} con {profile.nombre} {profile.apellido}
         </p>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#5B6472' }}>
           <span style={{ textTransform: 'capitalize' }}>{fechaFmt}</span>
@@ -517,7 +528,7 @@ export default function StepPago({
             <span style={{ fontSize: 18, fontWeight: 700, color: '#1e40af', marginLeft: 4 }}>
               {sym}{reserva.monto.toLocaleString('es-AR')}
             </span>
-            <span style={{ fontSize: 12, color: '#8A93A1' }}>{profile.booking_moneda}</span>
+            <span style={{ fontSize: 12, color: '#8A93A1' }}>{tipoResuelto.moneda}</span>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
+import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
 import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -79,9 +80,10 @@ export async function POST(req: NextRequest) {
     telefono?: string
     cobertura_id?: string
     sede_id?: string
+    tipo_turno_id?: string
   }
 
-  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId } = body
+  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId, tipo_turno_id: tipoTurnoId } = body
 
   if (!slug || !fecha || !hora || !tipo || !nombre || !apellido || !email) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
   // 1. Get professional
   const { data: profile, error: profileError } = await db
     .from('profiles')
-    .select('id, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
+    .select('id, plan, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
     .eq('booking_slug', slug)
     .single()
 
@@ -100,15 +102,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Perfil no disponible' }, { status: 404 })
   }
 
-  const duracion: number = tipo === 'sesion'
-    ? (profile.booking_duracion_sesion ?? 50)
-    : (profile.booking_duracion_entrevista ?? 30)
+  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId)
+  if ('error' in tipoResuelto) {
+    return NextResponse.json({ error: tipoResuelto.error }, { status: 400 })
+  }
 
-  const precio: number | null = tipo === 'sesion'
-    ? profile.booking_precio_sesion
-    : profile.booking_precio_entrevista
-
-  const moneda = profile.booking_moneda ?? 'ARS'
+  const duracion: number = tipoResuelto.duracion
+  const precio: number | null = tipoResuelto.precio
+  const moneda = tipoResuelto.moneda
 
   // 2. Race condition check
   const slotOk = await isSlotAvailable(db, profile.id, fecha, hora, duracion)
@@ -167,7 +168,7 @@ export async function POST(req: NextRequest) {
         email,
         telefono: telefono ?? null,
         activo: true,
-        motivo_consulta: tipo === 'entrevista' ? 'Entrevista inicial (reserva online)' : null,
+        motivo_consulta: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,
         ...(!esParticular && osEncontrada ? { obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id } : {}),
       })
       .select('id')
@@ -198,8 +199,9 @@ export async function POST(req: NextRequest) {
       monto: precio ?? null,
       moneda,
       sucursal_id: sedeId ?? null,
-      notas: tipo === 'entrevista' ? 'Entrevista inicial reservada online' : 'Reserva online',
-      tipo_turno: tipo === 'sesion' ? 'sesion' : 'entrevista',
+      notas: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial reservada online' : 'Reserva online',
+      tipo_turno: tipoResuelto.tipoTurnoId ? 'sesion' : (tipo === 'sesion' ? 'sesion' : 'entrevista'),
+      tipo_turno_id: tipoResuelto.tipoTurnoId,
     })
     .select('id')
     .single()

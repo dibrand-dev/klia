@@ -12,9 +12,18 @@ interface DatosForm {
   coberturaId: string
 }
 
+type TipoResuelto = {
+  duracion: number
+  precio: number | null
+  moneda: string
+  nombre: string
+}
+
 interface Props {
   profile: ProfileData
   tipo: string
+  tipoTurnoId: string | null
+  tipoResuelto: TipoResuelto
   fecha: string
   hora: string
   modalidad: string
@@ -51,9 +60,9 @@ function buildGCalUrl(params: { title: string; start: string; end: string; detai
   return `https://calendar.google.com/calendar/render?${q}`
 }
 
-export default function StepConfirmacion({ profile, tipo, fecha, hora, modalidad, confirmacion, datosForm, sede }: Props) {
+export default function StepConfirmacion({ profile, tipo, tipoTurnoId, tipoResuelto, fecha, hora, modalidad, confirmacion, datosForm, sede }: Props) {
   const t = getTerminologia(profile.terminologia)
-  const tipoLabel = tipo === 'sesion' ? t.Sesion : 'Entrevista inicial'
+  const tipoLabel = tipoTurnoId ? tipoResuelto.nombre : (tipo === 'sesion' ? t.Sesion : 'Entrevista inicial')
   const modalidadLabel: Record<string, string> = { presencial: 'Presencial', videollamada: 'Online', telefonica: 'Telefónica' }
 
   const esMp = confirmacion.medio_pago === 'mp'

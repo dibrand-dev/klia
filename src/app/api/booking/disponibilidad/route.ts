@@ -5,6 +5,7 @@ import { fromZonedTime, toZonedTime } from 'date-fns-tz'
 import { getFeriados, getFeriadosProvinciales, esFeriado } from '@/lib/feriados'
 import { ARGENTINA_TZ } from '@/lib/timezone'
 import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
+import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -31,16 +32,20 @@ async function getAvailableSlots(
   fecha: string,  // YYYY-MM-DD
   tipo: string,
   sedeId?: string | null,
-): Promise<string[]> {
+  tipoTurnoId?: string | null,
+): Promise<string[] | { error: 'tipo_invalido' }> {
   const db = serviceClient()
 
   const { data: profile } = await db
     .from('profiles')
-    .select('id, agenda_hora_inicio, agenda_hora_fin, horarios_por_dia, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
+    .select('id, plan, agenda_hora_inicio, agenda_hora_fin, horarios_por_dia, booking_duracion_sesion, booking_duracion_entrevista, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
     .eq('booking_slug', slug)
     .single()
 
   if (!profile || !profile.booking_activo) return []
+
+  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId)
+  if ('error' in tipoResuelto) return tipoResuelto
 
   type HorarioDiaViejo = { activo: boolean; inicio: number; fin: number }
   type FranjaHoraria = { inicio: number; fin: number }
@@ -113,9 +118,7 @@ async function getAvailableSlots(
     if (esFeriado(fechaObj, todosFeriados)) return []
   }
 
-  const duracion: number = tipo === 'sesion'
-    ? (profile.booking_duracion_sesion ?? 50)
-    : (profile.booking_duracion_entrevista ?? 30)
+  const duracion: number = tipoResuelto.duracion
   const buffer: number = profile.booking_tiempo_entre ?? 10
   const anticipacion: number = profile.booking_anticipacion_minutos ?? 60
 
@@ -229,6 +232,7 @@ export async function GET(request: NextRequest) {
   const tipo = searchParams.get('tipo') ?? 'sesion'
   const view = searchParams.get('view') ?? 'dia'
   const sedeId = searchParams.get('sede_id') || null
+  const tipoTurnoId = searchParams.get('tipo_turno_id') || null
 
   if (!slug || !fecha) {
     return NextResponse.json({ error: 'slug y fecha requeridos' }, { status: 400 })
@@ -248,7 +252,8 @@ export async function GET(request: NextRequest) {
         const dayStr = `${y}-${pad(m)}-${pad(day)}`
         if (dayStr < todayDateStr) return null
         try {
-          const slots = await getAvailableSlots(slug, dayStr, tipo, sedeId)
+          const slots = await getAvailableSlots(slug, dayStr, tipo, sedeId, tipoTurnoId)
+          if ('error' in slots) return null
           return slots.length > 0 ? day : null
         } catch (err) {
           if (err instanceof GoogleAvailabilityError) return null
@@ -262,7 +267,10 @@ export async function GET(request: NextRequest) {
 
   // Day view: YYYY-MM-DD
   try {
-    const slots = await getAvailableSlots(slug, fecha, tipo, sedeId)
+    const slots = await getAvailableSlots(slug, fecha, tipo, sedeId, tipoTurnoId)
+    if ('error' in slots) {
+      return NextResponse.json({ error: slots.error }, { status: 400 })
+    }
     return NextResponse.json({ slots })
   } catch (err) {
     if (err instanceof GoogleAvailabilityError) {
