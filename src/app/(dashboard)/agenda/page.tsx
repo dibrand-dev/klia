@@ -1,12 +1,21 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import AgendaSemanal from '@/components/agenda/AgendaSemanal'
 import { startOfWeek, endOfWeek } from 'date-fns'
-import type { Turno, Entrevista, Paciente, PacienteColaboradorRow } from '@/types/database'
+import type { Turno, Entrevista, Paciente, PacienteColaboradorRow, TipoTurno, Database } from '@/types/database'
 import { format } from 'date-fns'
 import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
+import { puedeUsarTiposTurno } from '@/lib/modulos'
+
+function serviceClient() {
+  return createServiceClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export const metadata = { title: 'Agenda — KLIA' }
 // Los fetch() internos de @supabase/ssr pueden caer en el Data Cache de
@@ -29,7 +38,7 @@ export default async function AgendaPage() {
   const finStr = format(finSemana, 'yyyy-MM-dd')
 
   const [{ data: profile }, { data: turnos }, { data: googleTokens }, { data: entrevistas }] = await Promise.all([
-    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia, horarios_por_dia').eq('id', efectivo.terapeutaId).single(),
+    supabase.from('profiles').select('agenda_hora_inicio, agenda_hora_fin, mp_user_id, feriados_nacionales, feriados_provinciales, provincia, terminologia, horarios_por_dia, plan').eq('id', efectivo.terapeutaId).single(),
     supabase
       .from('turnos')
       .select('*, paciente:pacientes(*)')
@@ -51,6 +60,21 @@ export default async function AgendaPage() {
       .lte('fecha', finStr)
       .neq('estado', 'cancelada'),
   ])
+
+  const db = serviceClient()
+  const tiposTurnoHabilitado = await puedeUsarTiposTurno(db, profile?.plan ?? '')
+  // Siempre se trae el listado completo (activos e inactivos) — un turno ya
+  // agendado con un tipo propio conserva su nombre aunque el profesional
+  // haya bajado a un plan que ya no permite crear/editar tipos. El booleano
+  // `tiposTurnoHabilitado` es lo único que decide si se puede seguir
+  // eligiendo un tipo nuevo; la resolución de nombres en el detalle no
+  // depende del plan.
+  const { data: tiposTurnoData } = await db
+    .from('tipos_turno')
+    .select('*')
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .order('orden', { ascending: true })
+  const tiposTurno: TipoTurno[] = tiposTurnoData ?? []
 
   let pacientes: Paciente[] | null
   if (efectivo.esColaborador) {
@@ -130,6 +154,8 @@ export default async function AgendaPage() {
         }}
         terminologia={profile?.terminologia ?? undefined}
         horariosPorDia={profile?.horarios_por_dia ?? undefined}
+        tiposTurno={tiposTurno}
+        tiposTurnoHabilitado={tiposTurnoHabilitado}
       />
     </div>
   )

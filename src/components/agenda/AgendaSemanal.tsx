@@ -13,7 +13,7 @@ import {
   cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT,
   formatNombreCompleto,
 } from '@/lib/utils'
-import type { Turno, Paciente, Entrevista } from '@/types/database'
+import type { Turno, Paciente, Entrevista, TipoTurno } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 import NuevoTurnoPageForm from './NuevoTurnoPageForm'
 import TurnoDetalleModal from './TurnoDetalleModal'
@@ -68,6 +68,8 @@ interface AgendaSemanalProps {
   feriadosConfig?: FeriadosConfig
   terminologia?: 'sesion' | 'consulta'
   horariosPorDia?: Record<string, HorarioDiaAgenda>
+  tiposTurno?: TipoTurno[]
+  tiposTurnoHabilitado?: boolean
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -81,7 +83,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia, tiposTurno = [], tiposTurnoHabilitado = false,
 }: AgendaSemanalProps) {
   const { esColaborador } = useEffectiveTerapeutaId()
   const [mapaNombres, setMapaNombres] = useState<Map<string, { nombre: string; apellido: string }>>(new Map())
@@ -713,6 +715,8 @@ export default function AgendaSemanal({
             fechaInicial={nuevoFecha}
             mpConectado={mpConectado}
             terminologia={terminologia}
+            tiposTurno={tiposTurno}
+            tiposTurnoHabilitado={tiposTurnoHabilitado}
             onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
             onEntrevistaCreada={(e) => { setEntrevistas((prev) => [...prev, e]); setNuevoOpen(false) }}
             onClose={() => setNuevoOpen(false)}
@@ -749,6 +753,8 @@ export default function AgendaSemanal({
           onTurnoActualizado={actualizarTurno}
           onSerieActualizada={onSerieActualizada}
           terminologia={terminologia}
+          tiposTurno={tiposTurno}
+          tiposTurnoHabilitado={tiposTurnoHabilitado}
           onEliminar={async (id) => {
             const supabase = createClient()
             // Capturar el google_event_id ANTES de borrar — mismo motivo que en

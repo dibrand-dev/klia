@@ -6,7 +6,7 @@ import { format, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import type { Paciente, Turno, ModalidadTurno, Entrevista } from '@/types/database'
+import type { Paciente, Turno, ModalidadTurno, Entrevista, TipoTurno } from '@/types/database'
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
@@ -14,10 +14,21 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/TipoTurnoPicker'
+import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 
 const DURACIONES = [20, 30, 45, 50, 60, 90]
+
+function pad2(n: number) { return String(n).padStart(2, '0') }
+// Suma minutos a un "HH:MM" y devuelve el horario de fin, para el texto
+// "Termina a las HH:MM" del input de duración.
+function sumarMinutos(hora: string, minutos: number): string {
+  const [h, m] = hora.split(':').map(Number)
+  const total = h * 60 + m + minutos
+  return `${pad2(Math.floor(total / 60) % 24)}:${pad2(total % 60)}`
+}
 const MODALIDADES: { value: ModalidadTurno; label: string }[] = [
   { value: 'presencial', label: 'Presencial' },
   { value: 'videollamada', label: 'Videollamada' },
@@ -31,6 +42,8 @@ interface NuevoTurnoPageFormProps {
   pacienteIdInicial?: string
   mpConectado?: boolean
   terminologia?: 'sesion' | 'consulta'
+  tiposTurno?: TipoTurno[]
+  tiposTurnoHabilitado?: boolean
   onCreado?: (turno: Turno) => void
   onEntrevistaCreada?: (e: Entrevista) => void
   onClose?: () => void
@@ -53,7 +66,7 @@ function quinSemana(fechaStr: string): 1 | 2 {
 }
 
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, onCreado, onEntrevistaCreada, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, tiposTurno = [], tiposTurnoHabilitado = false, onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
   const t = getTerminologia(terminologia)
   const router = useRouter()
@@ -74,6 +87,7 @@ export default function NuevoTurnoPageForm({
   const pacienteInicial = pacienteIdInicial ? pacientes.find((p) => p.id === pacienteIdInicial) : undefined
 
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
+  const [tipoTurnoId, setTipoTurnoId] = useState<string | null>(null)
   const [entrevistaForm, setEntrevistaForm] = useState({
     nombre: '',
     apellido: '',
@@ -122,6 +136,44 @@ export default function NuevoTurnoPageForm({
     }
   }
 
+  // Tipo propio actualmente elegido (para la línea "Ajustado para este
+  // turno" — compara los valores actuales del form contra el catálogo).
+  const tipoPropioSeleccionado = tipoTurnoId ? tiposTurno.find((t) => t.id === tipoTurnoId) ?? null : null
+  // El picker solo ofrece tipos propios si el plan lo permite — a diferencia
+  // de `tiposTurno` (lista completa, usada para resolver nombres ya
+  // guardados), esta lista queda vacía si el plan actual no lo habilita.
+  const tiposTurnoActivos = tiposTurnoHabilitado ? tiposTurno.filter((t) => t.activo) : []
+
+  function handlePickTipo(pick: TipoTurnoPick) {
+    if (pick.tipo === 'entrevista') {
+      setTipo('entrevista')
+      setTipoTurnoId(null)
+      return
+    }
+    setTipo('sesion')
+    setTipoTurnoId(pick.tipoTurnoId)
+    if (pick.tipoTurnoId) {
+      setForm((prev) => ({
+        ...prev,
+        duracion_min: pick.duracionMin ?? prev.duracion_min,
+        monto: formatearMontoInputInicial(pick.precio ?? null),
+      }))
+      if (pick.moneda) setMoneda(pick.moneda as Moneda)
+    } else {
+      setForm((prev) => ({ ...prev, duracion_min: 50 }))
+    }
+  }
+
+  function restablecerTipoPropio() {
+    if (!tipoPropioSeleccionado) return
+    setForm((prev) => ({
+      ...prev,
+      duracion_min: tipoPropioSeleccionado.duracion_min,
+      monto: formatearMontoInputInicial(tipoPropioSeleccionado.precio),
+    }))
+    setMoneda(tipoPropioSeleccionado.moneda as Moneda)
+  }
+
   async function doCrearSerie(fechas: Date[]) {
     const supabase = createClient()
     const { crearRegistroSerie, crearSerieTurnos } = await import('@/lib/recurrentes')
@@ -134,7 +186,7 @@ export default function NuevoTurnoPageForm({
       new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase, frecuencia, semana
     )
     await crearSerieTurnos(serieId, terapeutaId, form.paciente_id, fechas,
-      form.hora, Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto), supabase, moneda)
+      form.hora, Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto), supabase, moneda, tipoTurnoId)
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -302,6 +354,7 @@ export default function NuevoTurnoPageForm({
         moneda,
         notas: form.notas || null,
         es_sobreturno: esSobreturno,
+        tipo_turno_id: tipoTurnoId,
       })
       .select('*, paciente:pacientes(*)')
       .single()
@@ -433,18 +486,28 @@ export default function NuevoTurnoPageForm({
         {/* Selector tipo */}
         <div className="card p-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="tipo" value="sesion" checked={false}
-                onChange={() => setTipo('sesion')} className="accent-primary" />
-              <span className="text-sm text-gray-700">{t.Sesion}</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="tipo" value="entrevista" checked
-                onChange={() => {}} className="accent-primary" />
-              <span className="text-sm text-gray-700 font-medium">Entrevista</span>
-            </label>
-          </div>
+          {tiposTurnoActivos.length > 0 ? (
+            <TipoTurnoPicker
+              tiposTurno={tiposTurnoActivos}
+              tipo={tipo}
+              tipoTurnoId={tipoTurnoId}
+              nombreSesion={t.Sesion}
+              onPick={handlePickTipo}
+            />
+          ) : (
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="sesion" checked={false}
+                  onChange={() => setTipo('sesion')} className="accent-primary" />
+                <span className="text-sm text-gray-700">{t.Sesion}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="tipo" value="entrevista" checked
+                  onChange={() => {}} className="accent-primary" />
+                <span className="text-sm text-gray-700 font-medium">Entrevista</span>
+              </label>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -558,19 +621,43 @@ export default function NuevoTurnoPageForm({
       {/* Selector tipo */}
       <div className="card p-4">
         <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-        <div className="flex gap-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="tipo" value="sesion" checked
-              onChange={() => {}} className="accent-primary" />
-            <span className="text-sm text-gray-700 font-medium">{t.Sesion}</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="tipo" value="entrevista" checked={false}
-              onChange={() => setTipo('entrevista')} className="accent-primary" />
-            <span className="text-sm text-gray-700">Entrevista</span>
-          </label>
-        </div>
+        {tiposTurnoActivos.length > 0 ? (
+          <TipoTurnoPicker
+            tiposTurno={tiposTurnoActivos}
+            tipo={tipo}
+            tipoTurnoId={tipoTurnoId}
+            nombreSesion={t.Sesion}
+            onPick={handlePickTipo}
+          />
+        ) : (
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="tipo" value="sesion" checked
+                onChange={() => {}} className="accent-primary" />
+              <span className="text-sm text-gray-700 font-medium">{t.Sesion}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="tipo" value="entrevista" checked={false}
+                onChange={() => setTipo('entrevista')} className="accent-primary" />
+              <span className="text-sm text-gray-700">Entrevista</span>
+            </label>
+          </div>
+        )}
       </div>
+
+      {tipoPropioSeleccionado && (
+        <div className="tt-prefill">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+          {(Number(form.duracion_min) !== tipoPropioSeleccionado.duracion_min || parsearMontoInput(form.monto) !== (tipoPropioSeleccionado.precio ?? 0)) ? (
+            <>
+              <span>Ajustado para este turno · <b>{tipoPropioSeleccionado.nombre}</b> dura <b>{tipoPropioSeleccionado.duracion_min} min</b></span>
+              <button type="button" onClick={restablecerTipoPropio}>Restablecer</button>
+            </>
+          ) : (
+            <span>Duración y monto de <b>{tipoPropioSeleccionado.nombre}</b>. Podés modificarlos para este turno.</span>
+          )}
+        </div>
+      )}
 
       {mostrandoConflictos ? (
         <div className="card p-4">
@@ -594,9 +681,15 @@ export default function NuevoTurnoPageForm({
                 setForm((prev) => ({
                   ...prev,
                   paciente_id: id,
-                  monto: prev.monto || formatearMontoInputInicial(p?.honorarios),
+                  // Con un tipo propio elegido, su monto ya mandó sobre
+                  // prev.monto — no hay que volver a tocarlo con los
+                  // honorarios del paciente, sin importar el orden en que
+                  // se elija cada cosa.
+                  monto: tipoTurnoId ? prev.monto : (prev.monto || formatearMontoInputInicial(p?.honorarios)),
                 }))
-                if (p?.moneda_preferida) setMoneda(p.moneda_preferida as Moneda)
+                // Mismo criterio para la moneda: el tipo propio ya la fijó,
+                // el paciente no la pisa.
+                if (p?.moneda_preferida && !tipoTurnoId) setMoneda(p.moneda_preferida as Moneda)
               }}
               className="input-field"
             />
@@ -613,9 +706,17 @@ export default function NuevoTurnoPageForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Duración</label>
-              <select name="duracion_min" value={form.duracion_min} onChange={handleChange} className="input-field">
-                {DURACIONES.map((d) => <option key={d} value={d}>{d} min</option>)}
-              </select>
+              <div className="tt-ig">
+                <input
+                  type="number" name="duracion_min" min={5} step={5} inputMode="numeric"
+                  value={form.duracion_min}
+                  onChange={(e) => setForm((prev) => ({ ...prev, duracion_min: Number(e.target.value) }))}
+                />
+                <span className="tt-sfx">min</span>
+              </div>
+              <p className="tt-dur-end">
+                {Number(form.duracion_min) >= 5 ? `Termina a las ${sumarMinutos(form.hora, Number(form.duracion_min))}` : 'Indicá al menos 5 minutos'}
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>

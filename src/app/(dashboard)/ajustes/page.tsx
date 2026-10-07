@@ -1,7 +1,17 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import AjustesClient from '@/components/ajustes/AjustesClient'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { puedeUsarTiposTurno } from '@/lib/modulos'
+import type { Database } from '@/types/database'
+
+function serviceClient() {
+  return createServiceClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Ajustes — KLIA' }
@@ -27,6 +37,15 @@ export default async function AjustesPage() {
 
   const p = profile as Record<string, unknown>
 
+  const db = serviceClient()
+  const tiposTurnoHabilitado = await puedeUsarTiposTurno(db, (p.plan as string | null) ?? '')
+  const { data: tiposTurno } = await db
+    .from('tipos_turno')
+    .select('*')
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .order('orden', { ascending: true })
+    .order('created_at', { ascending: true })
+
   return (
     <AjustesClient
       profile={profile}
@@ -43,6 +62,8 @@ export default async function AjustesPage() {
       cobrosMoneda={(p.cobros_moneda as string | null) ?? 'ARS'}
       cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
       esColaborador={efectivo.esColaborador}
+      tiposTurnoHabilitado={tiposTurnoHabilitado}
+      tiposTurno={tiposTurno ?? []}
     />
   )
 }
