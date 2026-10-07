@@ -63,6 +63,7 @@ async function enviarEmailConfirmacionTurno(
       moneda: pago?.moneda,
       referencia: pago?.referencia,
       meetLink,
+      tipoPropio: !!nombreTipoPropio,
     }),
   })
 

@@ -147,7 +147,13 @@ export default function StepConfirmacion({ profile, tipo, tipoTurnoId, tipoResue
           {esMp ? '¡Reserva confirmada!' : '¡Turno reservado!'}
         </h1>
         <p style={{ fontSize: 14, color: '#5B6472', margin: '0 0 24px', lineHeight: 1.6 }}>
-          {esMp ? (
+          {tipoTurnoId ? (
+            esMp ? (
+              <>Tu reserva de «{tipoLabel}» fue agendada y el pago procesado.<br /></>
+            ) : (
+              <>Tu reserva de «{tipoLabel}» fue agendada.<br /></>
+            )
+          ) : esMp ? (
             <>Tu {tipoLabel.toLowerCase()} fue agendada y el pago procesado.<br /></>
           ) : (
             <>Tu {tipoLabel.toLowerCase()} fue agendada.<br /></>

@@ -570,6 +570,7 @@ export function emailBookingConfirmacion(params: {
   moneda?: string
   referencia?: string  // short hash
   meetLink?: string | null
+  tipoPropio?: boolean  // true si params.tipo es el nombre de un tipo de turno propio (no "Sesión"/"Entrevista inicial")
 }): string {
   const modalidadLabel: Record<string, string> = {
     presencial: 'Presencial',
@@ -583,7 +584,17 @@ export function emailBookingConfirmacion(params: {
   // pago todavía no está verificado (queda a confirmación manual del profesional en
   // Agenda), y sin_pago directamente no hay monto involucrado. Decir "pago procesado"
   // en esos dos casos sería falso, no una simplificación aceptable.
-  const introTexto: Record<typeof params.medioPago, string> = {
+  //
+  // Con un tipo propio, params.tipo es un nombre libre que el profesional eligió
+  // ("Evaluación Psicodiagnóstica", "Consulta VIP") — minuscularlo con
+  // toLowerCase() o forzarlo dentro de "tu ___ fue agendada" (concordancia de
+  // "sesión"/"entrevista") rompería mayúsculas intencionales o quedaría raro
+  // gramaticalmente. Por eso el copy cambia de forma, no solo de texto.
+  const introTexto: Record<typeof params.medioPago, string> = params.tipoPropio ? {
+    mercadopago: `tu reserva de «${params.tipo}» fue agendada y el pago procesado correctamente.`,
+    transferencia: `tu reserva de «${params.tipo}» fue agendada. Recordá enviar el comprobante de tu transferencia para confirmar el pago.`,
+    sin_pago: `tu reserva de «${params.tipo}» fue agendada.`,
+  } : {
     mercadopago: `tu ${params.tipo.toLowerCase()} fue agendada y el pago procesado correctamente.`,
     transferencia: `tu ${params.tipo.toLowerCase()} fue agendada. Recordá enviar el comprobante de tu transferencia para confirmar el pago.`,
     sin_pago: `tu ${params.tipo.toLowerCase()} fue agendada.`,
