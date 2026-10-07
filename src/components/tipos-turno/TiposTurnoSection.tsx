@@ -333,6 +333,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
                 value={draft.precio}
                 onChange={(raw) => setDraft((p) => ({ ...p, precio: raw }))}
                 placeholder={draft.moneda === 'ARS' ? 'Ej: 15000' : 'Ej: 150,00'}
+                sinSimbolo
               />
             </div>
           </div>

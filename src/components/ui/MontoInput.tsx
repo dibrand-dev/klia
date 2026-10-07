@@ -9,6 +9,10 @@ interface MontoInputProps {
   placeholder?: string
   className?: string
   style?: React.CSSProperties
+  // Para campos que ya muestran el símbolo de moneda aparte (ej. el prefijo
+  // .tt-pfx de Tipos de turno) — sin esto, formatPesos agrega "$" fijo (mal
+  // si la moneda es USD/EUR) duplicando el símbolo que ya puso el wrapper.
+  sinSimbolo?: boolean
 }
 
 function formatPesos(raw: string): string {
@@ -19,6 +23,18 @@ function formatPesos(raw: string): string {
     style: 'currency',
     currency: 'ARS',
     minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num)
+}
+
+// Solo el número con separador de miles es-AR, sin símbolo de moneda ni
+// decimales forzados (90000 -> "90.000", 90000,5 -> "90.000,5").
+function formatNumero(raw: string): string {
+  if (!raw) return ''
+  const num = parseFloat(raw.replace(',', '.'))
+  if (isNaN(num)) return raw
+  return new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(num)
 }
@@ -35,7 +51,7 @@ function formatPesos(raw: string): string {
 // esto, pero se decidió no implementarla sin pensarla con más calma — agrega
 // el mismo tipo de parseo silencioso con casos borde no obvios que causó el
 // incidente original.
-export default function MontoInput({ name, value, onChange, placeholder, className, style }: MontoInputProps) {
+export default function MontoInput({ name, value, onChange, placeholder, className, style, sinSimbolo }: MontoInputProps) {
   const [focused, setFocused] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -63,7 +79,7 @@ export default function MontoInput({ name, value, onChange, placeholder, classNa
       type="text"
       inputMode="decimal"
       name={name}
-      value={focused ? value : formatPesos(value)}
+      value={focused ? value : (sinSimbolo ? formatNumero(value) : formatPesos(value))}
       onChange={handleChange}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
