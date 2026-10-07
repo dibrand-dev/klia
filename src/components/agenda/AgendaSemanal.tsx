@@ -69,6 +69,7 @@ interface AgendaSemanalProps {
   terminologia?: 'sesion' | 'consulta'
   horariosPorDia?: Record<string, HorarioDiaAgenda>
   tiposTurno?: TipoTurno[]
+  tiposTurnoHabilitado?: boolean
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -82,7 +83,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia, tiposTurno = [],
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia, tiposTurno = [], tiposTurnoHabilitado = false,
 }: AgendaSemanalProps) {
   const { esColaborador } = useEffectiveTerapeutaId()
   const [mapaNombres, setMapaNombres] = useState<Map<string, { nombre: string; apellido: string }>>(new Map())
@@ -715,6 +716,7 @@ export default function AgendaSemanal({
             mpConectado={mpConectado}
             terminologia={terminologia}
             tiposTurno={tiposTurno}
+            tiposTurnoHabilitado={tiposTurnoHabilitado}
             onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
             onEntrevistaCreada={(e) => { setEntrevistas((prev) => [...prev, e]); setNuevoOpen(false) }}
             onClose={() => setNuevoOpen(false)}
@@ -752,6 +754,7 @@ export default function AgendaSemanal({
           onSerieActualizada={onSerieActualizada}
           terminologia={terminologia}
           tiposTurno={tiposTurno}
+          tiposTurnoHabilitado={tiposTurnoHabilitado}
           onEliminar={async (id) => {
             const supabase = createClient()
             // Capturar el google_event_id ANTES de borrar — mismo motivo que en

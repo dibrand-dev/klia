@@ -43,6 +43,7 @@ interface NuevoTurnoPageFormProps {
   mpConectado?: boolean
   terminologia?: 'sesion' | 'consulta'
   tiposTurno?: TipoTurno[]
+  tiposTurnoHabilitado?: boolean
   onCreado?: (turno: Turno) => void
   onEntrevistaCreada?: (e: Entrevista) => void
   onClose?: () => void
@@ -65,7 +66,7 @@ function quinSemana(fechaStr: string): 1 | 2 {
 }
 
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, tiposTurno = [], onCreado, onEntrevistaCreada, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, tiposTurno = [], tiposTurnoHabilitado = false, onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
   const t = getTerminologia(terminologia)
   const router = useRouter()
@@ -138,6 +139,10 @@ export default function NuevoTurnoPageForm({
   // Tipo propio actualmente elegido (para la línea "Ajustado para este
   // turno" — compara los valores actuales del form contra el catálogo).
   const tipoPropioSeleccionado = tipoTurnoId ? tiposTurno.find((t) => t.id === tipoTurnoId) ?? null : null
+  // El picker solo ofrece tipos propios si el plan lo permite — a diferencia
+  // de `tiposTurno` (lista completa, usada para resolver nombres ya
+  // guardados), esta lista queda vacía si el plan actual no lo habilita.
+  const tiposTurnoActivos = tiposTurnoHabilitado ? tiposTurno.filter((t) => t.activo) : []
 
   function handlePickTipo(pick: TipoTurnoPick) {
     if (pick.tipo === 'entrevista') {
@@ -481,9 +486,9 @@ export default function NuevoTurnoPageForm({
         {/* Selector tipo */}
         <div className="card p-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-          {tiposTurno.length > 0 ? (
+          {tiposTurnoActivos.length > 0 ? (
             <TipoTurnoPicker
-              tiposTurno={tiposTurno}
+              tiposTurno={tiposTurnoActivos}
               tipo={tipo}
               tipoTurnoId={tipoTurnoId}
               nombreSesion={t.Sesion}
@@ -616,9 +621,9 @@ export default function NuevoTurnoPageForm({
       {/* Selector tipo */}
       <div className="card p-4">
         <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-        {tiposTurno.length > 0 ? (
+        {tiposTurnoActivos.length > 0 ? (
           <TipoTurnoPicker
-            tiposTurno={tiposTurno}
+            tiposTurno={tiposTurnoActivos}
             tipo={tipo}
             tipoTurnoId={tipoTurnoId}
             nombreSesion={t.Sesion}

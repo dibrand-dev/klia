@@ -45,6 +45,7 @@ interface TurnoDetalleModalProps {
   onSerieActualizada?: (turnosNuevos: Turno[], turnosBorradosIds: string[], eventIdsBorrados: string[]) => void
   terminologia?: 'sesion' | 'consulta'
   tiposTurno?: TipoTurno[]
+  tiposTurnoHabilitado?: boolean
 }
 
 const ESTADOS_TRANSICION: EstadoTurno[] = ['pendiente', 'confirmado', 'realizado', 'no_asistio', 'cancelado']
@@ -71,7 +72,7 @@ function ModalShell({ children, open, onClose, title, subtitle }: {
   )
 }
 
-export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, onSerieActualizada, terminologia, tiposTurno = [] }: TurnoDetalleModalProps) {
+export default function TurnoDetalleModal({ turno, open = true, onClose, onTurnoActualizado, onEliminar, onEliminarFuturos, onSerieActualizada, terminologia, tiposTurno = [], tiposTurnoHabilitado = false }: TurnoDetalleModalProps) {
   const t = getTerminologia(terminologia)
   const router = useRouter()
   const paciente = turno.paciente
@@ -352,6 +353,10 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   // Tipo propio elegido en el formulario de edición, para la línea "Ajustado
   // para este turno" (mismo criterio que NuevoTurnoPageForm).
   const editTipoPropioSeleccionado = editTipoTurnoId ? tiposTurno.find((t) => t.id === editTipoTurnoId) ?? null : null
+  // Mismo criterio que NuevoTurnoPageForm: el picker de edición solo ofrece
+  // tipos propios si el plan lo permite; `tiposTurno` (completo) sigue
+  // usándose para resolver el nombre del turno ya guardado.
+  const tiposTurnoActivos = tiposTurnoHabilitado ? tiposTurno.filter((t) => t.activo) : []
 
   function handlePickTipoEdicion(pick: TipoTurnoPick) {
     if (pick.tipo === 'entrevista') {
@@ -636,11 +641,11 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         </div>
         <div className="p-5 space-y-4">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
-          {tiposTurno.length > 0 && (
+          {tiposTurnoActivos.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de turno</label>
               <TipoTurnoPicker
-                tiposTurno={tiposTurno}
+                tiposTurno={tiposTurnoActivos}
                 tipo={editTipo}
                 tipoTurnoId={editTipoTurnoId}
                 nombreSesion={t.Sesion}

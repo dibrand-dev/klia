@@ -63,16 +63,18 @@ export default async function AgendaPage() {
 
   const db = serviceClient()
   const tiposTurnoHabilitado = await puedeUsarTiposTurno(db, profile?.plan ?? '')
-  let tiposTurno: TipoTurno[] = []
-  if (tiposTurnoHabilitado) {
-    const { data } = await db
-      .from('tipos_turno')
-      .select('*')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-      .eq('activo', true)
-      .order('orden', { ascending: true })
-    tiposTurno = data ?? []
-  }
+  // Siempre se trae el listado completo (activos e inactivos) — un turno ya
+  // agendado con un tipo propio conserva su nombre aunque el profesional
+  // haya bajado a un plan que ya no permite crear/editar tipos. El booleano
+  // `tiposTurnoHabilitado` es lo único que decide si se puede seguir
+  // eligiendo un tipo nuevo; la resolución de nombres en el detalle no
+  // depende del plan.
+  const { data: tiposTurnoData } = await db
+    .from('tipos_turno')
+    .select('*')
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .order('orden', { ascending: true })
+  const tiposTurno: TipoTurno[] = tiposTurnoData ?? []
 
   let pacientes: Paciente[] | null
   if (efectivo.esColaborador) {
@@ -153,6 +155,7 @@ export default async function AgendaPage() {
         terminologia={profile?.terminologia ?? undefined}
         horariosPorDia={profile?.horarios_por_dia ?? undefined}
         tiposTurno={tiposTurno}
+        tiposTurnoHabilitado={tiposTurnoHabilitado}
       />
     </div>
   )
