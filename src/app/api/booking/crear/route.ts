@@ -4,6 +4,7 @@ import { addMinutes, format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
+import { normalizarEmail, normalizarNombre } from '@/lib/pacientes/duplicados'
 import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,11 @@ function shortId(): string {
 function timeToMin(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 function pad(n: number) { return String(n).padStart(2, '0') }
 function minToTime(m: number) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}` }
+
+// Para usar el email como filtro ilike sin que %, _ o \ actúen como comodín/escape.
+function escaparIlike(valor: string): string {
+  return valor.replace(/[\\%_]/g, (c) => `\\${c}`)
+}
 
 async function isSlotAvailable(
   db: ReturnType<typeof serviceClient>,
@@ -131,15 +137,30 @@ export async function POST(req: NextRequest) {
   }
   const esParticular = !osEncontrada
 
-  // 3. Find or create paciente
+  // 3. Find or create paciente — nunca crear uno nuevo si ya existe alguno con
+  // este email para este profesional. .maybeSingle() rompía con 2+ filas
+  // (profesional con varios pacientes que comparten email, ej. una familia) y
+  // terminaba creando OTRO paciente en vez de reusar uno de los existentes.
   let pacienteId: string
 
-  const { data: existing } = await db
+  const emailNormalizado = normalizarEmail(email)!
+  const { data: existentes } = await db
     .from('pacientes')
-    .select('id, obra_social, nombre, apellido')
+    .select('id, obra_social, nombre, apellido, activo, created_at')
     .eq('terapeuta_id', profile.id)
-    .eq('email', email)
-    .maybeSingle()
+    .ilike('email', escaparIlike(emailNormalizado))
+
+  // Prioridad: activo con nombre+apellido normalizados iguales > activo más
+  // antiguo > (si no hay ningún activo) inactivo más antiguo, reactivándolo.
+  const ordenados = (existentes ?? []).slice().sort((a, b) => a.created_at.localeCompare(b.created_at))
+  const nombreBuscado = normalizarNombre(nombre)
+  const apellidoBuscado = normalizarNombre(apellido)
+  const activos = ordenados.filter((p) => p.activo)
+  const existing =
+    activos.find((p) => normalizarNombre(p.nombre) === nombreBuscado && normalizarNombre(p.apellido) === apellidoBuscado)
+    ?? activos[0]
+    ?? ordenados[0]
+    ?? null
 
   if (existing) {
     pacienteId = existing.id
@@ -152,11 +173,18 @@ export async function POST(req: NextRequest) {
         '| tipeado en esta reserva:', nombre, apellido)
     }
     // No pisar una obra social ya cargada a mano por el profesional en la ficha del paciente.
+    const patch: Record<string, unknown> = {}
     if (!esParticular && osEncontrada && !existing.obra_social) {
-      await db
-        .from('pacientes')
-        .update({ obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id })
-        .eq('id', pacienteId)
+      patch.obra_social = osEncontrada.nombre
+      patch.os_config_id = osEncontrada.id
+    }
+    // Solo había pacientes inactivos con este email — se reusa el más antiguo
+    // en vez de crear uno nuevo, reactivándolo.
+    if (!existing.activo) {
+      patch.activo = true
+    }
+    if (Object.keys(patch).length > 0) {
+      await db.from('pacientes').update(patch).eq('id', pacienteId)
     }
   } else {
     const { data: newPaciente, error: pacErr } = await db
@@ -165,7 +193,7 @@ export async function POST(req: NextRequest) {
         terapeuta_id: profile.id,
         nombre,
         apellido,
-        email,
+        email: emailNormalizado,
         telefono: telefono ?? null,
         activo: true,
         motivo_consulta: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,

@@ -61,6 +61,8 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   )
 }
 
+type CoincidenciaPaciente = { id: string; nombre: string; apellido: string; activo: boolean }
+
 export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], profObrasSociales = [], esColaborador = false }: { terapeutaId: string; obrasSociales?: string[]; profObrasSociales?: ProfesionalObraSocial[]; esColaborador?: boolean }) {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY_FORM)
@@ -71,6 +73,48 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const actionBarRef = useRef<HTMLDivElement>(null)
   const { cie10, cargarCie10 } = useCie10()
+
+  // Detección de duplicados dentro del mismo profesional — ver PASO 4.
+  // dniDuplicadoActivo bloquea el guardado; los otros dos son solo avisos.
+  const [dniDuplicadoActivo, setDniDuplicadoActivo] = useState<CoincidenciaPaciente | null>(null)
+  const [dniDuplicadoInactivo, setDniDuplicadoInactivo] = useState<CoincidenciaPaciente | null>(null)
+  const [emailCoincidente, setEmailCoincidente] = useState<CoincidenciaPaciente | null>(null)
+
+  async function verificarDuplicados(): Promise<{ dni: CoincidenciaPaciente[]; email: CoincidenciaPaciente[] } | null> {
+    try {
+      const res = await fetch('/api/pacientes/verificar-duplicado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dni: form.dni,
+          email: form.email,
+          nombre: form.nombre,
+          apellido: form.apellido,
+        }),
+      })
+      if (!res.ok) return null
+      return await res.json()
+    } catch (err) {
+      console.error('Error al verificar pacientes duplicados:', err)
+      return null
+    }
+  }
+
+  async function handleDniBlur() {
+    if (!form.dni.trim()) {
+      setDniDuplicadoActivo(null)
+      setDniDuplicadoInactivo(null)
+      setEmailCoincidente(null)
+      return
+    }
+    const resultado = await verificarDuplicados()
+    if (!resultado) return
+    const activo = resultado.dni.find((p) => p.activo) ?? null
+    const inactivo = !activo ? resultado.dni.find((p) => !p.activo) ?? null : null
+    setDniDuplicadoActivo(activo)
+    setDniDuplicadoInactivo(inactivo)
+    setEmailCoincidente(resultado.email[0] ?? null)
+  }
 
   function showToast(msg: string, type: 'success' | 'error' = 'success') {
     setToast({ msg, type })
@@ -115,6 +159,22 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
       setError('Nombre y apellido son obligatorios.')
       return
     }
+
+    if (form.dni.trim()) {
+      const resultado = await verificarDuplicados()
+      if (resultado) {
+        const activo = resultado.dni.find((p) => p.activo) ?? null
+        const inactivo = !activo ? resultado.dni.find((p) => !p.activo) ?? null : null
+        setDniDuplicadoActivo(activo)
+        setDniDuplicadoInactivo(inactivo)
+        setEmailCoincidente(resultado.email[0] ?? null)
+        if (activo) {
+          setError(null)
+          return
+        }
+      }
+    }
+
     setLoading(true)
     setError(null)
 
@@ -315,7 +375,20 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>DNI</label>
-                <input name="dni" type="text" className="mono" value={form.dni} onChange={handleChange} placeholder="12.345.678" />
+                <input name="dni" type="text" className="mono" value={form.dni} onChange={handleChange} onBlur={handleDniBlur} placeholder="12.345.678" />
+                {dniDuplicadoActivo && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--coral-hover)' }}>
+                    Ya tenés un paciente con este DNI: {dniDuplicadoActivo.nombre} {dniDuplicadoActivo.apellido} —{' '}
+                    <a href={`/pacientes/${dniDuplicadoActivo.id}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--coral-hover)', textDecoration: 'underline' }}>ver ficha</a>
+                  </span>
+                )}
+                {!dniDuplicadoActivo && dniDuplicadoInactivo && (
+                  <span className="hint warn">
+                    <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.6 1.6 0 0 0 1.4 2.4h15.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z" /></svg>
+                    Ya tenés un paciente inactivo con este DNI: {dniDuplicadoInactivo.nombre} {dniDuplicadoInactivo.apellido} —{' '}
+                    <a href={`/pacientes/${dniDuplicadoInactivo.id}`} target="_blank" rel="noopener noreferrer">ver ficha</a>
+                  </span>
+                )}
               </div>
               <div className="field">
                 <label>Fecha de Nacimiento</label>
@@ -337,6 +410,13 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
                   <span className="hint warn">
                     <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.6 1.6 0 0 0 1.4 2.4h15.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z" /></svg>
                     Sin email no se envían recordatorios automáticos de turnos
+                  </span>
+                )}
+                {emailCoincidente && (
+                  <span className="hint warn">
+                    <svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.8 17a1.6 1.6 0 0 0 1.4 2.4h15.6a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z" /></svg>
+                    Ya tenés a {emailCoincidente.nombre} {emailCoincidente.apellido} con este email. ¿Es la misma persona? —{' '}
+                    <a href={`/pacientes/${emailCoincidente.id}`} target="_blank" rel="noopener noreferrer">ver ficha</a>
                   </span>
                 )}
               </div>
