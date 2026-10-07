@@ -13,6 +13,7 @@ import Logo from '@/components/ui/Logo'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
+import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
 
 function TrialBanner({ trialFin }: { trialFin: string }) {
   const [dias, setDias] = useState<number | null>(null)
@@ -39,10 +40,16 @@ function TrialBanner({ trialFin }: { trialFin: string }) {
 export default function AppShell({
   profile,
   modulos,
+  tiposTurno = [],
+  tiposTurnoHabilitado = false,
+  sedesParaTurno = [],
   children,
 }: {
   profile: Profile | null
   modulos: ModuloConfig[]
+  tiposTurno?: TipoTurnoConSedes[]
+  tiposTurnoHabilitado?: boolean
+  sedesParaTurno?: SedeAgendaTurno[]
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -233,6 +240,9 @@ export default function AppShell({
             pacienteIdInicial={nuevoPacienteId}
             mpConectado={!!((profile as Record<string, unknown> | null)?.mp_user_id)}
             terminologia={profile?.terminologia ?? undefined}
+            tiposTurno={tiposTurno}
+            tiposTurnoHabilitado={tiposTurnoHabilitado}
+            sedesParaTurno={sedesParaTurno}
             onCreado={() => { setNuevoTurnoOpen(false); router.refresh() }}
             onClose={() => setNuevoTurnoOpen(false)}
           />

@@ -25,6 +25,10 @@ interface Props {
   // ahí implicaría moverlo a la tabla `entrevistas`, que no es parte de este
   // flujo (edición de turnos no soporta ese cambio de tabla).
   showEntrevista?: boolean
+  // Si viene, "Tus tipos" muestra "· en {sedeNombre}" — quien no lo pase
+  // (ej. TurnoDetalleModal, que edita un turno ya creado sin campo Sede)
+  // sigue exactamente igual que antes.
+  sedeNombre?: string
 }
 
 const SYM: Record<string, string> = { ARS: '$', USD: 'US$', EUR: '€' }
@@ -33,7 +37,7 @@ function money(precio: number | null, moneda: string): string {
   return precio != null && precio > 0 ? `${SYM[moneda] ?? '$'} ${Number(precio).toLocaleString('es-AR')}` : 'Sin costo'
 }
 
-export default function TipoTurnoPicker({ tiposTurno, tipo, tipoTurnoId, nombreSesion, onPick, showEntrevista = true }: Props) {
+export default function TipoTurnoPicker({ tiposTurno, tipo, tipoTurnoId, nombreSesion, onPick, showEntrevista = true, sedeNombre }: Props) {
   return (
     <div className="tt-tlist">
       <div className="tt-tl-h">Tipos base</div>
@@ -57,7 +61,7 @@ export default function TipoTurnoPicker({ tiposTurno, tipo, tipoTurnoId, nombreS
       )}
       {tiposTurno.length > 0 && (
         <>
-          <div className="tt-tl-h">Tus tipos</div>
+          <div className="tt-tl-h">Tus tipos{sedeNombre && <span> · en {sedeNombre}</span>}</div>
           {tiposTurno.map((p) => (
             <button
               key={p.id}

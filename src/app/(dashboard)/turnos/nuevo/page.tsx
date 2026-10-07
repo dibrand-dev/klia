@@ -1,10 +1,19 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import { Suspense } from 'react'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
-import type { Paciente, PacienteColaboradorRow } from '@/types/database'
+import { obtenerDatosAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+import type { Paciente, PacienteColaboradorRow, Database } from '@/types/database'
+
+function serviceClient() {
+  return createServiceClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export const metadata = { title: 'Nuevo turno — KLIA' }
 
@@ -41,10 +50,14 @@ export default async function NuevoTurnoPage() {
         pacientes = data
       }
     })(),
-    supabase.from('profiles').select('mp_user_id, terminologia').eq('id', efectivo.terapeutaId).single(),
+    supabase.from('profiles').select('mp_user_id, terminologia, plan').eq('id', efectivo.terapeutaId).single(),
   ])
   const mpConectado = !!(profileRaw as Record<string, unknown> | null)?.mp_user_id
   const terminologia = (profileRaw as Record<string, unknown> | null)?.terminologia as 'sesion' | 'consulta' | undefined
+  const plan = (profileRaw as Record<string, unknown> | null)?.plan as string | null
+
+  const db = serviceClient()
+  const { sedesActivas, tiposTurno, tiposTurnoHabilitado } = await obtenerDatosAgendaTurno(db, efectivo.terapeutaId, plan ?? '')
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -63,7 +76,15 @@ export default async function NuevoTurnoPage() {
 
         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
           <Suspense>
-            <NuevoTurnoPageForm pacientes={pacientes ?? []} terapeutaId={efectivo.terapeutaId} mpConectado={mpConectado} terminologia={terminologia} />
+            <NuevoTurnoPageForm
+              pacientes={pacientes ?? []}
+              terapeutaId={efectivo.terapeutaId}
+              mpConectado={mpConectado}
+              terminologia={terminologia}
+              tiposTurno={tiposTurno}
+              tiposTurnoHabilitado={tiposTurnoHabilitado}
+              sedesParaTurno={sedesActivas}
+            />
           </Suspense>
         </div>
       </div>

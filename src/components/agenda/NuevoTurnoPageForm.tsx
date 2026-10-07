@@ -6,7 +6,7 @@ import { format, addMonths } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import type { Paciente, Turno, ModalidadTurno, Entrevista, TipoTurno } from '@/types/database'
+import type { Paciente, Turno, ModalidadTurno, Entrevista } from '@/types/database'
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
@@ -18,6 +18,15 @@ import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/Ti
 import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
+import { leerPreferenciaAgenda } from '@/lib/agenda/sedeAgenda'
+import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+
+const ICON_CAM = (
+  <svg viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="12" height="11" rx="2" /><path d="M14.5 11l7-3.5v9l-7-3.5z" /></svg>
+)
+const ICON_SWAP = (
+  <svg viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3" /></svg>
+)
 
 const DURACIONES = [20, 30, 45, 50, 60, 90]
 
@@ -42,8 +51,9 @@ interface NuevoTurnoPageFormProps {
   pacienteIdInicial?: string
   mpConectado?: boolean
   terminologia?: 'sesion' | 'consulta'
-  tiposTurno?: TipoTurno[]
+  tiposTurno?: TipoTurnoConSedes[]
   tiposTurnoHabilitado?: boolean
+  sedesParaTurno?: SedeAgendaTurno[]
   onCreado?: (turno: Turno) => void
   onEntrevistaCreada?: (e: Entrevista) => void
   onClose?: () => void
@@ -65,9 +75,24 @@ function quinSemana(fechaStr: string): 1 | 2 {
   return (n === 1 || n === 3) ? 1 : 2
 }
 
+// Sede por defecto al abrir el formulario: la que esté filtrada en la Agenda
+// ("Por sede", vía leerPreferenciaAgenda en localStorage) si sigue siendo una
+// sede activa real; si no, la primera por orden. Misma regla desde las 3
+// entradas (Agenda, /turnos/nuevo, SlideOver global de AppShell).
+function sedeInicial(sedes: SedeAgendaTurno[]): string | null {
+  if (sedes.length === 0) return null
+  const pref = leerPreferenciaAgenda()
+  if (pref.scope === 'sede' && pref.sedeId && sedes.some((s) => s.id === pref.sedeId)) {
+    return pref.sedeId
+  }
+  return sedes[0].id
+}
+
 export default function NuevoTurnoPageForm({
-  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, tiposTurno = [], tiposTurnoHabilitado = false, onCreado, onEntrevistaCreada, onClose,
+  pacientes, terapeutaId, fechaInicial, pacienteIdInicial, mpConectado = false, terminologia, tiposTurno = [], tiposTurnoHabilitado = false, sedesParaTurno = [], onCreado, onEntrevistaCreada, onClose,
 }: NuevoTurnoPageFormProps) {
+  const multiSede = sedesParaTurno.length > 1
+  const sedeInicialId = sedeInicial(sedesParaTurno)
   const t = getTerminologia(terminologia)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -88,6 +113,11 @@ export default function NuevoTurnoPageForm({
 
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
   const [tipoTurnoId, setTipoTurnoId] = useState<string | null>(null)
+  // Sede elegida — vive a nivel de componente (no se resetea al pasar de la
+  // vista de turno a la de entrevista y viceversa) para que el picker de
+  // tipos propios filtre igual en las dos sub-vistas.
+  const [sedeId, setSedeId] = useState<string | null>(sedeInicialId)
+  const [sedeSwap, setSedeSwap] = useState<{ tipoDescartado: string; sedeNombre: string } | null>(null)
   const [entrevistaForm, setEntrevistaForm] = useState({
     nombre: '',
     apellido: '',
@@ -101,12 +131,13 @@ export default function NuevoTurnoPageForm({
     notas: '',
   })
 
+  const sedeInicialObj = multiSede ? sedesParaTurno.find((s) => s.id === sedeInicialId) ?? null : null
   const [form, setForm] = useState({
     paciente_id: pacienteIdInicial ?? '',
     fecha: fechaParam,
     hora: horaParam,
     duracion_min: 50,
-    modalidad: 'presencial' as ModalidadTurno,
+    modalidad: (sedeInicialObj?.es_online ? 'videollamada' : 'presencial') as ModalidadTurno,
     monto: formatearMontoInputInicial(pacienteInicial?.honorarios),
     notas: '',
   })
@@ -143,8 +174,17 @@ export default function NuevoTurnoPageForm({
   // de `tiposTurno` (lista completa, usada para resolver nombres ya
   // guardados), esta lista queda vacía si el plan actual no lo habilita.
   const tiposTurnoActivos = tiposTurnoHabilitado ? tiposTurno.filter((t) => t.activo) : []
+  const sedeActual = multiSede ? sedesParaTurno.find((s) => s.id === sedeId) ?? null : null
+  // Con 2+ sedes, "Tus tipos" se filtra por la sede elegida — un tipo sin
+  // ninguna sede asignada (sucursalIds vacío) se considera disponible en
+  // todas, no en ninguna, para no esconder un tipo propio por una fila de
+  // relación faltante.
+  const tiposTurnoPorSede = (multiSede && sedeId)
+    ? tiposTurnoActivos.filter((t) => t.sucursalIds.length === 0 || t.sucursalIds.includes(sedeId))
+    : tiposTurnoActivos
 
   function handlePickTipo(pick: TipoTurnoPick) {
+    setSedeSwap(null)
     if (pick.tipo === 'entrevista') {
       setTipo('entrevista')
       setTipoTurnoId(null)
@@ -162,6 +202,28 @@ export default function NuevoTurnoPageForm({
     } else {
       setForm((prev) => ({ ...prev, duracion_min: 50 }))
     }
+  }
+
+  // Con 2+ sedes: cambiar de sede fija la modalidad (presencial/videollamada
+  // según es_online) y, si el tipo propio elegido no se ofrece en la nueva
+  // sede, lo descarta y vuelve a Sesión (mismo camino que elegirla a mano),
+  // mostrando el aviso inline con el copy del diseño.
+  function handleSedeChange(nuevaSedeId: string) {
+    setSedeId(nuevaSedeId)
+    const nuevaSede = sedesParaTurno.find((s) => s.id === nuevaSedeId) ?? null
+    if (nuevaSede) {
+      setForm((prev) => ({ ...prev, modalidad: nuevaSede.es_online ? 'videollamada' : 'presencial' }))
+    }
+    if (tipoTurnoId) {
+      const actual = tiposTurno.find((t) => t.id === tipoTurnoId)
+      const sigueDisponible = !!actual && (actual.sucursalIds.length === 0 || (!!nuevaSede && actual.sucursalIds.includes(nuevaSede.id)))
+      if (actual && !sigueDisponible) {
+        handlePickTipo({ tipo: 'sesion', tipoTurnoId: null })
+        setSedeSwap({ tipoDescartado: actual.nombre, sedeNombre: nuevaSede?.nombre ?? '' })
+        return
+      }
+    }
+    setSedeSwap(null)
   }
 
   function restablecerTipoPropio() {
@@ -186,7 +248,7 @@ export default function NuevoTurnoPageForm({
       new Date(y, m - 1, d), new Date(yf, mf - 1, df), supabase, frecuencia, semana
     )
     await crearSerieTurnos(serieId, terapeutaId, form.paciente_id, fechas,
-      form.hora, Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto), supabase, moneda, tipoTurnoId)
+      form.hora, Number(form.duracion_min), form.modalidad, parsearMontoInput(form.monto), supabase, moneda, tipoTurnoId, multiSede ? sedeId : null)
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -355,6 +417,7 @@ export default function NuevoTurnoPageForm({
         notas: form.notas || null,
         es_sobreturno: esSobreturno,
         tipo_turno_id: tipoTurnoId,
+        sucursal_id: multiSede ? sedeId : null,
       })
       .select('*, paciente:pacientes(*)')
       .single()
@@ -486,13 +549,14 @@ export default function NuevoTurnoPageForm({
         {/* Selector tipo */}
         <div className="card p-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-          {tiposTurnoActivos.length > 0 ? (
+          {tiposTurnoPorSede.length > 0 ? (
             <TipoTurnoPicker
-              tiposTurno={tiposTurnoActivos}
+              tiposTurno={tiposTurnoPorSede}
               tipo={tipo}
               tipoTurnoId={tipoTurnoId}
               nombreSesion={t.Sesion}
               onPick={handlePickTipo}
+              sedeNombre={sedeActual?.nombre}
             />
           ) : (
             <div className="flex gap-6">
@@ -618,16 +682,48 @@ export default function NuevoTurnoPageForm({
         </div>
       )}
 
+      {/* Sede — solo con 2+ sedes activas */}
+      {multiSede && (
+        <div className="card p-4">
+          <div className="tt-field" style={{ marginBottom: 0 }}>
+            <label htmlFor="nfSede">Sede</label>
+            <select id="nfSede" value={sedeId ?? ''} onChange={(e) => handleSedeChange(e.target.value)}>
+              {sedesParaTurno.map((s) => (
+                <option key={s.id} value={s.id}>{s.nombre}{s.es_online ? ' · videollamada' : ''}</option>
+              ))}
+            </select>
+            <span className="tt-hint tt-sedeh">
+              {sedeActual?.es_online ? (
+                <>
+                  <span className="tt-tag-onl">{ICON_CAM}Online</span>
+                  Modalidad: <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>videollamada</b> · el link le llega al paciente por email
+                </>
+              ) : (
+                <>Presencial · {sedeActual?.direccion}</>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {sedeSwap && (
+        <div className="tt-chg-note swap">
+          {ICON_SWAP}
+          <span>{sedeSwap.tipoDescartado} no se ofrece en <b>{sedeSwap.sedeNombre}</b>. Volvimos a <b>Sesión</b> con su duración y monto.</span>
+        </div>
+      )}
+
       {/* Selector tipo */}
       <div className="card p-4">
         <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-        {tiposTurnoActivos.length > 0 ? (
+        {tiposTurnoPorSede.length > 0 ? (
           <TipoTurnoPicker
-            tiposTurno={tiposTurnoActivos}
+            tiposTurno={tiposTurnoPorSede}
             tipo={tipo}
             tipoTurnoId={tipoTurnoId}
             nombreSesion={t.Sesion}
             onPick={handlePickTipo}
+            sedeNombre={sedeActual?.nombre}
           />
         ) : (
           <div className="flex gap-6">
@@ -718,12 +814,14 @@ export default function NuevoTurnoPageForm({
                 {Number(form.duracion_min) >= 5 ? `Termina a las ${sumarMinutos(form.hora, Number(form.duracion_min))}` : 'Indicá al menos 5 minutos'}
               </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>
-              <select name="modalidad" value={form.modalidad} onChange={handleChange} className="input-field">
-                {MODALIDADES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
+            {!multiSede && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>
+                <select name="modalidad" value={form.modalidad} onChange={handleChange} className="input-field">
+                  {MODALIDADES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="card p-4">

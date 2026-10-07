@@ -1,8 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import dynamic from 'next/dynamic'
 import { getModulosConfig } from '@/lib/modulos'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { obtenerDatosAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+import type { Database } from '@/types/database'
+
+function serviceClient() {
+  return createServiceClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 const AppShell = dynamic(
   () => import('@/components/layout/AppShell'),
@@ -52,9 +62,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const showOnboarding = !efectivo.esColaborador && !profile.onboarding_completed && !profile.onboarding_skipped
 
+  const db = serviceClient()
+  const { sedesActivas, tiposTurno, tiposTurnoHabilitado } = await obtenerDatosAgendaTurno(db, efectivo.terapeutaId, profile.plan ?? '')
+
   return (
     <>
-      <AppShell profile={profile} modulos={modulos}>{children}</AppShell>
+      <AppShell
+        profile={profile}
+        modulos={modulos}
+        tiposTurno={tiposTurno}
+        tiposTurnoHabilitado={tiposTurnoHabilitado}
+        sedesParaTurno={sedesActivas}
+      >{children}</AppShell>
       {showOnboarding && (
         <OnboardingWizard
           nombreProfesional={profile.nombre}

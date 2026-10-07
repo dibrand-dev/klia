@@ -359,6 +359,39 @@ export type Database = {
           },
         ]
       }
+      tipos_turno_sucursales: {
+        Row: {
+          tipo_turno_id: string
+          sucursal_id: string
+          created_at: string
+        }
+        Insert: {
+          tipo_turno_id: string
+          sucursal_id: string
+          created_at?: string
+        }
+        Update: {
+          tipo_turno_id?: string
+          sucursal_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'tipos_turno_sucursales_tipo_turno_id_fkey'
+            columns: ['tipo_turno_id']
+            isOneToOne: false
+            referencedRelation: 'tipos_turno'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tipos_turno_sucursales_sucursal_id_fkey'
+            columns: ['sucursal_id']
+            isOneToOne: false
+            referencedRelation: 'sucursales'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pacientes: {
         Row: {
           id: string
@@ -2328,6 +2361,7 @@ export type Testimonio = Database['public']['Tables']['testimonios']['Row']
 export type Sucursal = Database['public']['Tables']['sucursales']['Row']
 export type HorarioSucursal = Database['public']['Tables']['horarios_sucursal']['Row']
 export type TipoTurno = Database['public']['Tables']['tipos_turno']['Row']
+export type TipoTurnoSucursal = Database['public']['Tables']['tipos_turno_sucursales']['Row']
 
 export type PlanConFuncionalidades = Plan & {
   plan_funcionalidades: { funcionalidad: string }[]

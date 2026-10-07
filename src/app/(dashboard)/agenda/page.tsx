@@ -3,12 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import AgendaSemanal from '@/components/agenda/AgendaSemanal'
 import { startOfWeek, endOfWeek } from 'date-fns'
-import type { Turno, Entrevista, Paciente, PacienteColaboradorRow, TipoTurno, Database } from '@/types/database'
+import type { Turno, Entrevista, Paciente, PacienteColaboradorRow, Database } from '@/types/database'
 import { format } from 'date-fns'
 import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calendar'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
-import { puedeUsarTiposTurno } from '@/lib/modulos'
+import { obtenerDatosAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
 
 function serviceClient() {
   return createServiceClient<Database>(
@@ -62,19 +62,13 @@ export default async function AgendaPage() {
   ])
 
   const db = serviceClient()
-  const tiposTurnoHabilitado = await puedeUsarTiposTurno(db, profile?.plan ?? '')
   // Siempre se trae el listado completo (activos e inactivos) — un turno ya
   // agendado con un tipo propio conserva su nombre aunque el profesional
   // haya bajado a un plan que ya no permite crear/editar tipos. El booleano
   // `tiposTurnoHabilitado` es lo único que decide si se puede seguir
   // eligiendo un tipo nuevo; la resolución de nombres en el detalle no
   // depende del plan.
-  const { data: tiposTurnoData } = await db
-    .from('tipos_turno')
-    .select('*')
-    .eq('terapeuta_id', efectivo.terapeutaId)
-    .order('orden', { ascending: true })
-  const tiposTurno: TipoTurno[] = tiposTurnoData ?? []
+  const { sedesActivas, tiposTurno, tiposTurnoHabilitado } = await obtenerDatosAgendaTurno(db, efectivo.terapeutaId, profile?.plan ?? '')
 
   let pacientes: Paciente[] | null
   if (efectivo.esColaborador) {
@@ -156,6 +150,7 @@ export default async function AgendaPage() {
         horariosPorDia={profile?.horarios_por_dia ?? undefined}
         tiposTurno={tiposTurno}
         tiposTurnoHabilitado={tiposTurnoHabilitado}
+        sedesParaTurno={sedesActivas}
       />
     </div>
   )

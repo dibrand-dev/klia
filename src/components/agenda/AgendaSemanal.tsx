@@ -13,7 +13,8 @@ import {
   cn, ESTADO_TURNO_COLORS, ESTADO_TURNO_DOT,
   formatNombreCompleto,
 } from '@/lib/utils'
-import type { Turno, Paciente, Entrevista, TipoTurno } from '@/types/database'
+import type { Turno, Paciente, Entrevista } from '@/types/database'
+import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
 import SlideOver from '@/components/ui/SlideOver'
 import NuevoTurnoPageForm from './NuevoTurnoPageForm'
 import TurnoDetalleModal from './TurnoDetalleModal'
@@ -68,8 +69,9 @@ interface AgendaSemanalProps {
   feriadosConfig?: FeriadosConfig
   terminologia?: 'sesion' | 'consulta'
   horariosPorDia?: Record<string, HorarioDiaAgenda>
-  tiposTurno?: TipoTurno[]
+  tiposTurno?: TipoTurnoConSedes[]
   tiposTurnoHabilitado?: boolean
+  sedesParaTurno?: SedeAgendaTurno[]
 }
 
 function getTopOffset(fechaHora: string, horaInicio: number) {
@@ -83,7 +85,7 @@ function getHeight(min: number) {
 
 export default function AgendaSemanal({
   turnosIniciales, pacientes, terapeutaId, googleConnected = false, googleEventsIniciales = [], googleEventsDiaCompletosIniciales = [], entrevistasIniciales = [],
-  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia, tiposTurno = [], tiposTurnoHabilitado = false,
+  horaInicio: horaInicioP, horaFin: horaFinP, mpConectado = false, feriadosConfig, terminologia, horariosPorDia, tiposTurno = [], tiposTurnoHabilitado = false, sedesParaTurno = [],
 }: AgendaSemanalProps) {
   const { esColaborador } = useEffectiveTerapeutaId()
   const [mapaNombres, setMapaNombres] = useState<Map<string, { nombre: string; apellido: string }>>(new Map())
@@ -717,6 +719,7 @@ export default function AgendaSemanal({
             terminologia={terminologia}
             tiposTurno={tiposTurno}
             tiposTurnoHabilitado={tiposTurnoHabilitado}
+            sedesParaTurno={sedesParaTurno}
             onCreado={(t) => { setTurnos((prev) => [...prev, t]); setNuevoOpen(false) }}
             onEntrevistaCreada={(e) => { setEntrevistas((prev) => [...prev, e]); setNuevoOpen(false) }}
             onClose={() => setNuevoOpen(false)}
