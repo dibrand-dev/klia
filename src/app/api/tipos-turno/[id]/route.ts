@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!existente) return NextResponse.json({ error: 'Tipo de turno no encontrado' }, { status: 404 })
 
   const body = await req.json() as {
-    nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
+    nombre?: unknown; descripcion?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
     visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
@@ -91,6 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const update: Record<string, unknown> = {
     nombre: validado.nombre,
+    descripcion: validado.descripcion,
     duracion_min: validado.duracion_min,
     precio: validado.precio,
     moneda: validado.moneda,

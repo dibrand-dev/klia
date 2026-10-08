@@ -52,6 +52,7 @@ export type SedePublica = {
 export type TipoPropioPublico = {
   id: string
   nombre: string
+  descripcion: string | null
   duracion_min: number
   precio: number | null
   moneda: string
@@ -114,7 +115,7 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
   if (await puedeUsarTiposTurno(supabase, data.plan ?? '')) {
     const { data: tipos } = await supabase
       .from('tipos_turno')
-      .select('id, nombre, duracion_min, precio, moneda')
+      .select('id, nombre, descripcion, duracion_min, precio, moneda')
       .eq('terapeuta_id', data.id)
       .eq('activo', true)
       .eq('visible_en_booking', true)

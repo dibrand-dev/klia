@@ -69,6 +69,18 @@ export default function BookingClient({ profile }: Props) {
   // a true por un click manual o por la autoselección de sede-con-un-solo-tipo.
   const [tipoElegido, setTipoElegido] = useState(false)
   const [swapNote, setSwapNote] = useState<{ sedeAnterior: string; tipoDescartado: string } | null>(null)
+  // «Ver más» de la descripción de un tipo propio — vive acá (no en
+  // StepTipoConsulta) para sobrevivir a los re-render del paso Tipo, igual
+  // que el resto del estado de selección.
+  const [descExpandidas, setDescExpandidas] = useState<Set<string>>(new Set())
+  function toggleDescExpandida(id: string) {
+    setDescExpandidas((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   const [modalidad, setModalidad] = useState<string>(
     profile.booking_modalidades?.[0] ?? 'presencial'
   )
@@ -330,6 +342,8 @@ export default function BookingClient({ profile }: Props) {
                 onNext={() => goNextFrom('tipo')}
                 onBack={multiSede ? () => goBackFrom('tipo') : undefined}
                 onCambiarSede={multiSede ? handleCambiarSede : undefined}
+                descExpandidas={descExpandidas}
+                onToggleDescExpandida={toggleDescExpandida}
               />
             </div>
           )}

@@ -201,3 +201,33 @@
 
 .tt-err.with-ic { display: flex; align-items: center; gap: 6px; }
 .tt-err.with-ic svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; flex: none; }
+
+/* ===== Descripción del tipo de turno (opcional) =====
+   Extraído de "Ajustes - Tipos de turno v3 - descripcion.html": .opt,
+   textarea, .cnt(.near/.max), .preview .pd. Única excepción al mapeo
+   literal del diseño: el focus del textarea reusa el mismo rgba de accent
+   que el resto de los inputs del formulario (rgba(31,79,217,.12)) en vez
+   del rgba(37,99,235,.12) literal del diseño, por consistencia visual con
+   Nombre/Duración/Precio en este mismo SlideOver. */
+.tt-opt { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted-2); font-size: 11.5px; margin-left: 6px; }
+.tt-field textarea {
+  border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
+  font: inherit; font-size: 14px; line-height: 1.5; color: var(--ink); background: var(--surface);
+  outline: none; width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; min-height: calc(4.5em + 20px);
+}
+.tt-field textarea::placeholder { color: var(--muted-2); }
+.tt-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,79,217,.12); }
+.tt-field textarea.tt-max { border-color: var(--danger); }
+.tt-field textarea.tt-max:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.12); }
+
+.tt-cnt { font-size: 11.5px; color: var(--muted-2); font-variant-numeric: tabular-nums; font-weight: 500; }
+.tt-cnt.near { color: #B45309; font-weight: 600; }
+.tt-cnt.max { color: var(--danger); font-weight: 700; }
+
+/* .tt-preview queda align-items:center por default (sin cambios visuales
+   para tipos sin descripción); solo pasa a flex-start cuando hay .tt-pd,
+   igual que el diseño (que sí lo redefine siempre, pero ahí el preview
+   nunca se ve sin selector de estado — acá preferimos no tocar el caso
+   sin descripción). */
+.tt-preview.tt-has-pd { align-items: flex-start; }
+.tt-preview .tt-pd { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

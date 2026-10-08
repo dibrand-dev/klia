@@ -61,6 +61,7 @@ const ICON_WARN = (
 
 type Draft = {
   nombre: string
+  descripcion: string
   duracion_min: string
   precio: string
   moneda: string
@@ -71,7 +72,7 @@ type Draft = {
 
 function draftVacio(sedes: SedeTipoTurno[]): Draft {
   return {
-    nombre: '', duracion_min: '', precio: '', moneda: 'ARS', visible_en_booking: true, activo: true,
+    nombre: '', descripcion: '', duracion_min: '', precio: '', moneda: 'ARS', visible_en_booking: true, activo: true,
     sucursal_ids: sedes.length > 1 ? [] : sedes.length === 1 ? [sedes[0].id] : [],
   }
 }
@@ -79,6 +80,7 @@ function draftVacio(sedes: SedeTipoTurno[]): Draft {
 function draftDeTipo(t: TipoTurnoConSedes): Draft {
   return {
     nombre: t.nombre,
+    descripcion: t.descripcion ?? '',
     duracion_min: String(t.duracion_min),
     precio: formatearMontoInputInicial(t.precio),
     moneda: t.moneda,
@@ -154,6 +156,9 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
   const nombreOk = draft.nombre.trim().length > 0
   const duracionOk = Number(draft.duracion_min) >= 5
   const sedesOk = !multiSede || draft.sucursal_ids.length > 0
+  const descLen = draft.descripcion.length
+  const descNear = descLen >= 450 && descLen < 500
+  const descMax = descLen >= 500
 
   async function guardar() {
     setTouched(true)
@@ -163,6 +168,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
 
     const body = {
       nombre: draft.nombre,
+      descripcion: draft.descripcion,
       duracion_min: Number(draft.duracion_min),
       precio: parsearMontoInput(draft.precio),
       moneda: draft.moneda,
@@ -377,6 +383,22 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         </div>
 
         <div className="tt-field">
+          <div className="tt-lbl-row">
+            <label htmlFor="ttFDesc">Descripción<span className="tt-opt">Opcional</span></label>
+            <span className={`tt-cnt ${descNear ? 'near' : ''} ${descMax ? 'max' : ''}`} aria-live="polite">{descLen}/500</span>
+          </div>
+          <textarea
+            id="ttFDesc" rows={3} maxLength={500}
+            className={descMax ? 'tt-max' : ''}
+            placeholder="Contale al paciente de qué trata este turno"
+            value={draft.descripcion}
+            onChange={(e) => setDraft((p) => ({ ...p, descripcion: e.target.value.slice(0, 500) }))}
+          />
+          {descMax && <span className="tt-err">Llegaste al máximo de 500 caracteres.</span>}
+          <span className="tt-hint">Se muestra a tus pacientes al reservar.</span>
+        </div>
+
+        <div className="tt-field">
           <label htmlFor="ttFDur">Duración<em>*</em></label>
           <div className={`tt-ig ${touched && !duracionOk ? 'tt-bad' : ''}`} style={{ maxWidth: 180 }}>
             <input
@@ -463,10 +485,11 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
           />
         </div>
 
-        <div className="tt-preview" style={{ opacity: draft.visible_en_booking ? 1 : 0.6 }}>
+        <div className={`tt-preview ${draft.descripcion.trim() ? 'tt-has-pd' : ''}`} style={{ opacity: draft.visible_en_booking ? 1 : 0.6 }}>
           <div style={{ minWidth: 0 }}>
             <div className="tt-pl">{draft.visible_en_booking ? 'Así lo ve el paciente' : 'No se muestra en tu reserva pública'}</div>
             <div className="tt-pn">{draft.nombre.trim() || 'Nombre del tipo'}</div>
+            {draft.descripcion.trim() && <div className="tt-pd">{draft.descripcion.trim()}</div>}
             <div className="tt-pm">
               {draft.duracion_min ? `${draft.duracion_min} min` : '— min'}
               {multiSede ? ` · ${draft.sucursal_ids.length === 1 && sedes.find((s) => s.id === draft.sucursal_ids[0])?.es_online ? 'Por videollamada' : sedesTxt(draft.sucursal_ids, sedes)}` : ''}

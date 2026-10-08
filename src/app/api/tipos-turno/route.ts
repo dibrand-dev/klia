@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json() as {
-    nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
+    nombre?: unknown; descripcion?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
     visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
     .insert({
       terapeuta_id: efectivo.terapeutaId,
       nombre: validado.nombre,
+      descripcion: validado.descripcion,
       duracion_min: validado.duracion_min,
       precio: validado.precio,
       moneda: validado.moneda,

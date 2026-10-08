@@ -314,6 +314,7 @@ export type Database = {
           id: string
           terapeuta_id: string
           nombre: string
+          descripcion: string | null
           duracion_min: number
           precio: number | null
           moneda: string
@@ -327,6 +328,7 @@ export type Database = {
           id?: string
           terapeuta_id: string
           nombre: string
+          descripcion?: string | null
           duracion_min: number
           precio?: number | null
           moneda?: string
@@ -340,6 +342,7 @@ export type Database = {
           id?: string
           terapeuta_id?: string
           nombre?: string
+          descripcion?: string | null
           duracion_min?: number
           precio?: number | null
           moneda?: string

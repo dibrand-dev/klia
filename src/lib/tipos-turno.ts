@@ -33,15 +33,16 @@ export interface ValidacionError {
 
 export interface TipoTurnoInputValidado {
   nombre: string
+  descripcion: string | null
   duracion_min: number
   precio: number | null
   moneda: MonedaTipoTurno
 }
 
-// Valida los 4 campos editables de un tipo de turno. `terminologia` es la del
+// Valida los campos editables de un tipo de turno. `terminologia` es la del
 // profesional dueño (nunca la del usuario logueado si es Colaboradora).
 export function validarTipoTurnoInput(
-  body: { nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown },
+  body: { nombre?: unknown; descripcion?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown },
   terminologia: 'sesion' | 'consulta' | null | undefined,
 ): ValidacionError | TipoTurnoInputValidado {
   if (typeof body.nombre !== 'string') {
@@ -78,5 +79,17 @@ export function validarTipoTurnoInput(
     return { error: `Moneda inválida — tiene que ser ${MONEDAS_VALIDAS.join(', ')}` }
   }
 
-  return { nombre, duracion_min: body.duracion_min, precio, moneda: moneda as MonedaTipoTurno }
+  let descripcion: string | null = null
+  if (body.descripcion !== null && body.descripcion !== undefined) {
+    if (typeof body.descripcion !== 'string') {
+      return { error: 'La descripción debe ser texto' }
+    }
+    const descripcionTrim = body.descripcion.trim()
+    if (descripcionTrim.length > 500) {
+      return { error: 'La descripción no puede superar los 500 caracteres' }
+    }
+    descripcion = descripcionTrim.length > 0 ? descripcionTrim : null
+  }
+
+  return { nombre, descripcion, duracion_min: body.duracion_min, precio, moneda: moneda as MonedaTipoTurno }
 }

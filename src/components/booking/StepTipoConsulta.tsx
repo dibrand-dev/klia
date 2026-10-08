@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ProfileData, SedePublica, TipoPropioPublico } from '@/app/p/[slug]/page'
 import ProfileCard from './ProfileCard'
 import SedeBreadcrumb from './SedeBreadcrumb'
@@ -21,6 +21,8 @@ interface Props {
   onNext: () => void
   onBack?: () => void
   onCambiarSede?: () => void
+  descExpandidas: Set<string>
+  onToggleDescExpandida: (id: string) => void
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -72,6 +74,8 @@ export default function StepTipoConsulta({
   onNext,
   onBack,
   onCambiarSede,
+  descExpandidas,
+  onToggleDescExpandida,
 }: Props) {
   const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined
   const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined
@@ -92,6 +96,51 @@ export default function StepTipoConsulta({
   const propios = multiSede
     ? (sede ? profile.tiposPropios.filter((t) => t.sucursalIds.includes(sede.id)) : [])
     : profile.tiposPropios
+
+  // «Ver más» solo se muestra si el texto realmente se recorta a 2 líneas
+  // (igual que fitVm() del diseño: compara scrollHeight contra clientHeight
+  // del elemento clampeado). Solo se puede medir mientras está cerrado — una
+  // vez medido queda cacheado en needsToggleRef, así que abrir la tarjeta no
+  // vuelve a medir (ya no hay clamp activo para comparar).
+  const descRefs = useRef<Record<string, HTMLSpanElement | null>>({})
+  const needsToggleRef = useRef<Record<string, boolean>>({})
+  const [, bumpMedicion] = useState(0)
+  const propiosDescKey = propios.map((p) => p.id).join(',')
+
+  useLayoutEffect(() => {
+    let cambio = false
+    propios.forEach((p) => {
+      if (!p.descripcion || descExpandidas.has(p.id)) return
+      const el = descRefs.current[p.id]
+      if (!el) return
+      const desborda = el.scrollHeight > el.clientHeight + 1
+      if (needsToggleRef.current[p.id] !== desborda) {
+        needsToggleRef.current[p.id] = desborda
+        cambio = true
+      }
+    })
+    if (cambio) bumpMedicion((n) => n + 1)
+  }, [propiosDescKey, descExpandidas])
+
+  useEffect(() => {
+    function medirEnResize() {
+      let cambio = false
+      propios.forEach((p) => {
+        if (!p.descripcion || descExpandidas.has(p.id)) return
+        const el = descRefs.current[p.id]
+        if (!el) return
+        const desborda = el.scrollHeight > el.clientHeight + 1
+        if (needsToggleRef.current[p.id] !== desborda) {
+          needsToggleRef.current[p.id] = desborda
+          cambio = true
+        }
+      })
+      if (cambio) bumpMedicion((n) => n + 1)
+    }
+    window.addEventListener('resize', medirEnResize)
+    return () => window.removeEventListener('resize', medirEnResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propiosDescKey, descExpandidas])
 
   const todos: Item[] = [
     ...baseOptions.map((opt): Item => ({ kind: 'base', opt })),
@@ -271,12 +320,22 @@ export default function StepTipoConsulta({
             {propios.map((propio) => {
               const selected = tipoElegido && tipoTurnoId === propio.id
               const sinCosto = propio.precio === null || propio.precio === 0
+              const hasDs = !!propio.descripcion
+              const open = descExpandidas.has(propio.id)
+              const mostrarVm = open || !!needsToggleRef.current[propio.id]
+
+              function handleVerMas(e: React.SyntheticEvent) {
+                e.stopPropagation()
+                e.preventDefault()
+                onToggleDescExpandida(propio.id)
+              }
+
               return (
                 <button
                   key={propio.id}
                   onClick={() => onSeleccionar({ tipo: 'sesion', tipoTurnoId: propio.id }, true)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left',
+                    display: 'flex', alignItems: hasDs ? 'flex-start' : 'center', gap: 13, width: '100%', textAlign: 'left',
                     background: selected ? 'var(--blue-soft-2)' : 'var(--surface)',
                     border: selected ? '1.5px solid var(--navy-2)' : '1px solid var(--border)',
                     borderRadius: 14, padding: '14px 16px',
@@ -287,6 +346,7 @@ export default function StepTipoConsulta({
                 >
                   <span style={{
                     width: 18, height: 18, borderRadius: '50%', flex: 'none',
+                    marginTop: hasDs ? 1 : 0,
                     border: selected ? '1.5px solid var(--navy-2)' : '1.5px solid var(--border-strong)',
                     background: selected ? 'var(--navy-2)' : 'transparent',
                     display: 'grid', placeItems: 'center',
@@ -297,7 +357,41 @@ export default function StepTipoConsulta({
                     <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.35 }}>
                       {propio.nombre}
                     </span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
+                    {hasDs && (
+                      <span style={{ display: 'block', marginTop: 3 }}>
+                        <span
+                          ref={(el) => { descRefs.current[propio.id] = el }}
+                          style={{
+                            fontSize: 12.5, lineHeight: 1.45, color: 'var(--muted)', fontWeight: 400,
+                            display: open ? 'block' : '-webkit-box',
+                            WebkitLineClamp: open ? 'unset' : 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: open ? 'visible' : 'hidden',
+                          } as React.CSSProperties}
+                        >
+                          {propio.descripcion}
+                        </span>
+                        {mostrarVm && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={handleVerMas}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') handleVerMas(e)
+                            }}
+                            style={{
+                              display: 'inline-block', marginTop: 2, fontSize: 12.5, fontWeight: 600,
+                              color: 'var(--navy-2)', cursor: 'pointer', lineHeight: 1.45,
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
+                          >
+                            {open ? 'Ver menos' : 'Ver más'}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: hasDs ? 6 : 3 }}>
                       {ICON_CLK_SM}{propio.duracion_min} min
                       {onl && (<><span style={{ color: 'var(--muted-3)' }}>·</span>{ICON_CAM_SM}Videollamada</>)}
                     </span>
