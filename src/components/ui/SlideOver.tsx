@@ -8,6 +8,7 @@ interface SlideOverProps {
   onClose: () => void
   title: string
   subtitle?: string
+  subtitleCapitalize?: boolean
   children: React.ReactNode
   width?: 'compact' | 'sm' | 'md' | 'lg' | 'xl'
   header?: React.ReactNode
@@ -24,7 +25,7 @@ const WIDTH_MAP = {
 }
 
 export default function SlideOver({
-  open, onClose, title, subtitle, children, width = 'md', header, footer, noPadding,
+  open, onClose, title, subtitle, subtitleCapitalize = true, children, width = 'md', header, footer, noPadding,
 }: SlideOverProps) {
   useEffect(() => {
     if (!open) return
@@ -57,7 +58,7 @@ export default function SlideOver({
             <div className="min-w-0 pr-4">
               <h2 className="text-lg font-semibold text-gray-900 truncate">{title}</h2>
               {subtitle && (
-                <p className="text-sm text-gray-500 mt-0.5 truncate capitalize">{subtitle}</p>
+                <p className={cn('text-sm text-gray-500 mt-0.5 truncate', subtitleCapitalize && 'capitalize')}>{subtitle}</p>
               )}
             </div>
             <button

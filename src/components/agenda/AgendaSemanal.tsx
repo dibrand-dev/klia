@@ -708,7 +708,12 @@ export default function AgendaSemanal({
         open={nuevoOpen}
         onClose={() => setNuevoOpen(false)}
         title="Nuevo turno"
-        subtitle={format(nuevoFecha, "EEEE d 'de' MMMM", { locale: es })}
+        width="compact"
+        subtitle={(() => {
+          const s = format(nuevoFecha, "EEEE d 'de' MMMM", { locale: es })
+          return s.charAt(0).toUpperCase() + s.slice(1)
+        })()}
+        subtitleCapitalize={false}
       >
         <Suspense fallback={null}>
           <NuevoTurnoPageForm
