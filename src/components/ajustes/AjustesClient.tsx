@@ -120,6 +120,7 @@ const ICONS: Record<string, React.ReactNode> = {
   cuenta:          icnSvg(<><path d="M12 1l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V5l8-4z"/><path d="M9 12l2 2 4-4"/></>),
   colaboradoras:   icnSvg(<><circle cx="9" cy="8" r="3"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M17 8a3 3 0 1 0 0-6"/><path d="M22 20a6 6 0 0 0-5-6"/></>),
   recetas:         icnSvg(<><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></>),
+  'tipos-turno':   icnSvg(<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7"/></>),
 }
 
 // ── Toggle switch ──────────────────────────────────────────────────────
