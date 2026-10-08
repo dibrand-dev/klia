@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Paciente, ModuloConfig, PacienteColaboradorRow } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
@@ -231,6 +233,7 @@ export default function AppShell({
         open={nuevoTurnoOpen}
         onClose={() => setNuevoTurnoOpen(false)}
         title="Nuevo turno"
+        subtitle={format(new Date(), "EEEE d 'de' MMMM", { locale: es })}
       >
         <Suspense fallback={null}>
           <NuevoTurnoPageForm

@@ -200,7 +200,17 @@ export default function NuevoTurnoPageForm({
       }))
       if (pick.moneda) setMoneda(pick.moneda as Moneda)
     } else {
-      setForm((prev) => ({ ...prev, duracion_min: 50 }))
+      // Vuelve a Sesión — el monto pasa a ser el de los honorarios del
+      // paciente ya elegido (o vacío si todavía no hay paciente), igual que
+      // cuando se precarga al seleccionar un paciente. Antes quedaba el
+      // monto del tipo propio recién descartado.
+      const pacienteActual = pacientes.find((p) => p.id === form.paciente_id)
+      setForm((prev) => ({
+        ...prev,
+        duracion_min: 50,
+        monto: formatearMontoInputInicial(pacienteActual?.honorarios ?? null),
+      }))
+      if (pacienteActual?.moneda_preferida) setMoneda(pacienteActual.moneda_preferida as Moneda)
     }
   }
 
@@ -682,79 +692,6 @@ export default function NuevoTurnoPageForm({
         </div>
       )}
 
-      {/* Sede — solo con 2+ sedes activas */}
-      {multiSede && (
-        <div className="card p-4">
-          <div className="tt-field" style={{ marginBottom: 0 }}>
-            <label htmlFor="nfSede">Sede</label>
-            <select id="nfSede" value={sedeId ?? ''} onChange={(e) => handleSedeChange(e.target.value)}>
-              {sedesParaTurno.map((s) => (
-                <option key={s.id} value={s.id}>{s.nombre}{s.es_online ? ' · videollamada' : ''}</option>
-              ))}
-            </select>
-            <span className="tt-hint tt-sedeh">
-              {sedeActual?.es_online ? (
-                <>
-                  <span className="tt-tag-onl">{ICON_CAM}Online</span>
-                  Modalidad: <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>videollamada</b> · el link le llega al paciente por email
-                </>
-              ) : (
-                <>Presencial · {sedeActual?.direccion}</>
-              )}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {sedeSwap && (
-        <div className="tt-chg-note swap">
-          {ICON_SWAP}
-          <span>{sedeSwap.tipoDescartado} no se ofrece en <b>{sedeSwap.sedeNombre}</b>. Volvimos a <b>Sesión</b> con su duración y monto.</span>
-        </div>
-      )}
-
-      {/* Selector tipo */}
-      <div className="card p-4">
-        <p className="text-sm font-medium text-gray-700 mb-2">Tipo de turno</p>
-        {tiposTurnoPorSede.length > 0 ? (
-          <TipoTurnoPicker
-            tiposTurno={tiposTurnoPorSede}
-            tipo={tipo}
-            tipoTurnoId={tipoTurnoId}
-            nombreSesion={t.Sesion}
-            onPick={handlePickTipo}
-            sedeNombre={sedeActual?.nombre}
-          />
-        ) : (
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="tipo" value="sesion" checked
-                onChange={() => {}} className="accent-primary" />
-              <span className="text-sm text-gray-700 font-medium">{t.Sesion}</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="tipo" value="entrevista" checked={false}
-                onChange={() => setTipo('entrevista')} className="accent-primary" />
-              <span className="text-sm text-gray-700">Entrevista</span>
-            </label>
-          </div>
-        )}
-      </div>
-
-      {tipoPropioSeleccionado && (
-        <div className="tt-prefill">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
-          {(Number(form.duracion_min) !== tipoPropioSeleccionado.duracion_min || parsearMontoInput(form.monto) !== (tipoPropioSeleccionado.precio ?? 0)) ? (
-            <>
-              <span>Ajustado para este turno · <b>{tipoPropioSeleccionado.nombre}</b> dura <b>{tipoPropioSeleccionado.duracion_min} min</b></span>
-              <button type="button" onClick={restablecerTipoPropio}>Restablecer</button>
-            </>
-          ) : (
-            <span>Duración y monto de <b>{tipoPropioSeleccionado.nombre}</b>. Podés modificarlos para este turno.</span>
-          )}
-        </div>
-      )}
-
       {mostrandoConflictos ? (
         <div className="card p-4">
           <ConflictosPanel
@@ -767,8 +704,8 @@ export default function NuevoTurnoPageForm({
         </div>
       ) : (
         <>
-          <div className="card p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Paciente *</label>
+          <div className="tt-field">
+            <label>Paciente<em>*</em></label>
             <PacienteSearchInput
               pacientes={pacientesActivos}
               value={form.paciente_id}
@@ -787,21 +724,80 @@ export default function NuevoTurnoPageForm({
                 // el paciente no la pisa.
                 if (p?.moneda_preferida && !tipoTurnoId) setMoneda(p.moneda_preferida as Moneda)
               }}
-              className="input-field"
             />
           </div>
 
-          <div className="card p-4 grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha *</label>
-              <input type="date" name="fecha" value={form.fecha} onChange={handleChange} required className="input-field" />
+          {/* Sede — solo con 2+ sedes activas */}
+          {multiSede && (
+            <div className="tt-field">
+              <label htmlFor="nfSede">Sede</label>
+              <select id="nfSede" value={sedeId ?? ''} onChange={(e) => handleSedeChange(e.target.value)}>
+                {sedesParaTurno.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nombre}{s.es_online ? ' · videollamada' : ''}</option>
+                ))}
+              </select>
+              <span className="tt-hint tt-sedeh">
+                {sedeActual?.es_online ? (
+                  <>
+                    <span className="tt-tag-onl">{ICON_CAM}Online</span>
+                    Modalidad: <b style={{ color: 'var(--ink-2)', fontWeight: 600 }}>videollamada</b> · el link le llega al paciente por email
+                  </>
+                ) : (
+                  <>Presencial{sedeActual?.direccion ? ` · ${sedeActual.direccion}` : ''}</>
+                )}
+              </span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Hora *</label>
-              <input type="time" name="hora" value={form.hora} onChange={handleChange} required className="input-field" />
+          )}
+
+          {sedeSwap && (
+            <div className="tt-chg-note swap">
+              {ICON_SWAP}
+              <span>{sedeSwap.tipoDescartado} no se ofrece en <b>{sedeSwap.sedeNombre}</b>. Volvimos a <b>Sesión</b> con su duración y monto.</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Duración</label>
+          )}
+
+          {/* Selector tipo */}
+          <div className="tt-field">
+            <label>Tipo de turno</label>
+            {tiposTurnoPorSede.length > 0 ? (
+              <TipoTurnoPicker
+                tiposTurno={tiposTurnoPorSede}
+                tipo={tipo}
+                tipoTurnoId={tipoTurnoId}
+                nombreSesion={t.Sesion}
+                onPick={handlePickTipo}
+                sedeNombre={sedeActual?.nombre}
+              />
+            ) : (
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer" style={{ textTransform: 'none' }}>
+                  <input type="radio" name="tipo" value="sesion" checked
+                    onChange={() => {}} className="accent-primary" />
+                  <span className="text-sm text-gray-700 font-medium">{t.Sesion}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer" style={{ textTransform: 'none' }}>
+                  <input type="radio" name="tipo" value="entrevista" checked={false}
+                    onChange={() => setTipo('entrevista')} className="accent-primary" />
+                  <span className="text-sm text-gray-700">Entrevista</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div className="tt-g2">
+            <div className="tt-field">
+              <label>Fecha<em>*</em></label>
+              <input type="date" name="fecha" value={form.fecha} onChange={handleChange} required />
+            </div>
+            <div className="tt-field">
+              <label>Hora<em>*</em></label>
+              <input type="time" name="hora" value={form.hora} onChange={handleChange} required />
+            </div>
+          </div>
+
+          <div className="tt-g2">
+            <div className="tt-field">
+              <label>Duración</label>
               <div className="tt-ig">
                 <input
                   type="number" name="duracion_min" min={5} step={5} inputMode="numeric"
@@ -810,38 +806,58 @@ export default function NuevoTurnoPageForm({
                 />
                 <span className="tt-sfx">min</span>
               </div>
-              <p className="tt-dur-end">
+              <span className="tt-hint">
                 {Number(form.duracion_min) >= 5 ? `Termina a las ${sumarMinutos(form.hora, Number(form.duracion_min))}` : 'Indicá al menos 5 minutos'}
-              </p>
+              </span>
             </div>
-            {!multiSede && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>
-                <select name="modalidad" value={form.modalidad} onChange={handleChange} className="input-field">
-                  {MODALIDADES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
+            <div className="tt-field">
+              <label>Honorarios<span style={{ textTransform: 'none', color: 'var(--muted)', fontWeight: 400, marginLeft: 4 }}>opcional</span></label>
+              <div className="flex gap-2 flex-wrap">
+                {/* flex-wrap: en la columna angosta del .tt-g2 (compartida con
+                    Duración) MonedaSelector (w-52, 208px) + MontoInput no entran
+                    uno al lado del otro — sin wrap, MontoInput se salía del
+                    panel. Con wrap, MonedaSelector cae a su propia línea dentro
+                    del mismo campo en vez de desbordar. El diseño muestra
+                    "$ ... ARS" estático (sin selector, su mock no modela
+                    multi-moneda); acá se mantiene MonedaSelector + MontoInput
+                    tal como existen — ver nota de PASO 4 sobre cómo queda
+                    visualmente este campo. */}
+                <MonedaSelector value={moneda} onChange={setMoneda} className="w-52 shrink-0" />
+                <MontoInput
+                  name="monto"
+                  value={form.monto}
+                  onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
+                  placeholder={moneda === 'ARS' ? 'Ej: 15000' : moneda === 'USD' ? 'Ej: 150.00' : 'Ej: 130.00'}
+                  className="input-field flex-1"
+                />
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="card p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Honorarios <span className="text-gray-400 font-normal">opcional</span>
-            </label>
-            <div className="flex gap-2">
-              {/* w-52: ancho mínimo para que la opción más larga del select
-                  ("U$S USD — Dólares") no se corte. MontoInput con flex-1 al
-                  lado cede el espacio sobrante en vez de dejarlo vacío. */}
-              <MonedaSelector value={moneda} onChange={setMoneda} className="w-52 shrink-0" />
-              <MontoInput
-                name="monto"
-                value={form.monto}
-                onChange={(raw) => setForm((prev) => ({ ...prev, monto: raw }))}
-                placeholder={moneda === 'ARS' ? 'Ej: 15000' : moneda === 'USD' ? 'Ej: 150.00' : 'Ej: 130.00'}
-                className="input-field flex-1"
-              />
+          {tipoPropioSeleccionado && (
+            <div className="tt-prefill">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+              {(Number(form.duracion_min) !== tipoPropioSeleccionado.duracion_min || parsearMontoInput(form.monto) !== (tipoPropioSeleccionado.precio ?? 0)) ? (
+                <>
+                  <span>Ajustado para este turno · <b>{tipoPropioSeleccionado.nombre}</b> dura <b>{tipoPropioSeleccionado.duracion_min} min</b></span>
+                  <button type="button" onClick={restablecerTipoPropio}>Restablecer</button>
+                </>
+              ) : (
+                <span>Duración y monto de <b>{tipoPropioSeleccionado.nombre}</b>. Podés modificarlos para este turno.</span>
+              )}
             </div>
-          </div>
+          )}
+
+          {/* Modalidad — el diseño no la contempla; solo aparece con 0–1 sedes,
+              en su estilo de siempre (con 2+ sedes, la fija la Sede elegida). */}
+          {!multiSede && (
+            <div className="card p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Modalidad</label>
+              <select name="modalidad" value={form.modalidad} onChange={handleChange} className="input-field">
+                {MODALIDADES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+          )}
 
           <div className="card p-4">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -1028,16 +1044,17 @@ export default function NuevoTurnoPageForm({
             </div>
           )}
 
-          <div className="flex gap-3 pt-1">
+          <div style={{ borderTop: '1px solid var(--border)', padding: '12px 0 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ flex: 1 }} />
             <button
               type="button"
               onClick={() => onClose ? onClose() : router.back()}
-              className="btn-secondary flex-1 py-3"
+              className="btn"
             >
               Cancelar
             </button>
-            <button type="submit" disabled={loading || (pagoPrevio && !form.monto)} className={cn('btn-primary flex-1 py-3', (loading || (pagoPrevio && !form.monto)) && 'opacity-70')}>
-              {loading ? (pagoPrevio ? 'Enviando link...' : 'Verificando...') : esFijo ? 'Guardar turnos' : 'Crear turno'}
+            <button type="submit" disabled={loading || (pagoPrevio && !form.monto)} className={cn('btn primary', (loading || (pagoPrevio && !form.monto)) && 'opacity-70')}>
+              {loading ? (pagoPrevio ? 'Enviando link...' : 'Verificando...') : esFijo ? 'Guardar turnos' : 'Agendar turno'}
             </button>
           </div>
         </>
