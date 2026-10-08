@@ -175,12 +175,12 @@ export default function NuevoTurnoPageForm({
   // guardados), esta lista queda vacía si el plan actual no lo habilita.
   const tiposTurnoActivos = tiposTurnoHabilitado ? tiposTurno.filter((t) => t.activo) : []
   const sedeActual = multiSede ? sedesParaTurno.find((s) => s.id === sedeId) ?? null : null
-  // Con 2+ sedes, "Tus tipos" se filtra por la sede elegida — un tipo sin
-  // ninguna sede asignada (sucursalIds vacío) se considera disponible en
-  // todas, no en ninguna, para no esconder un tipo propio por una fila de
-  // relación faltante.
+  // Regla de negocio (igual en link público, Ajustes y acá): con 2+ sedes
+  // activas, un tipo propio sin filas en tipos_turno_sucursales NO se
+  // ofrece — una relación faltante no es "disponible en todas", es
+  // "sin asignar". Con 0–1 sedes activas (multiSede false) no se filtra nada.
   const tiposTurnoPorSede = (multiSede && sedeId)
-    ? tiposTurnoActivos.filter((t) => t.sucursalIds.length === 0 || t.sucursalIds.includes(sedeId))
+    ? tiposTurnoActivos.filter((t) => t.sucursalIds.includes(sedeId))
     : tiposTurnoActivos
 
   function handlePickTipo(pick: TipoTurnoPick) {
@@ -226,7 +226,7 @@ export default function NuevoTurnoPageForm({
     }
     if (tipoTurnoId) {
       const actual = tiposTurno.find((t) => t.id === tipoTurnoId)
-      const sigueDisponible = !!actual && (actual.sucursalIds.length === 0 || (!!nuevaSede && actual.sucursalIds.includes(nuevaSede.id)))
+      const sigueDisponible = !!actual && !!nuevaSede && actual.sucursalIds.includes(nuevaSede.id)
       if (actual && !sigueDisponible) {
         handlePickTipo({ tipo: 'sesion', tipoTurnoId: null })
         setSedeSwap({ tipoDescartado: actual.nombre, sedeNombre: nuevaSede?.nombre ?? '' })
@@ -485,6 +485,29 @@ export default function NuevoTurnoPageForm({
       setError('Ingresá una fecha de fin válida para la serie.')
       return
     }
+
+    // Validación server-side tipo_turno_id↔sucursal_id — mismo criterio que
+    // resolver-tipo.ts (reserva pública), vía /api/turnos/validar-tipo-sede.
+    // Cubre tanto turno único como serie, ya que ambos parten de este mismo
+    // handler con el mismo tipoTurnoId/sedeId elegidos en el form.
+    if (tipoTurnoId) {
+      try {
+        const res = await fetch('/api/turnos/validar-tipo-sede', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo_turno_id: tipoTurnoId, sucursal_id: multiSede ? sedeId : null }),
+        })
+        const data = await res.json() as { ok: boolean }
+        if (!data.ok) {
+          setError('Ese tipo de turno no está disponible en la sede elegida. Elegí otro tipo o cambiá de sede.')
+          return
+        }
+      } catch {
+        setError('No se pudo validar el tipo de turno. Intentá de nuevo.')
+        return
+      }
+    }
+
     setLoading(true)
     setError(null)
 

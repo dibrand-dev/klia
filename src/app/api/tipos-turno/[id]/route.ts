@@ -25,6 +25,17 @@ async function obtenerPerfilEfectivo(db: ReturnType<typeof serviceClient>, terap
   return data
 }
 
+// Sucursales activas del terapeuta efectivo — mismo helper que en
+// src/app/api/tipos-turno/route.ts (POST), usado acá en PATCH.
+async function obtenerSucursalesActivas(db: ReturnType<typeof serviceClient>, terapeutaId: string) {
+  const { data } = await db
+    .from('sucursales')
+    .select('id')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('activo', true)
+  return (data ?? []).map((s) => s.id)
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
@@ -52,11 +63,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json() as {
     nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
-    visible_en_booking?: unknown; activo?: unknown
+    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
     return NextResponse.json({ error: validado.error }, { status: 400 })
+  }
+
+  // Misma regla que POST: 2+ sedes activas exige al menos una sede válida;
+  // exactamente 1 sede activa se asigna sola; 0 sedes activas no asigna nada.
+  const sucursalesActivas = await obtenerSucursalesActivas(db, efectivo.terapeutaId)
+  const sucursalIdsInput = Array.isArray(body.sucursal_ids)
+    ? body.sucursal_ids.filter((id): id is string => typeof id === 'string')
+    : []
+
+  let sucursalIds: string[]
+  if (sucursalesActivas.length >= 2) {
+    sucursalIds = sucursalIdsInput.filter((id) => sucursalesActivas.includes(id))
+    if (sucursalIds.length === 0) {
+      return NextResponse.json({ error: 'Elegí al menos una sede para poder guardar.' }, { status: 400 })
+    }
+  } else if (sucursalesActivas.length === 1) {
+    sucursalIds = [sucursalesActivas[0]]
+  } else {
+    sucursalIds = []
   }
 
   const update: Record<string, unknown> = {
@@ -88,7 +118,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: 'Error al actualizar el tipo de turno' }, { status: 500 })
   }
 
-  return NextResponse.json({ tipo_turno: actualizado })
+  // Reemplazar el set de sedes (delete + insert) tras guardar el tipo —
+  // acotado a las sedes ACTIVAS del terapeuta efectivo. Una sede desactivada
+  // conserva su fila en tipos_turno_sucursales (solo se oculta/no cuenta),
+  // así que nunca se borra acá; si se reactiva más adelante, la asignación
+  // vuelve a aplicar tal cual había quedado.
+  if (sucursalesActivas.length > 0) {
+    await db.from('tipos_turno_sucursales').delete().eq('tipo_turno_id', params.id).in('sucursal_id', sucursalesActivas)
+  }
+  if (sucursalIds.length > 0) {
+    const { error: sedesError } = await db
+      .from('tipos_turno_sucursales')
+      .insert(sucursalIds.map((sucursalId) => ({ tipo_turno_id: params.id, sucursal_id: sucursalId })))
+    if (sedesError) {
+      console.error('[api/tipos-turno/[id]] PATCH sedes error:', sedesError)
+    }
+  }
+
+  return NextResponse.json({ tipo_turno: { ...actualizado, sucursal_ids: sucursalIds } })
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

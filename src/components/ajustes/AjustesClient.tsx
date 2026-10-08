@@ -15,6 +15,7 @@ import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
+import type { TipoTurnoConSedes, SedeTipoTurno } from '@/components/tipos-turno/TiposTurnoSection'
 
 type Suscripcion = {
   estado: string
@@ -41,7 +42,8 @@ interface Props {
   cobrosMessagePaciente: string
   esColaborador?: boolean
   tiposTurnoHabilitado: boolean
-  tiposTurno: TipoTurno[]
+  tiposTurno: TipoTurnoConSedes[]
+  sedes: SedeTipoTurno[]
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -211,7 +213,7 @@ const DIAS_SEMANA_CONFIG = [
 ]
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno, sedes }: Props) {
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
@@ -1104,6 +1106,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               habilitado={tiposTurnoHabilitado}
               tiposIniciales={tiposTurno}
               terminologia={profile.terminologia ?? undefined}
+              sedes={sedes}
             />
           </section>
 

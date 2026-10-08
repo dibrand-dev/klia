@@ -8,11 +8,22 @@ import { getTerminologia } from '@/hooks/useTerminologia'
 import { parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import './tipos-turno.css'
 
+export type SedeTipoTurno = {
+  id: string
+  nombre: string
+  direccion: string | null
+  es_online: boolean
+  color: string
+}
+
+export type TipoTurnoConSedes = TipoTurno & { sucursal_ids: string[] }
+
 interface Props {
   plan: string
   habilitado: boolean
-  tiposIniciales: TipoTurno[]
+  tiposIniciales: TipoTurnoConSedes[]
   terminologia?: 'sesion' | 'consulta'
+  sedes: SedeTipoTurno[]
 }
 
 const PLAN_NAME: Record<string, string> = { esencial: 'Esencial', profesional: 'Profesional', premium: 'Premium', bonificado: 'Bonificado' }
@@ -38,6 +49,15 @@ const ICON_TIPO = (
     <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7" />
   </svg>
 )
+const ICON_PIN = (
+  <svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+)
+const ICON_CAM = (
+  <svg viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="12" height="11" rx="2" /><path d="M14.5 11l7-3.5v9l-7-3.5z" /></svg>
+)
+const ICON_WARN = (
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+)
 
 type Draft = {
   nombre: string
@@ -46,13 +66,17 @@ type Draft = {
   moneda: string
   visible_en_booking: boolean
   activo: boolean
+  sucursal_ids: string[]
 }
 
-function draftVacio(): Draft {
-  return { nombre: '', duracion_min: '', precio: '', moneda: 'ARS', visible_en_booking: true, activo: true }
+function draftVacio(sedes: SedeTipoTurno[]): Draft {
+  return {
+    nombre: '', duracion_min: '', precio: '', moneda: 'ARS', visible_en_booking: true, activo: true,
+    sucursal_ids: sedes.length > 1 ? [] : sedes.length === 1 ? [sedes[0].id] : [],
+  }
 }
 
-function draftDeTipo(t: TipoTurno): Draft {
+function draftDeTipo(t: TipoTurnoConSedes): Draft {
   return {
     nombre: t.nombre,
     duracion_min: String(t.duracion_min),
@@ -60,15 +84,34 @@ function draftDeTipo(t: TipoTurno): Draft {
     moneda: t.moneda,
     visible_en_booking: t.visible_en_booking,
     activo: t.activo,
+    sucursal_ids: [...t.sucursal_ids],
   }
 }
 
-export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, terminologia }: Props) {
+// sedesTxt/sedeTag — extraídos de "Ajustes - Tipos de turno v2 - sedes.html"
+function sedesTxt(ids: string[], sedes: SedeTipoTurno[]): string {
+  const sel = sedes.filter((s) => ids.includes(s.id))
+  if (!sel.length) return 'Sin sedes'
+  if (sel.length === sedes.length) return 'Todas las sedes'
+  const nombres = sel.map((s) => s.nombre)
+  return nombres.length > 2 ? `${nombres.slice(0, 2).join(', ')} +${nombres.length - 2}` : nombres.join(', ')
+}
+
+function SedeTag({ ids, sedes }: { ids: string[]; sedes: SedeTipoTurno[] }) {
+  const sel = sedes.filter((s) => ids.includes(s.id))
+  if (sel.length === 1 && sel[0].es_online) {
+    return <span className="tt-tag-onl">{ICON_CAM}Online</span>
+  }
+  return <span className="tt-tag-sd" title={sel.map((s) => s.nombre).join(' · ')}>{ICON_PIN}{sedesTxt(ids, sedes)}</span>
+}
+
+export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, terminologia, sedes }: Props) {
   const t = getTerminologia(terminologia)
-  const [lista, setLista] = useState<TipoTurno[]>(tiposIniciales)
+  const multiSede = sedes.length > 1
+  const [lista, setLista] = useState<TipoTurnoConSedes[]>(tiposIniciales)
   const [upsellVisible, setUpsellVisible] = useState(true)
   const [editandoId, setEditandoId] = useState<string | null>(null) // null = cerrado, 'new' = alta
-  const [draft, setDraft] = useState<Draft>(draftVacio())
+  const [draft, setDraft] = useState<Draft>(draftVacio(sedes))
   const [touched, setTouched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorNombre, setErrorNombre] = useState<string | null>(null)
@@ -77,12 +120,12 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
 
   function abrirNuevo() {
     setEditandoId('new')
-    setDraft(draftVacio())
+    setDraft(draftVacio(sedes))
     setTouched(false)
     setErrorNombre(null)
   }
 
-  function abrirEditar(tipo: TipoTurno) {
+  function abrirEditar(tipo: TipoTurnoConSedes) {
     setEditandoId(tipo.id)
     setDraft(draftDeTipo(tipo))
     setTouched(false)
@@ -94,12 +137,27 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
     setErrorNombre(null)
   }
 
+  function toggleSede(id: string) {
+    setDraft((p) => ({
+      ...p,
+      sucursal_ids: p.sucursal_ids.includes(id) ? p.sucursal_ids.filter((x) => x !== id) : [...p.sucursal_ids, id],
+    }))
+  }
+
+  function marcarTodas() {
+    setDraft((p) => ({
+      ...p,
+      sucursal_ids: p.sucursal_ids.length === sedes.length ? [] : sedes.map((s) => s.id),
+    }))
+  }
+
   const nombreOk = draft.nombre.trim().length > 0
   const duracionOk = Number(draft.duracion_min) >= 5
+  const sedesOk = !multiSede || draft.sucursal_ids.length > 0
 
   async function guardar() {
     setTouched(true)
-    if (!nombreOk || !duracionOk) return
+    if (!nombreOk || !duracionOk || !sedesOk) return
     setLoading(true)
     setErrorNombre(null)
 
@@ -110,6 +168,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
       moneda: draft.moneda,
       visible_en_booking: draft.visible_en_booking,
       activo: draft.activo,
+      sucursal_ids: draft.sucursal_ids,
     }
 
     try {
@@ -117,7 +176,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         ? await fetch('/api/tipos-turno', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         : await fetch(`/api/tipos-turno/${editandoId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
-      const data = await res.json() as { tipo_turno?: TipoTurno; error?: string }
+      const data = await res.json() as { tipo_turno?: TipoTurnoConSedes; error?: string }
 
       if (!res.ok || !data.tipo_turno) {
         if (res.status === 409) {
@@ -141,7 +200,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
     }
   }
 
-  function renderRow(tipo: TipoTurno, soloLectura: boolean) {
+  function renderRow(tipo: TipoTurnoConSedes, soloLectura: boolean) {
     return (
       <div key={tipo.id} className={`tt-row ${!tipo.activo ? 'tt-off' : ''}`}>
         <div className="tt-nm">
@@ -157,6 +216,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
                 <span className={`tt-tag ${tipo.visible_en_booking ? 'pub' : ''}`}>
                   {tipo.visible_en_booking ? 'Visible en reserva' : 'Solo en agenda'}
                 </span>
+                {multiSede && <SedeTag ids={tipo.sucursal_ids} sedes={sedes} />}
               </>
             )}
           </div>
@@ -189,12 +249,18 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         <div className="tt-grp-h">Tipos base<span>Incluidos en KLIA · no se editan ni se borran</span></div>
         <div className="tt-list">
           <div className="tt-row tt-fixed">
-            <div className="tt-nm"><b>{t.Sesion}</b></div>
+            <div className="tt-nm">
+              <b>{t.Sesion}</b>
+              {multiSede && <div className="tt-tags"><span className="tt-tag-sd">{ICON_PIN}Todas las sedes</span></div>}
+            </div>
             <div className="tt-v free" style={{ gridColumn: 'span 2' }}>Se define al agendar</div>
             <div className="tt-acts"><span className="tt-ro">{ICON_LOCK}Fijo</span></div>
           </div>
           <div className="tt-row tt-fixed">
-            <div className="tt-nm"><b>Entrevista</b></div>
+            <div className="tt-nm">
+              <b>Entrevista</b>
+              {multiSede && <div className="tt-tags"><span className="tt-tag-sd">{ICON_PIN}Todas las sedes</span></div>}
+            </div>
             <div className="tt-v free" style={{ gridColumn: 'span 2' }}>Se define al agendar</div>
             <div className="tt-acts"><span className="tt-ro">{ICON_LOCK}Fijo</span></div>
           </div>
@@ -345,8 +411,36 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
           </div>
         </div>
         <div className="tt-field" style={{ marginTop: -12 }}>
-          <span className="tt-hint">Dejalo vacío o en 0 si no tiene costo.</span>
+          <span className="tt-hint">Dejalo vacío o en 0 si no tiene costo. Es el mismo en todas las sedes.</span>
         </div>
+
+        {multiSede && (
+          <div className="tt-field">
+            <div className="tt-lbl-row">
+              <label>Sedes donde se ofrece<em>*</em></label>
+              <button type="button" className="tt-lnk" onClick={marcarTodas}>
+                {draft.sucursal_ids.length === sedes.length ? 'Desmarcar todas' : 'Marcar todas'}
+              </button>
+            </div>
+            <div className={`tt-sl-list ${touched && !sedesOk ? 'tt-bad' : ''}`} role="group" aria-label="Sedes donde se ofrece">
+              {sedes.map((s) => {
+                const on = draft.sucursal_ids.includes(s.id)
+                return (
+                  <label key={s.id} className={`tt-sl-row ${on ? 'on' : ''}`}>
+                    <input type="checkbox" className="tt-cb" checked={on} onChange={() => toggleSede(s.id)} />
+                    <span className="tt-dt" style={{ background: s.color }} />
+                    <span className="tt-b"><b>{s.nombre}</b><small>{s.direccion}</small></span>
+                    {s.es_online && <span className="tt-tag-onl">{ICON_CAM}Online</span>}
+                  </label>
+                )
+              })}
+            </div>
+            {touched && !sedesOk && (
+              <span className="tt-err with-ic">{ICON_WARN}Elegí al menos una sede para poder guardar.</span>
+            )}
+            <span className="tt-hint">Para ofrecerlo por videollamada, marcá la sede Online. Duración y precio son los mismos en todas.</span>
+          </div>
+        )}
 
         <div className="tt-toggle">
           <div className="tt-t-info">
@@ -373,7 +467,10 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
           <div style={{ minWidth: 0 }}>
             <div className="tt-pl">{draft.visible_en_booking ? 'Así lo ve el paciente' : 'No se muestra en tu reserva pública'}</div>
             <div className="tt-pn">{draft.nombre.trim() || 'Nombre del tipo'}</div>
-            <div className="tt-pm">{draft.duracion_min ? `${draft.duracion_min} min` : '— min'}</div>
+            <div className="tt-pm">
+              {draft.duracion_min ? `${draft.duracion_min} min` : '— min'}
+              {multiSede ? ` · ${draft.sucursal_ids.length === 1 && sedes.find((s) => s.id === draft.sucursal_ids[0])?.es_online ? 'Por videollamada' : sedesTxt(draft.sucursal_ids, sedes)}` : ''}
+            </div>
           </div>
           <div className="tt-pp">{(() => {
             const precioNum = parsearMontoInput(draft.precio)

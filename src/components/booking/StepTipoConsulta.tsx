@@ -1,18 +1,26 @@
 'use client'
 
-import Image from 'next/image'
-import type { ProfileData } from '@/app/p/[slug]/page'
+import { useEffect } from 'react'
+import type { ProfileData, SedePublica, TipoPropioPublico } from '@/app/p/[slug]/page'
+import ProfileCard from './ProfileCard'
+import SedeBreadcrumb from './SedeBreadcrumb'
+
+export type SeleccionTipo = { tipo: 'sesion' | 'entrevista'; tipoTurnoId: string | null }
 
 interface Props {
   profile: ProfileData
+  sede: SedePublica | null
+  multiSede: boolean
   tipo: 'sesion' | 'entrevista'
   tipoTurnoId: string | null
+  tipoElegido: boolean
+  swapNote: { sedeAnterior: string; tipoDescartado: string } | null
   modalidad: string
-  onTipo: (t: 'sesion' | 'entrevista') => void
-  onTipoPropio: (id: string) => void
+  onSeleccionar: (sel: SeleccionTipo, manual: boolean) => void
   onModalidad: (m: string) => void
   onNext: () => void
-  ocultarModalidad?: boolean
+  onBack?: () => void
+  onCambiarSede?: () => void
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -31,193 +39,192 @@ const ICON_CLK_SM = (
     <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
   </svg>
 )
+const ICON_CAM_SM = (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2.5" y="6.5" width="12" height="11" rx="2" /><path d="M14.5 11l7-3.5v9l-7-3.5z" />
+  </svg>
+)
+const ICON_INFO = (
+  <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--muted-2)', strokeWidth: 1.8, fill: 'none', flexShrink: 0, marginTop: 1 }}>
+    <circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" />
+  </svg>
+)
+const ICON_SWAP = (
+  <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#B45309', strokeWidth: 1.8, fill: 'none', flexShrink: 0, marginTop: 1 }}>
+    <path d="M4 9h13l-3-3M20 15H7l3 3" />
+  </svg>
+)
 
-function Initials({ nombre, apellido }: { nombre: string; apellido: string }) {
-  const initials = `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
-  return (
-    <div style={{
-      width: 80, height: 80, borderRadius: 40,
-      background: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 28, fontWeight: 700, color: '#16389F',
-      boxShadow: '0 8px 20px rgba(16,24,40,0.08)',
-    }}>
-      {initials}
-    </div>
-  )
-}
+type BaseOpt = { key: 'sesion' | 'entrevista'; label: string; desc: string; price: number | null; dur: number }
+type Item = { kind: 'base'; opt: BaseOpt } | { kind: 'propio'; propio: TipoPropioPublico }
 
 export default function StepTipoConsulta({
   profile,
+  sede,
+  multiSede,
   tipo,
   tipoTurnoId,
+  tipoElegido,
+  swapNote,
   modalidad,
-  onTipo,
-  onTipoPropio,
+  onSeleccionar,
   onModalidad,
   onNext,
-  ocultarModalidad,
+  onBack,
+  onCambiarSede,
 }: Props) {
   const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined
   const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined
   const showBoth = !hasSesion && !hasEntrevista
-  const tieneTiposPropios = profile.tiposPropios.length > 0
 
-  const tipoOptions: Array<{ key: 'sesion' | 'entrevista'; label: string; desc: string; price: number | null; dur: number }> = []
-
+  const baseOptions: BaseOpt[] = []
   if (hasSesion || showBoth) {
-    tipoOptions.push({
-      key: 'sesion',
-      label: 'Sesión',
-      desc: 'Sesión individual',
-      price: profile.booking_precio_sesion,
-      dur: profile.booking_duracion_sesion,
-    })
+    baseOptions.push({ key: 'sesion', label: 'Sesión', desc: 'Sesión individual', price: profile.booking_precio_sesion, dur: profile.booking_duracion_sesion })
   }
   if (hasEntrevista || showBoth) {
-    tipoOptions.push({
-      key: 'entrevista',
-      label: 'Entrevista inicial',
-      desc: 'Primera consulta de evaluación',
-      price: profile.booking_precio_entrevista,
-      dur: profile.booking_duracion_entrevista,
-    })
+    baseOptions.push({ key: 'entrevista', label: 'Entrevista inicial', desc: 'Primera consulta de evaluación', price: profile.booking_precio_entrevista, dur: profile.booking_duracion_entrevista })
   }
+
+  // Tipos base nunca se filtran por sede. Tipos propios: con 2+ sedes activas
+  // (multiSede), solo los que tienen una fila en tipos_turno_sucursales para
+  // la sede elegida — uno sin ninguna fila NO se ofrece. Con 0–1 sedes no se
+  // filtra nada.
+  const propios = multiSede
+    ? (sede ? profile.tiposPropios.filter((t) => t.sucursalIds.includes(sede.id)) : [])
+    : profile.tiposPropios
+
+  const todos: Item[] = [
+    ...baseOptions.map((opt): Item => ({ kind: 'base', opt })),
+    ...propios.map((propio): Item => ({ kind: 'propio', propio })),
+  ]
+
+  const only = todos.length === 1
+  const classic = propios.length === 0 && !only
+  const onl = multiSede && !!sede?.es_online
+
+  const todosKey = todos.map((it) => (it.kind === 'base' ? it.opt.key : it.propio.id)).join(',')
+
+  // Sede con un solo tipo disponible: queda elegido solo (igual que el
+  // diseño: tSel = all[0].id cuando only es true), sin pisar un swap-note ya
+  // mostrado por el cambio de sede.
+  useEffect(() => {
+    if (!only) return
+    const unico = todos[0]
+    if (!unico) return
+    if (unico.kind === 'base') {
+      if (!(tipoElegido && tipoTurnoId === null && tipo === unico.opt.key)) {
+        onSeleccionar({ tipo: unico.opt.key, tipoTurnoId: null }, false)
+      }
+    } else {
+      if (!(tipoElegido && tipoTurnoId === unico.propio.id)) {
+        onSeleccionar({ tipo: 'sesion', tipoTurnoId: unico.propio.id }, false)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [only, todosKey])
+
+  const titulo = classic
+    ? (onl ? '¿Qué tipo de videoconsulta necesitás?' : '¿Qué tipo de consulta necesitás?')
+    : (onl ? 'Elegí el tipo de videoconsulta' : 'Elegí el tipo de consulta')
+
+  const ocultarSubtitulo = !multiSede && classic
+  const subtitulo = onl
+    ? 'Todas son por videollamada. Te enviamos el link por email al confirmar.'
+    : multiSede
+    ? `Estas son las consultas que ${profile.nombre} ofrece en ${sede?.nombre ?? ''}.`
+    : 'Cada tipo tiene su propia duración y precio.'
 
   return (
     <div>
-      {/* Pro card — centered layout */}
-      <div style={{
-        background: '#fff',
-        borderRadius: 16,
-        border: '1px solid #E7E9EE',
-        padding: '26px 22px 22px',
-        marginBottom: 18,
-        boxShadow: '0 1px 0 rgba(16,24,40,.02), 0 1px 2px rgba(16,24,40,.04)',
-        textAlign: 'center',
-      }}>
-        {/* Avatar with verified badge */}
-        <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 14px' }}>
-          {profile.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt={`${profile.nombre} ${profile.apellido}`}
-              width={80}
-              height={80}
-              style={{ width: 80, height: 80, borderRadius: 40, objectFit: 'cover', boxShadow: '0 8px 20px rgba(16,24,40,0.08)' }}
-            />
-          ) : (
-            <Initials nombre={profile.nombre} apellido={profile.apellido} />
-          )}
-          <div style={{
-            position: 'absolute', bottom: 0, right: 0,
-            width: 24, height: 24, borderRadius: 12,
-            background: '#2563EB', border: '3px solid #fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-          </div>
-        </div>
+      {multiSede ? (
+        sede && onCambiarSede && <SedeBreadcrumb sede={sede} onCambiar={onCambiarSede} />
+      ) : (
+        <ProfileCard profile={profile} />
+      )}
 
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.3px' }}>
-          {profile.nombre} {profile.apellido}
-        </h1>
-        {profile.especialidad && (
-          <p style={{ margin: '0 0 6px', fontSize: 14, color: '#5B6472', fontWeight: 500 }}>
-            {profile.especialidad}
-          </p>
-        )}
-        {profile.matricula && (
-          <span style={{
-            display: 'inline-block',
-            fontSize: 11, fontWeight: 600, color: '#8A93A1',
-            background: '#F1F3F6', borderRadius: 6, padding: '2px 8px',
-            letterSpacing: '0.02em',
-          }}>
-            Mat. {profile.matricula}
+      {swapNote && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 9,
+          padding: '12px 14px', borderRadius: 11,
+          background: 'var(--amber-soft)', border: '1px solid #F6D58A',
+          fontSize: 12.5, color: '#7A4B06', lineHeight: 1.55, marginBottom: 14,
+        }}>
+          {ICON_SWAP}
+          <span>
+            Cambiaste de <b style={{ color: '#5C3804', fontWeight: 650 }}>{swapNote.sedeAnterior}</b> a <b style={{ color: '#5C3804', fontWeight: 650 }}>{sede?.nombre}</b>. Descartamos <b style={{ color: '#5C3804', fontWeight: 650 }}>{swapNote.tipoDescartado}</b>: elegí de nuevo entre las consultas de esta sede.
           </span>
-        )}
-        {profile.booking_bio && (
-          <p style={{ margin: '14px 0 0', fontSize: 14, color: '#374151', lineHeight: 1.65, textAlign: 'left' }}>
-            {profile.booking_bio}
-          </p>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Title */}
+      <p style={{ margin: classic ? '0 0 12px' : '0 0 4px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
+        {titulo}
+      </p>
+      {!ocultarSubtitulo && (
+        <p style={{ margin: '0 0 12px', fontSize: 13, color: '#5B6472' }}>
+          {subtitulo}
+        </p>
+      )}
 
       {/* Session type */}
-      {!tieneTiposPropios ? (
-        <>
-          <p style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
-            Tipo de consulta
-          </p>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: tipoOptions.length === 1 ? '1fr' : '1fr 1fr',
-              gap: 10,
-            }}>
-              {tipoOptions.map((opt) => {
-                const selected = tipo === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => onTipo(opt.key)}
-                    style={{
-                      background: selected ? '#F4F7FF' : '#F6F7F9',
-                      border: selected ? '2px solid #002d72' : '2px solid transparent',
-                      boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
-                      borderRadius: 14,
-                      padding: '16px 14px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.15s',
-                      fontFamily: 'Inter, system-ui, sans-serif',
-                    }}
-                  >
-                    <div style={{ fontSize: 14, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220', marginBottom: 4 }}>
-                      {opt.label}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#5B6472', marginBottom: 8 }}>
-                      {opt.desc}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {opt.price !== null ? (
-                        <span style={{ fontSize: 16, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220' }}>
-                          {formatPrice(opt.price, profile.booking_moneda)}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 14, color: '#8A93A1' }}>A confirmar</span>
-                      )}
-                      <span style={{
-                        fontSize: 11, color: '#8A93A1', background: '#fff',
-                        borderRadius: 20, padding: '2px 8px', fontWeight: 500,
-                      }}>
-                        {opt.dur} min
-                      </span>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: '#0B1220', letterSpacing: '-0.015em' }}>
-            Elegí el tipo de consulta
-          </p>
-          <p style={{ margin: '0 0 12px', fontSize: 13, color: '#5B6472' }}>
-            Cada tipo tiene su propia duración y precio.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-            {tipoOptions.map((opt) => {
-              const selected = tipoTurnoId === null && tipo === opt.key
+      <div style={{ marginBottom: 18 }}>
+        {classic ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: baseOptions.length === 1 ? '1fr' : '1fr 1fr',
+            gap: 10,
+          }}>
+            {baseOptions.map((opt) => {
+              const selected = tipoElegido && tipoTurnoId === null && tipo === opt.key
               return (
                 <button
                   key={opt.key}
-                  onClick={() => onTipo(opt.key)}
+                  onClick={() => onSeleccionar({ tipo: opt.key, tipoTurnoId: null }, true)}
+                  style={{
+                    background: selected ? '#F4F7FF' : '#F6F7F9',
+                    border: selected ? '2px solid #002d72' : '2px solid transparent',
+                    boxShadow: selected ? '0 0 0 3px rgba(0,45,114,0.12)' : 'none',
+                    borderRadius: 14,
+                    padding: '16px 14px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220', marginBottom: 4 }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#5B6472', marginBottom: 8 }}>
+                    {opt.desc}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {opt.price !== null ? (
+                      <span style={{ fontSize: 16, fontWeight: 700, color: selected ? '#1e40af' : '#0B1220' }}>
+                        {formatPrice(opt.price, profile.booking_moneda)}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 14, color: '#8A93A1' }}>A confirmar</span>
+                    )}
+                    <span style={{
+                      fontSize: 11, color: '#8A93A1', background: '#fff',
+                      borderRadius: 20, padding: '2px 8px', fontWeight: 500,
+                    }}>
+                      {opt.dur} min{onl ? ' · Videollamada' : ''}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {baseOptions.map((opt) => {
+              const selected = tipoElegido && tipoTurnoId === null && tipo === opt.key
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => onSeleccionar({ tipo: opt.key, tipoTurnoId: null }, true)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left',
                     background: selected ? 'var(--blue-soft-2)' : 'var(--surface)',
@@ -242,6 +249,7 @@ export default function StepTipoConsulta({
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
                       {ICON_CLK_SM}{opt.dur} min
+                      {onl && (<><span style={{ color: 'var(--muted-3)' }}>·</span>{ICON_CAM_SM}Videollamada</>)}
                     </span>
                   </span>
                   <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
@@ -260,13 +268,13 @@ export default function StepTipoConsulta({
               )
             })}
 
-            {profile.tiposPropios.map((propio) => {
-              const selected = tipoTurnoId === propio.id
+            {propios.map((propio) => {
+              const selected = tipoElegido && tipoTurnoId === propio.id
               const sinCosto = propio.precio === null || propio.precio === 0
               return (
                 <button
                   key={propio.id}
-                  onClick={() => onTipoPropio(propio.id)}
+                  onClick={() => onSeleccionar({ tipo: 'sesion', tipoTurnoId: propio.id }, true)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 13, width: '100%', textAlign: 'left',
                     background: selected ? 'var(--blue-soft-2)' : 'var(--surface)',
@@ -291,6 +299,7 @@ export default function StepTipoConsulta({
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
                       {ICON_CLK_SM}{propio.duracion_min} min
+                      {onl && (<><span style={{ color: 'var(--muted-3)' }}>·</span>{ICON_CAM_SM}Videollamada</>)}
                     </span>
                   </span>
                   <span style={{ flex: 'none', fontSize: 16, fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
@@ -309,11 +318,25 @@ export default function StepTipoConsulta({
               )
             })}
           </div>
-        </>
+        )}
+      </div>
+
+      {only && sede && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 9,
+          padding: '12px 14px', borderRadius: 11,
+          background: 'var(--surface-2)', border: '1px solid var(--border)',
+          fontSize: 12, color: 'var(--muted)', lineHeight: 1.55, marginBottom: 18,
+        }}>
+          {ICON_INFO}
+          <span>
+            Es la única consulta que {profile.nombre} ofrece en <b>{sede.nombre}</b>, así que ya quedó elegida. Si buscás otra, cambiá de sede.
+          </span>
+        </div>
       )}
 
-      {/* Modality — copied from HTML design */}
-      {!ocultarModalidad && (
+      {/* Modality — oculta con 2+ sedes, la fija la sede elegida */}
+      {!multiSede && (
         <>
           <h2 style={{
             fontSize: 13, fontWeight: 700, color: '#8A93A1',
@@ -368,26 +391,46 @@ export default function StepTipoConsulta({
         </>
       )}
 
-      {/* Continue */}
-      <button
-        onClick={onNext}
-        style={{
-          width: '100%',
-          background: 'linear-gradient(135deg, #001a48, #002d72)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 10,
-          padding: '13px 18px',
-          fontSize: 14.5,
-          fontWeight: 600,
-          cursor: 'pointer',
-          letterSpacing: '-0.1px',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          boxShadow: '0 6px 18px rgba(0,45,114,0.25)',
-        }}
-      >
-        Elegir fecha →
-      </button>
+      {/* CTA row */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {multiSede && onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              flex: 'none', background: 'transparent', color: 'var(--muted)',
+              border: 'none', borderRadius: 10, padding: '11px 12px',
+              fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontFamily: 'Inter, system-ui, sans-serif',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            Atrás
+          </button>
+        )}
+        <button
+          onClick={onNext}
+          disabled={!tipoElegido}
+          style={{
+            flex: 1,
+            background: tipoElegido ? 'linear-gradient(135deg, #001a48, #002d72)' : '#E7E9EE',
+            color: tipoElegido ? '#fff' : '#AEB5C0',
+            border: 'none',
+            borderRadius: 10,
+            padding: '13px 18px',
+            fontSize: 14.5,
+            fontWeight: 600,
+            cursor: tipoElegido ? 'pointer' : 'not-allowed',
+            letterSpacing: '-0.1px',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            boxShadow: tipoElegido ? '0 6px 18px rgba(0,45,114,0.25)' : 'none',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          Continuar
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
     </div>
   )
 }

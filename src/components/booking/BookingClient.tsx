@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
+import ProfileCard from './ProfileCard'
 import StepTipoConsulta from './StepTipoConsulta'
 import StepSede from './StepSede'
 import StepCalendario from './StepCalendario'
@@ -28,9 +29,19 @@ export type ConfirmacionData = {
 type StepKey = 'tipo' | 'sede' | 'fecha' | 'hora' | 'datos' | 'pago'
 type Step = StepKey | 'confirmacion' | 'err-pay' | 'err-slot'
 
-const STEP_NAMES_BASE: Record<StepKey, string> = {
-  tipo: 'Profesional',
+// Nombres largos (progress-meta) y cortos (progress-steps) — igual que
+// STEP_NAMES/SHORT del diseño v3.
+const STEP_NAMES: Record<StepKey, string> = {
   sede: 'Sede',
+  tipo: 'Tipo de consulta',
+  fecha: 'Fecha',
+  hora: 'Hora',
+  datos: 'Datos',
+  pago: 'Pago',
+}
+const SHORT: Record<StepKey, string> = {
+  sede: 'Sede',
+  tipo: 'Tipo',
   fecha: 'Fecha',
   hora: 'Hora',
   datos: 'Datos',
@@ -44,15 +55,20 @@ interface Props {
 export default function BookingClient({ profile }: Props) {
   const multiSede = profile.sedes.length > 1
 
-  // Fuente única de orden/cantidad/nombres de pasos — 'sede' se inserta solo
-  // cuando hay 2+ sedes activas, nunca reemplaza a los demás pasos.
+  // Fuente única de orden/cantidad/nombres de pasos — con 2+ sedes activas,
+  // Sede es el primer paso (diseño v3: Sede → Tipo → Fecha → Hora → Datos →
+  // Pago); con 0–1 sedes se salta, arrancando en Tipo como siempre.
   const STEPS: StepKey[] = multiSede
-    ? ['tipo', 'sede', 'fecha', 'hora', 'datos', 'pago']
+    ? ['sede', 'tipo', 'fecha', 'hora', 'datos', 'pago']
     : ['tipo', 'fecha', 'hora', 'datos', 'pago']
 
-  const [step, setStep] = useState<Step>('tipo')
+  const [step, setStep] = useState<Step>(STEPS[0])
   const [tipo, setTipo] = useState<'sesion' | 'entrevista'>('sesion')
   const [tipoTurnoId, setTipoTurnoId] = useState<string | null>(null)
+  // Nada viene preelegido en el paso Tipo (diseño v3) — tipoElegido solo pasa
+  // a true por un click manual o por la autoselección de sede-con-un-solo-tipo.
+  const [tipoElegido, setTipoElegido] = useState(false)
+  const [swapNote, setSwapNote] = useState<{ sedeAnterior: string; tipoDescartado: string } | null>(null)
   const [modalidad, setModalidad] = useState<string>(
     profile.booking_modalidades?.[0] ?? 'presencial'
   )
@@ -67,14 +83,6 @@ export default function BookingClient({ profile }: Props) {
     coberturaId: '',
   })
   const [confirmacion, setConfirmacion] = useState<ConfirmacionData | null>(null)
-
-  // Progress bar label del paso 1: "Tipo de consulta" en vez de "Profesional"
-  // cuando el profesional tiene tipos propios habilitados — sin tipos propios
-  // STEP_NAMES queda idéntico al de siempre.
-  const STEP_NAMES: Record<StepKey, string> = {
-    ...STEP_NAMES_BASE,
-    tipo: profile.tiposPropios.length > 0 ? 'Tipo de consulta' : STEP_NAMES_BASE.tipo,
-  }
 
   // Tipo propio seleccionado (si hay) — fuente única para duración/precio/
   // moneda/nombre resueltos del lado del cliente. Es solo para mostrar en la
@@ -105,13 +113,14 @@ export default function BookingClient({ profile }: Props) {
         nombre: 'Entrevista inicial',
       }
 
-  function handleTipo(t: 'sesion' | 'entrevista') {
-    setTipoTurnoId(null)
-    setTipo(t)
-  }
-
-  function handleTipoPropio(id: string) {
-    setTipoTurnoId(id)
+  // Selección manual (click del paciente) limpia un swap-note pendiente;
+  // la autoselección de sede-con-un-solo-tipo (manual=false) lo deja intacto,
+  // igual que renderTypes() del diseño.
+  function handleSeleccionar(sel: { tipo: 'sesion' | 'entrevista'; tipoTurnoId: string | null }, manual: boolean) {
+    setTipo(sel.tipo)
+    setTipoTurnoId(sel.tipoTurnoId)
+    setTipoElegido(true)
+    if (manual) setSwapNote(null)
   }
 
   const stepIdx = STEPS.indexOf(step as StepKey)
@@ -139,14 +148,26 @@ export default function BookingClient({ profile }: Props) {
       goToKey('fecha')
     } else if (step === 'err-pay') {
       goToKey('datos')
-    } else if (step !== 'tipo' && step !== 'confirmacion') {
+    } else if (step !== STEPS[0] && step !== 'confirmacion') {
       goBackFrom(step as StepKey)
     }
   }
 
+  // Cambiar de sede descarta tipo, fecha y hora — el swap-note solo se
+  // muestra si ya había un tipo elegido antes del cambio (igual que el
+  // diseño: swap = tSel ? {from, type} : null).
   function handleSede(s: SedePublica) {
+    if (sede && sede.id !== s.id && tipoElegido) {
+      setSwapNote({ sedeAnterior: sede.nombre, tipoDescartado: tipoPropioSeleccionado?.nombre ?? tipoResuelto.nombre })
+    } else {
+      setSwapNote(null)
+    }
     setSede(s)
     setModalidad(s.es_online ? 'videollamada' : 'presencial')
+    setTipoTurnoId(null)
+    setTipoElegido(false)
+    setSelectedFecha(null)
+    setSelectedHora(null)
     goNextFrom('sede')
   }
 
@@ -210,6 +231,32 @@ export default function BookingClient({ profile }: Props) {
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }
+        .progress-wrap { max-width: 540px; margin: 24px auto 0; padding: 0 20px; width: 100%; }
+        .progress-meta {
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 11px; font-weight: 600; color: var(--muted-2);
+          text-transform: uppercase; letter-spacing: 0.08em;
+          margin-bottom: 8px;
+        }
+        .progress-meta b { color: var(--ink); font-weight: 700; }
+        .progress-bar {
+          height: 4px; background: var(--surface-3); border-radius: 100px;
+          overflow: hidden; position: relative;
+        }
+        .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--navy) 0%, var(--blue) 100%);
+          border-radius: 100px;
+          transition: width .4s cubic-bezier(.2,.8,.2,1);
+        }
+        .progress-steps{display:grid;grid-template-columns:repeat(var(--n,6),minmax(0,1fr));margin-top:10px;font-size:11.5px;font-weight:500;color:var(--muted-3)}
+        .progress-steps span{display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+        .progress-steps i{font:600 10px/1 'JetBrains Mono',monospace;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--border-strong);color:var(--muted-2);flex:none}
+        .progress-steps .done{color:var(--muted)}
+        .progress-steps .done i{background:var(--ink-2);border-color:var(--ink-2);color:#fff}
+        .progress-steps .cur{color:var(--ink);font-weight:650}
+        .progress-steps .cur i{background:var(--navy-2);border-color:var(--navy-2);color:#fff}
+        @media (max-width:560px){.progress-steps{display:flex;flex-wrap:wrap;gap:0;font-size:11px}.progress-steps i{display:none}.progress-steps span+span::before{content:"·";margin:0 6px;color:var(--muted-3);font-weight:400}}
       `}</style>
 
       {/* Radial gradient background */}
@@ -239,46 +286,22 @@ export default function BookingClient({ profile }: Props) {
           <Image src="/logo.svg" alt="KLIA" width={75} height={30} priority style={{ height: 30, width: 'auto' }} />
         </header>
 
-        {/* Progress bar */}
+        {/* Progress — .progress-wrap/.progress-meta/.progress-bar/.progress-steps del diseño v3 */}
         {showProgress && (
-          <div style={{
-            background: '#fff',
-            borderBottom: '1px solid #E7E9EE',
-            padding: '0 20px',
-          }}>
-            <div style={{
-              maxWidth: 540,
-              margin: '0 auto',
-              padding: '14px 0',
-            }}>
-              <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-                {STEPS.map((_, i) => (
-                  <div key={i} style={{
-                    flex: 1,
-                    height: 4,
-                    borderRadius: 2,
-                    background: stepNum > i + 1
-                      ? '#001a48'
-                      : stepNum === i + 1
-                      ? '#2563EB'
-                      : '#E7E9EE',
-                    transition: 'background 0.3s',
-                  }} />
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                {STEPS.map((key, i) => (
-                  <span key={key} style={{
-                    fontSize: 10,
-                    fontWeight: stepNum === i + 1 ? 600 : 400,
-                    color: stepNum === i + 1 ? '#2563EB' : stepNum > i + 1 ? '#001a48' : '#AEB5C0',
-                    letterSpacing: '0.02em',
-                    textTransform: 'uppercase',
-                  }}>
-                    {STEP_NAMES[key]}
-                  </span>
-                ))}
-              </div>
+          <div className="progress-wrap">
+            <div className="progress-meta">
+              <span>Paso <b>{stepNum}</b> de <b>{STEPS.length}</b></span>
+              <span>{STEP_NAMES[step as StepKey]}</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${(stepNum / STEPS.length) * 100}%` }} />
+            </div>
+            <div className="progress-steps" style={{ '--n': STEPS.length } as React.CSSProperties}>
+              {STEPS.map((key, i) => (
+                <span key={key} className={i < stepIdx ? 'done' : i === stepIdx ? 'cur' : ''}>
+                  <i>{i + 1}</i>{SHORT[key]}
+                </span>
+              ))}
             </div>
           </div>
         )}
@@ -295,20 +318,25 @@ export default function BookingClient({ profile }: Props) {
             <div key="step-tipo" className="booking-step-in">
               <StepTipoConsulta
                 profile={profile}
+                sede={sede}
+                multiSede={multiSede}
                 tipo={tipo}
                 tipoTurnoId={tipoTurnoId}
+                tipoElegido={tipoElegido}
+                swapNote={swapNote}
                 modalidad={modalidad}
-                onTipo={handleTipo}
-                onTipoPropio={handleTipoPropio}
+                onSeleccionar={handleSeleccionar}
                 onModalidad={setModalidad}
                 onNext={() => goNextFrom('tipo')}
-                ocultarModalidad={multiSede}
+                onBack={multiSede ? () => goBackFrom('tipo') : undefined}
+                onCambiarSede={multiSede ? handleCambiarSede : undefined}
               />
             </div>
           )}
 
           {step === 'sede' && (
             <div key="step-sede" className="booking-step-in">
+              <ProfileCard profile={profile} />
               <StepSede
                 slug={profile.booking_slug}
                 tipo={tipo}
@@ -316,7 +344,6 @@ export default function BookingClient({ profile }: Props) {
                 nombreProfesional={profile.nombre}
                 sedes={profile.sedes}
                 onSede={handleSede}
-                onBack={() => goBackFrom('sede')}
               />
             </div>
           )}

@@ -12,7 +12,7 @@ interface Props {
   nombreProfesional: string
   sedes: SedePublica[]
   onSede: (sede: SedePublica) => void
-  onBack: () => void
+  onBack?: () => void
 }
 
 type ProximoTurno = { fecha: string; hora: string } | null | 'loading'
@@ -130,7 +130,7 @@ export default function StepSede({ slug, tipo, tipoTurnoId, nombreProfesional, s
         ¿Dónde querés atenderte?
       </h2>
       <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--muted)' }}>
-        Elegí una sede y vas a ver solamente los horarios que {nombreProfesional} atiende ahí.
+        Elegí una sede y vas a ver las consultas y horarios que {nombreProfesional} ofrece ahí.
       </p>
 
       <div className="sede-list" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
@@ -190,28 +190,30 @@ export default function StepSede({ slug, tipo, tipoTurnoId, nombreProfesional, s
         <span>Cada sede tiene sus propios días y horarios. Podés cambiar de sede en cualquier momento antes de confirmar.</span>
       </div>
 
-      <button
-        onClick={onBack}
-        style={{
-          width: '100%',
-          background: 'transparent',
-          color: 'var(--muted)',
-          border: 'none',
-          borderRadius: 10,
-          padding: '11px 12px',
-          fontSize: 13.5,
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: 'Inter, system-ui, sans-serif',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-        Volver
-      </button>
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            color: 'var(--muted)',
+            border: 'none',
+            borderRadius: 10,
+            padding: '11px 12px',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Volver
+        </button>
+      )}
     </div>
   )
 }

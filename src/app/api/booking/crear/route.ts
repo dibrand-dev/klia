@@ -103,7 +103,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Perfil no disponible' }, { status: 404 })
   }
 
-  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId)
+  // Validar la sede ANTES de resolver el tipo — mismo criterio que
+  // disponibilidad/route.ts. Una sede_id que no es una sucursal activa real
+  // de este profesional se descarta (null) y nunca se persiste en el turno.
+  let sedeValidadaId: string | null = null
+  if (sedeId) {
+    const { data: sedeValida } = await db
+      .from('sucursales')
+      .select('id')
+      .eq('id', sedeId)
+      .eq('terapeuta_id', profile.id)
+      .eq('activo', true)
+      .maybeSingle()
+    sedeValidadaId = sedeValida?.id ?? null
+  }
+
+  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId, sedeValidadaId)
   if ('error' in tipoResuelto) {
     return NextResponse.json({ error: tipoResuelto.error }, { status: 400 })
   }
@@ -221,7 +236,7 @@ export async function POST(req: NextRequest) {
       estado: 'pendiente' as const,
       monto: precio ?? null,
       moneda,
-      sucursal_id: sedeId ?? null,
+      sucursal_id: sedeValidadaId,
       notas: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial reservada online' : 'Reserva online',
       tipo_turno: tipoResuelto.tipoTurnoId ? 'sesion' : (tipo === 'sesion' ? 'sesion' : 'entrevista'),
       tipo_turno_id: tipoResuelto.tipoTurnoId,

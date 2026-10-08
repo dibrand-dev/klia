@@ -44,17 +44,11 @@ async function getAvailableSlots(
 
   if (!profile || !profile.booking_activo) return []
 
-  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId)
-  if ('error' in tipoResuelto) return tipoResuelto
-
-  type HorarioDiaViejo = { activo: boolean; inicio: number; fin: number }
-  type FranjaHoraria = { inicio: number; fin: number }
-  type HorarioDia = { activo: boolean; franjas?: FranjaHoraria[] } | HorarioDiaViejo
-
-  // Si viene sede_id (y es una sede activa real de este profesional), la fuente de
-  // franjas horarias es horarios_sucursal en vez de profiles.horarios_por_dia —
-  // validación dura: si esa sede no tiene bloques cargados para este día, no hay
-  // slots, punto. Sin sede_id (profesional con 1 sola sede, o llamada legacy) el
+  // Validar la sede ANTES de resolver el tipo — si viene sede_id (y es una
+  // sede activa real de este profesional), la fuente de franjas horarias es
+  // horarios_sucursal en vez de profiles.horarios_por_dia, y el id validado
+  // es el que se usa para la regla de negocio tipo↔sede en resolverTipoReserva.
+  // Sin sede_id (profesional con 1 sola sede, o llamada legacy) el
   // comportamiento es exactamente el de siempre, sin ningún cambio.
   let sedeValidada: { id: string } | null = null
   if (sedeId) {
@@ -67,6 +61,13 @@ async function getAvailableSlots(
       .maybeSingle()
     sedeValidada = sede
   }
+
+  const tipoResuelto = await resolverTipoReserva(db, profile, tipo, tipoTurnoId, sedeValidada?.id ?? null)
+  if ('error' in tipoResuelto) return tipoResuelto
+
+  type HorarioDiaViejo = { activo: boolean; inicio: number; fin: number }
+  type FranjaHoraria = { inicio: number; fin: number }
+  type HorarioDia = { activo: boolean; franjas?: FranjaHoraria[] } | HorarioDiaViejo
 
   let franjas: FranjaHoraria[]
 

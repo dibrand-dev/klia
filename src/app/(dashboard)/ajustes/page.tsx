@@ -39,12 +39,33 @@ export default async function AjustesPage() {
 
   const db = serviceClient()
   const tiposTurnoHabilitado = await puedeUsarTiposTurno(db, (p.plan as string | null) ?? '')
-  const { data: tiposTurno } = await db
-    .from('tipos_turno')
-    .select('*')
-    .eq('terapeuta_id', efectivo.terapeutaId)
-    .order('orden', { ascending: true })
-    .order('created_at', { ascending: true })
+  const [{ data: tiposTurno }, { data: sedesActivas }] = await Promise.all([
+    db
+      .from('tipos_turno')
+      .select('*')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .order('orden', { ascending: true })
+      .order('created_at', { ascending: true }),
+    db
+      .from('sucursales')
+      .select('id, nombre, direccion, es_online, color')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .eq('activo', true)
+      .order('orden', { ascending: true }),
+  ])
+
+  const tipoIds = (tiposTurno ?? []).map((t) => t.id)
+  const sucursalIdsPorTipo: Record<string, string[]> = {}
+  if (tipoIds.length > 0) {
+    const { data: asignaciones } = await db
+      .from('tipos_turno_sucursales')
+      .select('tipo_turno_id, sucursal_id')
+      .in('tipo_turno_id', tipoIds)
+    for (const a of asignaciones ?? []) {
+      (sucursalIdsPorTipo[a.tipo_turno_id] ??= []).push(a.sucursal_id)
+    }
+  }
+  const tiposTurnoConSedes = (tiposTurno ?? []).map((t) => ({ ...t, sucursal_ids: sucursalIdsPorTipo[t.id] ?? [] }))
 
   return (
     <AjustesClient
@@ -63,7 +84,8 @@ export default async function AjustesPage() {
       cobrosMessagePaciente={(p.cobros_mensaje_paciente as string | null) ?? ''}
       esColaborador={efectivo.esColaborador}
       tiposTurnoHabilitado={tiposTurnoHabilitado}
-      tiposTurno={tiposTurno ?? []}
+      tiposTurno={tiposTurnoConSedes}
+      sedes={sedesActivas ?? []}
     />
   )
 }

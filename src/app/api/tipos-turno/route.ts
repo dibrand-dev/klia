@@ -28,6 +28,17 @@ async function obtenerPerfilEfectivo(db: ReturnType<typeof serviceClient>, terap
   return data
 }
 
+// Sucursales activas del terapeuta efectivo — usado para validar sucursal_ids
+// en POST/PATCH y para asignar automáticamente cuando hay exactamente 1.
+async function obtenerSucursalesActivas(db: ReturnType<typeof serviceClient>, terapeutaId: string) {
+  const { data } = await db
+    .from('sucursales')
+    .select('id')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('activo', true)
+  return (data ?? []).map((s) => s.id)
+}
+
 export async function GET(req: NextRequest) {
   const supabase = createClient()
   const efectivo = await getEffectiveTerapeutaIdServer(supabase)
@@ -56,11 +67,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Error al obtener los tipos de turno' }, { status: 500 })
   }
 
+  const tipoIds = (tipos ?? []).map((t) => t.id)
+  const sucursalIdsPorTipo: Record<string, string[]> = {}
+  if (tipoIds.length > 0) {
+    const { data: asignaciones } = await db
+      .from('tipos_turno_sucursales')
+      .select('tipo_turno_id, sucursal_id')
+      .in('tipo_turno_id', tipoIds)
+    for (const a of asignaciones ?? []) {
+      (sucursalIdsPorTipo[a.tipo_turno_id] ??= []).push(a.sucursal_id)
+    }
+  }
+  const tiposConSedes = (tipos ?? []).map((t) => ({ ...t, sucursal_ids: sucursalIdsPorTipo[t.id] ?? [] }))
+
   // GET no es un 403 — si el plan no lo permite, Ajustes igual necesita ver
   // los tipos ya creados (ej. un downgrade de Premium a Esencial) para
   // mostrarlos en solo lectura, con el flag `habilitado` indicando que no se
   // pueden crear/editar/borrar más desde acá.
-  return NextResponse.json({ tipos_turno: tipos ?? [], habilitado })
+  return NextResponse.json({ tipos_turno: tiposConSedes, habilitado })
 }
 
 export async function POST(req: NextRequest) {
@@ -81,11 +105,32 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     nombre?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
-    visible_en_booking?: unknown; activo?: unknown
+    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
     return NextResponse.json({ error: validado.error }, { status: 400 })
+  }
+
+  // Sedes — misma regla en toda la feature: 2+ sedes activas exige al menos
+  // una sede válida; exactamente 1 sede activa se asigna sola, sin importar
+  // lo que venga en el body; 0 sedes activas no asigna nada (no hay nada que
+  // filtrar).
+  const sucursalesActivas = await obtenerSucursalesActivas(db, efectivo.terapeutaId)
+  const sucursalIdsInput = Array.isArray(body.sucursal_ids)
+    ? body.sucursal_ids.filter((id): id is string => typeof id === 'string')
+    : []
+
+  let sucursalIds: string[]
+  if (sucursalesActivas.length >= 2) {
+    sucursalIds = sucursalIdsInput.filter((id) => sucursalesActivas.includes(id))
+    if (sucursalIds.length === 0) {
+      return NextResponse.json({ error: 'Elegí al menos una sede para poder guardar.' }, { status: 400 })
+    }
+  } else if (sucursalesActivas.length === 1) {
+    sucursalIds = [sucursalesActivas[0]]
+  } else {
+    sucursalIds = []
   }
 
   const { data: nuevo, error } = await db
@@ -116,5 +161,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al crear el tipo de turno' }, { status: 500 })
   }
 
-  return NextResponse.json({ tipo_turno: nuevo })
+  if (sucursalIds.length > 0) {
+    const { error: sedesError } = await db
+      .from('tipos_turno_sucursales')
+      .insert(sucursalIds.map((sucursalId) => ({ tipo_turno_id: nuevo.id, sucursal_id: sucursalId })))
+    if (sedesError) {
+      console.error('[api/tipos-turno] POST sedes error:', sedesError)
+    }
+  }
+
+  return NextResponse.json({ tipo_turno: { ...nuevo, sucursal_ids: sucursalIds } })
 }

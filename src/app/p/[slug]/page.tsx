@@ -55,6 +55,7 @@ export type TipoPropioPublico = {
   duracion_min: number
   precio: number | null
   moneda: string
+  sucursalIds: string[]
 }
 
 async function getProfile(slug: string): Promise<ProfileData | null> {
@@ -118,7 +119,20 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
       .eq('activo', true)
       .eq('visible_en_booking', true)
       .order('orden')
-    tiposPropios = tipos ?? []
+
+    const tipoIds = (tipos ?? []).map((t) => t.id)
+    const sucursalIdsPorTipo: Record<string, string[]> = {}
+    if (tipoIds.length > 0) {
+      const { data: asignaciones } = await supabase
+        .from('tipos_turno_sucursales')
+        .select('tipo_turno_id, sucursal_id')
+        .in('tipo_turno_id', tipoIds)
+      for (const a of asignaciones ?? []) {
+        (sucursalIdsPorTipo[a.tipo_turno_id] ??= []).push(a.sucursal_id)
+      }
+    }
+
+    tiposPropios = (tipos ?? []).map((t) => ({ ...t, sucursalIds: sucursalIdsPorTipo[t.id] ?? [] }))
   }
 
   return {
