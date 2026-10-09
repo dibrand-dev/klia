@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MontoInput from '@/components/ui/MontoInput'
+import SlideOver from '@/components/ui/SlideOver'
 import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
 import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
@@ -300,6 +301,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // Firmas state
   const [firmaUrl, setFirmaUrl] = useState<string | null>(profile.firma_url ?? null)
   const [firmaSelloUrl, setFirmaSelloUrl] = useState<string | null>(profile.firma_sello_url ?? null)
+
+  // Eliminar cuenta (baja lógica) state
+  const [eliminarOpen, setEliminarOpen] = useState(false)
+  const [eliminarEmailInput, setEliminarEmailInput] = useState('')
+  const [eliminarLoading, setEliminarLoading] = useState(false)
+  const [eliminarError, setEliminarError] = useState<string | null>(null)
 
   // Cobros y pagos state
   const [cobrosVentana, setCobrosVentana] = useState(cobrosVentanaHoras)
@@ -649,6 +656,29 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     if (error) { setRecetasError('Error al guardar.'); setRecetasLoading(false); return }
     setRecetasSaved(true); setRecetasLoading(false)
     setTimeout(() => setRecetasSaved(false), 3000)
+  }
+
+  async function handleEliminarCuenta() {
+    if (eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) return
+    setEliminarLoading(true)
+    setEliminarError(null)
+    try {
+      const res = await fetch('/api/cuenta/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmacion: eliminarEmailInput }),
+      })
+      const data = await res.json() as { ok?: boolean; error?: string }
+      if (!res.ok || !data.ok) {
+        setEliminarError(data.error ?? 'No se pudo eliminar la cuenta. Intentá de nuevo.')
+        setEliminarLoading(false)
+        return
+      }
+      window.location.href = '/login'
+    } catch {
+      setEliminarError('No se pudo eliminar la cuenta. Intentá de nuevo.')
+      setEliminarLoading(false)
+    }
   }
 
   const initials = `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
@@ -1716,7 +1746,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 Cambiar contraseña
               </button>
               <div style={{ flex: 1 }} />
-              <button style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+              <button
+                type="button"
+                onClick={() => { setEliminarEmailInput(''); setEliminarError(null); setEliminarOpen(true) }}
+                style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}
+              >
                 Eliminar cuenta
               </button>
             </div>
@@ -1724,6 +1758,77 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
         </div>
       </div>
+
+      <SlideOver
+        open={eliminarOpen}
+        onClose={() => { if (!eliminarLoading) setEliminarOpen(false) }}
+        title="Eliminar cuenta"
+        width="sm"
+        footer={(
+          <div style={secFootStyle}>
+            <button
+              type="button"
+              onClick={() => setEliminarOpen(false)}
+              disabled={eliminarLoading}
+              style={{ padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: eliminarLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}
+            >
+              Cancelar
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={handleEliminarCuenta}
+              disabled={eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()}
+              style={{
+                padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: 'none', color: 'white', background: 'var(--danger)',
+                cursor: (eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) ? 'not-allowed' : 'pointer',
+                opacity: (eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) ? 0.5 : 1,
+              }}
+            >
+              {eliminarLoading ? 'Eliminando...' : 'Eliminar cuenta'}
+            </button>
+          </div>
+        )}
+      >
+        <p style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.6, margin: '0 0 16px' }}>
+          Esta acción da de baja tu cuenta de KLIA. Al confirmar:
+        </p>
+        <ul style={{ margin: '0 0 20px', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            'Tu acceso a KLIA se bloquea de inmediato.',
+            'Si tenés una suscripción activa con Mercado Pago, se cancela.',
+            'Tu link público de reservas se desactiva.',
+            'Se desconectan tus integraciones (Google Calendar, Mercado Pago).',
+            'Tus datos clínicos y de pagos se conservan por el tiempo que exige la ley, según nuestra política de privacidad.',
+          ].map((texto) => (
+            <li key={texto} style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{texto}</li>
+          ))}
+        </ul>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle} htmlFor="eliminar-email-confirm">
+            Escribí tu email ({profile.email}) para confirmar
+          </label>
+          <input
+            id="eliminar-email-confirm"
+            type="text"
+            autoComplete="off"
+            value={eliminarEmailInput}
+            onChange={(e) => setEliminarEmailInput(e.target.value)}
+            placeholder={profile.email ?? ''}
+            style={inputStyle}
+            disabled={eliminarLoading}
+          />
+        </div>
+
+        {eliminarError && (
+          <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+            {eliminarError}
+          </p>
+        )}
+      </SlideOver>
     </div>
   )
 }
