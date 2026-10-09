@@ -94,14 +94,18 @@ export default function StepTipoConsulta({
   const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined && entrevistaVisible
 
   // showBoth es el fallback de "todavía no configuró nada": sin tipos propios
-  // visibles, sin ningún precio base cargado, y los dos flags de visibilidad
-  // en true. Si el profesional apagó algún flag a propósito, o ya tiene un
-  // tipo propio visible cubriendo el link, nunca debe pisarlo mostrando ambos.
+  // visibles y sin ningún precio base cargado. Usa sesionVisible/entrevistaVisible
+  // (ya pisados a true arriba cuando no hay propios ofrecidos) en vez de los
+  // flags crudos — si usara los flags crudos, un profesional que apagó un
+  // flag mientras tenía tipos propios y después se quedó sin ninguno (ej. baja
+  // de plan) podía terminar con showBoth en false y los dos precios en null,
+  // es decir cero tipos mostrados. Si ya hay un tipo propio visible cubriendo
+  // el link, tieneTiposPropiosActivos alcanza para que showBoth sea false.
   const showBoth = !tieneTiposPropiosActivos
     && profile.booking_precio_sesion == null
     && profile.booking_precio_entrevista == null
-    && profile.booking_sesion_visible
-    && profile.booking_entrevista_visible
+    && sesionVisible
+    && entrevistaVisible
 
   const baseOptions: BaseOpt[] = []
   if (hasSesion || showBoth) {
