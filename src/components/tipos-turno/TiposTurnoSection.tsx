@@ -6,6 +6,7 @@ import SlideOver from '@/components/ui/SlideOver'
 import MontoInput from '@/components/ui/MontoInput'
 import { getTerminologia } from '@/hooks/useTerminologia'
 import { parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
+import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import './tipos-turno.css'
 
 export type SedeTipoTurno = {
@@ -18,12 +19,16 @@ export type SedeTipoTurno = {
 
 export type TipoTurnoConSedes = TipoTurno & { sucursal_ids: string[] }
 
+type BaseTipoEstado = { precioCargado: boolean; visible: boolean }
+
 interface Props {
   plan: string
   habilitado: boolean
   tiposIniciales: TipoTurnoConSedes[]
   terminologia?: 'sesion' | 'consulta'
   sedes: SedeTipoTurno[]
+  baseSesion: BaseTipoEstado
+  baseEntrevista: BaseTipoEstado
 }
 
 const PLAN_NAME: Record<string, string> = { esencial: 'Esencial', profesional: 'Profesional', premium: 'Premium', bonificado: 'Bonificado' }
@@ -107,7 +112,7 @@ function SedeTag({ ids, sedes }: { ids: string[]; sedes: SedeTipoTurno[] }) {
   return <span className="tt-tag-sd" title={sel.map((s) => s.nombre).join(' · ')}>{ICON_PIN}{sedesTxt(ids, sedes)}</span>
 }
 
-export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, terminologia, sedes }: Props) {
+export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, terminologia, sedes, baseSesion, baseEntrevista }: Props) {
   const t = getTerminologia(terminologia)
   const multiSede = sedes.length > 1
   const [lista, setLista] = useState<TipoTurnoConSedes[]>(tiposIniciales)
@@ -117,6 +122,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
   const [touched, setTouched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorNombre, setErrorNombre] = useState<string | null>(null)
+  const [errorConteo, setErrorConteo] = useState<string | null>(null)
 
   const activos = lista.filter((x) => x.activo).length
 
@@ -125,6 +131,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
     setDraft(draftVacio(sedes))
     setTouched(false)
     setErrorNombre(null)
+    setErrorConteo(null)
   }
 
   function abrirEditar(tipo: TipoTurnoConSedes) {
@@ -132,11 +139,13 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
     setDraft(draftDeTipo(tipo))
     setTouched(false)
     setErrorNombre(null)
+    setErrorConteo(null)
   }
 
   function cerrar() {
     setEditandoId(null)
     setErrorNombre(null)
+    setErrorConteo(null)
   }
 
   function toggleSede(id: string) {
@@ -160,11 +169,32 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
   const descNear = descLen >= 450 && descLen < 500
   const descMax = descLen >= 500
 
+  // Mismo mínimo que AjustesClient (helper compartido): simula el estado de
+  // "tus tipos" tras guardar este draft (reemplazando el tipo en edición, o
+  // agregando el nuevo) y lo combina con los tipos base para chequear que el
+  // link de reservas siga ofreciendo al menos 1 tipo.
+  function conteoTrasGuardar(): number {
+    const otros = lista.filter((x) => x.id !== editandoId)
+    const hipotetica = [...otros, { activo: draft.activo, visible_en_booking: draft.visible_en_booking }]
+    return contarTiposDisponibles({
+      tiposPropios: hipotetica,
+      sesionPrecioCargado: baseSesion.precioCargado,
+      sesionVisible: baseSesion.visible,
+      entrevistaPrecioCargado: baseEntrevista.precioCargado,
+      entrevistaVisible: baseEntrevista.visible,
+    })
+  }
+
   async function guardar() {
     setTouched(true)
     if (!nombreOk || !duracionOk || !sedesOk) return
+    if (conteoTrasGuardar() === 0) {
+      setErrorConteo('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
+      return
+    }
     setLoading(true)
     setErrorNombre(null)
+    setErrorConteo(null)
 
     const body = {
       nombre: draft.nombre,
@@ -484,6 +514,12 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
             onClick={() => setDraft((p) => ({ ...p, activo: !p.activo }))}
           />
         </div>
+
+        {errorConteo && (
+          <div className="tt-field" style={{ marginTop: -8 }}>
+            <span className="tt-err with-ic">{ICON_WARN}{errorConteo}</span>
+          </div>
+        )}
 
         <div className={`tt-preview ${draft.descripcion.trim() ? 'tt-has-pd' : ''}`} style={{ opacity: draft.visible_en_booking ? 1 : 0.6 }}>
           <div style={{ minWidth: 0 }}>

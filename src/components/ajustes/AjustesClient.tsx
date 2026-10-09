@@ -12,6 +12,7 @@ import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
 import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
 import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
+import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
@@ -552,15 +553,16 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // callback hacia el padre), igual que el resto de esta pantalla no
   // sincroniza entre secciones.
   const tipoPropioActivoExiste = tiposTurno.some((t) => t.activo)
-  function contarTiposDisponibles(sesionVisible: boolean, entrevistaVisible: boolean): number {
-    const propiosVisibles = tiposTurno.filter((t) => t.activo && t.visible_en_booking).length
-    const sesionCuenta = bookingPrecioSesion !== '' && sesionVisible ? 1 : 0
-    const entrevistaCuenta = bookingPrecioEntrevista !== '' && entrevistaVisible ? 1 : 0
-    return propiosVisibles + sesionCuenta + entrevistaCuenta
-  }
   function handleToggleSesionVisible() {
     const nuevo = !bookingSesionVisible
-    if (!nuevo && contarTiposDisponibles(false, bookingEntrevistaVisible) === 0) {
+    const conteo = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: nuevo,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: bookingEntrevistaVisible,
+    })
+    if (!nuevo && conteo === 0) {
       setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
       return
     }
@@ -569,7 +571,14 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   }
   function handleToggleEntrevistaVisible() {
     const nuevo = !bookingEntrevistaVisible
-    if (!nuevo && contarTiposDisponibles(bookingSesionVisible, false) === 0) {
+    const conteo = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: bookingSesionVisible,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: nuevo,
+    })
+    if (!nuevo && conteo === 0) {
       setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
       return
     }
@@ -582,6 +591,21 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setBookingError(null)
     if (bookingBio && bookingBio.length > 200) {
       setBookingError('Bio pública no puede exceder 200 caracteres')
+      return
+    }
+    // PASO 5 — red de seguridad server-adjacent: aunque la UI ya bloquea el
+    // toggle que dejaría el conteo en 0, handleBookingSave es la última
+    // puerta antes de persistir — nunca confiar solo en que el botón nunca
+    // se haya podido apretar en ese estado.
+    const conteoFinal = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: bookingSesionVisible,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: bookingEntrevistaVisible,
+    })
+    if (conteoFinal === 0) {
+      setBookingError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
       return
     }
     setBookingLoading(true); setBookingSaved(false)
@@ -1145,6 +1169,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               tiposIniciales={tiposTurno}
               terminologia={profile.terminologia ?? undefined}
               sedes={sedes}
+              baseSesion={{ precioCargado: bookingPrecioSesion !== '', visible: bookingSesionVisible }}
+              baseEntrevista={{ precioCargado: bookingPrecioEntrevista !== '', visible: bookingEntrevistaVisible }}
             />
           </section>
 

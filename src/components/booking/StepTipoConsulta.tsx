@@ -77,9 +77,31 @@ export default function StepTipoConsulta({
   descExpandidas,
   onToggleDescExpandida,
 }: Props) {
-  const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined && profile.booking_sesion_visible
-  const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined && profile.booking_entrevista_visible
-  const showBoth = !hasSesion && !hasEntrevista
+  // profile.tiposPropios ya viene filtrado server-side por plan + activo +
+  // visible_en_booking (page.tsx) — length > 0 es exactamente "hay al menos un
+  // tipo propio ofrecido en el link ahora mismo", incluido el caso de bajada
+  // de plan a Esencial (ahí puedeUsarTiposTurno es false y queda en 0 sin
+  // tocar las filas de tipos_turno en la base).
+  const tieneTiposPropiosActivos = profile.tiposPropios.length > 0
+
+  // Sin ningún tipo propio ofrecido, el flag de Sesión/Entrevista nunca puede
+  // ser el único motivo de que el link quede sin nada para ofrecer — se
+  // ignora (se lee como visible) sin modificar el dato guardado.
+  const sesionVisible = profile.booking_sesion_visible || !tieneTiposPropiosActivos
+  const entrevistaVisible = profile.booking_entrevista_visible || !tieneTiposPropiosActivos
+
+  const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined && sesionVisible
+  const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined && entrevistaVisible
+
+  // showBoth es el fallback de "todavía no configuró nada": sin tipos propios
+  // visibles, sin ningún precio base cargado, y los dos flags de visibilidad
+  // en true. Si el profesional apagó algún flag a propósito, o ya tiene un
+  // tipo propio visible cubriendo el link, nunca debe pisarlo mostrando ambos.
+  const showBoth = !tieneTiposPropiosActivos
+    && profile.booking_precio_sesion == null
+    && profile.booking_precio_entrevista == null
+    && profile.booking_sesion_visible
+    && profile.booking_entrevista_visible
 
   const baseOptions: BaseOpt[] = []
   if (hasSesion || showBoth) {
