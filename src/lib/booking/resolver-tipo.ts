@@ -18,6 +18,8 @@ export type ProfileParaResolverTipo = {
   booking_duracion_entrevista: number | null
   booking_precio_sesion: number | null
   booking_precio_entrevista: number | null
+  booking_sesion_visible?: boolean | null
+  booking_entrevista_visible?: boolean | null
   booking_moneda: string | null
 }
 
@@ -94,6 +96,11 @@ export async function resolverTipoReserva(
     // crea un turno con sucursal_id null para un profesional multi-sede.
     const sedeCheck = await resolverSedeActiva(db, profile.id, sedeId)
     if (!sedeCheck) return { error: 'tipo_invalido' }
+
+    const visible = tipo === 'sesion'
+      ? (profile.booking_sesion_visible ?? true)
+      : (profile.booking_entrevista_visible ?? true)
+    if (!visible) return { error: 'tipo_invalido' }
 
     const duracion = tipo === 'sesion'
       ? (profile.booking_duracion_sesion ?? 50)

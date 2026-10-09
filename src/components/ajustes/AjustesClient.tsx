@@ -325,6 +325,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [bookingModalidades, setBookingModalidades] = useState<string[]>((p.booking_modalidades as string[] | null) ?? ['presencial'])
   const [bookingPrecioSesion, setBookingPrecioSesion] = useState<string>(p.booking_precio_sesion != null ? String(p.booking_precio_sesion) : '')
   const [bookingPrecioEntrevista, setBookingPrecioEntrevista] = useState<string>(p.booking_precio_entrevista != null ? String(p.booking_precio_entrevista) : '')
+  const [bookingSesionVisible, setBookingSesionVisible] = useState<boolean>((p.booking_sesion_visible as boolean | null) ?? true)
+  const [bookingEntrevistaVisible, setBookingEntrevistaVisible] = useState<boolean>((p.booking_entrevista_visible as boolean | null) ?? true)
+  const [bookingVisibilidadError, setBookingVisibilidadError] = useState<string | null>(null)
   const [bookingRequierePago, setBookingRequierePago] = useState<boolean>((p.booking_requiere_pago as boolean | null) ?? true)
   const [bookingSlug] = useState<string>((p.booking_slug as string | null) ?? '')
   const [bookingLoading, setBookingLoading] = useState(false)
@@ -542,6 +545,38 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // ── Booking save ───────────────────────────────────────────────────
   const [bookingError, setBookingError] = useState<string | null>(null)
 
+  // Mínimo de 1 tipo de consulta disponible en el link: tipos propios con
+  // visible_en_booking (activos) + tipos base con precio cargado y visible.
+  // tiposTurno es el snapshot cargado al entrar a Ajustes — no se actualiza
+  // en vivo con lo que hace TiposTurnoSection (sección independiente, sin
+  // callback hacia el padre), igual que el resto de esta pantalla no
+  // sincroniza entre secciones.
+  const tipoPropioActivoExiste = tiposTurno.some((t) => t.activo)
+  function contarTiposDisponibles(sesionVisible: boolean, entrevistaVisible: boolean): number {
+    const propiosVisibles = tiposTurno.filter((t) => t.activo && t.visible_en_booking).length
+    const sesionCuenta = bookingPrecioSesion !== '' && sesionVisible ? 1 : 0
+    const entrevistaCuenta = bookingPrecioEntrevista !== '' && entrevistaVisible ? 1 : 0
+    return propiosVisibles + sesionCuenta + entrevistaCuenta
+  }
+  function handleToggleSesionVisible() {
+    const nuevo = !bookingSesionVisible
+    if (!nuevo && contarTiposDisponibles(false, bookingEntrevistaVisible) === 0) {
+      setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
+      return
+    }
+    setBookingVisibilidadError(null)
+    setBookingSesionVisible(nuevo)
+  }
+  function handleToggleEntrevistaVisible() {
+    const nuevo = !bookingEntrevistaVisible
+    if (!nuevo && contarTiposDisponibles(bookingSesionVisible, false) === 0) {
+      setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
+      return
+    }
+    setBookingVisibilidadError(null)
+    setBookingEntrevistaVisible(nuevo)
+  }
+
   async function handleBookingSave(e: React.FormEvent) {
     e.preventDefault()
     setBookingError(null)
@@ -561,6 +596,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       booking_modalidades: bookingModalidades,
       booking_precio_sesion: bookingPrecioSesion ? parseFloat(bookingPrecioSesion) : null,
       booking_precio_entrevista: bookingPrecioEntrevista ? parseFloat(bookingPrecioEntrevista) : null,
+      booking_sesion_visible: bookingSesionVisible,
+      booking_entrevista_visible: bookingEntrevistaVisible,
       booking_requiere_pago: bookingRequierePago,
     } as never).eq('id', profile.id)
     setBookingLoading(false); setBookingSaved(true)
@@ -1524,18 +1561,37 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
 
               {/* Precios */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 18 }}>
-                {[
-                  { label: 'Precio sesión', value: bookingPrecioSesion, set: setBookingPrecioSesion },
-                  { label: 'Precio entrevista inicial', value: bookingPrecioEntrevista, set: setBookingPrecioEntrevista },
-                ].map(({ label, value, set }) => (
-                  <div key={label}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
-                    <MontoInput name={label} value={value} onChange={set} placeholder="Ej: 70000"
-                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: tipoPropioActivoExiste ? 6 : 18 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio sesión</label>
+                  <MontoInput name="Precio sesión" value={bookingPrecioSesion} onChange={setBookingPrecioSesion} placeholder="Ej: 70000"
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  {tipoPropioActivoExiste && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                      <Toggle on={bookingSesionVisible} onChange={handleToggleSesionVisible} />
+                      Mostrar en link de reservas
+                    </label>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio entrevista inicial</label>
+                  <MontoInput name="Precio entrevista inicial" value={bookingPrecioEntrevista} onChange={setBookingPrecioEntrevista} placeholder="Ej: 70000"
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  {tipoPropioActivoExiste && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                      <Toggle on={bookingEntrevistaVisible} onChange={handleToggleEntrevistaVisible} />
+                      Mostrar en link de reservas
+                    </label>
+                  )}
+                </div>
               </div>
+
+              {tipoPropioActivoExiste && bookingVisibilidadError && (
+                <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 18px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+                  {bookingVisibilidadError}
+                </p>
+              )}
 
               {/* Requiere pago */}
               <ToggleRow

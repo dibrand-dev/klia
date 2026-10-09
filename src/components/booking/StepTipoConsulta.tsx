@@ -77,8 +77,8 @@ export default function StepTipoConsulta({
   descExpandidas,
   onToggleDescExpandida,
 }: Props) {
-  const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined
-  const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined
+  const hasSesion = profile.booking_precio_sesion !== null && profile.booking_precio_sesion !== undefined && profile.booking_sesion_visible
+  const hasEntrevista = profile.booking_precio_entrevista !== null && profile.booking_precio_entrevista !== undefined && profile.booking_entrevista_visible
   const showBoth = !hasSesion && !hasEntrevista
 
   const baseOptions: BaseOpt[] = []
