@@ -32,3 +32,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# migración enpeso (piloto) — datos crudos de pacientes, nunca al repo
+scripts/migracion-enpeso/_data/
+scripts/migracion-enpeso/*.json
