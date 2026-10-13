@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionConfirmada, emailPagoSesionRechazada, emailPagoRecibidoTurnoCancelado } from '@/lib/email-templates'
-import { format, parseISO } from 'date-fns'
-import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
 import { mpAccessToken } from '@/lib/mercadopago'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+import { formatFechaHoraAR } from '@/lib/tz'
 import crypto from 'crypto'
 
 function serviceClient() {
@@ -35,14 +34,6 @@ function validateSignature(req: NextRequest, rawBody: string): boolean {
   const signed = `id:${dataId ?? ''};request-id:${xReqId ?? ''};ts:${ts};`
   const computed = crypto.createHmac('sha256', secret).update(signed).digest('hex')
   return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(v1))
-}
-
-function formatFechaHora(fechaHora: string) {
-  const d = parseISO(fechaHora)
-  return {
-    fecha: format(d, "EEEE d 'de' MMMM, yyyy", { locale: es }),
-    hora: format(d, 'HH:mm'),
-  }
 }
 
 // sesiones_pago no está en el Database generado (types/database.ts
@@ -151,11 +142,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  // Idempotencia: una sesión ya pagada no vuelve a procesarse ni reenvía mails.
-  if (sesion.estado === 'pagado') {
-    return NextResponse.json({ ok: true })
-  }
-
   const mpStatus = mpPayment.status as string
 
   // Get turno + paciente + professional
@@ -170,14 +156,25 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await db.from('profiles').select('*').eq('id', sesion.terapeuta_id).single()
   const prof = profile as Record<string, unknown> | null
   const paciente = turno.paciente as Record<string, unknown> | null
-  const { fecha, hora } = formatFechaHora(turno.fecha_hora)
+  const { fecha, hora } = formatFechaHoraAR(turno.fecha_hora)
 
   if (mpStatus === 'approved') {
-    // Siempre se registra el pago, pase lo que pase con el turno.
-    const { error: sesionErr } = await db.from('sesiones_pago')
+    // Idempotencia atómica: reclama la sesión solo si todavía no estaba
+    // pagada. Un reintento de MP sobre un pago ya procesado no afecta
+    // ninguna fila acá — se corta antes de tocar el turno o mandar mails.
+    const { data: reclamada, error: sesionErr } = await db.from('sesiones_pago')
       .update({ estado: 'pagado', mp_payment_id: String(paymentId), updated_at: new Date().toISOString() })
       .eq('id', sesion.id)
-    if (sesionErr) console.error('[webhook] Error al marcar sesion_pago pagado:', sesionErr)
+      .neq('estado', 'pagado')
+      .select('id')
+
+    if (sesionErr) {
+      console.error('[webhook] Error al marcar sesion_pago pagado:', sesionErr)
+      return NextResponse.json({ ok: true })
+    }
+    if (!reclamada || reclamada.length === 0) {
+      return NextResponse.json({ ok: true })
+    }
 
     const turnoYaCancelado = turno.estado === 'cancelado'
 

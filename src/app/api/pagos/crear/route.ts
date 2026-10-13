@@ -3,8 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionPendiente } from '@/lib/email-templates'
-import { format, parseISO } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { formatFechaHoraAR } from '@/lib/tz'
 import type { Database } from '@/types/database'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
@@ -19,14 +18,6 @@ function serviceClient() {
 
 function shortId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
-}
-
-function formatFechaHora(fechaHora: string) {
-  const d = parseISO(fechaHora)
-  return {
-    fecha: format(d, "EEEE d 'de' MMMM, yyyy", { locale: es }),
-    hora: format(d, 'HH:mm'),
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -75,7 +66,7 @@ export async function POST(req: NextRequest) {
     ? new Date(Date.now() + 3650 * 24 * 3600 * 1000).toISOString()
     : new Date(Date.now() + ventanaHoras * 3600 * 1000).toISOString()
 
-  const { fecha, hora } = formatFechaHora(turno.fecha_hora)
+  const { fecha, hora } = formatFechaHoraAR(turno.fecha_hora)
   const paciente = turno.paciente as Record<string, unknown> | null
 
   // 4. Create MP Preference using professional's access_token
