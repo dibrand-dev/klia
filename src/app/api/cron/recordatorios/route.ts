@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailRecordatorioTurno } from '@/lib/email-templates'
+import { ventanaDiaSiguienteAR } from '@/lib/tz'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,18 +20,7 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const ahoraAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }))
-  const mananaAR = new Date(ahoraAR)
-  mananaAR.setDate(mananaAR.getDate() + 1)
-
-  const desdeAR = new Date(mananaAR)
-  desdeAR.setHours(0, 0, 0, 0)
-
-  const hastaAR = new Date(mananaAR)
-  hastaAR.setHours(23, 59, 59, 999)
-
-  const desde = desdeAR
-  const hasta = hastaAR
+  const { desde, hasta } = ventanaDiaSiguienteAR()
 
   const { data: turnos, error } = await supabase
     .from('turnos')
