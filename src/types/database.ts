@@ -554,6 +554,11 @@ export type Database = {
           sucursal_id: string | null
           tipo_turno_id: string | null
           vence_en: string | null
+          token_accion: string
+          cancelado_por: string | null
+          cancelado_at: string | null
+          confirmado_por_paciente_at: string | null
+          cancelacion_tardia: boolean | null
           created_at: string
           updated_at: string
         }
@@ -583,6 +588,11 @@ export type Database = {
           sucursal_id?: string | null
           tipo_turno_id?: string | null
           vence_en?: string | null
+          token_accion?: string
+          cancelado_por?: string | null
+          cancelado_at?: string | null
+          confirmado_por_paciente_at?: string | null
+          cancelacion_tardia?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -612,6 +622,11 @@ export type Database = {
           google_event_id?: string | null
           meet_link?: string | null
           vence_en?: string | null
+          token_accion?: string
+          cancelado_por?: string | null
+          cancelado_at?: string | null
+          confirmado_por_paciente_at?: string | null
+          cancelacion_tardia?: boolean | null
           created_at?: string
           updated_at?: string
         }

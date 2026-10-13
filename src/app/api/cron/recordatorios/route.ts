@@ -22,10 +22,12 @@ export async function GET(req: NextRequest) {
 
   const { desde, hasta } = ventanaDiaSiguienteAR()
 
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
+
   const { data: turnos, error } = await supabase
     .from('turnos')
     .select(`
-      id, fecha_hora, duracion_min, modalidad, meet_link,
+      id, fecha_hora, duracion_min, modalidad, meet_link, token_accion,
       paciente:pacientes(nombre, apellido, email),
       terapeuta:profiles(nombre, apellido, especialidad)
     `)
@@ -86,6 +88,8 @@ export async function GET(req: NextRequest) {
         duracion: turno.duracion_min ?? 50,
         modalidad: turno.modalidad ?? 'presencial',
         meetLink: turno.meet_link,
+        confirmarUrl: `${APP_URL}/turno/${turno.token_accion}?accion=confirmar`,
+        cancelarUrl: `${APP_URL}/turno/${turno.token_accion}?accion=cancelar`,
       })
 
       await enviarEmail({

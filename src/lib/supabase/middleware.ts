@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   '/terminos',
   '/privacidad',
   '/colaboradora/activar',
+  '/turno/',
 ]
 
 // Routes that require a specific module to be enabled for the professional's plan

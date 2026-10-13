@@ -696,6 +696,8 @@ export function emailRecordatorioTurno({
   duracion,
   modalidad,
   meetLink,
+  confirmarUrl,
+  cancelarUrl,
 }: {
   pacienteNombre: string
   profesionalNombre: string
@@ -705,6 +707,8 @@ export function emailRecordatorioTurno({
   duracion: number
   modalidad: string
   meetLink?: string | null
+  confirmarUrl: string
+  cancelarUrl: string
 }): string {
   const modalidadFmt = modalidad === 'videollamada' ? 'Videollamada' : modalidad === 'telefonica' ? 'Telefónica' : 'Presencial'
   return baseTemplate(`
@@ -754,8 +758,48 @@ export function emailRecordatorioTurno({
       </tr>
     </table>` : ''}
 
-    ${help('Si no podés asistir, contactá a tu profesional con anticipación.')}
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto 0;">
+      <tr>
+        <td align="center" bgcolor="#1F4FD9" style="background-color:#1F4FD9;border-radius:12px;">
+          <a href="${confirmarUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">✓ Confirmar turno</a>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:12px auto 0;">
+      <tr>
+        <td align="center" style="border:1px solid #5B6472;border-radius:12px;">
+          <a href="${cancelarUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#5B6472;text-decoration:none;border-radius:12px;">Cancelar turno</a>
+        </td>
+      </tr>
+    </table>
+
+    ${help('Si cancelás, tu horario queda libre para que otro paciente lo pueda tomar.')}
   `, 'Recordatorio de sesión — KLIA')
+}
+
+export function emailTurnoCanceladoPorPaciente(params: {
+  pacienteNombre: string
+  pacienteApellido: string
+  fecha: string
+  hora: string
+  pagado: boolean
+  montoPagado?: number
+  moneda?: string
+  horasAnticipacion: number
+  politicaHoras: number
+  tardia: boolean
+}): string {
+  const nombreCompleto = `${params.pacienteNombre} ${params.pacienteApellido}`
+  const montoFmt = params.montoPagado != null ? params.montoPagado.toLocaleString('es-AR') : null
+  return baseTemplate(`
+    ${icon('🚫', '#FEE2E2')}
+    ${h1('Turno cancelado por el paciente')}
+    ${para(`<strong style="color:#2b2f38;font-weight:600;">${nombreCompleto}</strong> canceló su turno del ${params.fecha} a las ${params.hora} hs.`)}
+    ${params.pagado && montoFmt ? para(`El turno estaba abonado: <strong style="color:#2b2f38;font-weight:600;">${params.moneda} ${montoFmt}</strong>.`) : ''}
+    ${para(`Canceló con <strong style="color:#2b2f38;font-weight:600;">${params.horasAnticipacion} hs</strong> de anticipación (tu política: devolución completa hasta <strong style="color:#2b2f38;font-weight:600;">${params.politicaHoras} hs</strong> antes) → <strong style="color:#2b2f38;font-weight:600;">${params.tardia ? 'fuera' : 'dentro'}</strong> de tu política.`)}
+    ${params.pagado ? para('Resolvelo con el paciente.') : ''}
+  `, `Turno cancelado por el paciente: ${nombreCompleto} — ${params.fecha} ${params.hora}`)
 }
 
 export function emailAutorizacionesPorVencer(
