@@ -218,6 +218,13 @@
 }
 .ob-field input::placeholder { color: var(--muted-3); }
 
+/* Fila de layout puro para un input + botón lado a lado (ej. código de
+   descuento) — sin colores ni bordes propios, esos los dan .ob-field input
+   y .ob-btn-back. */
+.ob-field-row { display: flex; gap: 8px; align-items: stretch; }
+.ob-field-row input { flex: 1; min-width: 0; }
+.ob-field-row button { white-space: nowrap; }
+
 .ob-input-group {
   display: flex; align-items: stretch;
   border: 1px solid var(--border); border-radius: 8px;

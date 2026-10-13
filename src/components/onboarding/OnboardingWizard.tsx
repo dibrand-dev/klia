@@ -53,6 +53,14 @@ export default function OnboardingWizard({
   const [telefono, setTelefono] = useState(initialTelefono ?? '')
   const [provincia, setProvincia] = useState(initialProvincia ?? '')
 
+  // Código de descuento — opcional, se aplica en el momento vía la RPC
+  // existente, no depende de persistStep ni de completar/saltar el paso.
+  const [codigoAbierto, setCodigoAbierto] = useState(false)
+  const [codigoInput, setCodigoInput] = useState('')
+  const [codigoLoading, setCodigoLoading] = useState(false)
+  const [codigoError, setCodigoError] = useState<string | null>(null)
+  const [codigoAplicado, setCodigoAplicado] = useState<number | null>(null)
+
   // Hydrate fields from auth user_metadata if profile fields are empty
   useEffect(() => {
     async function hydrateFromMetadata() {
@@ -94,6 +102,26 @@ export default function OnboardingWizard({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'complete', data }),
     }).catch(() => {})
+  }
+
+  async function handleAplicarCodigo() {
+    if (!codigoInput.trim()) return
+    setCodigoLoading(true)
+    setCodigoError(null)
+    try {
+      const res = await fetch('/api/codigo-descuento/aplicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: codigoInput.trim() }),
+      })
+      const data = await res.json() as { ok?: boolean; porcentaje_descuento?: number; error?: string }
+      if (!res.ok || !data.ok) throw new Error(data.error ?? 'No se pudo aplicar el código.')
+      setCodigoAplicado(data.porcentaje_descuento ?? null)
+    } catch (err) {
+      setCodigoError(err instanceof Error ? err.message : 'No se pudo aplicar el código.')
+    } finally {
+      setCodigoLoading(false)
+    }
   }
 
   function persistStep(data: Record<string, unknown>) {
@@ -340,6 +368,46 @@ export default function OnboardingWizard({
                       />
                     </div>
                   </div>
+
+                  {codigoAplicado != null ? (
+                    <div className="ob-field">
+                      <div style={{ padding: '10px 14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10, fontSize: 13, color: '#0E8A5F', fontWeight: 600 }}>
+                        ✓ Descuento del {codigoAplicado}% aplicado — se reflejará al confirmar tu plan
+                      </div>
+                    </div>
+                  ) : codigoAbierto ? (
+                    <div className="ob-field">
+                      <label>Código de descuento</label>
+                      <div className="ob-field-row">
+                        <input
+                          type="text"
+                          placeholder="Ej: COLE215"
+                          value={codigoInput}
+                          disabled={codigoLoading}
+                          onChange={e => setCodigoInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleAplicarCodigo()
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="ob-btn-back"
+                          onClick={handleAplicarCodigo}
+                          disabled={codigoLoading || !codigoInput.trim()}
+                        >
+                          {codigoLoading ? 'Validando…' : 'Aplicar'}
+                        </button>
+                      </div>
+                      {codigoError && <span className="ob-field-error">{codigoError}</span>}
+                    </div>
+                  ) : (
+                    <button type="button" className="ob-skip-link" onClick={() => setCodigoAbierto(true)} style={{ alignSelf: 'flex-start' }}>
+                      ¿Tenés un código de descuento?
+                    </button>
+                  )}
                 </div>
                 <div className="ob-actions-row">
                   <button className="ob-btn-back" onClick={prev}>
