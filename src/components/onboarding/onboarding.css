@@ -225,6 +225,9 @@
 .ob-field-row input { flex: 1; min-width: 0; }
 .ob-field-row button { white-space: nowrap; }
 
+.ob-field-error { display: block; margin-top: 4px; font-size: 12.5px; color: var(--danger); }
+.ob-field-ok { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--ok); background: var(--ok-soft); color: var(--ok); font-size: 13px; font-weight: 600; }
+
 .ob-input-group {
   display: flex; align-items: stretch;
   border: 1px solid var(--border); border-radius: 8px;

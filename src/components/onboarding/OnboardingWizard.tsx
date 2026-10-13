@@ -371,7 +371,7 @@ export default function OnboardingWizard({
 
                   {codigoAplicado != null ? (
                     <div className="ob-field">
-                      <div style={{ padding: '10px 14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10, fontSize: 13, color: '#0E8A5F', fontWeight: 600 }}>
+                      <div className="ob-field-ok">
                         ✓ Descuento del {codigoAplicado}% aplicado — se reflejará al confirmar tu plan
                       </div>
                     </div>
