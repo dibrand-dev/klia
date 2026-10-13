@@ -11,3 +11,19 @@ export function ventanaDiaSiguienteAR(now = new Date()) {
   const hasta = new Date(Date.UTC(y, m, d + 1, 0, 0, 0, 0) + AR_OFFSET_MS - 1)
   return { desde, hasta }
 }
+
+// Fecha/hora legibles en hora Argentina para mails y respuestas de API —
+// nunca date-fns format() en servidor (su locale 'es' no lleva timeZone y
+// termina formateando en la hora del server, no en AR).
+export function formatFechaHoraAR(iso: string): { fecha: string; hora: string } {
+  const d = new Date(iso)
+  const fecha = d.toLocaleDateString('es-AR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
+  const hora = d.toLocaleTimeString('es-AR', {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
+  return { fecha, hora }
+}

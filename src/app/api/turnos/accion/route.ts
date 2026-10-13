@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailTurnoCanceladoPorPaciente } from '@/lib/email-templates'
 import { evaluarCancelacion } from '@/lib/politica-cancelacion'
 import { sincronizarTurnoCreado, sincronizarTurnoCancelado } from '@/lib/sync-google-calendar'
+import { formatFechaHoraAR } from '@/lib/tz'
+import { turnoEstaPagado, montoPagadoTurno } from '@/lib/turno-pago'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ESTADOS_CERRADOS = ['realizado', 'no_asistio']
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const { data: turno } = await db
     .from('turnos')
     .select(`
-      id, terapeuta_id, estado, fecha_hora, google_event_id, pagado, monto_pagado, moneda, cancelacion_tardia,
+      id, terapeuta_id, estado, fecha_hora, google_event_id, pagado, estado_pago, monto_pagado, monto, moneda, cancelacion_tardia,
       paciente:pacientes(nombre, apellido),
       terapeuta:profiles(nombre, apellido, email, cobros_cancelacion_horas)
     `)
@@ -51,13 +51,15 @@ export async function POST(req: NextRequest) {
 
   if (accion === 'confirmar') {
     if (turno.estado === 'confirmado') {
-      return NextResponse.json({ ok: true, estado: 'confirmado', pagado: turno.pagado, tardia: false })
+      return NextResponse.json({ ok: true, estado: 'confirmado', pagado: turnoEstaPagado(turno), tardia: false })
     }
     if (turno.estado === 'cancelado') {
-      return NextResponse.json({ error: 'turno_cancelado' }, { status: 409 })
+      // 409 pero con estado — el client refresca su UI con esto en vez de
+      // quedarse en un error genérico.
+      return NextResponse.json({ error: 'turno_cancelado', estado: 'cancelado', pagado: turnoEstaPagado(turno), tardia: turno.cancelacion_tardia ?? false }, { status: 409 })
     }
     if (ESTADOS_CERRADOS.includes(turno.estado) || yaPaso) {
-      return NextResponse.json({ error: 'turno_no_disponible' }, { status: 409 })
+      return NextResponse.json({ error: 'turno_no_disponible', estado: turno.estado, pagado: turnoEstaPagado(turno), tardia: false }, { status: 409 })
     }
 
     const { data: actualizados, error: updateErr } = await db
@@ -75,8 +77,8 @@ export async function POST(req: NextRequest) {
     if (!actualizados || actualizados.length === 0) {
       // Carrera: cambió de estado entre la lectura y el update — se relee
       // para responder con el estado real en vez de asumir éxito.
-      const { data: actual } = await db.from('turnos').select('estado, pagado').eq('token_accion', token).single()
-      return NextResponse.json({ ok: true, estado: actual?.estado ?? turno.estado, pagado: actual?.pagado ?? turno.pagado, tardia: false })
+      const { data: actual } = await db.from('turnos').select('estado, pagado, estado_pago, monto_pagado, monto').eq('token_accion', token).single()
+      return NextResponse.json({ ok: true, estado: actual?.estado ?? turno.estado, pagado: actual ? turnoEstaPagado(actual) : turnoEstaPagado(turno), tardia: false })
     }
 
     if (!turno.google_event_id) {
@@ -87,15 +89,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, estado: 'confirmado', pagado: turno.pagado, tardia: false })
+    return NextResponse.json({ ok: true, estado: 'confirmado', pagado: turnoEstaPagado(turno), tardia: false })
   }
 
   // accion === 'cancelar'
   if (turno.estado === 'cancelado') {
-    return NextResponse.json({ ok: true, estado: 'cancelado', pagado: turno.pagado, tardia: turno.cancelacion_tardia ?? false })
+    return NextResponse.json({ ok: true, estado: 'cancelado', pagado: turnoEstaPagado(turno), tardia: turno.cancelacion_tardia ?? false })
   }
   if (ESTADOS_CERRADOS.includes(turno.estado) || yaPaso) {
-    return NextResponse.json({ error: 'turno_no_disponible' }, { status: 409 })
+    return NextResponse.json({ error: 'turno_no_disponible', estado: turno.estado, pagado: turnoEstaPagado(turno), tardia: false }, { status: 409 })
   }
 
   const { horasAnticipacion, politicaHoras, tardia } = evaluarCancelacion(turno.fecha_hora, terapeuta?.cobros_cancelacion_horas)
@@ -122,8 +124,8 @@ export async function POST(req: NextRequest) {
 
   if (!cancelados || cancelados.length === 0) {
     // Carrera: ya no estaba pendiente/confirmado al momento del update.
-    const { data: actual } = await db.from('turnos').select('estado, pagado, cancelacion_tardia').eq('token_accion', token).single()
-    return NextResponse.json({ ok: true, estado: actual?.estado ?? turno.estado, pagado: actual?.pagado ?? turno.pagado, tardia: actual?.cancelacion_tardia ?? false })
+    const { data: actual } = await db.from('turnos').select('estado, pagado, estado_pago, monto_pagado, monto, cancelacion_tardia').eq('token_accion', token).single()
+    return NextResponse.json({ ok: true, estado: actual?.estado ?? turno.estado, pagado: actual ? turnoEstaPagado(actual) : turnoEstaPagado(turno), tardia: actual?.cancelacion_tardia ?? false })
   }
 
   // Afectó 1 fila — todo lo que sigue va con await antes de responder (serverless).
@@ -140,11 +142,11 @@ export async function POST(req: NextRequest) {
     console.error('[turnos/accion] Error sincronizando Google Calendar (cancelar):', e)
   }
 
+  const pagado = turnoEstaPagado(turno)
+
   if (terapeuta?.email) {
     try {
-      const fechaHora = new Date(turno.fecha_hora)
-      const fechaFmt = format(fechaHora, "d 'de' MMMM 'de' yyyy", { locale: es })
-      const horaFmt = fechaHora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }) + ' hs'
+      const { fecha: fechaFmt, hora: horaFmt } = formatFechaHoraAR(turno.fecha_hora)
 
       await enviarEmail({
         destinatario: terapeuta.email,
@@ -155,8 +157,8 @@ export async function POST(req: NextRequest) {
           pacienteApellido: paciente?.apellido ?? '',
           fecha: fechaFmt,
           hora: horaFmt,
-          pagado: turno.pagado,
-          montoPagado: turno.pagado ? (turno.monto_pagado ?? undefined) : undefined,
+          pagado,
+          montoPagado: pagado ? (montoPagadoTurno(turno) ?? undefined) : undefined,
           moneda: turno.moneda,
           horasAnticipacion,
           politicaHoras,
@@ -168,5 +170,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, estado: 'cancelado', pagado: turno.pagado, tardia })
+  return NextResponse.json({ ok: true, estado: 'cancelado', pagado, tardia })
 }
