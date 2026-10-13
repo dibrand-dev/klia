@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         pending: `${appUrl}/p/${profile.booking_slug}?status=pending&hash=${hash}`,
       },
       auto_return: 'approved',
-      notification_url: `${appUrl}/api/pagos/webhook`,
+      notification_url: `${appUrl}/api/pagos/webhook?hash=${hash}`,
       metadata: { hash, turno_id: turno.id, terapeuta_id: profile.id, booking: true },
       statement_descriptor: 'KLIA TURNO',
       expires: true,

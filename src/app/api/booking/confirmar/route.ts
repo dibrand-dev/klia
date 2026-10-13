@@ -91,9 +91,10 @@ export async function POST(req: NextRequest) {
   const mpPaymentId = mpData.id ? String(mpData.id) : null
 
   if (mpStatus !== 'approved') {
-    await db.from('sesiones_pago')
+    const { error: fallidoErr } = await db.from('sesiones_pago')
       .update({ estado: 'fallido', mp_payment_id: mpPaymentId, updated_at: new Date().toISOString() })
       .eq('id', sesion.id)
+    if (fallidoErr) console.error('[booking/confirmar] Error al marcar sesion_pago fallido:', fallidoErr)
 
     return NextResponse.json(
       { error: 'payment_rejected', detail: mpData.status_detail },
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Mark as paid
-  await Promise.all([
+  const [{ error: sesionErr }, { error: turnoErr }] = await Promise.all([
     db.from('sesiones_pago')
       .update({ estado: 'pagado', mp_payment_id: mpPaymentId, updated_at: new Date().toISOString() })
       .eq('id', sesion.id),
@@ -110,6 +111,8 @@ export async function POST(req: NextRequest) {
       .update({ estado: 'confirmado', pagado: true, estado_pago: 'pagado', monto_pagado: sesion.monto })
       .eq('id', turno.id),
   ])
+  if (sesionErr) console.error('[booking/confirmar] Error al marcar sesion_pago pagado:', sesionErr)
+  if (turnoErr) console.error('[booking/confirmar] Error al confirmar turno:', turnoErr)
 
   // 5. Sincronizar Google Calendar (con Meet si aplica) y mandar el email de
   // confirmación al paciente — ambas partes aisladas entre sí.

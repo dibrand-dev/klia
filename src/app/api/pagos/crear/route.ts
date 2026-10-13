@@ -65,9 +65,15 @@ export async function POST(req: NextRequest) {
   const ventanaHoras = (p.cobros_ventana_horas as number | null) ?? 48
   const mensajePaciente = (p.cobros_mensaje_paciente as string | null) ?? ''
 
-  // 3. Generate hash & expiry
+  // 3. Generate hash & expiry — cobros_ventana_horas === 0 significa "Sin
+  // límite" en Ajustes. vence_at es NOT NULL, así que en ese caso no puede
+  // ser "ahora" (nacería vencido): se manda 10 años a futuro y no se le pide
+  // expiración a MP (expires/expiration_date_to quedan afuera del body).
+  const SIN_LIMITE = ventanaHoras === 0
   const hash = shortId()
-  const venceAt = new Date(Date.now() + ventanaHoras * 3600 * 1000).toISOString()
+  const venceAt = SIN_LIMITE
+    ? new Date(Date.now() + 3650 * 24 * 3600 * 1000).toISOString()
+    : new Date(Date.now() + ventanaHoras * 3600 * 1000).toISOString()
 
   const { fecha, hora } = formatFechaHora(turno.fecha_hora)
   const paciente = turno.paciente as Record<string, unknown> | null
@@ -93,9 +99,10 @@ export async function POST(req: NextRequest) {
         pending: `${appUrl}/pagar/${hash}?status=pending`,
       },
       auto_return: 'approved',
-      notification_url: `${appUrl}/api/pagos/webhook`,
+      notification_url: `${appUrl}/api/pagos/webhook?hash=${hash}`,
       metadata: { hash, turno_id: turno.id, terapeuta_id: efectivo.terapeutaId },
       statement_descriptor: 'KLIA SESION',
+      ...(SIN_LIMITE ? {} : { expires: true, expiration_date_to: venceAt }),
     }),
   })
 

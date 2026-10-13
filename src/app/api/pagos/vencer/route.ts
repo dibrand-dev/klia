@@ -48,31 +48,33 @@ export async function GET(req: NextRequest) {
 
   const ids = vencidos.map(s => s.id)
 
-  // Mark as vencido FIRST. If this fails we abort — no email is sent,
-  // preventing duplicate notifications on the next cron run.
-  const { error: updateError } = await db.from('sesiones_pago')
+  // Mark as vencido FIRST, pidiendo de vuelta los ids realmente actualizados
+  // en el mismo round-trip. Si falla, abortamos — no se manda ningún mail,
+  // evitando notificaciones duplicadas en la próxima corrida del cron.
+  const { data: marcados, error: updateError } = await db.from('sesiones_pago')
     .update({ estado: 'vencido' })
     .in('id', ids)
+    .select('id')
 
   if (updateError) {
     console.error('[vencer] Error al marcar sesiones como vencidas:', updateError)
     return NextResponse.json({ error: 'No se pudo actualizar sesiones_pago', detail: updateError.message }, { status: 500 })
   }
 
-  // Verify the update actually persisted before sending any email.
-  // Only sessions confirmed as 'vencido' in the DB get notified.
-  const { data: confirmadas } = await db.from('sesiones_pago')
-    .select('id')
-    .eq('estado', 'vencido')
-    .in('id', ids)
-
-  const idsConfirmados = new Set((confirmadas ?? []).map(s => s.id))
+  // Solo las sesiones efectivamente marcadas 'vencido' en esta corrida se notifican.
+  const idsConfirmados = new Set((marcados ?? []).map(s => s.id))
   const sesionesANotificar = vencidos.filter(s => idsConfirmados.has(s.id))
 
-  // Cancel the associated turnos
+  // Cancelar el turno asociado solo si sigue pendiente y no está pagado —
+  // un turno ya pagado (pago tardío que llegó antes de esta corrida) nunca se cancela.
   const turnoIds = sesionesANotificar.map(s => s.turno_id)
   if (turnoIds.length) {
-    await db.from('turnos').update({ estado: 'cancelado' }).in('id', turnoIds)
+    const { error: cancelError } = await db.from('turnos')
+      .update({ estado: 'cancelado' })
+      .in('id', turnoIds)
+      .eq('estado', 'pendiente')
+      .neq('estado_pago', 'pagado')
+    if (cancelError) console.error('[vencer] Error al cancelar turnos vencidos:', cancelError)
   }
 
   // Send exactly 1 email per session, only for confirmed-vencido sessions

@@ -45,6 +45,10 @@ export default function PagarSesionClient({ sesion, fechaFmt, mpInitPoint, statu
   const isPendiente = !isPagado && !isVencido
 
   const linkVencido = sesion.vence_at ? new Date(sesion.vence_at) < new Date() : false
+  // "Sin límite" (cobros_ventana_horas = 0) manda vence_at a 10 años a futuro
+  // — no mostrarle al paciente una fecha límite falsa.
+  const CINCO_ANIOS_MS = 5 * 365 * 24 * 3600 * 1000
+  const venceLejos = sesion.vence_at ? new Date(sesion.vence_at).getTime() - Date.now() > CINCO_ANIOS_MS : false
   const showPayButton = isPendiente && !linkVencido && !!mpInitPoint
 
   const prof = sesion.profesional
@@ -208,7 +212,7 @@ export default function PagarSesionClient({ sesion, fechaFmt, mpInitPoint, statu
               </svg>
               Pagar con Mercado Pago
             </a>
-            {sesion.vence_at && (
+            {sesion.vence_at && !venceLejos && (
               <p className="text-xs text-center" style={{ color: 'var(--muted-2)' }}>
                 Este link vence el{' '}
                 {new Date(sesion.vence_at).toLocaleDateString('es-AR', {

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
-import { emailPagoSesionConfirmada, emailPagoSesionRechazada } from '@/lib/email-templates'
+import { emailPagoSesionConfirmada, emailPagoSesionRechazada, emailPagoRecibidoTurnoCancelado } from '@/lib/email-templates'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Database } from '@/types/database'
 import { mpAccessToken } from '@/lib/mercadopago'
+import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
 import crypto from 'crypto'
 
 function serviceClient() {
@@ -44,6 +45,20 @@ function formatFechaHora(fechaHora: string) {
   }
 }
 
+// sesiones_pago no está en el Database generado (types/database.ts
+// desactualizado) — mismo patrón de Record<string, unknown> que ya usa el
+// resto de este archivo para turno/profile.
+type SesionPago = Record<string, unknown> & {
+  id: string
+  hash: string
+  terapeuta_id: string
+  turno_id: string
+  monto: number
+  moneda: string
+  estado: string
+  intentos_fallidos: number
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text()
 
@@ -67,39 +82,81 @@ export async function POST(req: NextRequest) {
 
   const db = serviceClient()
 
-  // Get payment details from MP — we need to find which professional's token to use
-  // First, try to find sesion_pago by searching metadata
-  // MP payment detail endpoint (using platform-level access)
+  // Preferencias nuevas (pagos/crear y booking/mp-preferencia) mandan
+  // notification_url con ?hash=... — eso nos deja cargar la sesión ANTES de
+  // llamar a MP, y así usar el access_token del profesional dueño de la
+  // sesión en vez del token de plataforma. Las preferencias viejas (sin
+  // hash en la URL, ya enviadas antes de este fix) siguen resolviéndose con
+  // el token de plataforma + metadata/preference_id, como antes.
+  const hashQuery = new URL(req.url).searchParams.get('hash')
+
+  let sesion: SesionPago | null = null
   let mpPayment: Record<string, unknown> | null = null
 
-  // Try with platform token to get payment data
-  const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-    headers: { Authorization: `Bearer ${mpAccessToken}` },
-  })
+  if (hashQuery) {
+    const { data: sesionData } = await db.from('sesiones_pago').select('*').eq('hash', hashQuery).maybeSingle()
+    if (!sesionData) return NextResponse.json({ ok: true })
+    sesion = sesionData as SesionPago
 
-  if (payRes.ok) {
+    const { data: profToken } = await db.from('profiles').select('mp_access_token').eq('id', sesion.terapeuta_id).single()
+    if (!profToken?.mp_access_token) {
+      console.error('[webhook] Profesional sin mp_access_token:', sesion.terapeuta_id)
+      return NextResponse.json({ ok: true })
+    }
+
+    const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${profToken.mp_access_token}` },
+    })
+    if (!payRes.ok) {
+      console.error('[webhook] Could not fetch payment (token profesional)', paymentId, await payRes.text())
+      return NextResponse.json({ ok: true })
+    }
     mpPayment = await payRes.json() as Record<string, unknown>
   } else {
-    console.error('[webhook] Could not fetch payment', paymentId, await payRes.text())
+    // Fallback preferencias viejas sin ?hash: token de plataforma actual.
+    const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${mpAccessToken}` },
+    })
+    if (!payRes.ok) {
+      console.error('[webhook] Could not fetch payment (token plataforma)', paymentId, await payRes.text())
+      return NextResponse.json({ ok: true })
+    }
+    mpPayment = await payRes.json() as Record<string, unknown>
+
+    const metadata = mpPayment.metadata as Record<string, unknown> | null
+    const prefId = mpPayment.preference_id as string | null
+
+    let sesionQuery = db.from('sesiones_pago').select('*')
+    if (metadata?.hash) {
+      sesionQuery = sesionQuery.eq('hash', metadata.hash as string)
+    } else if (prefId) {
+      sesionQuery = sesionQuery.eq('mp_preference_id', prefId)
+    } else {
+      return NextResponse.json({ ok: true })
+    }
+
+    const { data: sesionData } = await sesionQuery.maybeSingle()
+    if (!sesionData) return NextResponse.json({ ok: true })
+    sesion = sesionData as SesionPago
+  }
+
+  // El pago tiene que corresponder a esta sesión: mismo hash en metadata y
+  // monto cobrado no menor al adeudado. Si no coincide, nunca se toca nada.
+  const metadataHash = (mpPayment.metadata as Record<string, unknown> | null)?.hash as string | undefined
+  const transactionAmount = mpPayment.transaction_amount as number | undefined
+  if (metadataHash !== sesion.hash || (transactionAmount ?? 0) < sesion.monto) {
+    console.error('[webhook] Pago no corresponde a la sesión — hash o monto no coinciden', {
+      paymentId, sesionId: sesion.id, metadataHash, sesionHash: sesion.hash, transactionAmount, monto: sesion.monto,
+    })
     return NextResponse.json({ ok: true })
   }
 
-  const metadata = mpPayment.metadata as Record<string, unknown> | null
-  const prefId = mpPayment.preference_id as string | null
+  // Idempotencia: una sesión ya pagada no vuelve a procesarse ni reenvía mails.
+  if (sesion.estado === 'pagado') {
+    return NextResponse.json({ ok: true })
+  }
+
   const mpStatus = mpPayment.status as string
-
-  // Find sesion_pago by preference_id or hash in metadata
-  let sesionQuery = db.from('sesiones_pago').select('*')
-  if (metadata?.hash) {
-    sesionQuery = sesionQuery.eq('hash', metadata.hash as string)
-  } else if (prefId) {
-    sesionQuery = sesionQuery.eq('mp_preference_id', prefId)
-  } else {
-    return NextResponse.json({ ok: true })
-  }
-
-  const { data: sesion } = await sesionQuery.maybeSingle()
-  if (!sesion) return NextResponse.json({ ok: true })
 
   // Get turno + paciente + professional
   const { data: turno } = await db
@@ -116,54 +173,86 @@ export async function POST(req: NextRequest) {
   const { fecha, hora } = formatFechaHora(turno.fecha_hora)
 
   if (mpStatus === 'approved') {
-    // Mark payment as paid
-    await db.from('sesiones_pago')
+    // Siempre se registra el pago, pase lo que pase con el turno.
+    const { error: sesionErr } = await db.from('sesiones_pago')
       .update({ estado: 'pagado', mp_payment_id: String(paymentId), updated_at: new Date().toISOString() })
       .eq('id', sesion.id)
+    if (sesionErr) console.error('[webhook] Error al marcar sesion_pago pagado:', sesionErr)
 
-    await db.from('turnos')
-      .update({ estado: 'confirmado', pagado: true, estado_pago: 'pagado', monto_pagado: sesion.monto })
-      .eq('id', turno.id)
+    const turnoYaCancelado = turno.estado === 'cancelado'
 
-    // Send confirmation email to patient
-    if (paciente?.email) {
-      try {
-        await enviarEmail({
-          destinatario: paciente.email as string,
-          nombreDestinatario: `${paciente.nombre as string} ${paciente.apellido as string}`,
-          asunto: `Sesión confirmada con ${prof?.nombre as string} ${prof?.apellido as string}`,
-          htmlContent: emailPagoSesionConfirmada({
-            pacienteNombre: `${paciente.nombre as string} ${paciente.apellido as string}`,
-            profesionalNombre: `${prof?.nombre as string} ${prof?.apellido as string}`,
-            fecha,
-            hora,
-            duracion: turno.duracion_min,
-            modalidad: turno.modalidad,
-            monto: sesion.monto,
-            moneda: sesion.moneda,
-          }),
-        })
-      } catch (e) { console.error('[webhook] email confirmada error:', e) }
+    if (turnoYaCancelado) {
+      // Pago tardío sobre un turno que ya se canceló (venció, lo canceló el
+      // paciente, etc.) — nunca se resucita. Solo se deja constancia de que
+      // el pago entró, para que el profesional lo resuelva con el paciente.
+      const { error: turnoErr } = await db.from('turnos')
+        .update({ pagado: true, estado_pago: 'pagado', monto_pagado: sesion.monto })
+        .eq('id', turno.id)
+      if (turnoErr) console.error('[webhook] Error al marcar turno cancelado como pagado:', turnoErr)
+
+      if (prof?.email) {
+        try {
+          await enviarEmail({
+            destinatario: prof.email as string,
+            nombreDestinatario: `${prof.nombre as string} ${prof.apellido as string}`,
+            asunto: `Pago recibido para un turno ya cancelado — ${paciente?.nombre as string} ${paciente?.apellido as string}`,
+            htmlContent: emailPagoRecibidoTurnoCancelado({
+              pacienteNombre: `${paciente?.nombre as string} ${paciente?.apellido as string}`,
+              fecha,
+              hora,
+              monto: sesion.monto,
+              moneda: sesion.moneda,
+            }),
+          })
+        } catch (e) { console.error('[webhook] email pago tardío (turno cancelado) error:', e) }
+      }
+    } else {
+      const { error: turnoErr } = await db.from('turnos')
+        .update({ estado: 'confirmado', pagado: true, estado_pago: 'pagado', monto_pagado: sesion.monto })
+        .eq('id', turno.id)
+      if (turnoErr) console.error('[webhook] Error al confirmar turno:', turnoErr)
+
+      // Send confirmation email to patient
+      if (paciente?.email) {
+        try {
+          await enviarEmail({
+            destinatario: paciente.email as string,
+            nombreDestinatario: `${paciente.nombre as string} ${paciente.apellido as string}`,
+            asunto: `Sesión confirmada con ${prof?.nombre as string} ${prof?.apellido as string}`,
+            htmlContent: emailPagoSesionConfirmada({
+              pacienteNombre: `${paciente.nombre as string} ${paciente.apellido as string}`,
+              profesionalNombre: `${prof?.nombre as string} ${prof?.apellido as string}`,
+              fecha,
+              hora,
+              duracion: turno.duracion_min,
+              modalidad: turno.modalidad,
+              monto: sesion.monto,
+              moneda: sesion.moneda,
+            }),
+          })
+        } catch (e) { console.error('[webhook] email confirmada error:', e) }
+      }
+
+      // Sync to Google Calendar — directo, no vía fetch interno (ese
+      // endpoint exige sesión de usuario y le daría 401 a este webhook).
+      if (!turno.google_event_id) {
+        try {
+          await sincronizarTurnoCreado(turno.id, sesion.terapeuta_id)
+        } catch (e) { console.error('[webhook] Error sincronizando Google Calendar:', e) }
+      }
     }
-
-    // Sync to Google Calendar
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turno_id: turno.id, action: 'create' }),
-      })
-    } catch { /* non-critical */ }
 
   } else if (mpStatus === 'rejected') {
     const nuevoIntentos = sesion.intentos_fallidos + 1
 
     if (nuevoIntentos >= 3) {
-      await db.from('sesiones_pago')
+      const { error: sesionErr } = await db.from('sesiones_pago')
         .update({ estado: 'rechazado', intentos_fallidos: nuevoIntentos, updated_at: new Date().toISOString() })
         .eq('id', sesion.id)
+      if (sesionErr) console.error('[webhook] Error al marcar sesion_pago rechazado:', sesionErr)
 
-      await db.from('turnos').update({ estado: 'cancelado' }).eq('id', turno.id)
+      const { error: turnoErr } = await db.from('turnos').update({ estado: 'cancelado' }).eq('id', turno.id)
+      if (turnoErr) console.error('[webhook] Error al cancelar turno por pago rechazado:', turnoErr)
 
       // Email to patient
       if (paciente?.email) {
@@ -201,9 +290,10 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error('[webhook] email rechazada profesional error:', e) }
       }
     } else {
-      await db.from('sesiones_pago')
+      const { error: sesionErr } = await db.from('sesiones_pago')
         .update({ intentos_fallidos: nuevoIntentos, updated_at: new Date().toISOString() })
         .eq('id', sesion.id)
+      if (sesionErr) console.error('[webhook] Error al incrementar intentos_fallidos:', sesionErr)
     }
   }
   // pending → no action

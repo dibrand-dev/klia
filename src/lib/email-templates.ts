@@ -435,6 +435,10 @@ export function emailPagoSesionPendiente(params: {
 }): string {
   const appUrl = 'https://app.klia.com.ar'
   const payUrl = `${appUrl}/pagar/${params.hash}`
+  // cobros_ventana_horas "Sin límite" (pagos/crear/route.ts) manda vence_at a
+  // 10 años a futuro — nunca mostrarle al paciente una fecha límite falsa.
+  const CINCO_ANIOS_MS = 5 * 365 * 24 * 3600 * 1000
+  const sinLimite = new Date(params.venceAt).getTime() - Date.now() > CINCO_ANIOS_MS
   const venceFmt = new Date(params.venceAt).toLocaleString('es-AR', {
     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
   })
@@ -444,7 +448,7 @@ export function emailPagoSesionPendiente(params: {
     ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, ${params.profesionalNombre}${params.profesionalEspecialidad ? ` (${params.profesionalEspecialidad})` : ''} agendó una sesión para vos.`)}
     ${sessionDetailBox(params)}
     ${ctaMP('Pagar sesión', payUrl)}
-    ${infoBox(`⏳ Tenés hasta el <strong style="color:#334155;">${venceFmt}</strong> para completar el pago y confirmar tu lugar.${params.mensajePersonalizado ? `<br><br>💬 Mensaje de tu profesional: <em>${params.mensajePersonalizado}</em>` : ''}`, '#FFF7ED', '#F59E0B', '#92400E')}
+    ${infoBox(`${sinLimite ? '⏳ Completá el pago para confirmar tu lugar.' : `⏳ Tenés hasta el <strong style="color:#334155;">${venceFmt}</strong> para completar el pago y confirmar tu lugar.`}${params.mensajePersonalizado ? `<br><br>💬 Mensaje de tu profesional: <em>${params.mensajePersonalizado}</em>` : ''}`, '#FFF7ED', '#F59E0B', '#92400E')}
     ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
   `, 'Confirmá tu sesión — KLIA')
 }
@@ -480,6 +484,23 @@ export function emailPagoSesionConfirmada(params: {
     ${infoBox(`✅ Pago de <strong style="color:#334155;">$${montoFmt} ${params.moneda}</strong> recibido correctamente.${videollamadaNote}`, '#F0FDF4', '#22C55E', '#166534')}
     ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
   `, 'Sesión confirmada — KLIA')
+}
+
+export function emailPagoRecibidoTurnoCancelado(params: {
+  pacienteNombre: string
+  fecha: string
+  hora: string
+  monto: number
+  moneda: string
+}): string {
+  const montoFmt = params.monto.toLocaleString('es-AR')
+  return baseTemplate(`
+    ${icon('⚠️', '#FEF3C7')}
+    ${h1('Pago recibido para un turno ya cancelado')}
+    ${para(`Recibiste un pago de <strong style="color:#2b2f38;font-weight:600;">${params.moneda} ${montoFmt}</strong> de <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, correspondiente al turno del ${params.fecha} a las ${params.hora} hs, que ya estaba cancelado.`)}
+    ${infoBox('Este pago quedó registrado en el sistema. Resolvelo directamente con el paciente (devolución o reprogramación).', '#FFFBEB', '#F59E0B', '#92400E')}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Pago recibido — turno cancelado — KLIA')
 }
 
 export function emailPagoSesionRechazada(params: {
