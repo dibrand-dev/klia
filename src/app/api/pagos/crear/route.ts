@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionPendiente } from '@/lib/email-templates'
 import { formatFechaHoraAR } from '@/lib/tz'
-import type { Database } from '@/types/database'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { serviceClient } from '@/lib/supabase/service'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 function shortId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)

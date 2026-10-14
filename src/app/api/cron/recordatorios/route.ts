@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailRecordatorioTurno } from '@/lib/email-templates'
 import { ventanaDiaSiguienteAR } from '@/lib/tz'
 import { verificarCron } from '@/lib/cron-auth'
+import { serviceClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,10 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabase = serviceClient()
 
   const { desde, hasta } = ventanaDiaSiguienteAR()
 

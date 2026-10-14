@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { zonedDateArgentina } from '@/lib/timezone'
 import { enviarEmail } from '@/lib/brevo'
 import { emailTurnoTransferenciaVencido } from '@/lib/email-templates'
 import { sincronizarTurnoCancelado } from '@/lib/sync-google-calendar'
-import type { Database } from '@/types/database'
 import { verificarCron } from '@/lib/cron-auth'
+import { serviceClient } from '@/lib/supabase/service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export async function GET(req: NextRequest) {
   if (!verificarCron(req)) {

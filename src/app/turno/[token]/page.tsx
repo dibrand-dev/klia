@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import { createClient } from '@supabase/supabase-js'
 import TurnoAccionClient from './TurnoAccionClient'
 import { formatFechaHoraAR } from '@/lib/tz'
 import { turnoEstaPagado } from '@/lib/turno-pago'
+import { serviceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,13 +14,6 @@ export const metadata: Metadata = {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ESTADOS_CERRADOS = ['realizado', 'no_asistio']
-
-function serviceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 function PantallaGenerica({ titulo, texto }: { titulo: string; texto: string }) {
   return (

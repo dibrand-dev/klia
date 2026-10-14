@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailTurnoCanceladoPorPaciente } from '@/lib/email-templates'
 import { evaluarCancelacion } from '@/lib/politica-cancelacion'
 import { sincronizarTurnoCreado, sincronizarTurnoCancelado } from '@/lib/sync-google-calendar'
 import { formatFechaHoraAR } from '@/lib/tz'
 import { turnoEstaPagado, montoPagadoTurno } from '@/lib/turno-pago'
+import { serviceClient } from '@/lib/supabase/service'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ESTADOS_CERRADOS = ['realizado', 'no_asistio']
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { token?: string; accion?: string }

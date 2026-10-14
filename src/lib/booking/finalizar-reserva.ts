@@ -1,16 +1,8 @@
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailBookingConfirmacion } from '@/lib/email-templates'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
 import { formatFechaHoraArgentina } from '@/lib/timezone'
-
-function db() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+import { serviceClient as db } from '@/lib/supabase/service'
 
 export type MedioPago = 'mercadopago' | 'transferencia' | 'sin_pago'
 export type DatosPago = { monto: number; moneda: string; referencia: string } | null

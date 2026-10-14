@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { verificarCron } from '@/lib/cron-auth'
+import { serviceClient } from '@/lib/supabase/service'
 import {
   emailTrialDia7,
   emailTrialDia14,
@@ -31,10 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabase = serviceClient()
 
   const results = { d14: 0, d7: 0, d3: 0, d1: 0, bloqueados: 0 }
 

@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { parseISO, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { ARGENTINA_TZ } from '@/lib/timezone'
+import { serviceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-function serviceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as { turno_id?: string; hash?: string }

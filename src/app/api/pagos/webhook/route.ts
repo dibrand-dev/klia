@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionConfirmada, emailPagoSesionRechazada, emailPagoRecibidoTurnoCancelado } from '@/lib/email-templates'
-import type { Database } from '@/types/database'
 import { mpAccessToken } from '@/lib/mercadopago'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
 import { formatFechaHoraAR } from '@/lib/tz'
+import { serviceClient } from '@/lib/supabase/service'
 import crypto from 'crypto'
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 function validateSignature(req: NextRequest, rawBody: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET
