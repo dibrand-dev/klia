@@ -6,6 +6,7 @@ import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import { Suspense } from 'react'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { obtenerDatosAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+import { fetchAllPacientes } from '@/lib/fetch-all-pacientes'
 import type { Paciente, PacienteColaboradorRow, Database } from '@/types/database'
 
 function serviceClient() {
@@ -41,13 +42,7 @@ export default async function NuevoTurnoPage() {
             fecha_inicio_tratamiento: null,
           })) as Paciente[]
       } else {
-        const { data } = await supabase
-          .from('pacientes')
-          .select('*')
-          .eq('terapeuta_id', efectivo.terapeutaId)
-          .eq('activo', true)
-          .order('apellido')
-        pacientes = data
+        pacientes = await fetchAllPacientes(supabase, efectivo.terapeutaId)
       }
     })(),
     supabase.from('profiles').select('mp_user_id, terminologia, plan').eq('id', efectivo.terapeutaId).single(),

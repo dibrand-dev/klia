@@ -65,7 +65,7 @@ export default async function DashboardPage() {
     { data: turnosMes },
     { data: entrevistasHoy },
     { data: seriesVencen },
-    { data: pacientesActivos },
+    { count: pacientesActivosCount },
     { data: ultimosTurnos },
     { data: obrasSociales },
     { data: turnosMesAnteriorSinPagar },
@@ -103,9 +103,12 @@ export default async function DashboardPage() {
       .lte('fecha_fin', treintaDiasStr)
       .order('fecha_fin'),
 
+    // count: 'exact' con head: true devuelve el total real sin traer filas —
+    // select('id') sin esto se topaba con el límite default de 1000 de
+    // PostgREST y subcontaba consultorios grandes.
     supabase
       .from('pacientes')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('activo', true),
 
@@ -240,7 +243,7 @@ export default async function DashboardPage() {
     })),
     totalPacientesActivos: efectivo.esColaborador
       ? todosPacientesColaborador.filter((p) => p.activo).length
-      : pacientesActivos?.length ?? 0,
+      : pacientesActivosCount ?? 0,
     pacientesAusentes: pacientesAusentesConFecha,
     sesionesRealizadasMes: (turnosMes ?? []).filter((t) => t.estado === 'realizado').length,
     sesionesPendientesMes: (turnosMes ?? []).filter((t) => t.estado === 'pendiente' || t.estado === 'confirmado').length,

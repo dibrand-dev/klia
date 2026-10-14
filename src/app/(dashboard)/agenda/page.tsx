@@ -9,6 +9,7 @@ import { getAuthenticatedClient, obtenerEventosGoogle } from '@/lib/google-calen
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { resolverNombresPacientesColaborador } from '@/lib/auth/pacientesColaborador'
 import { obtenerDatosAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+import { fetchAllPacientes } from '@/lib/fetch-all-pacientes'
 
 function serviceClient() {
   return createServiceClient<Database>(
@@ -111,13 +112,7 @@ export default async function AgendaPage() {
         fecha_inicio_tratamiento: null,
       })) as Paciente[]
   } else {
-    const { data } = await supabase
-      .from('pacientes')
-      .select('*')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-      .eq('activo', true)
-      .order('apellido')
-    pacientes = data
+    pacientes = await fetchAllPacientes(supabase, efectivo.terapeutaId)
   }
 
   let googleEventsIniciales: { id: string; titulo: string; inicio: string; fin: string }[] = []

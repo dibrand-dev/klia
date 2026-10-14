@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ListaPacientes from '@/components/pacientes/ListaPacientes'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { fetchAllPacientes } from '@/lib/fetch-all-pacientes'
 import type { Paciente, PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Pacientes — KLIA' }
@@ -69,11 +70,7 @@ export default async function PacientesPage({
     // Traemos TODOS los pacientes (sin filtrar por estado en la query): el filtro
     // de estado se aplica en memoria más abajo, junto con el de última cita, así el
     // header puede mostrar el total real del consultorio sin que el filtro activo lo achique.
-    const { data } = await supabase
-      .from('pacientes')
-      .select('*')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-    pacientesBase = data ?? []
+    pacientesBase = await fetchAllPacientes(supabase, efectivo.terapeutaId, { soloActivos: false })
   }
 
   const totalGeneral = pacientesBase.length

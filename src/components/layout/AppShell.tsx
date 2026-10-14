@@ -16,6 +16,7 @@ import NuevoTurnoPageForm from '@/components/agenda/NuevoTurnoPageForm'
 import NuevaNotaForm from '@/components/pacientes/NuevaNotaForm'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
+import { fetchAllPacientes } from '@/lib/fetch-all-pacientes'
 
 function TrialBanner({ trialFin }: { trialFin: string }) {
   const [dias, setDias] = useState<number | null>(null)
@@ -110,13 +111,7 @@ export default function AppShell({
           })) as Paciente[]
         setPacientes(pacientesLimpios)
       } else {
-        const { data } = await supabase
-          .from('pacientes')
-          .select('*')
-          .eq('terapeuta_id', profile.id)
-          .eq('activo', true)
-          .order('apellido')
-        setPacientes(data ?? [])
+        setPacientes(await fetchAllPacientes(supabase, profile.id))
       }
       setPacientesCargados(true)
     }
