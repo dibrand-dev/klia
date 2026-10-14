@@ -2,29 +2,96 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { cn, formatNombreCompleto } from '@/lib/utils'
-import type { Paciente } from '@/types/database'
+import { createClient } from '@/lib/supabase/client'
+
+type PacienteOpcion = { id: string; nombre: string; apellido: string }
 
 interface PacienteSearchInputProps {
-  pacientes: Paciente[]
+  terapeutaId: string
   value: string
   onChange: (id: string) => void
   className?: string
 }
 
-export default function PacienteSearchInput({ pacientes, value, onChange, className }: PacienteSearchInputProps) {
-  const selected = pacientes.find((p) => p.id === value)
-  const [query, setQuery] = useState(selected ? formatNombreCompleto(selected.nombre, selected.apellido) : '')
+const MIN_CHARS = 2
+const DEBOUNCE_MS = 250
+
+// Caracteres que rompen o desvirtúan el patrón ilike/.or() de postgrest-js si
+// el usuario los tipea (separador de .or(), paréntesis de grupo, wildcards).
+function sanitizarToken(t: string): string {
+  return t.replace(/[,()%*]/g, '')
+}
+
+async function buscarPacientes(texto: string, terapeutaId: string): Promise<PacienteOpcion[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('pacientes')
+    .select('id, nombre, apellido')
+    .eq('terapeuta_id', terapeutaId)
+    .eq('activo', true)
+
+  for (const token of texto.split(/\s+/).map(sanitizarToken).filter(Boolean)) {
+    query = query.or(`nombre.ilike.%${token}%,apellido.ilike.%${token}%`)
+  }
+
+  const { data } = await query.order('apellido').limit(20)
+  return data ?? []
+}
+
+export default function PacienteSearchInput({ terapeutaId, value, onChange, className }: PacienteSearchInputProps) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<PacienteOpcion[]>([])
+  const [buscando, setBuscando] = useState(false)
+  const [buscado, setBuscado] = useState(false)
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  // Id del paciente cuyo nombre ya está reflejado en `query` — evita refetchear
+  // por id apenas el propio select() de abajo dispara el onChange con ese mismo id.
+  const idMostradoRef = useRef<string | null>(null)
 
-  const filtered = pacientes
-    .filter((p) => {
-      if (!query) return true
-      const texto = `${p.nombre} ${p.apellido} ${p.obra_social ?? ''}`.toLowerCase()
-      return texto.includes(query.toLowerCase())
-    })
-    .slice(0, 8)
+  // Preselección (pacienteIdInicial llega como `value` desde afuera) — resuelve
+  // el nombre a mostrar pidiéndolo por id, sin depender de una lista precargada.
+  useEffect(() => {
+    if (!value || value === idMostradoRef.current) return
+    let cancelado = false
+    createClient()
+      .from('pacientes')
+      .select('nombre, apellido')
+      .eq('id', value)
+      .eq('terapeuta_id', terapeutaId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelado || !data) return
+        idMostradoRef.current = value
+        setQuery(formatNombreCompleto(data.nombre, data.apellido))
+      })
+    return () => { cancelado = true }
+  }, [value, terapeutaId])
+
+  useEffect(() => {
+    const texto = query.trim()
+    if (texto.length < MIN_CHARS) {
+      setResults([])
+      setBuscando(false)
+      setBuscado(false)
+      return
+    }
+
+    let cancelado = false
+    setBuscando(true)
+    setBuscado(false)
+    const timer = setTimeout(async () => {
+      const encontrados = await buscarPacientes(texto, terapeutaId)
+      if (cancelado) return
+      setResults(encontrados)
+      setBuscando(false)
+      setBuscado(true)
+      setHighlighted(0)
+    }, DEBOUNCE_MS)
+
+    return () => { cancelado = true; clearTimeout(timer) }
+  }, [query, terapeutaId])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -37,7 +104,8 @@ export default function PacienteSearchInput({ pacientes, value, onChange, classN
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [value])
 
-  function select(p: Paciente) {
+  function select(p: PacienteOpcion) {
+    idMostradoRef.current = p.id
     onChange(p.id)
     setQuery(formatNombreCompleto(p.nombre, p.apellido))
     setOpen(false)
@@ -48,9 +116,9 @@ export default function PacienteSearchInput({ pacientes, value, onChange, classN
       if (e.key === 'ArrowDown') { setOpen(true); return }
       return
     }
-    if (e.key === 'ArrowDown') { setHighlighted((h) => Math.min(h + 1, filtered.length - 1)); e.preventDefault() }
+    if (e.key === 'ArrowDown') { setHighlighted((h) => Math.min(h + 1, results.length - 1)); e.preventDefault() }
     else if (e.key === 'ArrowUp') { setHighlighted((h) => Math.max(h - 1, 0)); e.preventDefault() }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filtered[highlighted]) select(filtered[highlighted]) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (results[highlighted]) select(results[highlighted]) }
     else if (e.key === 'Escape') setOpen(false)
   }
 
@@ -60,6 +128,7 @@ export default function PacienteSearchInput({ pacientes, value, onChange, classN
         type="text"
         value={query}
         onChange={(e) => {
+          idMostradoRef.current = null
           setQuery(e.target.value)
           onChange('')
           setOpen(true)
@@ -71,9 +140,14 @@ export default function PacienteSearchInput({ pacientes, value, onChange, classN
         autoComplete="off"
         className={className}
       />
-      {open && filtered.length > 0 && (
+      {open && buscando && (
+        <div className="absolute z-50 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2.5 text-sm text-gray-400">
+          Buscando...
+        </div>
+      )}
+      {open && !buscando && results.length > 0 && (
         <div className="absolute z-50 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-          {filtered.map((p, i) => (
+          {results.map((p, i) => (
             <button
               key={p.id}
               type="button"
@@ -87,14 +161,11 @@ export default function PacienteSearchInput({ pacientes, value, onChange, classN
               <span className="font-medium text-gray-900 truncate">
                 {formatNombreCompleto(p.nombre, p.apellido)}
               </span>
-              {p.obra_social && (
-                <span className="text-xs text-gray-400 flex-shrink-0">{p.obra_social}</span>
-              )}
             </button>
           ))}
         </div>
       )}
-      {open && filtered.length === 0 && query.length > 0 && (
+      {open && !buscando && buscado && results.length === 0 && (
         <div className="absolute z-50 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2.5 text-sm text-gray-400">
           No se encontraron pacientes
         </div>

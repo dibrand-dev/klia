@@ -574,8 +574,6 @@ export default function NuevoTurnoPageForm({
     }
   }
 
-  const pacientesActivos = pacientes.filter((p) => p.activo)
-
   if (tipo === 'entrevista') {
     return (
       <form onSubmit={handleSubmitEntrevista} className="space-y-4">
@@ -730,7 +728,7 @@ export default function NuevoTurnoPageForm({
           <div className="tt-field">
             <label>Paciente<em>*</em></label>
             <PacienteSearchInput
-              pacientes={pacientesActivos}
+              terapeutaId={terapeutaId}
               value={form.paciente_id}
               onChange={(id) => {
                 const p = pacientes.find((p) => p.id === id)
