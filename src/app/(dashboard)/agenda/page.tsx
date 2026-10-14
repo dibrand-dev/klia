@@ -70,6 +70,31 @@ export default async function AgendaPage() {
   // depende del plan.
   const { sedesActivas, tiposTurno, tiposTurnoHabilitado } = await obtenerDatosAgendaTurno(db, efectivo.terapeutaId, profile?.plan ?? '')
 
+  // Rango de horas de la grilla: si hay sedes con horario propio cargado, sale
+  // de ahí (min/max real de atención) en vez de agenda_hora_inicio/fin —
+  // ese campo legacy queda obsoleto apenas se configuran horarios por sede y
+  // puede dejar afuera bloques reales (ej. mañanas de una sede cuando el
+  // legacy del perfil solo cubre la tarde). Rango global, no filtrado por
+  // "Por sede" — eso lo maneja el toggle de la agenda, no esta franja.
+  let horaInicio = profile?.agenda_hora_inicio ?? 7
+  let horaFin = profile?.agenda_hora_fin ?? 21
+  if (sedesActivas.length > 0) {
+    const { data: horariosSedes } = await db
+      .from('horarios_sucursal')
+      .select('hora_inicio, hora_fin')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .in('sucursal_id', sedesActivas.map((s) => s.id))
+
+    if (horariosSedes && horariosSedes.length > 0) {
+      const horaDecimal = (hhmm: string) => {
+        const [h, m] = hhmm.split(':').map(Number)
+        return h + m / 60
+      }
+      horaInicio = Math.floor(Math.min(...horariosSedes.map((h) => horaDecimal(h.hora_inicio))))
+      horaFin = Math.ceil(Math.max(...horariosSedes.map((h) => horaDecimal(h.hora_fin))))
+    }
+  }
+
   let pacientes: Paciente[] | null
   if (efectivo.esColaborador) {
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
@@ -138,8 +163,8 @@ export default async function AgendaPage() {
         googleEventsIniciales={googleEventsIniciales}
         googleEventsDiaCompletosIniciales={googleEventsDiaCompletosIniciales}
         entrevistasIniciales={(entrevistas ?? []) as Entrevista[]}
-        horaInicio={profile?.agenda_hora_inicio ?? 7}
-        horaFin={profile?.agenda_hora_fin ?? 21}
+        horaInicio={horaInicio}
+        horaFin={horaFin}
         mpConectado={!!((profile as Record<string, unknown> | null)?.mp_user_id)}
         feriadosConfig={{
           nacionales: profile?.feriados_nacionales ?? false,
