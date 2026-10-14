@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from 'react'
 import { cn, formatNombreCompleto } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
-type PacienteOpcion = { id: string; nombre: string; apellido: string }
+// buscar_pacientes no está en los tipos generados de Supabase (RPC creado
+// directo en el proyecto) — se tipea a mano acá.
+type PacienteOpcion = { id: string; nombre: string; apellido: string; obra_social: string | null }
 
 interface PacienteSearchInputProps {
   terapeutaId: string
@@ -16,26 +18,16 @@ interface PacienteSearchInputProps {
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 250
 
-// Caracteres que rompen o desvirtúan el patrón ilike/.or() de postgrest-js si
-// el usuario los tipea (separador de .or(), paréntesis de grupo, wildcards).
-function sanitizarToken(t: string): string {
-  return t.replace(/[,()%*]/g, '')
-}
-
+// RPC buscar_pacientes: usa unaccent para ignorar tildes ("Raul" encuentra
+// "Raúl") y ya viene filtrado por terapeuta/activo, ordenado y limitado — no
+// hace falta tokenizar ni sanitizar el texto del lado del cliente.
 async function buscarPacientes(texto: string, terapeutaId: string): Promise<PacienteOpcion[]> {
-  const supabase = createClient()
-  let query = supabase
-    .from('pacientes')
-    .select('id, nombre, apellido')
-    .eq('terapeuta_id', terapeutaId)
-    .eq('activo', true)
-
-  for (const token of texto.split(/\s+/).map(sanitizarToken).filter(Boolean)) {
-    query = query.or(`nombre.ilike.%${token}%,apellido.ilike.%${token}%`)
-  }
-
-  const { data } = await query.order('apellido').limit(20)
-  return data ?? []
+  const { data } = await createClient().rpc('buscar_pacientes', {
+    p_terapeuta_id: terapeutaId,
+    p_query: texto,
+    p_limit: 20,
+  })
+  return (data ?? []) as unknown as PacienteOpcion[]
 }
 
 export default function PacienteSearchInput({ terapeutaId, value, onChange, className }: PacienteSearchInputProps) {
@@ -161,6 +153,9 @@ export default function PacienteSearchInput({ terapeutaId, value, onChange, clas
               <span className="font-medium text-gray-900 truncate">
                 {formatNombreCompleto(p.nombre, p.apellido)}
               </span>
+              {p.obra_social && (
+                <span className="text-xs text-gray-400 flex-shrink-0">{p.obra_social}</span>
+              )}
             </button>
           ))}
         </div>
