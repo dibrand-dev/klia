@@ -38,7 +38,7 @@ async function getAvailableSlots(
 
   const { data: profile } = await db
     .from('profiles')
-    .select('id, plan, agenda_hora_inicio, agenda_hora_fin, horarios_por_dia, booking_duracion_sesion, booking_duracion_entrevista, booking_precio_sesion, booking_precio_entrevista, booking_moneda, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
+    .select('id, plan, agenda_hora_inicio, agenda_hora_fin, horarios_por_dia, booking_duracion_sesion, booking_duracion_entrevista, booking_precio_sesion, booking_precio_entrevista, booking_sesion_visible, booking_entrevista_visible, booking_moneda, booking_tiempo_entre, booking_anticipacion_minutos, booking_activo, feriados_nacionales, feriados_provinciales, feriados_trabajar_si_confirmado, provincia')
     .eq('booking_slug', slug)
     .single()
 

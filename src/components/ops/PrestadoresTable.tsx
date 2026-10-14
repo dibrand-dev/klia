@@ -9,12 +9,12 @@ import { es } from 'date-fns/locale'
 import type { ProfileWithLastSignIn } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 
-type EstadoCuenta = 'trial' | 'activa' | 'bloqueada' | 'cancelada'
+type EstadoCuenta = 'trial' | 'activa' | 'bloqueada' | 'cancelada' | 'eliminada'
 type Plan = 'esencial' | 'profesional' | 'premium' | 'bonificado'
 type Row = ProfileWithLastSignIn
 
 const PLAN_RANK: Record<Plan, number> = { esencial: 0, profesional: 1, premium: 2, bonificado: 3 }
-const ESTADO_RANK: Record<EstadoCuenta, number> = { bloqueada: 0, trial: 1, activa: 2, cancelada: 3 }
+const ESTADO_RANK: Record<EstadoCuenta, number> = { bloqueada: 0, trial: 1, activa: 2, cancelada: 3, eliminada: 4 }
 
 type SortKey = 'nombre' | 'especialidad' | 'plan' | 'estado' | 'created_at' | 'last_sign_in_at'
 type SortDir = 'asc' | 'desc'
@@ -78,7 +78,9 @@ function EstadoBadge({ row }: { row: Row }) {
   if (!row.email_confirmed_at) {
     return <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold">Email pendiente</span>
   }
-  switch (row.estado_cuenta) {
+  // row.estado_cuenta viene tipado desde database.ts, que quedó desactualizado
+  // tras la migración de baja lógica — 'eliminada' es un valor real en la base.
+  switch (row.estado_cuenta as EstadoCuenta) {
     case 'trial': {
       const dias = differenceInDays(new Date(row.trial_fin), new Date())
       return (
@@ -93,6 +95,8 @@ function EstadoBadge({ row }: { row: Row }) {
       return <span className="text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-700 font-semibold">Bloqueada</span>
     case 'cancelada':
       return <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-semibold">Cancelada</span>
+    case 'eliminada':
+      return <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 font-semibold">Eliminada</span>
     default:
       return null
   }
@@ -226,7 +230,9 @@ function SuscripcionPanel({ prestador, onClose, onSaved }: {
     if (res.ok) {
       onSaved({
         plan,
-        estado_cuenta: estado,
+        // Row viene de database.ts (desactualizado, no conoce 'eliminada' —
+        // ver comentario en EstadoBadge).
+        estado_cuenta: estado as Row['estado_cuenta'],
         trial_fin: plan === 'bonificado' ? undefined : (trialFin ? new Date(trialFin).toISOString() : prestador.trial_fin ?? undefined),
         suscripcion_fin: suscripcionFin ? new Date(suscripcionFin).toISOString() : null,
       })
@@ -256,6 +262,7 @@ function SuscripcionPanel({ prestador, onClose, onSaved }: {
               <option value="activa">Activa</option>
               <option value="bloqueada">Bloqueada</option>
               <option value="cancelada">Cancelada</option>
+              <option value="eliminada">Eliminada</option>
             </select>
           </div>
 

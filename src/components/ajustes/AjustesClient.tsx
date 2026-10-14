@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MontoInput from '@/components/ui/MontoInput'
+import SlideOver from '@/components/ui/SlideOver'
 import ObraSocialesConfig from '@/components/ajustes/ObraSocialesConfig'
 import ColaboradorasConfig from '@/components/ajustes/ColaboradorasConfig'
 import SuscripcionPortal from '@/components/ajustes/SuscripcionPortal'
@@ -12,6 +13,7 @@ import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
 import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
 import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
+import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
@@ -300,6 +302,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [firmaUrl, setFirmaUrl] = useState<string | null>(profile.firma_url ?? null)
   const [firmaSelloUrl, setFirmaSelloUrl] = useState<string | null>(profile.firma_sello_url ?? null)
 
+  // Eliminar cuenta (baja lógica) state
+  const [eliminarOpen, setEliminarOpen] = useState(false)
+  const [eliminarEmailInput, setEliminarEmailInput] = useState('')
+  const [eliminarLoading, setEliminarLoading] = useState(false)
+  const [eliminarError, setEliminarError] = useState<string | null>(null)
+
   // Cobros y pagos state
   const [cobrosVentana, setCobrosVentana] = useState(cobrosVentanaHoras)
   const [cobrosCancelacion, setCobrosCancelacion] = useState(cobrosCancelacionHoras)
@@ -325,6 +333,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [bookingModalidades, setBookingModalidades] = useState<string[]>((p.booking_modalidades as string[] | null) ?? ['presencial'])
   const [bookingPrecioSesion, setBookingPrecioSesion] = useState<string>(p.booking_precio_sesion != null ? String(p.booking_precio_sesion) : '')
   const [bookingPrecioEntrevista, setBookingPrecioEntrevista] = useState<string>(p.booking_precio_entrevista != null ? String(p.booking_precio_entrevista) : '')
+  const [bookingSesionVisible, setBookingSesionVisible] = useState<boolean>((p.booking_sesion_visible as boolean | null) ?? true)
+  const [bookingEntrevistaVisible, setBookingEntrevistaVisible] = useState<boolean>((p.booking_entrevista_visible as boolean | null) ?? true)
+  const [bookingVisibilidadError, setBookingVisibilidadError] = useState<string | null>(null)
   const [bookingRequierePago, setBookingRequierePago] = useState<boolean>((p.booking_requiere_pago as boolean | null) ?? true)
   const [bookingSlug] = useState<string>((p.booking_slug as string | null) ?? '')
   const [bookingLoading, setBookingLoading] = useState(false)
@@ -542,11 +553,66 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // ── Booking save ───────────────────────────────────────────────────
   const [bookingError, setBookingError] = useState<string | null>(null)
 
+  // Mínimo de 1 tipo de consulta disponible en el link: tipos propios con
+  // visible_en_booking (activos) + tipos base con precio cargado y visible.
+  // tiposTurno es el snapshot cargado al entrar a Ajustes — no se actualiza
+  // en vivo con lo que hace TiposTurnoSection (sección independiente, sin
+  // callback hacia el padre), igual que el resto de esta pantalla no
+  // sincroniza entre secciones.
+  const tipoPropioActivoExiste = tiposTurno.some((t) => t.activo)
+  function handleToggleSesionVisible() {
+    const nuevo = !bookingSesionVisible
+    const conteo = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: nuevo,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: bookingEntrevistaVisible,
+    })
+    if (!nuevo && conteo === 0) {
+      setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
+      return
+    }
+    setBookingVisibilidadError(null)
+    setBookingSesionVisible(nuevo)
+  }
+  function handleToggleEntrevistaVisible() {
+    const nuevo = !bookingEntrevistaVisible
+    const conteo = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: bookingSesionVisible,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: nuevo,
+    })
+    if (!nuevo && conteo === 0) {
+      setBookingVisibilidadError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
+      return
+    }
+    setBookingVisibilidadError(null)
+    setBookingEntrevistaVisible(nuevo)
+  }
+
   async function handleBookingSave(e: React.FormEvent) {
     e.preventDefault()
     setBookingError(null)
     if (bookingBio && bookingBio.length > 200) {
       setBookingError('Bio pública no puede exceder 200 caracteres')
+      return
+    }
+    // PASO 5 — red de seguridad server-adjacent: aunque la UI ya bloquea el
+    // toggle que dejaría el conteo en 0, handleBookingSave es la última
+    // puerta antes de persistir — nunca confiar solo en que el botón nunca
+    // se haya podido apretar en ese estado.
+    const conteoFinal = contarTiposDisponibles({
+      tiposPropios: tiposTurno,
+      sesionPrecioCargado: bookingPrecioSesion !== '',
+      sesionVisible: bookingSesionVisible,
+      entrevistaPrecioCargado: bookingPrecioEntrevista !== '',
+      entrevistaVisible: bookingEntrevistaVisible,
+    })
+    if (conteoFinal === 0) {
+      setBookingError('Tiene que quedar al menos un tipo de consulta disponible en el link de reservas')
       return
     }
     setBookingLoading(true); setBookingSaved(false)
@@ -561,6 +627,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       booking_modalidades: bookingModalidades,
       booking_precio_sesion: bookingPrecioSesion ? parseFloat(bookingPrecioSesion) : null,
       booking_precio_entrevista: bookingPrecioEntrevista ? parseFloat(bookingPrecioEntrevista) : null,
+      booking_sesion_visible: bookingSesionVisible,
+      booking_entrevista_visible: bookingEntrevistaVisible,
       booking_requiere_pago: bookingRequierePago,
     } as never).eq('id', profile.id)
     setBookingLoading(false); setBookingSaved(true)
@@ -588,6 +656,29 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     if (error) { setRecetasError('Error al guardar.'); setRecetasLoading(false); return }
     setRecetasSaved(true); setRecetasLoading(false)
     setTimeout(() => setRecetasSaved(false), 3000)
+  }
+
+  async function handleEliminarCuenta() {
+    if (eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) return
+    setEliminarLoading(true)
+    setEliminarError(null)
+    try {
+      const res = await fetch('/api/cuenta/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmacion: eliminarEmailInput }),
+      })
+      const data = await res.json() as { ok?: boolean; error?: string }
+      if (!res.ok || !data.ok) {
+        setEliminarError(data.error ?? 'No se pudo eliminar la cuenta. Intentá de nuevo.')
+        setEliminarLoading(false)
+        return
+      }
+      window.location.href = '/login'
+    } catch {
+      setEliminarError('No se pudo eliminar la cuenta. Intentá de nuevo.')
+      setEliminarLoading(false)
+    }
   }
 
   const initials = `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
@@ -1108,6 +1199,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               tiposIniciales={tiposTurno}
               terminologia={profile.terminologia ?? undefined}
               sedes={sedes}
+              baseSesion={{ precioCargado: bookingPrecioSesion !== '', visible: bookingSesionVisible }}
+              baseEntrevista={{ precioCargado: bookingPrecioEntrevista !== '', visible: bookingEntrevistaVisible }}
             />
           </section>
 
@@ -1524,18 +1617,37 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
 
               {/* Precios */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 18 }}>
-                {[
-                  { label: 'Precio sesión', value: bookingPrecioSesion, set: setBookingPrecioSesion },
-                  { label: 'Precio entrevista inicial', value: bookingPrecioEntrevista, set: setBookingPrecioEntrevista },
-                ].map(({ label, value, set }) => (
-                  <div key={label}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
-                    <MontoInput name={label} value={value} onChange={set} placeholder="Ej: 70000"
-                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: tipoPropioActivoExiste ? 6 : 18 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio sesión</label>
+                  <MontoInput name="Precio sesión" value={bookingPrecioSesion} onChange={setBookingPrecioSesion} placeholder="Ej: 70000"
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  {tipoPropioActivoExiste && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                      <Toggle on={bookingSesionVisible} onChange={handleToggleSesionVisible} />
+                      Mostrar en link de reservas
+                    </label>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio entrevista inicial</label>
+                  <MontoInput name="Precio entrevista inicial" value={bookingPrecioEntrevista} onChange={setBookingPrecioEntrevista} placeholder="Ej: 70000"
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  {tipoPropioActivoExiste && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                      <Toggle on={bookingEntrevistaVisible} onChange={handleToggleEntrevistaVisible} />
+                      Mostrar en link de reservas
+                    </label>
+                  )}
+                </div>
               </div>
+
+              {tipoPropioActivoExiste && bookingVisibilidadError && (
+                <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 18px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+                  {bookingVisibilidadError}
+                </p>
+              )}
 
               {/* Requiere pago */}
               <ToggleRow
@@ -1634,7 +1746,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 Cambiar contraseña
               </button>
               <div style={{ flex: 1 }} />
-              <button style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+              <button
+                type="button"
+                onClick={() => { setEliminarEmailInput(''); setEliminarError(null); setEliminarOpen(true) }}
+                style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}
+              >
                 Eliminar cuenta
               </button>
             </div>
@@ -1642,6 +1758,77 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
         </div>
       </div>
+
+      <SlideOver
+        open={eliminarOpen}
+        onClose={() => { if (!eliminarLoading) setEliminarOpen(false) }}
+        title="Eliminar cuenta"
+        width="sm"
+        footer={(
+          <div style={secFootStyle}>
+            <button
+              type="button"
+              onClick={() => setEliminarOpen(false)}
+              disabled={eliminarLoading}
+              style={{ padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: eliminarLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}
+            >
+              Cancelar
+            </button>
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={handleEliminarCuenta}
+              disabled={eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()}
+              style={{
+                padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: 'none', color: 'white', background: 'var(--danger)',
+                cursor: (eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) ? 'not-allowed' : 'pointer',
+                opacity: (eliminarLoading || eliminarEmailInput.trim().toLowerCase() !== profile.email?.toLowerCase()) ? 0.5 : 1,
+              }}
+            >
+              {eliminarLoading ? 'Eliminando...' : 'Eliminar cuenta'}
+            </button>
+          </div>
+        )}
+      >
+        <p style={{ fontSize: 13.5, color: 'var(--ink-2)', lineHeight: 1.6, margin: '0 0 16px' }}>
+          Esta acción da de baja tu cuenta de KLIA. Al confirmar:
+        </p>
+        <ul style={{ margin: '0 0 20px', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            'Tu acceso a KLIA se bloquea de inmediato.',
+            'Si tenés una suscripción activa con Mercado Pago, se cancela.',
+            'Tu link público de reservas se desactiva.',
+            'Se desconectan tus integraciones (Google Calendar, Mercado Pago).',
+            'Tus datos clínicos y de pagos se conservan por el tiempo que exige la ley, según nuestra política de privacidad.',
+          ].map((texto) => (
+            <li key={texto} style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{texto}</li>
+          ))}
+        </ul>
+
+        <div style={fieldStyle}>
+          <label style={labelStyle} htmlFor="eliminar-email-confirm">
+            Escribí tu email ({profile.email}) para confirmar
+          </label>
+          <input
+            id="eliminar-email-confirm"
+            type="text"
+            autoComplete="off"
+            value={eliminarEmailInput}
+            onChange={(e) => setEliminarEmailInput(e.target.value)}
+            placeholder={profile.email ?? ''}
+            style={inputStyle}
+            disabled={eliminarLoading}
+          />
+        </div>
+
+        {eliminarError && (
+          <p style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+            {eliminarError}
+          </p>
+        )}
+      </SlideOver>
     </div>
   )
 }

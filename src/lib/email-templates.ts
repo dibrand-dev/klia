@@ -346,6 +346,17 @@ export function emailSuscripcionCancelada(nombre: string, fechaAcceso: string): 
   `, 'Tu suscripción fue cancelada — KLIA')
 }
 
+export function emailCuentaEliminada(nombre: string): string {
+  return baseTemplate(`
+    ${icon('👋', '#f1f5f9')}
+    ${h1('Tu cuenta fue dada de baja')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, confirmamos que tu cuenta de KLIA fue dada de baja. Tu acceso quedó bloqueado de inmediato.`)}
+    ${infoBox('Tus datos clínicos y de pagos se conservan por el plazo que exige la normativa vigente, según nuestra política de privacidad — no se eliminan de nuestros sistemas en este momento.', '#f1f5f9', '#94a3b8', '#475569')}
+    ${para('Si querés reactivar tu cuenta o tenés alguna consulta, escribinos.')}
+    ${help('<a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>')}
+  `, 'Tu cuenta fue dada de baja — KLIA')
+}
+
 export function emailInvitacionColaboradora(
   nombreProfesional: string,
   nombreColaboradora: string | null,

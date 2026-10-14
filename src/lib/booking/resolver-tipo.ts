@@ -18,6 +18,8 @@ export type ProfileParaResolverTipo = {
   booking_duracion_entrevista: number | null
   booking_precio_sesion: number | null
   booking_precio_entrevista: number | null
+  booking_sesion_visible?: boolean | null
+  booking_entrevista_visible?: boolean | null
   booking_moneda: string | null
 }
 
@@ -80,6 +82,29 @@ export async function validarTipoSede(
   return !!asignacion
 }
 
+// "Hay tipos propios ofertados" = el plan habilita tipos_turno Y existe al
+// menos uno activo + visible_en_booking — el mismo criterio que arma
+// tiposPropios en /p/[slug]/page.tsx. Con un downgrade a un plan que ya no
+// habilita tipos_turno, esto pasa a false sin tocar ninguna fila de
+// tipos_turno en la base.
+async function hayTiposPropiosOfertados(
+  db: SupabaseClient,
+  terapeutaId: string,
+  plan?: string | null,
+): Promise<boolean> {
+  const { puedeUsarTiposTurno } = await import('@/lib/modulos')
+  if (!(await puedeUsarTiposTurno(db, plan ?? ''))) return false
+
+  const { count } = await db
+    .from('tipos_turno')
+    .select('id', { count: 'exact', head: true })
+    .eq('terapeuta_id', terapeutaId)
+    .eq('activo', true)
+    .eq('visible_en_booking', true)
+
+  return (count ?? 0) > 0
+}
+
 export async function resolverTipoReserva(
   db: SupabaseClient,
   profile: ProfileParaResolverTipo,
@@ -94,6 +119,15 @@ export async function resolverTipoReserva(
     // crea un turno con sucursal_id null para un profesional multi-sede.
     const sedeCheck = await resolverSedeActiva(db, profile.id, sedeId)
     if (!sedeCheck) return { error: 'tipo_invalido' }
+
+    // Sin tipos propios ofertados, el flag de Sesión/Entrevista nunca puede
+    // ser el único motivo de que el link quede sin ningún tipo disponible —
+    // se ignora (se trata como visible) sin modificar el dato guardado.
+    const ofertados = await hayTiposPropiosOfertados(db, profile.id, profile.plan)
+    const visible = tipo === 'sesion'
+      ? ((profile.booking_sesion_visible ?? true) || !ofertados)
+      : ((profile.booking_entrevista_visible ?? true) || !ofertados)
+    if (!visible) return { error: 'tipo_invalido' }
 
     const duracion = tipo === 'sesion'
       ? (profile.booking_duracion_sesion ?? 50)
