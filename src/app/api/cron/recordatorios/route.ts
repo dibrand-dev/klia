@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
 
   let enviados = 0
   let fallidos = 0
+  let omitidos = 0
   const errores: string[] = []
 
   for (const turno of turnos ?? []) {
@@ -57,6 +58,30 @@ export async function GET(req: NextRequest) {
     if (!terapeuta?.nombre) {
       errores.push(`turno ${turno.id}: terapeuta sin datos`)
       fallidos++
+      continue
+    }
+
+    // Reclamo atómico: solo se envía si este turno sigue pendiente/confirmado
+    // y nadie más (otra corrida en paralelo, o este mismo cron reintentado)
+    // ya lo marcó. Si la fila no matchea (ya reclamado, o cancelado entre el
+    // SELECT de arriba y este punto), se descarta sin mandar nada.
+    const { data: reclamado, error: errReclamo } = await supabase
+      .from('turnos')
+      .update({ recordatorio_enviado: true })
+      .eq('id', turno.id)
+      .eq('recordatorio_enviado', false)
+      .in('estado', ['pendiente', 'confirmado'])
+      .select('id')
+
+    if (errReclamo) {
+      console.error('[cron/recordatorios] Error al reclamar turno', turno.id, errReclamo)
+      errores.push(`turno ${turno.id}: ${errReclamo.message}`)
+      fallidos++
+      continue
+    }
+
+    if (!reclamado || reclamado.length === 0) {
+      omitidos++
       continue
     }
 
@@ -98,16 +123,21 @@ export async function GET(req: NextRequest) {
         htmlContent: html,
       })
 
-      await supabase
-        .from('turnos')
-        .update({ recordatorio_enviado: true })
-        .eq('id', turno.id)
-
       enviados++
     } catch (err: unknown) {
       const errorMsg = (err as Error)?.message ?? JSON.stringify(err)
       errores.push(`turno ${turno.id}: ${errorMsg}`)
       fallidos++
+
+      // El turno quedó reclamado (recordatorio_enviado=true) pero el mail
+      // nunca salió — se revierte para que la próxima corrida lo reintente.
+      const { error: errRevertir } = await supabase
+        .from('turnos')
+        .update({ recordatorio_enviado: false })
+        .eq('id', turno.id)
+      if (errRevertir) {
+        console.error('[cron/recordatorios] Error al revertir reclamo del turno', turno.id, errRevertir)
+      }
     }
   }
 
@@ -115,6 +145,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     enviados,
     fallidos,
+    omitidos,
     total: turnos?.length ?? 0,
     timestamp: new Date().toISOString(),
     errores,
