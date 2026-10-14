@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { zonedDateArgentina } from '@/lib/timezone'
 import type { Database } from '@/types/database'
+import { verificarCron } from '@/lib/cron-auth'
 
 function serviceClient() {
   return createServiceClient<Database>(
@@ -15,9 +16,7 @@ function serviceClient() {
 }
 
 export async function GET(req: NextRequest) {
-  const isVercelCron = req.headers.get('x-vercel-cron') === '1'
-  const auth = req.headers.get('authorization')
-  if (!isVercelCron && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verificarCron(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

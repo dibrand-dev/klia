@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { buscarPaginaOFF, mapearPaginaOFF } from '@/lib/vademecum/openfoodfacts'
 import { upsertLoteOFF } from '@/lib/vademecum/upsert'
 import { serviceClient } from '@/lib/supabase/service'
+import { verificarCron } from '@/lib/cron-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,9 +21,7 @@ const SYNC_CONTROL_ID = 'off_argentina'
 const MAX_PAGINAS_POR_CORRIDA = 20
 
 export async function GET(req: NextRequest) {
-  const isVercelCron = req.headers.get('x-vercel-cron') === '1'
-  const auth = req.headers.get('authorization')
-  if (!isVercelCron && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verificarCron(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

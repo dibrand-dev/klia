@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
+import { verificarCron } from '@/lib/cron-auth'
 import {
   emailTrialDia7,
   emailTrialDia14,
@@ -26,9 +27,7 @@ function dayWindow(daysFromNow: number) {
 }
 
 export async function GET(req: NextRequest) {
-  const isVercelCron = req.headers.get('x-vercel-cron') === '1'
-  const auth = req.headers.get('authorization')
-  if (!isVercelCron && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verificarCron(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
