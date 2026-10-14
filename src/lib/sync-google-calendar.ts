@@ -1,4 +1,3 @@
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { format, parseISO } from 'date-fns'
 import {
   getAuthenticatedClient,
@@ -6,14 +5,7 @@ import {
   eliminarEventoCalendario,
   actualizarEventoCalendario,
 } from './google-calendar'
-import type { Database } from '@/types/database'
-
-function db() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+import { serviceClient as db } from '@/lib/supabase/service'
 
 // Devuelve el resultado de la sincronización (o null si no aplica: sin tokens,
 // turno inexistente, etc.) en vez de Promise<void> — finalizarReservaConfirmada

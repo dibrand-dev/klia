@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { preApproval } from '@/lib/mercadopago'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailSuscripcionCancelada } from '@/lib/email-templates'
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+import { serviceClient } from '@/lib/supabase/service'
 
 export async function PATCH() {
   const supabase = createClient()

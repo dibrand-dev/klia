@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { Payment } from 'mercadopago'
 import { preApproval, mpClient, mpAccessToken } from '@/lib/mercadopago'
-import type { Database } from '@/types/database'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoExitoso, emailPagoFallido, emailSuscripcionCancelada } from '@/lib/email-templates'
+import { serviceClient } from '@/lib/supabase/service'
 
 // El SDK de mercadopago no tiene un cliente dedicado para el recurso
 // "authorized_payments" (los cobros recurrentes de una preapproval) — es el
@@ -24,13 +23,6 @@ async function obtenerAuthorizedPayment(authorizedPaymentId: string) {
     preapproval_id: string
     payment: { id: number; status: string; transaction_amount: number }
   }>
-}
-
-function serviceClient() {
-  return createServiceClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
 }
 
 function verificarFirmaMP(req: NextRequest, dataId: string): boolean {

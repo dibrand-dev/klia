@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
 import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
 import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
+import { serviceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-function serviceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
 
 function shortId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
