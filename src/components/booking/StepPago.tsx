@@ -25,6 +25,7 @@ interface DatosForm {
   email: string
   telefono: string
   coberturaId: string
+  whatsappOptIn: boolean
 }
 
 type TipoResuelto = {
@@ -384,6 +385,7 @@ export default function StepPago({
             email: datosForm.email,
             telefono: datosForm.telefono || undefined,
             cobertura_id: datosForm.coberturaId,
+            whatsapp_opt_in: datosForm.whatsappOptIn,
             sede_id: sede?.id ?? undefined,
             tipo_turno_id: tipoTurnoId ?? undefined,
           }),
