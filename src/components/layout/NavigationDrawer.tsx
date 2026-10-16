@@ -26,8 +26,7 @@ const MODULE_ITEMS = [
     children: [] },
   { href: '/facturacion/liquidacion', label: 'Facturación', icon: 'payments', moduloId: 'facturacion',
     children: [{ href: '/facturacion/liquidacion', label: 'Liquidación OS' }] },
-  { href: '/informes', label: 'Informes', icon: 'description', moduloId: 'informes',
-    children: [] },
+  // Informes oculto: sección no desarrollada
 ]
 
 export default function NavigationDrawer({

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 export const metadata = { title: 'Informes — KLIA' }
 
 export default async function InformesPage() {
+  redirect('/')
+
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
