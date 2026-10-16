@@ -6,6 +6,28 @@ import { getTerminologia } from '@/hooks/useTerminologia'
 export const MONEDAS_VALIDAS = ['ARS', 'USD', 'EUR'] as const
 export type MonedaTipoTurno = typeof MONEDAS_VALIDAS[number]
 
+// Paleta propia de Tipos de turno — independiente de PALETTE (Sedes) en
+// src/lib/sedes/horarios.ts. Comparten algunos hex a propósito (colores ya
+// validados contra los fondos de estado), pero son namespaces de color
+// separados: un tipo y una sede pueden coincidir en color sin problema.
+export const TIPO_PALETTE: { c: string; n: string }[] = [
+  { c: '#3F519E', n: 'Azul Klia' }, { c: '#8C6ED8', n: 'Violeta' }, { c: '#3D9C6B', n: 'Verde' },
+  { c: '#C97A3F', n: 'Tierra' }, { c: '#A8506B', n: 'Vino' }, { c: '#1E8A94', n: 'Turquesa' },
+  { c: '#5E7A33', n: 'Oliva' }, { c: '#B8429A', n: 'Fucsia' },
+]
+
+export function colorTipoValido(c: unknown): c is string {
+  return typeof c === 'string' && TIPO_PALETTE.some((p) => p.c === c)
+}
+
+// Primer color de la paleta que no esté en uso; si ya están todos tomados,
+// reparte por módulo para no dejar nunca un tipo nuevo sin color asignado.
+export function colorTipoPorDefecto(usados: (string | null)[]): string {
+  const disponible = TIPO_PALETTE.find((p) => !usados.includes(p.c))
+  if (disponible) return disponible.c
+  return TIPO_PALETTE[usados.length % TIPO_PALETTE.length].c
+}
+
 const RESERVADOS = ['sesion', 'consulta', 'entrevista']
 
 // Sin tildes, minúsculas, sin espacios en los bordes — para comparar "Sesión"

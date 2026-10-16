@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { addDays, subDays, format, isToday, isSameDay, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Turno, Entrevista, Sucursal } from '@/types/database'
@@ -29,6 +30,13 @@ function getHeight(min: number) {
   return min * (64 / 60)
 }
 
+// Umbrales de la tarjeta de turno (vista día) cuando tiene tipo propio con
+// color — por debajo de ALTO_MIN_TIPO no entra la línea de tipo (queda el
+// punto junto al nombre); por debajo de ALTO_MIN_HORA_CON_TIPO entra la
+// línea de tipo pero no la de hora·duración.
+const ALTO_MIN_TIPO = 42
+const ALTO_MIN_HORA_CON_TIPO = 60
+
 function sedeColor(sedes: Sucursal[], id: string | null): string | null {
   return sedes.find(s => s.id === id)?.color ?? null
 }
@@ -50,6 +58,7 @@ interface VistaDiaProps {
   sedeSeleccionadaId?: string | null
   onScopeChange?: (scope: AgendaScope) => void
   onSedeChange?: (id: string) => void
+  tiposTurno?: { id: string; nombre: string; color: string | null }[]
 }
 
 export default function VistaDia({
@@ -57,6 +66,7 @@ export default function VistaDia({
   onDiaChange, onNuevoTurno, onTurnoClick, onEntrevistaClick, vistaSelector,
   horaInicio: horaInicioP, horaFin: horaFinP,
   sedes = [], scope = 'todas', sedeSeleccionadaId = null, onScopeChange, onSedeChange,
+  tiposTurno = [],
 }: VistaDiaProps) {
   const hi = horaInicioP ?? 7
   const hf = horaFinP ?? 21
@@ -66,6 +76,12 @@ export default function VistaDia({
   // Siglas únicas por profesional — evita colisiones tipo "Consultorio
   // principal" / "Consultorio Palermo" (ambas "CP" con la regla simple).
   const abrevsSedes = abreviaturasUnicas(sedes)
+
+  const tiposTurnoMap = useMemo(() => {
+    const m = new Map<string, { nombre: string; color: string | null }>()
+    for (const t of tiposTurno) m.set(t.id, { nombre: t.nombre, color: t.color })
+    return m
+  }, [tiposTurno])
 
   const turnosDiaTodos = turnos
     .filter((t) => isSameDay(parseISO(t.fecha_hora), dia))
@@ -389,6 +405,12 @@ export default function VistaDia({
               const { columna, totalColumnas } = layoutTurnos.get(turno.id) ?? { columna: 0, totalColumnas: 1 }
               const anchoPct = 100 / totalColumnas
               const color = multi && !modoFiltro ? sedeColor(sedes, turno.sucursal_id) : null
+              const tipo = turno.tipo_turno_id ? tiposTurnoMap.get(turno.tipo_turno_id) ?? null : null
+              const tipoColor = tipo?.color ?? null
+              const tieneTipo = !!tipoColor
+              const mostrarTipoPunto = tieneTipo && height < ALTO_MIN_TIPO
+              const mostrarTipoLinea = tieneTipo && height >= ALTO_MIN_TIPO
+              const mostrarHora = tieneTipo ? height >= ALTO_MIN_HORA_CON_TIPO : height > 40
               return (
                 <div
                   key={turno.id}
@@ -408,9 +430,21 @@ export default function VistaDia({
                 >
                   <div className="flex items-center gap-1 font-semibold truncate">
                     <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', ESTADO_TURNO_DOT[turno.estado])} />
-                    <span className="truncate flex-1">
-                      {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
-                    </span>
+                    {mostrarTipoPunto ? (
+                      <span className="flex-1 min-w-0 flex items-center gap-1">
+                        <span className="truncate">
+                          {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
+                        </span>
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: tipoColor!, boxShadow: '0 0 0 1px rgba(14,20,48,.14)' }}
+                        />
+                      </span>
+                    ) : (
+                      <span className="truncate flex-1">
+                        {p ? formatNombreCompleto(p.nombre, p.apellido) : 'Paciente'}
+                      </span>
+                    )}
                     {color && (
                       <span
                         className="flex-shrink-0 font-mono text-[9px] font-medium tracking-wide px-1 rounded"
@@ -429,7 +463,19 @@ export default function VistaDia({
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
                     )}
                   </div>
-                  {height > 40 && (
+                  {mostrarTipoLinea && (
+                    <div
+                      className="flex items-center gap-1 mt-[3px]"
+                      style={{ fontSize: '10.5px', lineHeight: '13px', fontWeight: 500, whiteSpace: 'nowrap' }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ background: tipoColor!, boxShadow: '0 0 0 1px rgba(14,20,48,.14)' }}
+                      />
+                      <span className="truncate flex-1 min-w-0 opacity-[.85]">{tipo!.nombre}</span>
+                    </div>
+                  )}
+                  {mostrarHora && (
                     <div className="opacity-80 truncate mt-0.5">
                       {format(parseISO(turno.fecha_hora), 'HH:mm')} · {turno.duracion_min} min
                     </div>

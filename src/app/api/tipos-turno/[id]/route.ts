@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { puedeUsarTiposTurno } from '@/lib/modulos'
-import { validarTipoTurnoInput } from '@/lib/tipos-turno'
+import { validarTipoTurnoInput, colorTipoValido } from '@/lib/tipos-turno'
 import type { Database } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const { data: existente } = await db
     .from('tipos_turno')
-    .select('id')
+    .select('id, color')
     .eq('id', params.id)
     .eq('terapeuta_id', efectivo.terapeutaId)
     .maybeSingle()
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const body = await req.json() as {
     nombre?: unknown; descripcion?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
-    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
+    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown; color?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
@@ -99,6 +99,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
   if (typeof body.visible_en_booking === 'boolean') update.visible_en_booking = body.visible_en_booking
   if (typeof body.activo === 'boolean') update.activo = body.activo
+
+  // Color — igual al actual se ignora sin validar; distinto se valida contra
+  // TIPO_PALETTE; si no viene, no se toca.
+  if (body.color !== undefined && body.color !== existente.color) {
+    if (!colorTipoValido(body.color)) {
+      return NextResponse.json({ error: 'Color inválido' }, { status: 400 })
+    }
+    update.color = body.color
+  }
 
   const { data: actualizado, error } = await db
     .from('tipos_turno')

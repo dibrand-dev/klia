@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { puedeUsarTiposTurno } from '@/lib/modulos'
-import { validarTipoTurnoInput } from '@/lib/tipos-turno'
+import { validarTipoTurnoInput, colorTipoValido, colorTipoPorDefecto } from '@/lib/tipos-turno'
 import type { Database } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
@@ -105,11 +105,27 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     nombre?: unknown; descripcion?: unknown; duracion_min?: unknown; precio?: unknown; moneda?: unknown
-    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown
+    visible_en_booking?: unknown; activo?: unknown; sucursal_ids?: unknown; color?: unknown
   }
   const validado = validarTipoTurnoInput(body, perfil?.terminologia)
   if ('error' in validado) {
     return NextResponse.json({ error: validado.error }, { status: 400 })
+  }
+
+  // Color — si no viene, se asigna el primero libre de TIPO_PALETTE contra
+  // los colores que ya usan los tipos de este terapeuta.
+  let color: string
+  if (body.color !== undefined && body.color !== null) {
+    if (!colorTipoValido(body.color)) {
+      return NextResponse.json({ error: 'Color inválido' }, { status: 400 })
+    }
+    color = body.color
+  } else {
+    const { data: tiposExistentes } = await db
+      .from('tipos_turno')
+      .select('color')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+    color = colorTipoPorDefecto((tiposExistentes ?? []).map((t) => t.color))
   }
 
   // Sedes — misma regla en toda la feature: 2+ sedes activas exige al menos
@@ -144,6 +160,7 @@ export async function POST(req: NextRequest) {
       moneda: validado.moneda,
       visible_en_booking: typeof body.visible_en_booking === 'boolean' ? body.visible_en_booking : true,
       activo: typeof body.activo === 'boolean' ? body.activo : true,
+      color,
     })
     .select('*')
     .single()
