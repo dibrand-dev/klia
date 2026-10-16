@@ -321,6 +321,7 @@ export type Database = {
           activo: boolean
           visible_en_booking: boolean
           orden: number
+          color: string | null
           created_at: string
           updated_at: string
         }
@@ -335,6 +336,7 @@ export type Database = {
           activo?: boolean
           visible_en_booking?: boolean
           orden?: number
+          color?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -349,6 +351,7 @@ export type Database = {
           activo?: boolean
           visible_en_booking?: boolean
           orden?: number
+          color?: string | null
           created_at?: string
           updated_at?: string
         }

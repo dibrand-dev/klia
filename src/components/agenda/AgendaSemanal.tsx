@@ -550,6 +550,7 @@ export default function AgendaSemanal({
           sedeSeleccionadaId={sedeSeleccionadaId}
           onScopeChange={cambiarAgendaScope}
           onSedeChange={cambiarSedeSeleccionada}
+          tiposTurno={tiposTurno}
         />
       )}
 
