@@ -7,6 +7,7 @@ import MontoInput from '@/components/ui/MontoInput'
 import { getTerminologia } from '@/hooks/useTerminologia'
 import { parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
+import { TIPO_PALETTE, colorTipoPorDefecto } from '@/lib/tipos-turno'
 import './tipos-turno.css'
 
 export type SedeTipoTurno = {
@@ -72,17 +73,21 @@ type Draft = {
   moneda: string
   visible_en_booking: boolean
   activo: boolean
+  color: string
   sucursal_ids: string[]
 }
 
-function draftVacio(sedes: SedeTipoTurno[]): Draft {
+function draftVacio(sedes: SedeTipoTurno[], lista: TipoTurnoConSedes[]): Draft {
+  const usados = lista.filter((t) => t.activo).map((t) => t.color)
   return {
     nombre: '', descripcion: '', duracion_min: '', precio: '', moneda: 'ARS', visible_en_booking: true, activo: true,
+    color: colorTipoPorDefecto(usados),
     sucursal_ids: sedes.length > 1 ? [] : sedes.length === 1 ? [sedes[0].id] : [],
   }
 }
 
-function draftDeTipo(t: TipoTurnoConSedes): Draft {
+function draftDeTipo(t: TipoTurnoConSedes, lista: TipoTurnoConSedes[]): Draft {
+  const usados = lista.filter((x) => x.activo && x.id !== t.id).map((x) => x.color)
   return {
     nombre: t.nombre,
     descripcion: t.descripcion ?? '',
@@ -91,6 +96,7 @@ function draftDeTipo(t: TipoTurnoConSedes): Draft {
     moneda: t.moneda,
     visible_en_booking: t.visible_en_booking,
     activo: t.activo,
+    color: t.color ?? colorTipoPorDefecto(usados),
     sucursal_ids: [...t.sucursal_ids],
   }
 }
@@ -118,7 +124,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
   const [lista, setLista] = useState<TipoTurnoConSedes[]>(tiposIniciales)
   const [upsellVisible, setUpsellVisible] = useState(true)
   const [editandoId, setEditandoId] = useState<string | null>(null) // null = cerrado, 'new' = alta
-  const [draft, setDraft] = useState<Draft>(draftVacio(sedes))
+  const [draft, setDraft] = useState<Draft>(draftVacio(sedes, lista))
   const [touched, setTouched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorNombre, setErrorNombre] = useState<string | null>(null)
@@ -128,7 +134,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
 
   function abrirNuevo() {
     setEditandoId('new')
-    setDraft(draftVacio(sedes))
+    setDraft(draftVacio(sedes, lista))
     setTouched(false)
     setErrorNombre(null)
     setErrorConteo(null)
@@ -136,7 +142,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
 
   function abrirEditar(tipo: TipoTurnoConSedes) {
     setEditandoId(tipo.id)
-    setDraft(draftDeTipo(tipo))
+    setDraft(draftDeTipo(tipo, lista))
     setTouched(false)
     setErrorNombre(null)
     setErrorConteo(null)
@@ -168,6 +174,10 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
   const descLen = draft.descripcion.length
   const descNear = descLen >= 450 && descLen < 500
   const descMax = descLen >= 500
+  const coloresTomados = lista
+    .filter((t) => t.activo && t.id !== editandoId)
+    .map((t) => t.color)
+    .filter((c): c is string => !!c)
 
   // Mismo mínimo que AjustesClient (helper compartido): simula el estado de
   // "tus tipos" tras guardar este draft (reemplazando el tipo en edición, o
@@ -204,6 +214,7 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
       moneda: draft.moneda,
       visible_en_booking: draft.visible_en_booking,
       activo: draft.activo,
+      color: draft.color,
       sucursal_ids: draft.sucursal_ids,
     }
 
@@ -464,6 +475,43 @@ export default function TiposTurnoSection({ plan, habilitado, tiposIniciales, te
         </div>
         <div className="tt-field" style={{ marginTop: -12 }}>
           <span className="tt-hint">Dejalo vacío o en 0 si no tiene costo. Es el mismo en todas las sedes.</span>
+        </div>
+
+        <div className="tt-field">
+          <label>Color identificador</label>
+          <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+            {TIPO_PALETTE.map((p) => {
+              const taken = coloresTomados.includes(p.c)
+              const selected = draft.color === p.c
+              return (
+                <button
+                  key={p.c}
+                  type="button"
+                  title={taken ? `${p.n} — en uso` : p.n}
+                  onClick={() => setDraft((prev) => ({ ...prev, color: p.c }))}
+                  style={{
+                    width: 34, height: 34, borderRadius: 9,
+                    border: '1px solid rgba(14,20,48,.12)',
+                    cursor: 'pointer',
+                    position: 'relative', padding: 0,
+                    background: p.c,
+                    opacity: taken ? 0.32 : 1,
+                    boxShadow: selected ? `0 0 0 2px var(--surface), 0 0 0 4px ${p.c}` : 'none',
+                  }}
+                >
+                  {selected && (
+                    <span style={{
+                      position: 'absolute', left: '50%', top: '50%',
+                      width: 11, height: 6,
+                      borderLeft: '2px solid #fff', borderBottom: '2px solid #fff',
+                      transform: 'translate(-50%, -70%) rotate(-45deg)',
+                    }} />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <span className="tt-hint">Este color identifica el tipo de turno en la agenda. Los atenuados ya están en uso por otro tipo.</span>
         </div>
 
         {multiSede && (
