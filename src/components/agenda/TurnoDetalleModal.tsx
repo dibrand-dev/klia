@@ -408,7 +408,17 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         tipo_turno_id: editTipoTurnoId,
       })
       .eq('id', turno.id)
-    if (dbError) { setError('Error al guardar cambios.'); setLoading(false); return }
+    if (dbError) {
+      // El trigger check_turno_overlap rechaza el UPDATE si el nuevo horario pisa
+      // otro turno del profesional — antes se mostraba el mismo error genérico.
+      setError(
+        dbError.message?.includes('TURNO_OVERLAP')
+          ? 'Ese horario se superpone con otro turno de tu agenda. Elegí otro horario u otro día.'
+          : 'Error al guardar cambios.',
+      )
+      setLoading(false)
+      return
+    }
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
