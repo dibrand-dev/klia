@@ -24,6 +24,7 @@ type Turno = {
   estado: string
   ai_summary: string | null
   estado_atencion: string | null
+  tipo_label: string
   paciente: Paciente | null
 }
 
@@ -279,7 +280,7 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
                           )}
                         </p>
                         <p className="text-[11.5px] text-on-surface-variant mt-0.5">
-                          {p?.modalidad_tratamiento || p?.codigo_diagnostico || 'Sin datos adicionales'}
+                          {turno.tipo_label}
                         </p>
                       </div>
                     </div>

@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import AtencionesClient from '@/components/atenciones/AtencionesClient'
 import { getModulosConfig, puedeAcceder } from '@/lib/modulos'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
-import type { PacienteColaboradorRow } from '@/types/database'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getTerminologia } from '@/hooks/useTerminologia'
+import type { Database, PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Atenciones del Día — KLIA' }
 
@@ -13,7 +15,7 @@ export default async function AtencionesPage() {
   if (!efectivo) redirect('/login')
 
   const [{ data: profile }, modulos] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', efectivo.terapeutaId).single(),
+    supabase.from('profiles').select('plan, terminologia').eq('id', efectivo.terapeutaId).single(),
     getModulosConfig(supabase),
   ])
 
@@ -68,6 +70,8 @@ export default async function AtencionesPage() {
       ai_summary,
       estado_atencion,
       paciente_id,
+      tipo_turno,
+      tipo_turno_id,
       paciente:pacientes (
         id,
         nombre,
@@ -86,15 +90,37 @@ export default async function AtencionesPage() {
     .neq('estado', 'cancelado')
     .order('fecha_hora')
 
+  // Nombre de los tipos de turno propios. `tipos_turno` tiene RLS sin policies
+  // (se lee siempre con service client, igual que Ajustes y la agenda), y los
+  // ids salen de turnos ya filtrados por terapeuta_id.
+  const tipoIds = Array.from(new Set((turnos ?? []).map(t => t.tipo_turno_id).filter((id): id is string => !!id)))
+  const nombrePorTipoId = new Map<string, string>()
+  if (tipoIds.length > 0) {
+    const db = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    )
+    const { data: tipos } = await db
+      .from('tipos_turno')
+      .select('id, nombre')
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .in('id', tipoIds)
+    for (const tp of tipos ?? []) nombrePorTipoId.set(tp.id, tp.nombre)
+  }
+  const terminos = getTerminologia((profile?.terminologia ?? 'sesion') as 'sesion' | 'consulta')
+
   type TurnoConPaciente = Parameters<typeof AtencionesClient>[0]['turnos'][number]
   const turnosTyped = (turnos ?? []).map(t => {
+    const tipoLabel =
+      (t.tipo_turno_id ? nombrePorTipoId.get(t.tipo_turno_id) : null) ??
+      (t.tipo_turno === 'entrevista' ? 'Entrevista' : terminos.Sesion)
     const pacienteEmbebido = Array.isArray(t.paciente) ? t.paciente[0] ?? null : t.paciente
     const paciente = efectivo.esColaborador
       ? (mapaPacientesColaborador.get(t.paciente_id)
         ? { id: t.paciente_id, codigo_diagnostico: null, ...mapaPacientesColaborador.get(t.paciente_id) }
         : null)
       : pacienteEmbebido
-    return { ...t, paciente }
+    return { ...t, paciente, tipo_label: tipoLabel }
   }) as TurnoConPaciente[]
 
   return <AtencionesClient turnos={turnosTyped} hoyArgStr={hoyArgStr} />
