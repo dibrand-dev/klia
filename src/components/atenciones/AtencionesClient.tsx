@@ -114,6 +114,13 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
     setSlideOver(prev => prev && prev.id === turnoId ? { ...prev, estado_atencion: estadoAtencion } : prev)
   }
 
+  // Refleja en el estado local el resumen ya guardado, para que al reabrir el
+  // panel (o ver la fila) no aparezca como "sin generar" hasta recargar la página.
+  function registrarResumenGuardado(turnoId: string, summary: string) {
+    setTurnos(prev => prev.map(t => t.id === turnoId ? { ...t, ai_summary: summary } : t))
+    setSlideOver(prev => prev && prev.id === turnoId ? { ...prev, ai_summary: summary } : prev)
+  }
+
   const stats = useMemo(() => ({
     total: turnos.length,
     confirmados: turnos.filter(t => t.estado === 'confirmado').length,
@@ -386,6 +393,7 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
           turnoHora={horaArg(slideOver.fecha_hora)}
           modalidad={slideOver.modalidad}
           initialSummary={slideOver.ai_summary}
+          onSummaryGuardado={registrarResumenGuardado}
           onClose={() => setSlideOver(null)}
         />
       )}

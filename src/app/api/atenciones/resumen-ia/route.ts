@@ -131,13 +131,24 @@ ${notasTexto || 'Sin notas clínicas previas'}
     const result = await model.generateContent(userContent)
     const summary = result.response.text()
 
-    // Cache in DB
-    await supabase
+    // Cache in DB. Se verifica el resultado: antes el error se ignoraba y, si el
+    // UPDATE no persistía, el resumen se regeneraba (y se pagaba Gemini) cada vez.
+    const { data: guardado, error: errGuardado } = await supabase
       .from('turnos')
       .update({ ai_summary: summary })
       .eq('id', turno_id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .select('id')
 
-    return NextResponse.json({ summary, cached: false })
+    const saved = !errGuardado && (guardado?.length ?? 0) > 0
+    if (!saved) {
+      console.error('[resumen-ia] No se pudo guardar ai_summary', {
+        turno_id,
+        error: errGuardado?.message ?? 'UPDATE no afectó ninguna fila (RLS o turno inexistente)',
+      })
+    }
+
+    return NextResponse.json({ summary, cached: false, saved })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('Error Gemini:', msg)

@@ -20,6 +20,7 @@ type Props = {
   turnoHora: string
   modalidad: string
   initialSummary: string | null
+  onSummaryGuardado?: (turnoId: string, summary: string) => void
   onClose: () => void
 }
 
@@ -66,12 +67,14 @@ export default function ResumenIA({
   turnoHora,
   modalidad,
   initialSummary,
+  onSummaryGuardado,
   onClose,
 }: Props) {
   const [summary, setSummary] = useState<string | null>(initialSummary)
   const [loading, setLoading] = useState(false)
   const [cached, setCached] = useState(!!initialSummary)
   const [error, setError] = useState<string | null>(null)
+  const [noGuardado, setNoGuardado] = useState(false)
 
   useEffect(() => {
     if (initialSummary) {
@@ -97,9 +100,13 @@ export default function ResumenIA({
         body: JSON.stringify({ turno_id: turnoId, paciente_id: pacienteId }),
       })
       if (!res.ok) throw new Error('Error al generar resumen')
-      const data = await res.json() as { summary: string; cached: boolean }
+      const data = await res.json() as { summary: string; cached: boolean; saved?: boolean }
       setSummary(data.summary)
       setCached(data.cached)
+      // `saved` solo viene en generaciones nuevas; si es false, el resumen no quedó en la base
+      const seGuardo = data.cached || data.saved !== false
+      setNoGuardado(!seGuardo)
+      if (seGuardo) onSummaryGuardado?.(turnoId, data.summary)
     } catch {
       setError('No se pudo generar el resumen. Intentá de nuevo.')
     } finally {
@@ -214,6 +221,12 @@ export default function ResumenIA({
                 <span className="material-symbols-outlined text-[14px]">check_circle</span>
                 {cached ? 'Resumen guardado · Costo $0' : 'Resumen generado · Gemini Fast'}
               </div>
+              {noGuardado && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <span className="material-symbols-outlined text-[14px] mt-0.5">warning</span>
+                  No se pudo guardar el resumen en la ficha: si cerrás este panel, se volverá a generar.
+                </div>
+              )}
 
               {/* Section cards */}
               {sections.map((section, i) => {
