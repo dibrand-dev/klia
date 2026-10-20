@@ -15,6 +15,8 @@ import SlideOver from '@/components/ui/SlideOver'
 import { DIAS_SEMANA } from '@/lib/recurrentes'
 import type { ConflictoDetallado } from '@/lib/recurrentes'
 import MontoInput from '@/components/ui/MontoInput'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { validarConflictoHorario } from '@/lib/agenda/validarConflictoHorario'
 import ConflictosPanel from './ConflictosPanel'
 import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/TipoTurnoPicker'
 import '@/components/tipos-turno/tipos-turno.css'
@@ -101,6 +103,8 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
   const [editMoneda, setEditMoneda] = useState<Moneda>((turno.moneda as Moneda) ?? 'ARS')
   const tipoTurnoOriginalId = turno.tipo_turno_id ?? null
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
+  // Mensaje del choque de horario detectado al editar (abre el diálogo de sobreturno)
+  const [conflictoEdicion, setConflictoEdicion] = useState<string | null>(null)
 
   // Serie recurrente
   const [serieData, setSerieData] = useState<TurnoRecurrente | null>(null)
@@ -394,6 +398,48 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       setError('Ingresá una fecha y hora válidas.')
       return
     }
+
+    // Mismo criterio que el trigger check_turno_overlap: solo se valida si
+    // cambia el horario o la duración (editar notas/monto no debe preguntar).
+    const horarioOriginal = new Date(fechaHoraOverride ?? turno.fecha_hora).getTime()
+    const cambiaHorario =
+      fechaHora.getTime() !== horarioOriginal || Number(editForm.duracion_min) !== turno.duracion_min
+
+    if (!cambiaHorario) {
+      await persistirEdicion(fechaHora, null)
+      return
+    }
+
+    setLoading(true)
+    const { hayConflicto, mensaje } = await validarConflictoHorario(createClient(), {
+      terapeutaId: turno.terapeuta_id,
+      fecha: editForm.fecha,
+      hora: editForm.hora,
+      duracion: Number(editForm.duracion_min) || 50,
+      excluirTurnoId: turno.id,
+    })
+    if (hayConflicto) {
+      setConflictoEdicion(mensaje ?? 'Ya hay un turno en ese horario.')
+      setLoading(false)
+      return
+    }
+    // Sin choque: si antes era sobreturno y ahora cae en un horario libre, deja de serlo.
+    await persistirEdicion(fechaHora, false)
+  }
+
+  function confirmarSobreturnoEdicion() {
+    setConflictoEdicion(null)
+    const fechaHora = new Date(`${editForm.fecha}T${editForm.hora}:00-03:00`)
+    persistirEdicion(fechaHora, true)
+  }
+
+  function cancelarSobreturnoEdicion() {
+    setConflictoEdicion(null)
+    setLoading(false)
+  }
+
+  // esSobreturno === null → no se toca la columna (edición sin cambio de horario)
+  async function persistirEdicion(fechaHora: Date, esSobreturno: boolean | null) {
     setLoading(true)
     const supabase = createClient()
     const { error: dbError } = await supabase
@@ -406,11 +452,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
         moneda: editMoneda,
         notas: editForm.notas || null,
         tipo_turno_id: editTipoTurnoId,
+        ...(esSobreturno === null ? {} : { es_sobreturno: esSobreturno }),
       })
       .eq('id', turno.id)
     if (dbError) {
-      // El trigger check_turno_overlap rechaza el UPDATE si el nuevo horario pisa
-      // otro turno del profesional — antes se mostraba el mismo error genérico.
+      // Red de seguridad: el trigger check_turno_overlap rechaza el UPDATE si
+      // otro turno ocupó el horario entre el chequeo y el guardado.
       setError(
         dbError.message?.includes('TURNO_OVERLAP')
           ? 'Ese horario se superpone con otro turno de tu agenda. Elegí otro horario u otro día.'
@@ -433,6 +480,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       moneda: editMoneda,
       notas: editForm.notas || null,
       tipo_turno_id: editTipoTurnoId,
+      es_sobreturno: esSobreturno ?? turno.es_sobreturno,
     })
     setModo('ver')
     setLoading(false)
@@ -745,6 +793,17 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
             </button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={!!conflictoEdicion}
+          title="Ya hay un turno en ese horario"
+          message={conflictoEdicion ?? ''}
+          confirmLabel="Agendar como sobreturno"
+          cancelLabel="Cancelar"
+          variant="default"
+          onConfirm={confirmarSobreturnoEdicion}
+          onCancel={cancelarSobreturnoEdicion}
+        />
       </ModalShell>
     )
   }

@@ -14,6 +14,7 @@ import MonedaSelector from '@/components/ui/MonedaSelector'
 import PacienteSearchInput from './PacienteSearchInput'
 import ConflictosPanel from './ConflictosPanel'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { validarConflictoHorario } from '@/lib/agenda/validarConflictoHorario'
 import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/TipoTurnoPicker'
 import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
@@ -286,61 +287,16 @@ export default function NuevoTurnoPageForm({
     hora: string,
     duracion: number,
   ): Promise<{ hayConflicto: boolean; mensaje?: string }> {
-    const supabase = createClient()
-    const newStart = new Date(`${fecha}T${hora}:00`)
-    const newEnd = new Date(newStart.getTime() + (duracion || 50) * 60 * 1000)
-
-    const dayStart = `${fecha}T00:00:00.000Z`
-    const dayEnd   = `${fecha}T23:59:59.999Z`
-
-    const [{ data: turnosExistentes }, { data: entrevistasExistentes }] = await Promise.all([
-      supabase
-        .from('turnos')
-        .select('id, fecha_hora, duracion_min, estado, paciente_id, paciente:pacientes(nombre, apellido)')
-        .eq('terapeuta_id', terapeutaId)
-        .gte('fecha_hora', dayStart)
-        .lte('fecha_hora', dayEnd)
-        .not('estado', 'eq', 'cancelado'),
-      supabase
-        .from('entrevistas')
-        .select('id, hora, duracion, nombre, apellido')
-        .eq('terapeuta_id', terapeutaId)
-        .eq('fecha', fecha)
-        .not('estado', 'eq', 'cancelada'),
-    ])
-
-    const turnoConflicto = (turnosExistentes ?? []).find(t => {
-      const tStart = new Date(t.fecha_hora)
-      const tEnd = new Date(tStart.getTime() + (t.duracion_min ?? 50) * 60 * 1000)
-      return newStart < tEnd && newEnd > tStart
+    return validarConflictoHorario(createClient(), {
+      terapeutaId,
+      fecha,
+      hora,
+      duracion,
+      resolverNombrePaciente: (id) => {
+        const p = pacientes.find((x) => x.id === id)
+        return p ? `${p.nombre} ${p.apellido}` : null
+      },
     })
-
-    if (turnoConflicto) {
-      const pacLocal = pacientes.find((p) => p.id === turnoConflicto.paciente_id)
-      const nombre = pacLocal ? `${pacLocal.nombre} ${pacLocal.apellido}` : 'otro paciente'
-      const esPendientePago = turnoConflicto.estado === 'pendiente'
-      return {
-        hayConflicto: true,
-        mensaje: esPendientePago
-          ? `Este horario está reservado para ${nombre} con pago pendiente. Se liberará automáticamente si no se abona en el tiempo configurado.`
-          : `Este horario ya está ocupado por ${nombre}. Por favor elegí otro horario.`,
-      }
-    }
-
-    const entrevistaConflicto = (entrevistasExistentes ?? []).find(e => {
-      const eStart = new Date(`${fecha}T${e.hora}:00`)
-      const eEnd = new Date(eStart.getTime() + (e.duracion ?? 50) * 60 * 1000)
-      return newStart < eEnd && newEnd > eStart
-    })
-
-    if (entrevistaConflicto) {
-      return {
-        hayConflicto: true,
-        mensaje: `Este horario ya tiene una entrevista con ${entrevistaConflicto.nombre} ${entrevistaConflicto.apellido}. Por favor elegí otro horario.`,
-      }
-    }
-
-    return { hayConflicto: false }
   }
 
   async function crearEntrevista(esSobreturno: boolean) {
