@@ -56,6 +56,14 @@ ALTER TABLE public.nombre_tabla ENABLE ROW LEVEL SECURITY;
 Without these GRANTs the table is inaccessible via supabase-js and the app fails silently.
 Always include them in the same migration file as the CREATE TABLE.
 
+### Tablas y funciones nuevas en Supabase (obligatorio desde 30/10/2026)
+- Toda tabla nueva en `public` necesita GRANT explícito en la misma migración/SQL que la crea: `select, insert, update, delete` a `authenticated` y a `service_role`.
+- `anon`: solo `select`, y solo si la tabla se consulta sin sesión vía supabase-js. Si el acceso público pasa por un endpoint con `service_role`, NO dar grants a `anon`.
+- Toda tabla nueva: `enable row level security` + policies explícitas.
+- Funciones RPC `SECURITY DEFINER`: `revoke execute ... from public, anon;` y `grant execute ... to authenticated, service_role;` según corresponda.
+- Sin GRANT, la Data API devuelve "permission denied": no es un bug de código.
+- El SQL se ejecuta manualmente en el dashboard de Supabase, nunca dentro del prompt de Claude Code.
+
 ## CRITICAL — Mandatory testing after auth/middleware changes
 
 Any change to middleware, auth routes, profiles, RLS policies, or handle_new_user trigger REQUIRES completing full registration+login test before pushing to main:
