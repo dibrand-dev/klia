@@ -30,6 +30,7 @@ interface MessageWebhook {
   from?: string
   type?: string
   timestamp?: string
+  text?: { body?: string }
   button?: { payload?: string; text?: string }
 }
 
@@ -89,6 +90,18 @@ async function procesarStatus(db: SupabaseClient, status: StatusWebhook) {
     .from('whatsapp_mensajes')
     .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
     .eq('wa_message_id', status.id)
+}
+
+// Quita tildes, pasa a minúsculas y quita puntuación — comparación exacta
+// después ("=== 'baja'"), nunca includes/regex abiertas sobre el texto
+// original (un mensaje que solo menciona la palabra de pasada no debe
+// darse de baja por accidente).
+function normalizarTextoBaja(raw: string): string {
+  return raw
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .trim()
 }
 
 function textoRespuesta(resultado: Awaited<ReturnType<typeof aplicarAccionTurno>>): string {
@@ -213,6 +226,57 @@ async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneN
     return
   }
 
+  // Baja (BAJA/STOP) — corta el flujo antes del límite de 24hs y de la
+  // respuesta genérica, nunca se guarda el contenido del mensaje.
+  const textoNormalizado = message.text?.body ? normalizarTextoBaja(message.text.body) : ''
+  if (textoNormalizado === 'baja' || textoNormalizado === 'stop') {
+    const { data: recordatoriosPrevios } = await db
+      .from('whatsapp_mensajes')
+      .select('paciente_id')
+      .eq('telefono', telefono)
+      .eq('tipo', 'recordatorio')
+      .not('paciente_id', 'is', null)
+
+    const pacienteIds = Array.from(new Set(
+      (recordatoriosPrevios ?? []).map((r) => r.paciente_id as string).filter(Boolean)
+    ))
+
+    if (pacienteIds.length > 0) {
+      const { error: optOutError } = await db
+        .from('pacientes')
+        .update({ whatsapp_opt_in: false })
+        .in('id', pacienteIds)
+      if (optOutError) {
+        console.error('[whatsapp/webhook] Error al dar de baja whatsapp_opt_in:', optOutError)
+      }
+    }
+
+    const { error: bajaError } = await db.from('whatsapp_mensajes').insert({
+      tipo: 'baja_recibida',
+      telefono,
+      estado: 'recibido',
+      paciente_id: pacienteIds[0] ?? null,
+    })
+    if (bajaError) {
+      console.error('[whatsapp/webhook] Error al registrar baja:', bajaError)
+    }
+
+    const destinoPhoneNumberIdBaja = phoneNumberId ?? process.env.WHATSAPP_PHONE_NUMBER_ID
+    if (destinoPhoneNumberIdBaja) {
+      try {
+        await enviarTexto({
+          to: telefono,
+          phoneNumberId: destinoPhoneNumberIdBaja,
+          body: 'Listo, no vas a recibir más recordatorios por WhatsApp de KLIA. Si querés volver a recibirlos, pedíselo a tu profesional.',
+        })
+      } catch (e) {
+        console.error('[whatsapp/webhook] Error al responder baja por WhatsApp:', e)
+      }
+    }
+
+    return
+  }
+
   // 3) Límite: como mucho una respuesta automática por teléfono cada 24hs —
   // evita mandar el mismo texto en cada mensaje de una conversación larga.
   const hace24hs = new Date(Date.now() - VENTANA_LIMITE_RESPUESTA_MS).toISOString()
@@ -254,9 +318,10 @@ async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneN
   const telefonoNormalizado = profesional?.telefono ? normalizarTelefonoAR(profesional.telefono) : null
   const telefonoFormateado = telefonoNormalizado ? `+${telefonoNormalizado}` : profesional?.telefono
 
-  const texto = profesional
+  const textoBase = profesional
     ? `Este es un canal automático y no lo atiende una persona.\nPara consultas, comunicate con ${profesional.nombre} ${profesional.apellido}${telefonoFormateado ? `, al ${telefonoFormateado}` : ''}.`
     : 'Este es un canal automático y no lo atiende una persona. Para consultas, comunicate directamente con tu profesional.'
+  const texto = `${textoBase}\nPara dejar de recibir recordatorios, respondé BAJA.`
 
   // 5) Enviar — solo texto libre (enviarTexto), nunca enviarTemplateRecordatorio
   // ni otra plantilla, acá o en cualquier otro punto de este webhook.
