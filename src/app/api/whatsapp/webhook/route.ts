@@ -99,6 +99,34 @@ function textoRespuesta(resultado: Awaited<ReturnType<typeof aplicarAccionTurno>
     : 'Cancelamos tu turno. Esperamos verte en otra oportunidad.'
 }
 
+// No existe un módulo de plan para "link público reservas" en modulos_config
+// (se revisó en el PASO 1 — no hay fila, a diferencia de 'whatsapp' o
+// 'tipos_turno') — el único control real es si el profesional tiene su
+// booking activo. Cliente service_role (db, ya resuelto por el caller),
+// nunca el del usuario. Cualquier error se loguea y devuelve null — el
+// caller sigue respondiendo sin link, nunca deja de responder.
+async function obtenerLinkReserva(db: SupabaseClient, terapeutaId: string): Promise<string | null> {
+  try {
+    const { data, error } = await db
+      .from('profiles')
+      .select('booking_slug, booking_activo')
+      .eq('id', terapeutaId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[whatsapp/webhook] Error al buscar booking_slug:', error)
+      return null
+    }
+    if (!data?.booking_slug || !data.booking_activo) return null
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
+    return `${appUrl}/p/${data.booking_slug}`
+  } catch (e) {
+    console.error('[whatsapp/webhook] Error al buscar booking_slug:', e)
+    return null
+  }
+}
+
 async function procesarBoton(db: SupabaseClient, message: MessageWebhook, phoneNumberId: string | undefined) {
   const waMessageId = message.id
   const telefono = message.from
@@ -131,6 +159,14 @@ async function procesarBoton(db: SupabaseClient, message: MessageWebhook, phoneN
 
   const resultado = await aplicarAccionTurno(token, accion)
 
+  let texto = textoRespuesta(resultado)
+  if (resultado.ok && resultado.recienAplicado && resultado.estado === 'cancelado') {
+    const linkReserva = await obtenerLinkReserva(db, resultado.terapeutaId)
+    if (linkReserva) {
+      texto = `${texto}\n\nAgendá un nuevo turno:\n${linkReserva}`
+    }
+  }
+
   // El número desde el que respondemos es el mismo que recibió el mensaje
   // (metadata.phone_number_id del propio webhook) — más confiable que
   // re-derivarlo por terapeuta_id, y sigue funcionando aunque aplicarAccionTurno
@@ -139,7 +175,7 @@ async function procesarBoton(db: SupabaseClient, message: MessageWebhook, phoneN
   if (!destinoPhoneNumberId) return
 
   try {
-    await enviarTexto({ to: telefono, phoneNumberId: destinoPhoneNumberId, body: textoRespuesta(resultado) })
+    await enviarTexto({ to: telefono, phoneNumberId: destinoPhoneNumberId, body: texto })
   } catch (e) {
     console.error('[whatsapp/webhook] Error al responder por WhatsApp:', e)
   }
