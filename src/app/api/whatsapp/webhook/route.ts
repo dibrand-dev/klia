@@ -16,6 +16,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const ORDEN_ESTADO: Record<string, number> = { enviando: 0, enviado: 1, entregado: 2, leido: 3 }
 const MAP_ESTADO_META: Record<string, string> = { sent: 'enviado', delivered: 'entregado', read: 'leido' }
 
+const VENTANA_FRESCURA_MS = 60 * 60 * 1000 // 1 hora
+const VENTANA_LIMITE_RESPUESTA_MS = 24 * 60 * 60 * 1000 // 24 horas
+
 interface StatusWebhook {
   id?: string
   status?: string
@@ -26,6 +29,7 @@ interface MessageWebhook {
   id?: string
   from?: string
   type?: string
+  timestamp?: string
   button?: { payload?: string; text?: string }
 }
 
@@ -181,14 +185,110 @@ async function procesarBoton(db: SupabaseClient, message: MessageWebhook, phoneN
   }
 }
 
+// Respuesta automática a texto libre — costo cero para KLIA (solo enviarTexto,
+// nunca una plantilla paga). No guarda el contenido del mensaje del paciente
+// en ningún momento (podría ser un dato de salud, Ley 25.326) — solo el
+// teléfono, igual que el resto de whatsapp_mensajes.
+async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneNumberId: string | undefined) {
+  const waMessageId = message.id
+  const telefono = message.from
+  if (!waMessageId || !telefono) return
+
+  // 1) Frescura: un mensaje de más de 1h (reintento tardío de Meta, cola
+  // atrasada) no genera respuesta ni deja rastro.
+  const timestampMs = message.timestamp ? Number(message.timestamp) * 1000 : NaN
+  if (!Number.isFinite(timestampMs) || Date.now() - timestampMs > VENTANA_FRESCURA_MS) return
+
+  // 2) Dedupe — mismo patrón que procesarBoton (wa_message_id UNIQUE).
+  const { error: dedupeError } = await db.from('whatsapp_mensajes').insert({
+    wa_message_id: waMessageId,
+    tipo: 'entrante_texto',
+    telefono,
+    estado: 'recibido',
+  })
+  if (dedupeError) {
+    if (dedupeError.code !== '23505') {
+      console.error('[whatsapp/webhook] Error al registrar mensaje de texto entrante:', dedupeError)
+    }
+    return
+  }
+
+  // 3) Límite: como mucho una respuesta automática por teléfono cada 24hs —
+  // evita mandar el mismo texto en cada mensaje de una conversación larga.
+  const hace24hs = new Date(Date.now() - VENTANA_LIMITE_RESPUESTA_MS).toISOString()
+  const { data: respuestaPrevia } = await db
+    .from('whatsapp_mensajes')
+    .select('id')
+    .eq('telefono', telefono)
+    .eq('tipo', 'respuesta_automatica')
+    .gte('created_at', hace24hs)
+    .limit(1)
+    .maybeSingle()
+  if (respuestaPrevia) return
+
+  // 4) Resolver profesional — el último recordatorio mandado a este teléfono
+  // es la única pista disponible de qué profesional corresponde (el texto
+  // entrante no trae esa relación).
+  const { data: ultimoRecordatorio } = await db
+    .from('whatsapp_mensajes')
+    .select('profesional_id')
+    .eq('telefono', telefono)
+    .eq('tipo', 'recordatorio')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let profesional: { nombre: string; apellido: string; telefono: string | null } | null = null
+  if (ultimoRecordatorio?.profesional_id) {
+    const { data } = await db
+      .from('profiles')
+      .select('nombre, apellido, telefono')
+      .eq('id', ultimoRecordatorio.profesional_id)
+      .maybeSingle()
+    profesional = data ?? null
+  }
+
+  const texto = profesional
+    ? `Este es un canal automático y no lo atiende una persona.\nPara consultas, comunicate con ${profesional.nombre} ${profesional.apellido}${profesional.telefono ? `, al ${profesional.telefono}` : ''}.`
+    : 'Este es un canal automático y no lo atiende una persona. Para consultas, comunicate directamente con tu profesional.'
+
+  // 5) Enviar — solo texto libre (enviarTexto), nunca enviarTemplateRecordatorio
+  // ni otra plantilla, acá o en cualquier otro punto de este webhook.
+  const destinoPhoneNumberId = phoneNumberId ?? process.env.WHATSAPP_PHONE_NUMBER_ID
+  if (!destinoPhoneNumberId) return
+
+  try {
+    await enviarTexto({ to: telefono, phoneNumberId: destinoPhoneNumberId, body: texto })
+  } catch (e) {
+    console.error('[whatsapp/webhook] Error al responder texto libre por WhatsApp:', e)
+    return
+  }
+
+  // 6) Registrar el envío — recién si realmente salió, para no activar el
+  // límite de 24hs del punto 3 sobre una respuesta que nunca llegó.
+  const { error: registroError } = await db.from('whatsapp_mensajes').insert({
+    tipo: 'respuesta_automatica',
+    telefono,
+    estado: 'enviando',
+    profesional_id: ultimoRecordatorio?.profesional_id ?? null,
+  })
+  if (registroError) {
+    console.error('[whatsapp/webhook] Error al registrar respuesta automática:', registroError)
+  }
+}
+
 async function procesarValor(db: SupabaseClient, valor: ValorWebhook) {
   for (const status of valor.statuses ?? []) {
     await procesarStatus(db, status)
   }
 
   for (const message of valor.messages ?? []) {
-    if (message.type !== 'button') continue // otros tipos (texto libre, imagen, etc.) se ignoran
-    await procesarBoton(db, message, valor.metadata?.phone_number_id)
+    if (message.type === 'button') {
+      await procesarBoton(db, message, valor.metadata?.phone_number_id)
+    } else if (message.type === 'text') {
+      await procesarTexto(db, message, valor.metadata?.phone_number_id)
+    }
+    // otros tipos (imagen, audio, ubicación, etc.) se ignoran
   }
 }
 
