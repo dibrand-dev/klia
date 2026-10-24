@@ -12,6 +12,15 @@ export function ventanaDiaSiguienteAR(now = new Date()) {
   return { desde, hasta }
 }
 
+// Inicio del mes calendario actual en hora Argentina (00:00 del día 1),
+// expresado como instante UTC real — mismo motivo que ventanaDiaSiguienteAR:
+// evita toLocaleString/Date local del servidor (corre en UTC).
+export function inicioMesActualAR(now = new Date()): Date {
+  const ar = new Date(now.getTime() - AR_OFFSET_MS)
+  const y = ar.getUTCFullYear(), m = ar.getUTCMonth()
+  return new Date(Date.UTC(y, m, 1, 0, 0, 0, 0) + AR_OFFSET_MS)
+}
+
 // Fecha/hora legibles en hora Argentina para mails y respuestas de API —
 // nunca date-fns format() en servidor (su locale 'es' no lleva timeZone y
 // termina formateando en la hora del server, no en AR).

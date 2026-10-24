@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { whatsappDb, enviarTexto, normalizarTelefonoAR } from '@/lib/whatsapp'
 import { aplicarAccionTurno } from '@/lib/turnos-accion'
+import { inicioMesActualAR } from '@/lib/tz'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,10 @@ const MAP_ESTADO_META: Record<string, string> = { sent: 'enviado', delivered: 'e
 
 const VENTANA_FRESCURA_MS = 60 * 60 * 1000 // 1 hora
 const VENTANA_LIMITE_RESPUESTA_MS = 24 * 60 * 60 * 1000 // 24 horas
+
+// Tope global mensual de respuestas automáticas (no aplica a la baja, que
+// nunca debe quedar bloqueada por costo/volumen).
+const TOPE_RESPUESTAS_MES = Number(process.env.WHATSAPP_TOPE_RESPUESTAS_MES ?? 900)
 
 interface StatusWebhook {
   id?: string
@@ -302,6 +307,13 @@ async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneN
     .limit(1)
     .maybeSingle()
 
+  // Si el teléfono nunca recibió un recordatorio, no es un paciente alcanzado
+  // por la app — no responder nada (evita gastar cupo/costo en desconocidos).
+  if (!ultimoRecordatorio) {
+    console.log('[whatsapp/webhook] Texto entrante sin recordatorio previo, no se responde:', telefono)
+    return
+  }
+
   let profesional: { nombre: string; apellido: string; telefono: string | null } | null = null
   if (ultimoRecordatorio?.profesional_id) {
     const { data } = await db
@@ -322,6 +334,21 @@ async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneN
     ? `Este es un canal automático y no lo atiende una persona.\nPara consultas, comunicate con ${profesional.nombre} ${profesional.apellido}${telefonoFormateado ? `, al ${telefonoFormateado}` : ''}.`
     : 'Este es un canal automático y no lo atiende una persona. Para consultas, comunicate directamente con tu profesional.'
   const texto = `${textoBase}\nPara dejar de recibir recordatorios, respondé BAJA.`
+
+  // Tope mensual global — cuenta todas las respuestas automáticas del mes
+  // calendario en curso (hora Argentina), sin importar el teléfono. La baja
+  // ('baja_recibida') nunca pasa por esta rama, así que no cuenta ni se
+  // bloquea por este tope.
+  const inicioMes = inicioMesActualAR().toISOString()
+  const { count: respuestasDelMes } = await db
+    .from('whatsapp_mensajes')
+    .select('id', { count: 'exact', head: true })
+    .eq('tipo', 'respuesta_automatica')
+    .gte('created_at', inicioMes)
+  if ((respuestasDelMes ?? 0) >= TOPE_RESPUESTAS_MES) {
+    console.warn('[whatsapp/webhook] Tope mensual de respuestas automáticas alcanzado:', respuestasDelMes)
+    return
+  }
 
   // 5) Enviar — solo texto libre (enviarTexto), nunca enviarTemplateRecordatorio
   // ni otra plantilla, acá o en cualquier otro punto de este webhook.
