@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { whatsappDb, enviarTexto } from '@/lib/whatsapp'
+import { whatsappDb, enviarTexto, normalizarTelefonoAR } from '@/lib/whatsapp'
 import { aplicarAccionTurno } from '@/lib/turnos-accion'
 
 export const runtime = 'nodejs'
@@ -248,8 +248,14 @@ async function procesarTexto(db: SupabaseClient, message: MessageWebhook, phoneN
     profesional = data ?? null
   }
 
+  // Formato internacional (+5491165939115) cuando se puede normalizar; si no
+  // (número no-AR, formato que normalizarTelefonoAR no reconoce), se muestra
+  // tal cual está cargado en el perfil en vez de omitirlo.
+  const telefonoNormalizado = profesional?.telefono ? normalizarTelefonoAR(profesional.telefono) : null
+  const telefonoFormateado = telefonoNormalizado ? `+${telefonoNormalizado}` : profesional?.telefono
+
   const texto = profesional
-    ? `Este es un canal automático y no lo atiende una persona.\nPara consultas, comunicate con ${profesional.nombre} ${profesional.apellido}${profesional.telefono ? `, al ${profesional.telefono}` : ''}.`
+    ? `Este es un canal automático y no lo atiende una persona.\nPara consultas, comunicate con ${profesional.nombre} ${profesional.apellido}${telefonoFormateado ? `, al ${telefonoFormateado}` : ''}.`
     : 'Este es un canal automático y no lo atiende una persona. Para consultas, comunicate directamente con tu profesional.'
 
   // 5) Enviar — solo texto libre (enviarTexto), nunca enviarTemplateRecordatorio
