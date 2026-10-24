@@ -8,6 +8,7 @@ interface FormData {
   email: string
   telefono: string
   coberturaId: string
+  whatsappOptIn: boolean
 }
 
 type TipoResuelto = {
@@ -234,6 +235,28 @@ export default function StepDatos({
           placeholder="11 1234-5678"
           prefix="+54"
         />
+
+        <label
+          htmlFor="bk-whatsapp-opt-in"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 16,
+            fontSize: 13,
+            color: '#5B6472',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            id="bk-whatsapp-opt-in"
+            type="checkbox"
+            checked={form.whatsappOptIn}
+            onChange={(e) => onForm({ ...form, whatsappOptIn: e.target.checked })}
+            style={{ width: 16, height: 16, flexShrink: 0 }}
+          />
+          Quiero recibir recordatorios por WhatsApp
+        </label>
 
         <div style={{ marginBottom: 16 }}>
           <label

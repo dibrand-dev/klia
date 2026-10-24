@@ -49,6 +49,7 @@ function buildForm(p: Paciente) {
     dni: p.dni ?? '',
     fecha_nacimiento: p.fecha_nacimiento ?? '',
     telefono: p.telefono ?? '',
+    whatsappOptIn: (p as unknown as { whatsapp_opt_in?: boolean }).whatsapp_opt_in ?? false,
     email: p.email ?? '',
     genero: p.genero ?? '',
     nacionalidad: p.nacionalidad ?? '',
@@ -272,6 +273,20 @@ export default function PacienteDetalle({
       return
     }
 
+    // whatsapp_opt_in no es parte del payload de arriba (columna nueva, todavía no
+    // en los tipos generados, y la RPC de colaboradora tiene un allow-list fijo que
+    // no la incluye) — se escribe en un update aparte, solo para el profesional dueño.
+    if (!esColaborador) {
+      const whatsappPayload = form.whatsappOptIn
+        ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString(), whatsapp_opt_in_origen: 'profesional' }
+        : { whatsapp_opt_in: false }
+      const { error: optInError } = await supabase
+        .from('pacientes')
+        .update(whatsappPayload as never)
+        .eq('id', paciente.id)
+      if (optInError) console.error('Error al guardar opt-in de WhatsApp:', optInError)
+    }
+
     if (form.obra_social === 'Otra' && form.os_nombre_libre.trim()) {
       const nombre = form.os_nombre_libre.trim()
       const { data: existing } = await supabase
@@ -410,6 +425,20 @@ export default function PacienteDetalle({
                 placeholder="Ej.: 11 1234-5678"
                 className="pd-phone-field"
               />
+              {/* No disponible para colaboradoras: la RPC actualizar_paciente_colaborador
+                  tiene un allow-list fijo de columnas y no incluye whatsapp_opt_in —
+                  requeriría un cambio de SQL fuera del alcance de esta tarea. */}
+              {!esColaborador && (
+                <label className="mt-1.5 flex items-center gap-2 text-xs text-on-surface-variant cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.whatsappOptIn}
+                    onChange={(e) => setForm((prev) => ({ ...prev, whatsappOptIn: e.target.checked }))}
+                    className="h-4 w-4 accent-primary flex-shrink-0"
+                  />
+                  El paciente aceptó recibir recordatorios por WhatsApp
+                </label>
+              )}
             </div>
             <div>
               <label className={labelCls}>Email</label>

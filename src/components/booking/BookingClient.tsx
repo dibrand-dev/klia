@@ -93,6 +93,7 @@ export default function BookingClient({ profile }: Props) {
     email: '',
     telefono: '',
     coberturaId: '',
+    whatsappOptIn: false,
   })
   const [confirmacion, setConfirmacion] = useState<ConfirmacionData | null>(null)
 

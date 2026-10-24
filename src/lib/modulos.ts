@@ -37,3 +37,30 @@ export async function puedeUsarTiposTurno(
   if (error || !data) return false
   return data.planes.includes(plan)
 }
+
+// Mismo criterio fail-closed que puedeUsarTiposTurno, pero resuelve el plan
+// del profesional acá adentro — a diferencia de esa (que lo recibe ya
+// resuelto por el caller), el cron de recordatorios y el webhook de
+// WhatsApp solo tienen a mano el terapeuta_id, nunca el plan ya leído.
+export async function puedeUsarWhatsApp(
+  supabase: SupabaseClient,
+  profesionalId: string,
+): Promise<boolean> {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', profesionalId)
+    .maybeSingle()
+
+  if (profileError || !profile) return false
+
+  const { data, error } = await supabase
+    .from('modulos_config')
+    .select('planes')
+    .eq('modulo_id', 'whatsapp')
+    .eq('activo', true)
+    .maybeSingle()
+
+  if (error || !data) return false
+  return data.planes.includes(profile.plan ?? '')
+}

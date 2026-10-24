@@ -75,9 +75,10 @@ export async function POST(req: NextRequest) {
     cobertura_id?: string
     sede_id?: string
     tipo_turno_id?: string
+    whatsapp_opt_in?: boolean
   }
 
-  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId, tipo_turno_id: tipoTurnoId } = body
+  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId, tipo_turno_id: tipoTurnoId, whatsapp_opt_in: whatsappOptIn } = body
 
   if (!slug || !fecha || !hora || !tipo || !nombre || !apellido || !email) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -186,6 +187,14 @@ export async function POST(req: NextRequest) {
     if (!existing.activo) {
       patch.activo = true
     }
+    // Solo se escribe si vino marcado — no marcado no significa "retirar el
+    // consentimiento", puede ser simplemente que esta reserva no lo pidió de
+    // nuevo (ya lo dio antes el profesional desde la ficha, por ejemplo).
+    if (whatsappOptIn) {
+      patch.whatsapp_opt_in = true
+      patch.whatsapp_opt_in_at = new Date().toISOString()
+      patch.whatsapp_opt_in_origen = 'reserva_publica'
+    }
     if (Object.keys(patch).length > 0) {
       await db.from('pacientes').update(patch).eq('id', pacienteId)
     }
@@ -201,6 +210,7 @@ export async function POST(req: NextRequest) {
         activo: true,
         motivo_consulta: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,
         ...(!esParticular && osEncontrada ? { obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id } : {}),
+        ...(whatsappOptIn ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString(), whatsapp_opt_in_origen: 'reserva_publica' } : {}),
       })
       .select('id')
       .single()
