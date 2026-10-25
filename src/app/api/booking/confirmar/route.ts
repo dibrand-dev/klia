@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
+import { crearReservaDesdePago } from '@/lib/booking/crear-reserva-desde-pago'
 import { formatFechaHoraArgentina } from '@/lib/timezone'
 import { serviceClient } from '@/lib/supabase/service'
 
@@ -16,44 +16,51 @@ export async function POST(req: NextRequest) {
 
   const db = serviceClient()
 
-  // 1. Find sesion_pago by hash
-  const { data: sesion } = await db
-    .from('sesiones_pago')
+  const { data: reserva } = await db
+    .from('reservas_pendientes_pago')
     .select('*')
     .eq('hash', hash)
     .maybeSingle()
 
-  if (!sesion) {
-    return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+  if (!reserva) {
+    return NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 })
   }
 
-  if (sesion.estado === 'pagado') {
-    // Already confirmed (idempotent)
-    const { data: turno } = await db.from('turnos').select('fecha_hora, duracion_min, google_event_id, meet_link').eq('id', sesion.turno_id).single()
+  if (reserva.estado === 'procesada' && reserva.turno_id) {
+    // Ya confirmada (doble click, reintento del Brick) — idempotente: se
+    // devuelve el turno ya creado, nunca se vuelve a cobrar.
+    const [{ data: turno }, { data: sesionPago }] = await Promise.all([
+      db.from('turnos').select('fecha_hora, duracion_min, google_event_id, meet_link').eq('id', reserva.turno_id).maybeSingle(),
+      db.from('sesiones_pago').select('mp_payment_id').eq('turno_id', reserva.turno_id).maybeSingle(),
+    ])
     const fechaHora = turno?.fecha_hora ?? ''
     return NextResponse.json({
       ok: true,
-      turno_id: sesion.turno_id,
-      mp_payment_id: sesion.mp_payment_id,
+      turno_id: reserva.turno_id,
+      mp_payment_id: sesionPago?.mp_payment_id ?? null,
       fecha_fmt: formatFechaHoraArgentina(fechaHora, 'fecha'),
       hora: formatFechaHoraArgentina(fechaHora, 'hora'),
       duracion: turno?.duracion_min ?? 50,
-      monto: sesion.monto,
-      moneda: sesion.moneda,
-      referencia: sesion.mp_payment_id ?? hash,
+      monto: reserva.monto ?? 0,
+      moneda: reserva.moneda,
+      referencia: sesionPago?.mp_payment_id ?? hash,
       medio_pago: 'mp' as const,
       google_event_id: turno?.google_event_id ?? null,
       meet_link: turno?.meet_link ?? null,
     })
   }
 
-  // 2. Get turno + professional profile
-  const [{ data: turno }, { data: profile }] = await Promise.all([
-    db.from('turnos').select('*, paciente:pacientes(*)').eq('id', sesion.turno_id).single(),
-    db.from('profiles').select('nombre, apellido, especialidad, mp_access_token').eq('id', sesion.terapeuta_id).single(),
-  ])
+  if (reserva.estado !== 'pendiente') {
+    return NextResponse.json({ error: 'La reserva ya no está disponible' }, { status: 409 })
+  }
 
-  if (!turno || !profile) {
+  const { data: profile } = await db
+    .from('profiles')
+    .select('nombre, apellido, mp_access_token')
+    .eq('id', reserva.terapeuta_id)
+    .single()
+
+  if (!profile) {
     return NextResponse.json({ error: 'Datos no encontrados' }, { status: 404 })
   }
 
@@ -61,12 +68,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Profesional sin Mercado Pago configurado' }, { status: 400 })
   }
 
-  // 3. Process MP payment
+  // Procesar el pago con MP — el turno/paciente todavía no existen, se crean
+  // recién si el pago queda aprobado (crearReservaDesdePago).
   const mpPayload = {
     ...(formData ?? {}),
-    transaction_amount: sesion.monto,
-    description: `${turno.notas ?? 'Sesión'} con ${profile.nombre} ${profile.apellido}`,
-    metadata: { hash, turno_id: turno.id, terapeuta_id: sesion.terapeuta_id },
+    transaction_amount: reserva.monto,
+    description: `${reserva.tipo_turno === 'entrevista' ? 'Entrevista inicial' : 'Sesión'} con ${profile.nombre} ${profile.apellido}`,
+    metadata: { hash, booking: true },
   }
 
   const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
@@ -84,52 +92,37 @@ export async function POST(req: NextRequest) {
   const mpPaymentId = mpData.id ? String(mpData.id) : null
 
   if (mpStatus !== 'approved') {
-    const { error: fallidoErr } = await db.from('sesiones_pago')
-      .update({ estado: 'fallido', mp_payment_id: mpPaymentId, updated_at: new Date().toISOString() })
-      .eq('id', sesion.id)
-    if (fallidoErr) console.error('[booking/confirmar] Error al marcar sesion_pago fallido:', fallidoErr)
-
+    // Rechazado o pendiente: no se crea nada — la reserva sigue 'pendiente'
+    // para que el paciente pueda reintentar hasta que expire.
     return NextResponse.json(
       { error: 'payment_rejected', detail: mpData.status_detail },
       { status: 402 }
     )
   }
 
-  // 4. Mark as paid
-  const [{ error: sesionErr }, { error: turnoErr }] = await Promise.all([
-    db.from('sesiones_pago')
-      .update({ estado: 'pagado', mp_payment_id: mpPaymentId, updated_at: new Date().toISOString() })
-      .eq('id', sesion.id),
-    db.from('turnos')
-      .update({ estado: 'confirmado', pagado: true, estado_pago: 'pagado', monto_pagado: sesion.monto })
-      .eq('id', turno.id),
-  ])
-  if (sesionErr) console.error('[booking/confirmar] Error al marcar sesion_pago pagado:', sesionErr)
-  if (turnoErr) console.error('[booking/confirmar] Error al confirmar turno:', turnoErr)
-
-  // 5. Sincronizar Google Calendar (con Meet si aplica) y mandar el email de
-  // confirmación al paciente — ambas partes aisladas entre sí.
-  const fechaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'fecha')
-  const horaFmt = formatFechaHoraArgentina(turno.fecha_hora, 'hora')
-
-  const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, sesion.terapeuta_id, 'mercadopago', {
-    monto: sesion.monto,
-    moneda: sesion.moneda,
+  const resultado = await crearReservaDesdePago(hash, 'mercadopago', {
+    monto: reserva.monto ?? 0,
+    moneda: reserva.moneda ?? 'ARS',
     referencia: mpPaymentId ?? hash,
   })
 
+  if (!resultado.turnoId) {
+    console.error('[booking/confirmar] crearReservaDesdePago no devolvió turno para hash:', hash)
+    return NextResponse.json({ error: 'No se pudo confirmar la reserva' }, { status: 500 })
+  }
+
   return NextResponse.json({
     ok: true,
-    turno_id: turno.id,
+    turno_id: resultado.turnoId,
     mp_payment_id: mpPaymentId,
-    fecha_fmt: fechaFmt,
-    hora: horaFmt,
-    duracion: turno.duracion_min,
-    monto: sesion.monto,
-    moneda: sesion.moneda,
+    fecha_fmt: formatFechaHoraArgentina(resultado.fechaHora ?? '', 'fecha'),
+    hora: formatFechaHoraArgentina(resultado.fechaHora ?? '', 'hora'),
+    duracion: resultado.duracionMin ?? 50,
+    monto: reserva.monto ?? 0,
+    moneda: reserva.moneda,
     referencia: mpPaymentId ?? hash,
     medio_pago: 'mp' as const,
-    google_event_id: googleEventId,
-    meet_link: meetLink,
+    google_event_id: resultado.googleEventId,
+    meet_link: resultado.meetLink,
   })
 }

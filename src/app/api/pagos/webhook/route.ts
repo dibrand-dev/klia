@@ -3,9 +3,59 @@ import { enviarEmail } from '@/lib/brevo'
 import { emailPagoSesionConfirmada, emailPagoSesionRechazada, emailPagoRecibidoTurnoCancelado } from '@/lib/email-templates'
 import { mpAccessToken } from '@/lib/mercadopago'
 import { sincronizarTurnoCreado } from '@/lib/sync-google-calendar'
+import { crearReservaDesdePago } from '@/lib/booking/crear-reserva-desde-pago'
 import { formatFechaHoraAR } from '@/lib/tz'
 import { serviceClient } from '@/lib/supabase/service'
 import crypto from 'crypto'
+
+// Reserva pública particular con pago exigido — paciente/turno no existen
+// todavía (reservas_pendientes_pago), se crean recién si el pago se aprueba.
+// Separado del resto del webhook porque, a diferencia del flujo de
+// sesiones_pago, acá nunca hay nada previo que cancelar/marcar en caso de
+// rechazo: la reserva simplemente sigue 'pendiente' y expira sola.
+async function procesarPagoDeReservaPendiente(
+  db: ReturnType<typeof serviceClient>,
+  hash: string,
+  paymentId: string,
+) {
+  const { data: reserva } = await db.from('reservas_pendientes_pago').select('*').eq('hash', hash).maybeSingle()
+  if (!reserva) return NextResponse.json({ ok: true })
+
+  const { data: profToken } = await db.from('profiles').select('mp_access_token').eq('id', reserva.terapeuta_id).single()
+  if (!profToken?.mp_access_token) {
+    console.error('[webhook] Profesional sin mp_access_token (reserva pendiente):', reserva.terapeuta_id)
+    return NextResponse.json({ ok: true })
+  }
+
+  const payRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${profToken.mp_access_token}` },
+  })
+  if (!payRes.ok) {
+    console.error('[webhook] Could not fetch payment (reserva pendiente)', paymentId, await payRes.text())
+    return NextResponse.json({ ok: true })
+  }
+  const mpPayment = await payRes.json() as Record<string, unknown>
+
+  const metadataHash = (mpPayment.metadata as Record<string, unknown> | null)?.hash as string | undefined
+  const transactionAmount = mpPayment.transaction_amount as number | undefined
+  if (metadataHash !== reserva.hash || (transactionAmount ?? 0) < (reserva.monto ?? 0)) {
+    console.error('[webhook] Pago no corresponde a la reserva — hash o monto no coinciden', {
+      paymentId, hash: reserva.hash, metadataHash, transactionAmount, monto: reserva.monto,
+    })
+    return NextResponse.json({ ok: true })
+  }
+
+  if ((mpPayment.status as string) === 'approved') {
+    await crearReservaDesdePago(hash, 'mercadopago', {
+      monto: reserva.monto ?? 0,
+      moneda: reserva.moneda ?? 'ARS',
+      referencia: String(paymentId),
+    })
+  }
+  // Rechazado o pendiente: no se crea nada — la reserva sigue 'pendiente'.
+
+  return NextResponse.json({ ok: true })
+}
 
 function validateSignature(req: NextRequest, rawBody: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET
@@ -78,7 +128,13 @@ export async function POST(req: NextRequest) {
 
   if (hashQuery) {
     const { data: sesionData } = await db.from('sesiones_pago').select('*').eq('hash', hashQuery).maybeSingle()
-    if (!sesionData) return NextResponse.json({ ok: true })
+
+    if (!sesionData) {
+      // No es una sesión de cobro ya existente (pagos/crear, o una preferencia
+      // vieja de booking) — es una reserva pública particular con pago
+      // exigido, todavía sin paciente/turno.
+      return procesarPagoDeReservaPendiente(db, hashQuery, paymentId)
+    }
     sesion = sesionData as SesionPago
 
     const { data: profToken } = await db.from('profiles').select('mp_access_token').eq('id', sesion.terapeuta_id).single()

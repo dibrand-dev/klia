@@ -14,6 +14,20 @@ export async function GET(req: NextRequest) {
 
   const db = serviceClient()
 
+  // Limpieza de reservas_pendientes_pago abandonadas — 'pendiente' y con
+  // expira_at de hace más de 2 días. El margen (vs. los 30 min de expira_at
+  // en sí) es a propósito: crearReservaDesdePago nunca valida expira_at (un
+  // pago aprobado es real aunque llegue tarde), así que esto solo borra lo
+  // que quedó abandonado de verdad, nunca una reserva que todavía podría
+  // resolverse con un pago tardío.
+  const dosDiasAtras = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  const { error: limpiezaError } = await db
+    .from('reservas_pendientes_pago')
+    .delete()
+    .eq('estado', 'pendiente')
+    .lt('expira_at', dosDiasAtras)
+  if (limpiezaError) console.error('[vencer] Error al limpiar reservas_pendientes_pago vencidas:', limpiezaError)
+
   // Cutoff = start of today in Argentina (UTC-3, no DST).
   // Argentina midnight = 03:00 UTC of the same calendar date.
   // We only notify sessions that expired BEFORE today (Argentine calendar),

@@ -321,7 +321,7 @@ export default function StepPago({
       const res = await fetch('/api/booking/mp-preferencia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turno_id: reserva.turno_id, hash: reserva.hash }),
+        body: JSON.stringify({ hash: reserva.hash }),
       })
       const data = await res.json()
       if (!res.ok || data.error) {
@@ -345,7 +345,7 @@ export default function StepPago({
       const res = await fetch('/api/booking/confirmar-transferencia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turno_id: reserva.turno_id, hash: reserva.hash }),
+        body: JSON.stringify({ hash: reserva.hash }),
       })
       const data = await res.json()
       if (!res.ok || data.error) {
