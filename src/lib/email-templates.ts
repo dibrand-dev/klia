@@ -514,6 +514,20 @@ export function emailPagoRecibidoTurnoCancelado(params: {
   `, 'Pago recibido — turno cancelado — KLIA')
 }
 
+export function emailSobreturnoReservaPublica(params: {
+  pacienteNombre: string
+  fecha: string
+  hora: string
+}): string {
+  return baseTemplate(`
+    ${icon('⚠️', '#FFFBEB')}
+    ${h1('Reserva online confirmada como sobreturno')}
+    ${para(`<strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong> pagó y confirmó una sesión para el ${params.fecha} a las ${params.hora} hs, pero ese horario ya estaba ocupado por otro turno al momento de aprobarse el pago.`)}
+    ${infoBox('El turno se creó igual, marcado como sobreturno, para no perder un pago ya realizado. Revisalo en tu Agenda y coordiná con los pacientes involucrados si hace falta.', '#FFFBEB', '#F59E0B', '#92400E')}
+    ${help(`Dudas: <a href="mailto:hola@klia.com.ar" style="color:#2563EB;text-decoration:none;font-weight:600;">hola@klia.com.ar</a>`)}
+  `, 'Sobreturno por reserva online — KLIA')
+}
+
 export function emailPagoSesionRechazada(params: {
   destinatario: 'paciente' | 'profesional'
   pacienteNombre: string

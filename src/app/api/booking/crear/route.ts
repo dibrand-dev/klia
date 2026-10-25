@@ -1,64 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { addMinutes, format, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
+import { isSlotAvailable } from '@/lib/booking/slot-disponible'
 import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
-import { ARGENTINA_TZ, zonedDateArgentina } from '@/lib/timezone'
+import { ARGENTINA_TZ } from '@/lib/timezone'
 import { serviceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+const TREINTA_MIN_MS = 30 * 60 * 1000
+
 function shortId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
-}
-
-function timeToMin(t: string) { const [h, m] = t.split(':').map(Number); return h * 60 + m }
-function pad(n: number) { return String(n).padStart(2, '0') }
-function minToTime(m: number) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}` }
-
-async function isSlotAvailable(
-  db: ReturnType<typeof serviceClient>,
-  profileId: string,
-  fecha: string,
-  hora: string,
-  duracion: number,
-): Promise<boolean> {
-  const slotStart = timeToMin(hora)
-  const slotEnd = slotStart + duracion
-
-  const dayStart = fromZonedTime(`${fecha}T00:00:00`, ARGENTINA_TZ).toISOString()
-  const dayEnd = fromZonedTime(`${fecha}T23:59:59`, ARGENTINA_TZ).toISOString()
-
-  const [{ data: turnos }, { data: entrevistas }] = await Promise.all([
-    db.from('turnos')
-      .select('fecha_hora, duracion_min')
-      .eq('terapeuta_id', profileId)
-      .gte('fecha_hora', dayStart)
-      .lte('fecha_hora', dayEnd)
-      .not('estado', 'in', '("cancelado")'),
-    db.from('entrevistas')
-      .select('hora, duracion')
-      .eq('terapeuta_id', profileId)
-      .eq('fecha', fecha)
-      .not('estado', 'in', '("cancelada")'),
-  ])
-
-  for (const t of turnos ?? []) {
-    const d = zonedDateArgentina(t.fecha_hora)
-    const oStart = d.getHours() * 60 + d.getMinutes()
-    const oEnd = oStart + (t.duracion_min ?? duracion)
-    if (slotStart < oEnd && slotEnd > oStart) return false
-  }
-
-  for (const e of entrevistas ?? []) {
-    const oStart = timeToMin(e.hora)
-    const oEnd = oStart + (e.duracion ?? 30)
-    if (slotStart < oEnd && slotEnd > oStart) return false
-  }
-
-  return true
 }
 
 export async function POST(req: NextRequest) {
@@ -87,7 +43,7 @@ export async function POST(req: NextRequest) {
   const db = serviceClient()
 
   // 1. Get professional
-  const { data: profile, error: profileError } = await db
+  const { data: profile } = await db
     .from('profiles')
     .select('id, plan, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_sesion_visible, booking_entrevista_visible, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
     .eq('booking_slug', slug)
@@ -140,6 +96,63 @@ export async function POST(req: NextRequest) {
     osEncontrada = os ?? null
   }
   const esParticular = !osEncontrada
+
+  const fechaHoraLocal = `${fecha}T${hora}:00`
+  const fechaHora = fromZonedTime(fechaHoraLocal, ARGENTINA_TZ).toISOString()
+  const modalidadMap: Record<string, string> = { online: 'videollamada', presencial: 'presencial', videollamada: 'videollamada', telefonica: 'telefonica' }
+  const modalidadDb = (modalidadMap[modalidad ?? ''] ?? 'presencial') as 'presencial' | 'videollamada' | 'telefonica'
+  const tipoTurnoColumn = tipoResuelto.tipoTurnoId ? 'sesion' : (tipo === 'sesion' ? 'sesion' : 'entrevista')
+
+  const tieneTransferencia = !!(profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular)
+
+  // Particular, con pago exigido y algún medio de pago disponible (MP o
+  // transferencia) — el paciente y el turno se crean recién cuando el pago
+  // se aprueba (crearReservaDesdePago), nunca acá. De Morgan de la condición
+  // de abajo: cualquier otro caso (sin pago exigido, sin medio de pago, u
+  // obra social) sigue el camino de siempre, sin cambios.
+  const requierePagoYEsParticular = profile.booking_requiere_pago && !!precio && (!!profile.mp_access_token || tieneTransferencia) && esParticular
+
+  if (requierePagoYEsParticular) {
+    const hash = shortId()
+    const expiraAt = new Date(Date.now() + TREINTA_MIN_MS).toISOString()
+
+    const { error: reservaErr } = await db.from('reservas_pendientes_pago').insert({
+      hash,
+      terapeuta_id: profile.id,
+      nombre,
+      apellido,
+      email: normalizarEmail(email),
+      telefono: telefono ?? null,
+      cobertura_id: coberturaId ?? null,
+      whatsapp_opt_in: !!whatsappOptIn,
+      fecha_hora: fechaHora,
+      duracion_min: duracion,
+      modalidad: modalidadDb,
+      sucursal_id: sedeValidadaId,
+      tipo_turno: tipoTurnoColumn,
+      tipo_turno_id: tipoResuelto.tipoTurnoId,
+      moneda,
+      monto: precio,
+      estado: 'pendiente',
+      expira_at: expiraAt,
+    })
+
+    if (reservaErr) {
+      console.error('[booking/crear] reservas_pendientes_pago insert error:', reservaErr)
+      return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      hash,
+      preference_id: null,
+      monto: precio,
+      mp_public_key: null,
+      confirmado: false,
+    })
+  }
+
+  // ── Camino sin cambios: sin pago exigido, sin medio de pago disponible, u
+  // obra social — el paciente y el turno se crean de una, como siempre. ──
 
   // 3. Find or create paciente — nunca crear uno nuevo si ya existe alguno con
   // este email para este profesional. .maybeSingle() rompía con 2+ filas
@@ -223,11 +236,6 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Create turno
-  const fechaHoraLocal = `${fecha}T${hora}:00`
-  const fechaHora = fromZonedTime(fechaHoraLocal, ARGENTINA_TZ).toISOString()
-  const modalidadMap: Record<string, string> = { online: 'videollamada', presencial: 'presencial', videollamada: 'videollamada', telefonica: 'telefonica' }
-  const modalidadDb = (modalidadMap[modalidad ?? ''] ?? 'presencial') as 'presencial' | 'videollamada' | 'telefonica'
-
   const { data: turno, error: turnoErr } = await db
     .from('turnos')
     .insert({
@@ -241,7 +249,7 @@ export async function POST(req: NextRequest) {
       moneda,
       sucursal_id: sedeValidadaId,
       notas: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial reservada online' : 'Reserva online',
-      tipo_turno: tipoResuelto.tipoTurnoId ? 'sesion' : (tipo === 'sesion' ? 'sesion' : 'entrevista'),
+      tipo_turno: tipoTurnoColumn,
       tipo_turno_id: tipoResuelto.tipoTurnoId,
     })
     .select('id')
@@ -254,41 +262,24 @@ export async function POST(req: NextRequest) {
 
   const hash = shortId()
 
-  const tieneTransferencia = !!(profile.transferencia_banco && profile.transferencia_alias && profile.transferencia_titular)
+  // Sin pago exigido, sin medio de pago disponible (ni MP ni transferencia),
+  // o paciente eligió obra social → queda pendiente de confirmación manual del
+  // profesional. El turno ya se creó como 'pendiente' en el insert de arriba.
+  const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, profile.id, 'sin_pago', null)
 
-  // 5. If no payment required, no medio de pago disponible (ni MP ni transferencia),
-  // or paciente eligió obra social → queda pendiente de confirmación manual del
-  // profesional (solo un pago real por MP, o una transferencia confirmada a mano,
-  // confirma automáticamente). El turno ya se creó como 'pendiente' en el insert de arriba.
-  if (!profile.booking_requiere_pago || !precio || (!profile.mp_access_token && !tieneTransferencia) || !esParticular) {
-    const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, profile.id, 'sin_pago', null)
-
-    return NextResponse.json({
-      hash,
-      preference_id: null,
-      monto: precio ?? 0,
-      mp_public_key: null,
-      confirmado: true,
-      turno_id: turno.id,
-      fecha_fmt: format(parseISO(fechaHoraLocal), "EEEE d 'de' MMMM yyyy"),
-      hora,
-      duracion,
-      moneda,
-      referencia: hash,
-      google_event_id: googleEventId,
-      meet_link: meetLink,
-    })
-  }
-
-  // 6. Particular con precio, pago requerido y MP conectado — el paciente elige el
-  // medio de pago en el paso siguiente (Mercado Pago vs. Transferencia). La preferencia
-  // de MP se crea recién si elige esa opción, vía /api/booking/mp-preferencia.
   return NextResponse.json({
     hash,
     preference_id: null,
-    monto: precio,
+    monto: precio ?? 0,
     mp_public_key: null,
-    confirmado: false,
+    confirmado: true,
     turno_id: turno.id,
+    fecha_fmt: format(parseISO(fechaHoraLocal), "EEEE d 'de' MMMM yyyy"),
+    hora,
+    duracion,
+    moneda,
+    referencia: hash,
+    google_event_id: googleEventId,
+    meet_link: meetLink,
   })
 }
