@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ProfesionalObraSocial } from '@/types/database'
-import { OBRAS_SOCIALES } from '@/lib/obras-sociales'
+import { OBRAS_SOCIALES, combinarObrasSociales } from '@/lib/obras-sociales'
 import { GENERADORES_CUSTOM, detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 import SlideOver from '@/components/ui/SlideOver'
 
@@ -93,6 +93,7 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
+  const [osValidadas, setOsValidadas] = useState<string[]>([])
 
   useEffect(() => {
     createClient()
@@ -104,8 +105,20 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
   }, [])
 
   useEffect(() => {
+    createClient()
+      .from('obras_sociales')
+      .select('nombre')
+      .eq('validada', true)
+      .then(({ data }) => setOsValidadas((data ?? []).map((o) => o.nombre)))
+  }, [])
+
+  // Lista fija + validadas en OPS, sin duplicados (sin mayúsculas/tildes) y
+  // ordenada alfabéticamente.
+  const opcionesObraSocial = combinarObrasSociales(OBRAS_SOCIALES, osValidadas)
+
+  useEffect(() => {
     if (editing) {
-      const enLista = OBRAS_SOCIALES.includes(editing.nombre)
+      const enLista = opcionesObraSocial.includes(editing.nombre)
       setForm({
         nombre: enLista ? editing.nombre : '__otra__',
         nombreLibre: enLista ? '' : editing.nombre,
@@ -219,7 +232,7 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
             <label className={labelCls}>Nombre de la obra social <span className="text-red-500">*</span></label>
             <select name="nombre" value={form.nombre} onChange={handleChange} className={inputCls}>
               <option value="">Seleccioná una obra social...</option>
-              {OBRAS_SOCIALES.map(os => (
+              {opcionesObraSocial.map(os => (
                 <option key={os} value={os}>{os}</option>
               ))}
               <option value="__otra__">Otra (escribir manualmente)</option>
