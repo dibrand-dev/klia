@@ -137,7 +137,7 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 - POST /api/planillas/generar — generic OS planilla
 - PATCH /api/turnos/estado — update session state inline
 - POST /api/notas/transcribir — transcribe audio via Orchard AI
-- GET /api/cron/recordatorios — daily reminders cron (runs 09:00 UTC)
+- GET /api/cron/recordatorios — daily reminders cron (runs 12:00 UTC = 09:00 ART)
 - GET /api/cron/bloquear-trials — trial blocking cron (runs 06:00 UTC)
 
 ## Database — key tables
@@ -314,7 +314,7 @@ Categories: Laboratorio, Imágenes, Documentos, Otros
 ## Cron jobs (vercel.json)
 - `0 6 * * *` → /api/cron/bloquear-trials
 - `0 7 * * *` → /api/pagos/vencer
-- `0 9 * * *` → /api/cron/recordatorios (sends reminders for tomorrow's sessions)
+- `0 12 * * *` → /api/cron/recordatorios (sends reminders for tomorrow's sessions, email + WhatsApp — moved from 09:00 UTC/06:00 ART to 12:00 UTC/09:00 ART so patients don't get a 6am notification; single Vercel cron plan slot shared by both channels)
 - Auth: accepts `x-vercel-cron: 1` header OR `Authorization: Bearer CRON_SECRET`
 
 ## Environment variables (all set in Vercel)
