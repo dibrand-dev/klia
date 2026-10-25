@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   // Check if new user
   const { data: profile } = await supabase
     .from('profiles')
-    .select('trial_fin, nombre, apellido, avatar_url, tipo_cuenta')
+    .select('trial_fin, nombre, apellido, avatar_url, tipo_cuenta, plan, estado_cuenta')
     .eq('id', session.user.id)
     .single()
 
@@ -56,7 +56,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', origin))
   }
 
-  if (!profile?.trial_fin) {
+  // Cuentas bonificadas o ya activas (pagando) pueden tener trial_fin nulo
+  // (otorgadas directo desde OPS, sin pasar nunca por el trial) — nunca hay
+  // que tratarlas como "usuario nuevo" y pisarles plan/estado_cuenta a trial.
+  const esBonificadaOActiva = profile?.plan === 'bonificado' || profile?.estado_cuenta === 'activa'
+
+  if (!profile?.trial_fin && !esBonificadaOActiva) {
     const trialFin = new Date()
     trialFin.setDate(trialFin.getDate() + 21)
 
