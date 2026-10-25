@@ -43,22 +43,23 @@ export async function puedeUsarTiposTurno(
 // resuelto por el caller), el cron de recordatorios y el webhook de
 // WhatsApp solo tienen a mano el terapeuta_id, nunca el plan ya leído.
 //
-// Además del plan habilitado en modulos_config, exige una fila propia en
-// whatsapp_cuentas_habilitadas — habilitación manual por cuenta (ej. número
-// de WhatsApp Business asignado), no alcanza con que el plan lo permita.
-// Fail-closed: cualquier error o ausencia en cualquiera de los dos checks
-// deniega el acceso.
+// Abierto a planes pagos Y trial (nunca a cuentas bloqueadas/canceladas,
+// paguen lo que paguen). whatsapp_cuentas_habilitadas pasó de ser un
+// requisito obligatorio a una excepción manual: habilita por cuenta aunque
+// el plan en sí no esté en modulos_config (ej. para pilotos puntuales).
+// Fail-closed: cualquier error en cualquiera de los checks deniega el acceso.
 export async function puedeUsarWhatsApp(
   supabase: SupabaseClient,
   profesionalId: string,
 ): Promise<boolean> {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('plan')
+    .select('plan, estado_cuenta')
     .eq('id', profesionalId)
     .maybeSingle()
 
   if (profileError || !profile) return false
+  if (profile.estado_cuenta !== 'trial' && profile.estado_cuenta !== 'activa') return false
 
   const { data, error } = await supabase
     .from('modulos_config')
@@ -67,8 +68,9 @@ export async function puedeUsarWhatsApp(
     .eq('activo', true)
     .maybeSingle()
 
-  if (error || !data) return false
-  if (!data.planes.includes(profile.plan ?? '')) return false
+  if (error) return false
+  const planHabilitado = !!data?.planes.includes(profile.plan ?? '')
+  if (planHabilitado) return true
 
   const { data: habilitada, error: habilitadaError } = await supabase
     .from('whatsapp_cuentas_habilitadas')
@@ -76,7 +78,6 @@ export async function puedeUsarWhatsApp(
     .eq('profile_id', profesionalId)
     .maybeSingle()
 
-  if (habilitadaError || !habilitada) return false
-
-  return true
+  if (habilitadaError) return false
+  return !!habilitada
 }

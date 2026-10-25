@@ -6,13 +6,13 @@ import { ventanaDiaSiguienteAR } from '@/lib/tz'
 import { verificarCron } from '@/lib/cron-auth'
 import { whatsappDb, normalizarTelefonoAR, resolverPhoneNumberId, enviarTemplateRecordatorio } from '@/lib/whatsapp'
 import { puedeUsarWhatsApp } from '@/lib/modulos'
-import { hayCupoWhatsapp, CUPOS_RECORDATORIOS_MES } from '@/lib/whatsapp-cupos'
+import { hayCupoWhatsapp, CUPOS_RECORDATORIOS_MES, CUPO_TRIAL } from '@/lib/whatsapp-cupos'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type PacienteTurno = { nombre: string; apellido: string; email: string | null; telefono: string | null; whatsapp_opt_in: boolean }
-type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null; plan: string | null }
+type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null; plan: string | null; estado_cuenta: string | null; trial_inicio: string | null }
 type TurnoRecordatorio = {
   id: string
   fecha_hora: string
@@ -148,12 +148,15 @@ async function procesarWhatsapp(
   if (!habilitado) return { resultado: 'no_aplica' }
 
   const plan = terapeuta?.plan ?? ''
-  const tieneCupo = await hayCupoWhatsapp(supabase, turno.terapeuta_id, plan, cupoCache)
+  const estadoCuenta = terapeuta?.estado_cuenta ?? null
+  const trialInicio = terapeuta?.trial_inicio ?? null
+  const tieneCupo = await hayCupoWhatsapp(supabase, turno.terapeuta_id, plan, estadoCuenta, trialInicio, cupoCache)
   if (!tieneCupo) {
     console.warn('[cron/recordatorios] Cupo de WhatsApp excedido', {
       profesional_id: turno.terapeuta_id,
       plan,
-      cupo: CUPOS_RECORDATORIOS_MES[plan] ?? 0,
+      estado_cuenta: estadoCuenta,
+      cupo: estadoCuenta === 'trial' ? CUPO_TRIAL : (CUPOS_RECORDATORIOS_MES[plan] ?? 0),
     })
     return { resultado: 'no_aplica', motivo: 'cupo_excedido' }
   }
@@ -263,7 +266,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, fecha_hora, duracion_min, modalidad, meet_link, token_accion, terapeuta_id, paciente_id, recordatorio_whatsapp_enviado,
       paciente:pacientes(nombre, apellido, email, telefono, whatsapp_opt_in),
-      terapeuta:profiles(nombre, apellido, especialidad, plan)
+      terapeuta:profiles(nombre, apellido, especialidad, plan, estado_cuenta, trial_inicio)
     `)
     .gte('fecha_hora', desde.toISOString())
     .lte('fecha_hora', hasta.toISOString())
