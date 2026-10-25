@@ -42,6 +42,12 @@ export async function puedeUsarTiposTurno(
 // del profesional acá adentro — a diferencia de esa (que lo recibe ya
 // resuelto por el caller), el cron de recordatorios y el webhook de
 // WhatsApp solo tienen a mano el terapeuta_id, nunca el plan ya leído.
+//
+// Además del plan habilitado en modulos_config, exige una fila propia en
+// whatsapp_cuentas_habilitadas — habilitación manual por cuenta (ej. número
+// de WhatsApp Business asignado), no alcanza con que el plan lo permita.
+// Fail-closed: cualquier error o ausencia en cualquiera de los dos checks
+// deniega el acceso.
 export async function puedeUsarWhatsApp(
   supabase: SupabaseClient,
   profesionalId: string,
@@ -62,5 +68,15 @@ export async function puedeUsarWhatsApp(
     .maybeSingle()
 
   if (error || !data) return false
-  return data.planes.includes(profile.plan ?? '')
+  if (!data.planes.includes(profile.plan ?? '')) return false
+
+  const { data: habilitada, error: habilitadaError } = await supabase
+    .from('whatsapp_cuentas_habilitadas')
+    .select('profile_id')
+    .eq('profile_id', profesionalId)
+    .maybeSingle()
+
+  if (habilitadaError || !habilitada) return false
+
+  return true
 }

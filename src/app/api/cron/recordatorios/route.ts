@@ -6,12 +6,13 @@ import { ventanaDiaSiguienteAR } from '@/lib/tz'
 import { verificarCron } from '@/lib/cron-auth'
 import { whatsappDb, normalizarTelefonoAR, resolverPhoneNumberId, enviarTemplateRecordatorio } from '@/lib/whatsapp'
 import { puedeUsarWhatsApp } from '@/lib/modulos'
+import { hayCupoWhatsapp, CUPOS_RECORDATORIOS_MES } from '@/lib/whatsapp-cupos'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type PacienteTurno = { nombre: string; apellido: string; email: string | null; telefono: string | null; whatsapp_opt_in: boolean }
-type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null }
+type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null; plan: string | null }
 type TurnoRecordatorio = {
   id: string
   fecha_hora: string
@@ -129,12 +130,14 @@ async function procesarMail(
 
 // Canal WhatsApp — propio flag (recordatorio_whatsapp_enviado) y propio
 // reclamo atómico, totalmente independiente del canal mail. 'no_aplica' no
-// es un fallo (paciente sin opt-in, módulo no habilitado, o token no
-// configurado): no genera fila en whatsapp_mensajes ni cuenta como fallido.
+// es un fallo (paciente sin opt-in, módulo no habilitado, token no
+// configurado, o cupo mensual agotado): no genera fila en whatsapp_mensajes
+// ni cuenta como fallido.
 async function procesarWhatsapp(
   supabase: SupabaseClient,
   turno: TurnoRecordatorio,
-): Promise<{ resultado: 'enviado' | 'fallido' | 'omitido' | 'no_aplica'; error?: string }> {
+  cupoCache: Map<string, number>,
+): Promise<{ resultado: 'enviado' | 'fallido' | 'omitido' | 'no_aplica'; error?: string; motivo?: string }> {
   const paciente = turno.paciente
   const terapeuta = turno.terapeuta
 
@@ -143,6 +146,17 @@ async function procesarWhatsapp(
 
   const habilitado = await puedeUsarWhatsApp(supabase, turno.terapeuta_id)
   if (!habilitado) return { resultado: 'no_aplica' }
+
+  const plan = terapeuta?.plan ?? ''
+  const tieneCupo = await hayCupoWhatsapp(supabase, turno.terapeuta_id, plan, cupoCache)
+  if (!tieneCupo) {
+    console.warn('[cron/recordatorios] Cupo de WhatsApp excedido', {
+      profesional_id: turno.terapeuta_id,
+      plan,
+      cupo: CUPOS_RECORDATORIOS_MES[plan] ?? 0,
+    })
+    return { resultado: 'no_aplica', motivo: 'cupo_excedido' }
+  }
 
   const telefonoNormalizado = normalizarTelefonoAR(paciente.telefono)
   if (!telefonoNormalizado) {
@@ -205,6 +219,8 @@ async function procesarWhatsapp(
       wa_message_id: waMessageId,
     })
 
+    cupoCache.set(turno.terapeuta_id, (cupoCache.get(turno.terapeuta_id) ?? 0) + 1)
+
     return { resultado: 'enviado' }
   } catch (err: unknown) {
     const errorMsg = (err as Error)?.message ?? JSON.stringify(err)
@@ -247,7 +263,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, fecha_hora, duracion_min, modalidad, meet_link, token_accion, terapeuta_id, paciente_id, recordatorio_whatsapp_enviado,
       paciente:pacientes(nombre, apellido, email, telefono, whatsapp_opt_in),
-      terapeuta:profiles(nombre, apellido, especialidad)
+      terapeuta:profiles(nombre, apellido, especialidad, plan)
     `)
     .gte('fecha_hora', desde.toISOString())
     .lte('fecha_hora', hasta.toISOString())
@@ -267,7 +283,13 @@ export async function GET(req: NextRequest) {
   let enviadosWhatsapp = 0
   let fallidosWhatsapp = 0
   let omitidosWhatsapp = 0
+  let cupoExcedidoWhatsapp = 0
   const erroresWhatsapp: string[] = []
+
+  // Map<profesional_id, recordatorios usados este mes> — una sola corrida
+  // de este cron, se comparte entre todos los turnos para no recontar en
+  // Supabase por cada uno. Ver src/lib/whatsapp-cupos.ts.
+  const cupoCache = new Map<string, number>()
 
   for (const turno of (turnos ?? []) as unknown as TurnoRecordatorio[]) {
     const rMail = await procesarMail(supabase, turno, APP_URL)
@@ -277,11 +299,12 @@ export async function GET(req: NextRequest) {
 
     // El canal WhatsApp corre siempre, sin importar cómo salió el mail — un
     // fallo de un canal nunca corta ni condiciona al otro.
-    const rWa = await procesarWhatsapp(supabase, turno)
+    const rWa = await procesarWhatsapp(supabase, turno, cupoCache)
     if (rWa.resultado === 'enviado') enviadosWhatsapp++
     else if (rWa.resultado === 'fallido') { fallidosWhatsapp++; if (rWa.error) erroresWhatsapp.push(`turno ${turno.id}: ${rWa.error}`) }
     else if (rWa.resultado === 'omitido') omitidosWhatsapp++
-    // 'no_aplica' no se cuenta: ni éxito ni fallo, el paciente no es elegible para este canal.
+    else if (rWa.resultado === 'no_aplica' && rWa.motivo === 'cupo_excedido') cupoExcedidoWhatsapp++
+    // Resto de 'no_aplica' no se cuenta: ni éxito ni fallo, el paciente/cuenta no es elegible para este canal.
   }
 
   return NextResponse.json({
@@ -296,6 +319,7 @@ export async function GET(req: NextRequest) {
       enviados: enviadosWhatsapp,
       fallidos: fallidosWhatsapp,
       omitidos: omitidosWhatsapp,
+      cupo_excedido: cupoExcedidoWhatsapp,
       errores: erroresWhatsapp,
     },
     sample: turnos?.[0] ? {
