@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import PacienteDetalle from '@/components/pacientes/PacienteDetalle'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/PacienteTabs'
-import { OBRAS_SOCIALES, combinarObrasSociales } from '@/lib/obras-sociales'
+import { combinarObrasSociales } from '@/lib/obras-sociales'
 import { calcularDeudaMes, resolverPoliticaInasistencia, sesionGeneraDeuda } from '@/lib/deuda'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import type { Paciente, PacienteColaboradorRow } from '@/types/database'
@@ -158,11 +158,12 @@ export default async function PacienteDetallePage({
   const editMode = searchParams.edit === '1'
   const profObrasSociales = profOSRes.data ?? []
 
-  // Lista maestra estática + nombres de OS del profesional + validadas en OPS,
-  // sin duplicados (sin mayúsculas/tildes) y ordenada alfabéticamente.
+  // obras_sociales (validada = true) + nombres de OS propias del profesional,
+  // sin duplicados (sin mayúsculas/tildes) y ordenada alfabéticamente. La
+  // tabla es la única fuente — ya no hay lista fija.
   const profNombres = profObrasSociales.map((o) => o.nombre)
   const osValidadasNombres = (osValidadasData ?? []).map((o) => o.nombre)
-  const obrasSociales = combinarObrasSociales(OBRAS_SOCIALES, profNombres, osValidadasNombres)
+  const obrasSociales = combinarObrasSociales(osValidadasNombres, profNombres)
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 md:px-7 pt-6 md:pt-8 pb-20">

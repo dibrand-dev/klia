@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { ProfesionalObraSocial } from '@/types/database'
-import { OBRAS_SOCIALES, combinarObrasSociales } from '@/lib/obras-sociales'
+import { combinarObrasSociales } from '@/lib/obras-sociales'
 import { GENERADORES_CUSTOM, detectarGeneradorCustom } from '@/lib/planillas/generadores-custom'
 import SlideOver from '@/components/ui/SlideOver'
 
@@ -112,9 +112,11 @@ export default function ObraSocialesConfig({ initialList, terapeutaId }: {
       .then(({ data }) => setOsValidadas((data ?? []).map((o) => o.nombre)))
   }, [])
 
-  // Lista fija + validadas en OPS, sin duplicados (sin mayúsculas/tildes) y
-  // ordenada alfabéticamente.
-  const opcionesObraSocial = combinarObrasSociales(OBRAS_SOCIALES, osValidadas)
+  // obras_sociales (validada = true) + las propias ya configuradas por este
+  // profesional, sin duplicados (sin mayúsculas/tildes) y ordenada
+  // alfabéticamente. La tabla es la única fuente — ya no hay lista fija.
+  const nombresPropios = list.map((o) => o.nombre)
+  const opcionesObraSocial = combinarObrasSociales(osValidadas, nombresPropios)
 
   useEffect(() => {
     if (editing) {

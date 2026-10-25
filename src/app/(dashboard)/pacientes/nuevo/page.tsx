@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import NuevoPacienteForm from '@/components/pacientes/NuevoPacienteForm'
-import { OBRAS_SOCIALES, combinarObrasSociales } from '@/lib/obras-sociales'
+import { combinarObrasSociales } from '@/lib/obras-sociales'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Alta de Paciente — KLIA' }
@@ -25,11 +25,12 @@ export default async function NuevoPacientePage() {
     .select('nombre')
     .eq('validada', true)
 
-  // Lista maestra estática + nombres de OS del profesional + validadas en OPS,
-  // sin duplicados (sin mayúsculas/tildes) y ordenada alfabéticamente.
+  // obras_sociales (validada = true) + nombres de OS propias del profesional,
+  // sin duplicados (sin mayúsculas/tildes) y ordenada alfabéticamente. La
+  // tabla es la única fuente — ya no hay lista fija.
   const profNombres = profObrasSociales.map((o) => o.nombre)
   const osValidadasNombres = (osValidadasData ?? []).map((o) => o.nombre)
-  const obrasSociales = combinarObrasSociales(OBRAS_SOCIALES, profNombres, osValidadasNombres)
+  const obrasSociales = combinarObrasSociales(osValidadasNombres, profNombres)
 
   return <NuevoPacienteForm terapeutaId={efectivo.terapeutaId} obrasSociales={obrasSociales} profObrasSociales={profObrasSociales} esColaborador={efectivo.esColaborador} />
 }

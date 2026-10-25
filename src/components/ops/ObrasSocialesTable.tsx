@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { ObraSocial } from '@/types/database'
+import SlideOver from '@/components/ui/SlideOver'
 
 type Props = {
   obras: ObraSocial[]
@@ -51,6 +52,9 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
   // — Pendientes: normalización
   const [normalizando, setNormalizando] = useState<string | null>(null)
   const [nombreNorm, setNombreNorm] = useState('')
+
+  // — Activas: eliminar (con confirmación en SlideOver)
+  const [eliminando, setEliminando] = useState<ObraSocial | null>(null)
 
   // ─── helpers ───────────────────────────────────────────────
 
@@ -137,6 +141,19 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
     setLoading(null)
   }
 
+  // Borra solo la fila de obras_sociales — pacientes y profesional_obras_sociales
+  // guardan el nombre como texto propio, no una referencia a esta tabla, así que
+  // no se tocan.
+  async function eliminarObra() {
+    if (!eliminando) return
+    setLoading(eliminando.id)
+    const supabase = createClient()
+    await supabase.from('obras_sociales').delete().eq('id', eliminando.id)
+    setEliminando(null)
+    router.refresh()
+    setLoading(null)
+  }
+
   // ─── Activas ────────────────────────────────────────────────
 
   if (!showPendientes) {
@@ -214,7 +231,7 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
                   <td className="px-6 py-4 text-on-surface-variant">{obra.plan || '—'}</td>
                   <td className="px-4 py-4 text-on-surface-variant">{obra.veces_ingresada}</td>
                   <td className="px-6 py-4">
-                    <div className="flex justify-end">
+                    <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => {
                           setEditando(obra.id)
@@ -225,6 +242,13 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
                         className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-50"
                       >
                         Editar
+                      </button>
+                      <button
+                        onClick={() => setEliminando(obra)}
+                        disabled={loading === obra.id}
+                        className="text-xs px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        Eliminar
                       </button>
                     </div>
                   </td>
@@ -290,6 +314,38 @@ export default function ObrasSocialesTable({ obras, pendientes, showPendientes =
             </tr>
           </tfoot>
         </table>
+
+        <SlideOver
+          open={!!eliminando}
+          onClose={() => setEliminando(null)}
+          title="Eliminar obra social"
+          width="md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-on-surface">
+              ¿Eliminar <strong>{eliminando?.nombre}</strong> del catálogo? Esta acción no se puede deshacer.
+            </p>
+            <p className="text-sm text-on-surface-variant">
+              No afecta a pacientes ni a las obras sociales ya configuradas por los profesionales — esas guardan el nombre como texto propio, no una referencia a esta fila.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setEliminando(null)}
+                disabled={loading === eliminando?.id}
+                className="btn-secondary flex-1 py-2.5"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarObra}
+                disabled={loading === eliminando?.id}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {loading === eliminando?.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </SlideOver>
       </div>
     )
   }
