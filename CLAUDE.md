@@ -363,30 +363,12 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-08-10_
+_Actualizado el 2026-10-25_
 
 ```
-edd2ea3 feat: notificacion Pushover en nuevo registro de usuario
-cbf58d1 feat: rediseña tabla de Prestadores en OPS — columna Código con tooltip en vez de Colegio, sin scroll horizontal, ordenamiento por header con URL
-e7985f9 fix: corregir condición de carrera entre carga de fbq y guard de CompleteRegistration en /bienvenida
-d81897f fix: evitar duplicar evento Meta CompleteRegistration en /bienvenida via guard server-side
-faa60b3 feat: agregar Meta Pixel CompleteRegistration en flujo de registro
-d677bd1 chore: agrega email de inactividad trial al endpoint de test-emails
-92746bc feat: agrega tarjeta "En consultorio" a la barra de stats de Atenciones
-eb88449 fix: completa el flujo de estado_atencion en Atenciones
-b7cbe33 feat: calculador de PIO corregida para Oftalmología (corrección de Ehlers, StickyWidgetPIO)
-2dd3832 fix: RxGrid actualiza la receta más reciente in-place en vez de crear una fila por campo
-c1d7c07 fix: RxGrid pixel-perfect según diseño real (edición inline por celda, dropdown de historial, empty state), agrega columna ADD
-a838351 feat: módulo de Refracción para Oftalmología (tab, SlideOver, API, componente RxGrid)
-17096a1 feat: visor lightbox de imágenes en Archivos del Paciente
-1e8b83c docs: documenta catálogo completo CIE-10 (8899 códigos) y actualiza ultimos cambios
-8a9e5d4 feat: catálogo completo CIE-10 (8899 códigos) para campo de diagnóstico, carga perezosa
-3ea4806 feat: rediseño mobile-first de pantalla Alta de Paciente
-a0b0ba1 chore: commit vacio para verificar disparo de webhook de deploy en Vercel
-deb0db9 chore: eliminar campo mp_subscription_id sin uso, corregir lectura de mp_preapproval_id en cuenta-bloqueada
-e112887 chore: eliminar endpoint temporal de diagnóstico de precios, ya cumplió su función
-18bcd94 fix: eliminar loop de redirects para cuentas canceladas, mostrar mensaje diferenciado de reactivacion
-e9ca176 fix: no marcar suscripcion como cancelada si la llamada a preApproval.update falla, evita estado desincronizado con MP
-b410893 fix: unificar creacion de suscripcion en una sola llamada a PreApproval con status authorized, elimina reuso de token
-a68aad5 feat: reemplazar link Editar por iconos y agregar eliminacion de codigos de descuento con proteccion de uso
+ac3489f chore: mover cron de recordatorios (email + WhatsApp) a las 09:00 ART
+3b016e8 feat: whatsapp para planes pagos y trial con cupo propio
+00d2a0d feat: cupo mensual de recordatorios WhatsApp por plan y habilitación por cuenta
+74332ae fix: no resetear a trial cuentas bonificadas o activas en auth callback
+75b8bb7 docs: actualiza contenido del Doc KLIA para agentes de IA con todos los módulos y precios reales
 ```
