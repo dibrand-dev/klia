@@ -137,8 +137,13 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 - POST /api/planillas/generar — generic OS planilla
 - PATCH /api/turnos/estado — update session state inline
 - POST /api/notas/transcribir — transcribe audio via Orchard AI
-- GET /api/cron/recordatorios — daily reminders cron (runs 12:00 UTC = 09:00 ART)
+- GET /api/cron/recordatorios — daily reminders cron (runs 12:00 UTC = 09:00 ART), email + WhatsApp
 - GET /api/cron/bloquear-trials — trial blocking cron (runs 06:00 UTC)
+- POST /api/booking/crear — public booking: creates reserva/turno (particular+pago exigido → `reservas_pendientes_pago` only, no turno yet)
+- POST /api/booking/mp-preferencia — creates MP preference from a `reservas_pendientes_pago` hash
+- POST /api/booking/confirmar — Payment Brick confirmation → `crearReservaDesdePago()`
+- POST /api/booking/confirmar-transferencia — creates turno 'pendiente' for transferencia payment
+- GET/POST /api/whatsapp/webhook — Meta Cloud API inbound webhook (botones, texto libre, baja)
 
 ## Database — key tables
 - profiles — professional profiles (terminologia, horarios_por_dia, feriados_nacionales, feriados_provinciales, firma_url, firma_sello_url)
@@ -161,6 +166,10 @@ Any change to middleware, auth routes, profiles, RLS policies, or handle_new_use
 - colegios — convenios institucionales con colegios profesionales (nombre, contacto_nombre, contacto_email, fecha_acuerdo, activo)
 - codigos_descuento — códigos de descuento por colegio (colegio_id FK, codigo, porcentaje_descuento, usos_maximos, usos_actuales, activo)
   - `profiles.codigo_descuento_id` (FK a codigos_descuento, nullable) y `profiles.codigo_aplicado_fecha` — se setean vía RPC `aplicar_codigo_descuento(p_profile_id, p_codigo)`, nunca directo. El RPC hace grandfathering: si el colegio corta el convenio (`codigos_descuento.activo = false`), los profesionales que ya tenían el código aplicado conservan el descuento — no se revalida `activo` en cada cobro, solo al momento de aplicar el código.
+- reservas_pendientes_pago — reserva pública particular con pago exigido antes de crear paciente/turno (hash PK, datos del paciente y de la reserva, estado pendiente/procesada/vencida, turno_id, expira_at). Solo service_role, ver sección "Reserva pública con pago" más abajo.
+- whatsapp_mensajes — historial de mensajes de WhatsApp (turno_id, paciente_id, profesional_id, tipo: recordatorio/entrante_texto/entrante_boton/respuesta_automatica/baja_recibida, telefono, estado: enviando/enviado/entregado/leido/fallido/recibido, wa_message_id UNIQUE para dedupe de reintentos de Meta, error, created_at). Nunca guarda el contenido del mensaje (Ley 25.326).
+- whatsapp_cuentas_habilitadas — habilitación manual de WhatsApp por cuenta (profile_id PK, solo service_role) — excepción al plan, ver `puedeUsarWhatsApp()`.
+- whatsapp_config — phone_number_id de WhatsApp Business por profesional (profesional_id, phone_number_id, activo) — si no hay fila activa, cae a la env var global `WHATSAPP_PHONE_NUMBER_ID`.
 
 ## OPS — Tabla de Prestadores (rediseñada 2026-07)
 
@@ -196,11 +205,15 @@ Todas las tablas de precios/descuentos tienen RLS habilitado. Patrón de policie
 - Endpoint temporal `/api/ops/diagnostico-precio` (usado para validar cálculo de descuento institucional en producción) ya cumplió su función y fue eliminado.
 
 ## Plans and access control
-- Esencial: agenda, pacientes, historial, calendar sync
-- Profesional: + cobros, facturación, IA atenciones, nota_voz
-- Premium: + archivos_paciente, link público reservas, informes IA
-- Bonificado: all modules
-- puedeAcceder(modulo, plan, modulos) — access check helper
+
+Gate real en runtime: `modulos_config` (tabla, `modulo_id` + `planes[]` + `activo`) leída por `puedeAcceder()`/`getModulosConfig()` en `src/lib/modulos.ts`. Confirmado contra la tabla real (2026-10) — **no** coincide 1:1 con lo que sugiere `plan_funcionalidades` (esa tabla solo la usa el editor de planes en OPS, es descriptivo/comercial, no se lee en ningún runtime check):
+
+- **Esencial**: agenda, pacientes, sedes, historia clínica, Google Calendar sync. También **booking público** (link de reservas online) — no tiene ningún gate de plan en el código, está abierto en todos los planes.
+- **Profesional**: + cobros, aviso automático de deuda, facturación a obras sociales, nota de voz, archivos del paciente (Drive), atenciones del día/sala de espera, tipos de turno propios. (Ojo: esto corrige la idea anterior de que archivos/atenciones eran Premium-exclusivos — según `modulos_config` están desde Profesional.)
+- **Premium**: + Asistentes/Colaboradoras (`modulo_id='colaboradoras'`) — hoy es la única fila exclusiva de Premium+.
+- **Bonificado**: todo lo anterior, plan interno no público (`es_publico=false` en `planes`), otorgado manualmente desde OPS.
+- `puedeAcceder(moduloId, plan, modulos)` — deja pasar (`true`) si el `moduloId` no tiene fila en `modulos_config` (pensado para features viejas sin fila propia). `puedeUsarTiposTurno()` y `puedeUsarWhatsApp()` son fail-closed: si la fila falta, está inactiva, o falla la lectura, deniegan.
+- Enforcement real por módulo: `NavigationDrawer.tsx` filtra el sidebar con `puedeAcceder()` (tapa el link, no bloquea la URL); `/cobros` y `/atenciones` sí bloquean server-side en su `page.tsx`; `tipos_turno` se valida en cada API route (`/api/tipos-turno*`) y en `booking/[slug]`; WhatsApp se valida en el cron (`puedeUsarWhatsApp` + cupo, ver sección propia más abajo).
 
 ## Configurable terminology
 - profiles.terminologia: 'sesion' | 'consulta'
@@ -301,6 +314,50 @@ Dos features nuevas, ambas condicionadas a `especialidad === 'Oftalmología'` (m
 
 **Importante — el trigger dispara en el registro, no en la confirmación de email.** `handle_new_user` inserta en `profiles` en el momento de `auth.users` INSERT (envío del formulario), no cuando se confirma el mail — `email_confirmed_at` vive en `auth.users`, no en `profiles`, así que un webhook sobre esta tabla no puede filtrar por mail confirmado. Decisión consciente por ahora: se prefiere el aviso inmediato aunque incluya registros que después nunca confirman el mail. Si se vuelve ruidoso, el punto de conversión real está en `src/app/auth/confirm/page.tsx`.
 
+## Módulo de recordatorios por WhatsApp (agregado 2026-10)
+
+Meta Cloud API (`src/lib/whatsapp.ts`: `whatsappDb()`, `normalizarTelefonoAR()`, `resolverPhoneNumberId()`, `enviarTemplateRecordatorio()`, `enviarTexto()`). Dos canales (email y WhatsApp) corren en el **mismo cron**, `GET /api/cron/recordatorios` — cada uno con su propio flag de reclamo atómico (`turnos.recordatorio_enviado` para mail, `turnos.recordatorio_whatsapp_enviado` para WhatsApp) e independiente del otro: el fallo de un canal nunca bloquea al otro. El cron procesa los turnos **en serie** (no en paralelo), corre una sola vez al día a las **09:00 ART / 12:00 UTC** (`vercel.json`), y en esa corrida toma de una sola vez todos los turnos del día calendario siguiente completo — por eso la anticipación real varía entre ~18 y ~42hs según la hora del turno dentro de ese día (no es "24hs antes" exacto, ver conversación de esta fecha para el detalle).
+
+**Habilitación — `puedeUsarWhatsApp()` en `src/lib/modulos.ts`, fail-closed:**
+1. `profiles.estado_cuenta` tiene que estar en `('trial', 'activa')` — bloqueada/cancelada nunca envían, sea cual sea el plan.
+2. Habilitado si: el plan está en `modulos_config.planes` para `modulo_id='whatsapp'` activo, **O** existe una fila propia en `whatsapp_cuentas_habilitadas` — la tabla pasó de ser un requisito obligatorio a una excepción manual (pilotos puntuales sin esperar el plan).
+
+**Cupo mensual — `src/lib/whatsapp-cupos.ts`:**
+- `CUPOS_RECORDATORIOS_MES`: esencial 30, profesional 100, premium/bonificado 150 — plan desconocido = 0.
+- `CUPO_TRIAL = 30` para cuentas `estado_cuenta='trial'` — contado desde `profiles.trial_inicio` (todo el trial), no desde el mes calendario, porque un trial no coincide con ningún mes.
+- Cuenta solo `tipo='recordatorio'` con `estado <> 'fallido'` en `whatsapp_mensajes` — las respuestas automáticas (otro `tipo`) nunca cuentan ni se limitan.
+- `hayCupoWhatsapp()` usa un `Map<profesional_id, usados>` cacheado por corrida del cron para no recontar en Supabase por cada turno; como el cron es serie, alcanza con incrementar el cache tras cada envío exitoso (no hace falta reservar/liberar).
+- El chequeo de cupo corre dentro de `procesarWhatsapp()`, después de `puedeUsarWhatsApp` y antes del reclamo atómico — si no hay cupo, `no_aplica` con `motivo: 'cupo_excedido'`, nunca crea fila en `whatsapp_mensajes` ni toca el flag. El JSON de respuesta del cron suma esto en `whatsapp.cupo_excedido`.
+
+**Webhook entrante — `src/app/api/whatsapp/webhook/route.ts`:**
+- Botones de confirmar/cancelar turno (reusa `aplicarAccionTurno` de `src/lib/turnos-accion.ts`, el mismo que usan los links de email).
+- Respuesta automática a texto libre entrante (una por teléfono cada 24hs), con **tope mensual global** (`WHATSAPP_TOPE_RESPUESTAS_MES`, default 900, env var) para controlar costo — si se excede, no responde y no registra fila.
+- **Baja** por "BAJA"/"STOP" (texto normalizado exacto — trim, minúsculas, sin tildes/puntuación — nunca `includes()` ni regex abiertas, para no dar de baja por accidente a quien solo menciona la palabra): pone `pacientes.whatsapp_opt_in = false` para todos los pacientes que recibieron un `recordatorio` desde ese teléfono, registra `whatsapp_mensajes` tipo `baja_recibida`, responde siempre (sin importar el límite de 24hs) — **nunca guarda el contenido del mensaje** (Ley 25.326).
+- Dedupe de reintentos de Meta vía `wa_message_id` UNIQUE (insert primero, catch del error `23505`).
+
+## Reserva pública con pago — paciente y turno recién al aprobarse el pago (agregado 2026-10)
+
+**Antes**: en `booking/crear`, el paciente y el turno (`estado: 'pendiente'`) se creaban ANTES de cualquier pago — si el particular abandonaba sin pagar, quedaban huérfanos en la base para siempre (nada los liberaba).
+
+**Ahora**, solo para particular + pago exigido + medio de pago disponible (MP o transferencia): `booking/crear` NO crea nada — guarda los datos del paciente y de la reserva en `reservas_pendientes_pago` (hash generado ahí, `expira_at = +30min`) y devuelve el hash al frontend. La rama de obra social y la de "pago no exigido" siguen creando todo de una, sin cambios.
+
+- **`src/lib/booking/crear-reserva-desde-pago.ts`** — `crearReservaDesdePago(hash, medioPago, pago)`: reclamo atómico `pendiente → procesada` (idempotente — si el webhook de MP y `booking/confirmar` corren en simultáneo para el mismo pago, solo uno crea el turno real, el otro ve que ya no está pendiente y devuelve el turno ya creado). Pasos: crea/reusa paciente (mismo dedupe por email que `booking/crear`) → re-chequea disponibilidad del horario (`isSlotAvailable()`, extraído a `src/lib/booking/slot-disponible.ts` y compartido con `booking/crear`) → si ya no está libre, crea el turno igual con `es_sobreturno=true` y avisa al profesional por mail (`emailSobreturnoReservaPublica`) → crea el turno `confirmado`+pagado → crea `sesiones_pago` ya pagada con el `turno_id` real → llama a `finalizarReservaConfirmada` (Calendar + email) → guarda `turno_id` en la reserva. **Nunca valida `expira_at`** — un pago aprobado es real aunque llegue tarde.
+- `mp-preferencia` ya no crea `sesiones_pago` (eso ahora lo hace `crearReservaDesdePago`, recién cuando el pago se aprueba) — solo lee la reserva por hash y crea la preferencia de MP con `metadata: { hash, booking: true }`.
+- Transferencia: el turno `pendiente` (sin pagar, espera confirmación manual del profesional) se crea recién al elegir ese medio, no antes — mismo comportamiento de siempre, solo que el punto de creación se movió.
+- Limpieza: `/api/pagos/vencer` borra `reservas_pendientes_pago` con `estado='pendiente'` y `expira_at` de más de 2 días (margen generoso respecto a los 30 min de `expira_at`, justamente porque un pago tardío sigue siendo válido).
+- Frontend (`StepPago.tsx`) manda `hash` en vez de `turno_id` a `mp-preferencia`/`confirmar-transferencia` — el turno no existe todavía cuando se llama a esos endpoints.
+
+## Fix — cuentas bonificadas/activas no vuelven a trial en cada login (agregado 2026-10)
+
+`src/app/auth/callback/route.ts` trataba `profiles.trial_fin` nulo como señal de "usuario nuevo" y pisaba `plan: 'premium', estado_cuenta: 'trial'` en cada login — un bug real para cuentas otorgadas manualmente desde OPS como `bonificado` o ya `activa` (pagando) que nunca pasaron por el trial, así que tienen `trial_fin` nulo legítimamente. Fix: el callback ahora también lee `plan` y `estado_cuenta` del profile, y la rama de "usuario nuevo" solo corre si `estado_cuenta` NO es `'bonificado'` ni `'activa'` (vía `profile.plan === 'bonificado' || profile.estado_cuenta === 'activa'`). Si es bonificada/activa con `trial_fin` nulo, cae directo al reset de `email_inactividad_enviado_at` y sigue a `/dashboard`, sin tocar plan ni estado.
+
+## Obras sociales — la tabla es la única fuente de verdad (agregado 2026-10)
+
+Antes, los tres selectores de obra social (Ajustes → `ObraSocialesConfig.tsx`, Alta de Paciente, Ficha del paciente) combinaban una lista estática (`OBRAS_SOCIALES` de `src/lib/data/salud-ar.ts`) con las obras sociales propias ya configuradas por el profesional — una OS nueva validada desde OPS nunca aparecía ahí.
+
+- **`src/lib/obras-sociales.ts`** — `combinarObrasSociales(...listas)`: junta `obras_sociales` (`validada=true`) con las propias del profesional (`profesional_obras_sociales`/`list` según el selector), sin duplicados (comparación sin mayúsculas/tildes, conserva el primer casing visto) y ordenada alfabéticamente. `OBRAS_SOCIALES`/`salud-ar.ts` ya no se usan como fuente de estos tres selectores (siguen existiendo para otras cosas, ej. `PAISES`).
+- **OPS (`src/components/ops/ObrasSocialesTable.tsx`)** — la tabla de obras sociales activas ahora tiene acción **Eliminar** (SlideOver de confirmación, nunca `window.confirm`), que borra solo la fila de `obras_sociales` — nunca toca `pacientes` ni `profesional_obras_sociales`, porque esas tablas guardan el nombre de la OS como texto propio, no una referencia a esta fila.
+
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
 - profiles.feriados_nacionales, profiles.feriados_provinciales (boolean toggles)
@@ -325,7 +382,8 @@ MP_CLIENT_ID, MP_CLIENT_SECRET, MP_WEBHOOK_SECRET, MP_USE_PRODUCTION,
 NEXT_PUBLIC_APP_URL,
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
 GEMINI_API_KEY, ORCHARD_API_KEY, CRON_SECRET,
-SUPABASE_WEBHOOK_SECRET, PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY
+SUPABASE_WEBHOOK_SECRET, PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY,
+WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, WHATSAPP_TOPE_RESPUESTAS_MES
 
 ## Design system
 Custom CSS variables defined in component-level CSS files:
