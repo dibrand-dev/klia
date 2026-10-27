@@ -18,17 +18,26 @@ import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
 import { fetchAllPacientes } from '@/lib/fetch-all-pacientes'
 
+const TRIAL_BANNER_DISMISSED_KEY = 'klia_trial_banner_dismissed'
+
 function TrialBanner({ trialFin }: { trialFin: string }) {
   const [dias, setDias] = useState<number | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+
   useEffect(() => {
     setDias(Math.max(0, Math.ceil((new Date(trialFin).getTime() - Date.now()) / 86400000)))
+    try {
+      setDismissed(sessionStorage.getItem(TRIAL_BANNER_DISMISSED_KEY) === '1')
+    } catch {
+      // sessionStorage inaccesible (ej. modo privado) — el banner simplemente no se puede cerrar
+    }
   }, [trialFin])
 
-  if (dias === null) return null
+  if (dias === null || dismissed) return null
 
   const urgente = dias <= 5
   return (
-    <div className={`w-full text-center text-xs py-2 px-4 font-medium ${urgente ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
+    <div className={`relative w-full text-center text-xs py-2 px-4 font-medium ${urgente ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
       {dias === 0
         ? '⚠️ Tu período de prueba vence hoy. Activá tu suscripción para no perder el acceso.'
         : `⏳ Período de prueba: ${dias} día${dias === 1 ? '' : 's'} restante${dias === 1 ? '' : 's'}.`}
@@ -36,6 +45,21 @@ function TrialBanner({ trialFin }: { trialFin: string }) {
       <Link href="/planes" className="underline font-semibold">
         Contratar ahora
       </Link>
+      <button
+        type="button"
+        onClick={() => {
+          try {
+            sessionStorage.setItem(TRIAL_BANNER_DISMISSED_KEY, '1')
+          } catch {
+            // ver comentario arriba
+          }
+          setDismissed(true)
+        }}
+        aria-label="Cerrar aviso"
+        className={`absolute right-3 top-1/2 -translate-y-1/2 leading-none text-sm font-semibold ${urgente ? 'text-white' : 'text-amber-900'} opacity-70 hover:opacity-100`}
+      >
+        ✕
+      </button>
     </div>
   )
 }
