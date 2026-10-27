@@ -421,12 +421,8 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-10-25_
+_Actualizado el 2026-10-27_
 
 ```
-ac3489f chore: mover cron de recordatorios (email + WhatsApp) a las 09:00 ART
-3b016e8 feat: whatsapp para planes pagos y trial con cupo propio
-00d2a0d feat: cupo mensual de recordatorios WhatsApp por plan y habilitación por cuenta
-74332ae fix: no resetear a trial cuentas bonificadas o activas en auth callback
-75b8bb7 docs: actualiza contenido del Doc KLIA para agentes de IA con todos los módulos y precios reales
+0e62d8a docs: documenta WhatsApp, reserva con pago, fix de auth callback y obras sociales
 ```
