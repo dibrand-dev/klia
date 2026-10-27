@@ -98,6 +98,12 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
   const [filtro, setFiltro] = useState<'all' | 'pendientes' | 'atendidos'>('all')
   const [busqueda, setBusqueda] = useState('')
   const [slideOver, setSlideOver] = useState<Turno | null>(null)
+  const [toastTurnoError, setToastTurnoError] = useState<string | null>(null)
+
+  function mostrarToastTurnoError(msg: string) {
+    setToastTurnoError(msg)
+    setTimeout(() => setToastTurnoError(null), 5000)
+  }
 
   const fechaFormato = new Date(hoyArgStr + 'T12:00:00').toLocaleDateString('es-AR', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -109,7 +115,11 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turno_id: turnoId, estado_atencion: estadoAtencion }),
     })
-    if (!res.ok) return
+    if (!res.ok) {
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      mostrarToastTurnoError(data?.error ?? 'No se pudo actualizar el turno. Intentá de nuevo y, si persiste, avisanos.')
+      return
+    }
     setTurnos(prev => prev.map(t => t.id === turnoId ? { ...t, estado_atencion: estadoAtencion } : t))
     setSlideOver(prev => prev && prev.id === turnoId ? { ...prev, estado_atencion: estadoAtencion } : prev)
   }
@@ -396,6 +406,12 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
           onSummaryGuardado={registrarResumenGuardado}
           onClose={() => setSlideOver(null)}
         />
+      )}
+
+      {toastTurnoError && (
+        <div className="fixed bottom-6 right-6 z-50 bg-red-600 text-white text-sm px-4 py-3 rounded-lg shadow-lg max-w-sm">
+          {toastTurnoError}
+        </div>
       )}
     </div>
   )

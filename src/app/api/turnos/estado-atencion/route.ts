@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { esOverlapTurno, mensajeErrorTurno } from '@/lib/errores-turno'
 
 export const runtime = 'nodejs'
 
@@ -50,7 +51,12 @@ export async function PATCH(req: NextRequest) {
     .single()
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    console.error('[api/turnos/estado-atencion] Error al actualizar turno', turno_id, updateError.message)
+    const overlap = esOverlapTurno(updateError.message)
+    return NextResponse.json(
+      { error: mensajeErrorTurno(updateError.message), code: overlap ? 'TURNO_OVERLAP' : 'TURNO_UPDATE_ERROR' },
+      { status: overlap ? 409 : 500 },
+    )
   }
 
   return NextResponse.json({ ok: true, turno: updated })

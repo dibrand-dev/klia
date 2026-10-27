@@ -1235,7 +1235,13 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [localEstados, setLocalEstados] = useState<Record<string, string>>({})
   const [updatingEstado, setUpdatingEstado] = useState<string | null>(null)
+  const [toastTurnoError, setToastTurnoError] = useState<string | null>(null)
   const [registrarPagoTurno, setRegistrarPagoTurno] = useState<TurnoDeuda | null>(null)
+
+  function mostrarToastTurnoError(msg: string) {
+    setToastTurnoError(msg)
+    setTimeout(() => setToastTurnoError(null), 5000)
+  }
   const confirmWrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -1326,6 +1332,8 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
       })
       if (!res.ok) {
         setLocalEstados(prev => { const copy = { ...prev }; delete copy[turnoId]; return copy })
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        mostrarToastTurnoError(data?.error ?? 'No se pudo actualizar el turno. Intentá de nuevo y, si persiste, avisanos.')
       } else {
         router.refresh()
       }
@@ -1845,6 +1853,12 @@ function AsistenciaTab({ paciente, turnos, profObrasSociales = [], profesionalCo
         turno={registrarPagoTurno}
         onSuccess={() => { setRegistrarPagoTurno(null); router.refresh() }}
       />
+
+      {toastTurnoError && (
+        <div className="fixed bottom-6 right-6 z-50 bg-red-600 text-white text-sm px-4 py-3 rounded-lg shadow-lg max-w-sm">
+          {toastTurnoError}
+        </div>
+      )}
     </>
   )
 }

@@ -19,6 +19,7 @@ import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/Ti
 import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
+import { mensajeErrorTurno } from '@/lib/errores-turno'
 import { leerPreferenciaAgenda } from '@/lib/agenda/sedeAgenda'
 import type { TipoTurnoConSedes, SedeAgendaTurno } from '@/lib/agenda/datosAgendaTurno'
 
@@ -389,7 +390,8 @@ export default function NuevoTurnoPageForm({
       .single()
 
     if (dbError) {
-      setError('Error al crear el turno. Intentá de nuevo.')
+      console.error('[NuevoTurnoPageForm] Error al crear turno:', dbError.message)
+      setError(mensajeErrorTurno(dbError.message))
       setLoading(false)
       return
     }

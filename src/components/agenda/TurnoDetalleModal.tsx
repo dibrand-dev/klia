@@ -22,6 +22,7 @@ import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/Ti
 import '@/components/tipos-turno/tipos-turno.css'
 import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
+import { mensajeErrorTurno } from '@/lib/errores-turno'
 
 function pad2(n: number) { return String(n).padStart(2, '0') }
 function sumarMinutos(hora: string, minutos: number): string {
@@ -458,11 +459,8 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     if (dbError) {
       // Red de seguridad: el trigger check_turno_overlap rechaza el UPDATE si
       // otro turno ocupó el horario entre el chequeo y el guardado.
-      setError(
-        dbError.message?.includes('TURNO_OVERLAP')
-          ? 'Ese horario se superpone con otro turno de tu agenda. Elegí otro horario u otro día.'
-          : 'Error al guardar cambios.',
-      )
+      console.error('[TurnoDetalleModal] Error al guardar cambios:', dbError.message)
+      setError(mensajeErrorTurno(dbError.message))
       setLoading(false)
       return
     }
@@ -541,7 +539,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turno_id: turno.id, estado: 'cancelado', motivo_cancelacion: motivoCancelacion || null }),
     })
-    if (!res.ok) { setError('Error al cancelar.'); setLoading(false); return }
+    if (!res.ok) {
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      setError(data?.error ?? 'No se pudo cancelar el turno. Intentá de nuevo y, si persiste, avisanos.')
+      setLoading(false)
+      return
+    }
     fetch('/api/google-calendar/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -560,7 +563,12 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turno_id: turno.id, estado: 'realizado' }),
     })
-    if (!res.ok) { setError('Error al actualizar estado.'); setLoading(false); return }
+    if (!res.ok) {
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      setError(data?.error ?? 'No se pudo actualizar el turno. Intentá de nuevo y, si persiste, avisanos.')
+      setLoading(false)
+      return
+    }
     onTurnoActualizado({ ...turno, estado: 'realizado' })
     if (conNota) {
       window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', {
@@ -576,12 +584,18 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     if (nuevoEstado === 'cancelado') { setModo('cancelando'); return }
     if (nuevoEstado === 'realizado') { setModo('realizando'); return }
     setLoading(true)
+    setError(null)
     const res = await fetch('/api/turnos/estado', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ turno_id: turno.id, estado: nuevoEstado }),
     })
-    if (!res.ok) { setError('Error al actualizar estado.'); setLoading(false); return }
+    if (!res.ok) {
+      const data = await res.json().catch(() => null) as { error?: string } | null
+      setError(data?.error ?? 'No se pudo actualizar el turno. Intentá de nuevo y, si persiste, avisanos.')
+      setLoading(false)
+      return
+    }
     onTurnoActualizado({ ...turno, estado: nuevoEstado })
     setLoading(false)
     router.refresh()
@@ -921,6 +935,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
       </div>
 
       <div className="p-5 space-y-4">
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>}
         {/* Paciente */}
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">Paciente</p>
