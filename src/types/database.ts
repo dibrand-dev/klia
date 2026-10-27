@@ -562,6 +562,9 @@ export type Database = {
           cancelado_at: string | null
           confirmado_por_paciente_at: string | null
           cancelacion_tardia: boolean | null
+          llegada_at: string | null
+          inicio_real_at: string | null
+          fin_real_at: string | null
           created_at: string
           updated_at: string
         }
@@ -596,6 +599,9 @@ export type Database = {
           cancelado_at?: string | null
           confirmado_por_paciente_at?: string | null
           cancelacion_tardia?: boolean | null
+          llegada_at?: string | null
+          inicio_real_at?: string | null
+          fin_real_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -630,6 +636,9 @@ export type Database = {
           cancelado_at?: string | null
           confirmado_por_paciente_at?: string | null
           cancelacion_tardia?: boolean | null
+          llegada_at?: string | null
+          inicio_real_at?: string | null
+          fin_real_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -708,6 +717,7 @@ export type Database = {
           fecha: string
           contenido: string
           borrador: boolean
+          hora_nota: string | null
           created_at: string
           updated_at: string
         }
@@ -719,6 +729,7 @@ export type Database = {
           fecha: string
           contenido: string
           borrador?: boolean
+          hora_nota?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -730,6 +741,7 @@ export type Database = {
           fecha?: string
           contenido?: string
           borrador?: boolean
+          hora_nota?: string | null
           created_at?: string
           updated_at?: string
         }

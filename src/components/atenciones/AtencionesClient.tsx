@@ -401,6 +401,7 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
           pacienteAge={calcEdad(slideOver.paciente?.fecha_nacimiento ?? null)}
           pacienteOS={slideOver.paciente?.obra_social ?? ''}
           turnoHora={horaArg(slideOver.fecha_hora)}
+          turnoFechaHora={slideOver.fecha_hora}
           modalidad={slideOver.modalidad}
           initialSummary={slideOver.ai_summary}
           onSummaryGuardado={registrarResumenGuardado}

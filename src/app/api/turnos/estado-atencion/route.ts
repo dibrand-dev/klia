@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: turno, error: fetchError } = await supabase
     .from('turnos')
-    .select('id, terapeuta_id, estado')
+    .select('id, terapeuta_id, estado, llegada_at, inicio_real_at, fin_real_at')
     .eq('id', turno_id)
     .single()
 
@@ -37,10 +37,24 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Sincroniza con el campo de negocio `estado` — nunca pisa un turno ya cancelado.
-  const update: { estado_atencion: string; estado?: string } = { estado_atencion }
+  const ahora = new Date().toISOString()
+  const update: {
+    estado_atencion: string
+    estado?: string
+    llegada_at?: string
+    inicio_real_at?: string
+    fin_real_at?: string
+  } = { estado_atencion }
   if (turno.estado !== 'cancelado') {
     if (estado_atencion === 'atendido') update.estado = 'realizado'
     if (estado_atencion === 'ausente') update.estado = 'no_asistio'
+  }
+  // Timestamps reales de atención — nunca pisa un valor ya cargado.
+  if (estado_atencion === 'en_espera' && !turno.llegada_at) update.llegada_at = ahora
+  if (estado_atencion === 'en_consultorio' && !turno.inicio_real_at) update.inicio_real_at = ahora
+  if (estado_atencion === 'atendido') {
+    if (!turno.fin_real_at) update.fin_real_at = ahora
+    if (!turno.inicio_real_at) update.inicio_real_at = ahora
   }
 
   const { data: updated, error: updateError } = await supabase

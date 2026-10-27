@@ -91,6 +91,8 @@ export default function AppShell({
   const [notaPacienteId, setNotaPacienteId] = useState<string>('')
   const [notaTurnoId, setNotaTurnoId] = useState<string | null>(null)
   const [notaModo, setNotaModo] = useState<'texto' | 'voz'>('texto')
+  const [notaPacienteNombre, setNotaPacienteNombre] = useState<string | null>(null)
+  const [notaTurnoFechaHora, setNotaTurnoFechaHora] = useState<string | null>(null)
   const [nombrePropio, setNombrePropio] = useState<string | undefined>(undefined)
 
   useEffect(() => {
@@ -155,11 +157,19 @@ export default function AppShell({
 
   useEffect(() => {
     function handler(e: Event) {
-      const detail = (e as CustomEvent<{ pacienteId: string; turnoId?: string; modo?: 'texto' | 'voz' }>).detail
+      const detail = (e as CustomEvent<{
+        pacienteId: string
+        turnoId?: string
+        modo?: 'texto' | 'voz'
+        pacienteNombre?: string
+        turnoFechaHora?: string
+      }>).detail
       if (detail?.pacienteId) {
         setNotaPacienteId(detail.pacienteId)
         setNotaTurnoId(detail.turnoId ?? null)
         setNotaModo(detail.modo ?? 'texto')
+        setNotaPacienteNombre(detail.pacienteNombre ?? null)
+        setNotaTurnoFechaHora(detail.turnoFechaHora ?? null)
         setNuevaNotaOpen(true)
       }
     }
@@ -236,12 +246,14 @@ export default function AppShell({
         width="lg"
       >
         <NuevaNotaForm
-          key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}-${notaModo}` : 'closed'}
+          key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}-${notaModo}-${notaPacienteNombre}-${notaTurnoFechaHora}` : 'closed'}
           pacienteId={notaPacienteId}
           turnoId={notaTurnoId ?? undefined}
           modoInicial={notaModo}
           especialidad={profile?.especialidad}
           tieneVoz={puedeAcceder('nota_voz', profile?.plan ?? '', modulos)}
+          pacienteNombre={notaPacienteNombre ?? undefined}
+          turnoFechaHora={notaTurnoFechaHora ?? undefined}
           onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
           onClose={() => setNuevaNotaOpen(false)}
         />

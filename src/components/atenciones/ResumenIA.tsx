@@ -5,8 +5,8 @@ import type { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
-function abrirNuevaNota(pacienteId: string, turnoId: string) {
-  window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId, turnoId } }))
+function abrirNuevaNota(pacienteId: string, turnoId: string, pacienteNombre?: string, turnoFechaHora?: string) {
+  window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId, turnoId, pacienteNombre, turnoFechaHora } }))
 }
 
 const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false })
@@ -18,6 +18,7 @@ type Props = {
   pacienteAge: string
   pacienteOS: string
   turnoHora: string
+  turnoFechaHora?: string
   modalidad: string
   initialSummary: string | null
   onSummaryGuardado?: (turnoId: string, summary: string) => void
@@ -65,6 +66,7 @@ export default function ResumenIA({
   pacienteAge,
   pacienteOS,
   turnoHora,
+  turnoFechaHora,
   modalidad,
   initialSummary,
   onSummaryGuardado,
@@ -266,7 +268,7 @@ export default function ResumenIA({
             Ver Ficha Completa
           </Link>
           <button
-            onClick={() => { onClose(); abrirNuevaNota(pacienteId, turnoId) }}
+            onClick={() => { onClose(); abrirNuevaNota(pacienteId, turnoId, pacienteNombre, turnoFechaHora) }}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors"
             style={{ background: 'linear-gradient(135deg,#001a48 0%,#1F4FD9 100%)' }}
           >

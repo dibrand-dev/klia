@@ -265,11 +265,13 @@ interface Props {
   modoInicial?: 'texto' | 'voz'
   especialidad?: string | null
   tieneVoz?: boolean
+  pacienteNombre?: string
+  turnoFechaHora?: string
   onCreada?: () => void
   onClose?: () => void
 }
 
-export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, onCreada, onClose }: Props) {
+export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, pacienteNombre, turnoFechaHora, onCreada, onClose }: Props) {
   const { terapeutaId } = useEffectiveTerapeutaId()
   const [modo, setModo] = useState<'texto' | 'voz'>(modoInicial)
   const [contenido, setContenido] = useState('')
@@ -280,6 +282,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [error, setError] = useState<string | null>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
   const [draftSaved, setDraftSaved] = useState(false)
+  const [horaNotaBorrador, setHoraNotaBorrador] = useState<string | null>(null)
 
   // Antropometría — solo visible para especialidad Nutricionista
   const esNutricionista = especialidad === 'Nutrición'
@@ -298,7 +301,14 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     pioMedidaOd: '', paquimetriaOd: '', pioMedidaOi: '', paquimetriaOi: '',
   })
 
-  useEffect(() => { setFecha(format(new Date(), 'yyyy-MM-dd')) }, [])
+  useEffect(() => {
+    setFecha(
+      turnoFechaHora
+        ? new Date(turnoFechaHora).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
+        : format(new Date(), 'yyyy-MM-dd')
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     async function fetchDatosPaciente() {
@@ -339,19 +349,24 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       const supabase = createClient()
       const query = supabase
         .from('notas_clinicas')
-        .select('id, contenido, fecha')
+        .select('id, contenido, fecha, hora_nota')
         .eq('terapeuta_id', terapeutaId)
         .eq('paciente_id', pacienteId)
         .eq('borrador', true as never)
         .order('created_at', { ascending: false })
         .limit(1)
-      if (turnoId) query.eq('turno_id', turnoId)
+      if (turnoId) {
+        query.eq('turno_id', turnoId)
+      } else {
+        query.is('turno_id', null)
+      }
       const { data } = await query.maybeSingle()
       if (data) {
-        const d = data as { id: string; contenido: string; fecha: string }
+        const d = data as { id: string; contenido: string; fecha: string; hora_nota: string | null }
         setDraftId(d.id)
         setContenido(d.contenido)
         setFecha(d.fecha)
+        setHoraNotaBorrador(d.hora_nota)
         setDraftSaved(true)
       }
     }
@@ -364,6 +379,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       return
     }
     const supabase = createClient()
+    const horaNota = new Date().toISOString()
     const { data } = await supabase.from('notas_clinicas').insert({
       terapeuta_id: terapeutaId,
       paciente_id: pacienteId,
@@ -371,9 +387,11 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       fecha: fechaActual,
       contenido: html,
       borrador: true,
+      hora_nota: horaNota,
     } as never).select('id').single()
     if (data) {
       setDraftId((data as { id: string }).id)
+      setHoraNotaBorrador(horaNota)
       setDraftSaved(true)
     }
   }
@@ -408,7 +426,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
     if (draftId) {
       const { error: dbError } = await supabase.from('notas_clinicas')
-        .update({ contenido, fecha: fechaFinal, borrador: false } as never)
+        .update({ contenido, fecha: fechaFinal, borrador: false, hora_nota: horaNotaBorrador ?? new Date().toISOString() } as never)
         .eq('id', draftId)
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
     } else {
@@ -419,6 +437,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         fecha: fechaFinal,
         contenido,
         borrador: false,
+        hora_nota: new Date().toISOString(),
       } as never)
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
     }
@@ -470,11 +489,50 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       }
     }
 
+    if (turnoId) {
+      const { data: turnoActual } = await supabase
+        .from('turnos')
+        .select('estado_atencion')
+        .eq('id', turnoId)
+        .maybeSingle()
+      const estadoActual = (turnoActual as { estado_atencion: string | null } | null)?.estado_atencion
+      if (estadoActual !== 'en_consultorio' && estadoActual !== 'atendido') {
+        fetch('/api/turnos/estado-atencion', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ turno_id: turnoId, estado_atencion: 'en_consultorio' }),
+        }).catch(() => {})
+      }
+    }
+
     onCreada?.()
+  }
+
+  const contextoPartes: string[] = []
+  if (pacienteNombre) contextoPartes.push(pacienteNombre)
+  if (turnoFechaHora) {
+    const d = new Date(turnoFechaHora)
+    const fechaCorta = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+    const horaCorta = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+    contextoPartes.push(`Turno ${fechaCorta} ${horaCorta}`)
   }
 
   return (
     <div className="space-y-4">
+      {contextoPartes.length > 0 && (
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--ink)',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '8px 12px',
+          }}
+        >
+          {contextoPartes.join(' · ')}
+        </div>
+      )}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
       )}

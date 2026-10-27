@@ -572,7 +572,13 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
     onTurnoActualizado({ ...turno, estado: 'realizado' })
     if (conNota) {
       window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', {
-        detail: { pacienteId: turno.paciente_id, turnoId: turno.id, modo: modoNota }
+        detail: {
+          pacienteId: turno.paciente_id,
+          turnoId: turno.id,
+          modo: modoNota,
+          pacienteNombre: paciente ? formatNombreCompleto(paciente.nombre, paciente.apellido) : undefined,
+          turnoFechaHora: turno.fecha_hora,
+        }
       }))
     }
     setLoading(false)

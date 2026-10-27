@@ -186,7 +186,9 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                   const day = format(fecha, 'd')
                   const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
                   const yearShort = format(fecha, 'yy')
-                  const time = format(parseISO(nota.created_at), 'HH:mm')
+                  const time = nota.hora_nota
+                    ? new Date(nota.hora_nota).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+                    : null
                   const excerpt = previewContenido(nota.contenido)
                   const tags = extraerTags(nota.contenido)
                   const meta = sesionMeta(nota)
@@ -200,7 +202,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                       <div className="s-date">
                         <div className="s-day">{day}</div>
                         <div className="s-month-year">{monthShort} · {yearShort}</div>
-                        <div className="s-time">{time} hs</div>
+                        {time && <div className="s-time">{time} hs</div>}
                       </div>
 
                       <div className="s-body">
