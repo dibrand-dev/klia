@@ -421,8 +421,10 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-10-27_
+_Actualizado el 2026-10-28_
 
 ```
-0e62d8a docs: documenta WhatsApp, reserva con pago, fix de auth callback y obras sociales
+943b01e feat: nota clínica con contexto de turno, hora real y timestamps de atención
+87eb121 fix: mensajes de error claros al actualizar turnos
+a31397f feat: permitir cerrar la barra de trial con una X
 ```
