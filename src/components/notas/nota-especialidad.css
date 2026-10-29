@@ -1,0 +1,273 @@
+/* Nota clínica por especialidad — CSS pixel-perfect del diseño de referencia.
+   TODO scopeado bajo .nota-so para no pisar clases globales (.card, .btn,
+   .btn-primary, etc. del design system del resto de la app). */
+
+.nota-so { display: flex; flex-direction: column; height: 100%; }
+
+/* Header */
+.nota-so .soh {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--accent-soft-2) 0%, transparent 100%);
+  flex-shrink: 0;
+}
+.nota-so .so-av {
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
+  background: linear-gradient(145deg, #E3E9F6, #C9D3E9);
+  color: var(--accent-ink);
+  display: grid; place-items: center; font-weight: 600; font-size: 16px; letter-spacing: -0.02em;
+}
+.nota-so .so-hi { flex: 1; min-width: 0; }
+.nota-so .so-name { font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); }
+.nota-so .so-meta {
+  font-size: 12px; color: var(--muted); margin-top: 3px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.nota-so .so-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-3); }
+.nota-so .soh button {
+  width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent;
+  background: transparent; display: grid; place-items: center; cursor: pointer; flex: none;
+}
+.nota-so .soh button:hover { background: var(--surface-2); border-color: var(--border); }
+.nota-so .soh svg { width: 15px; height: 15px; stroke: var(--ink-2); stroke-width: 1.8; fill: none; stroke-linecap: round; }
+
+/* Body */
+.nota-so .sob { flex: 1; overflow: auto; padding: 18px 20px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Mode toggle (Escribir / Voz) */
+.nota-so .mode {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  align-self: flex-start;
+}
+.nota-so .mode button {
+  border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--muted);
+  padding: 5px 12px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+}
+.nota-so .mode button.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,48,.08); }
+.nota-so .mode svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+
+/* Card propia — NO reutiliza .card global (tiene shadow y otras props) */
+.ns-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface);
+  box-shadow: none;
+}
+.ns-card > .fl { font-size: 12px; color: var(--ink); font-weight: 500; }
+
+.nota-so .fl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+.nota-so input, .nota-so select, .nota-so textarea { font: inherit; color: var(--ink); }
+.nota-so .date {
+  border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; height: 36px;
+  font-size: 13.5px; width: 100%; outline: none;
+}
+.nota-so .date:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Layout de 2 columnas: módulo + cálculos (200px) */
+.nota-so .cols { display: grid; grid-template-columns: minmax(0,1fr) 200px; gap: 12px; align-items: start; }
+.nota-so .cols.solo { grid-template-columns: minmax(0,1fr); }
+
+/* Panel del módulo por especialidad */
+.nota-so .mod { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.nota-so .modh {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-2); border: 0; padding: 13px 16px; font: inherit;
+  font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer;
+}
+.nota-so .modh svg, .nota-so .subh svg {
+  width: 16px; height: 16px; stroke: var(--muted-2); stroke-width: 2; fill: none;
+  transition: transform .15s ease; flex: none;
+}
+.nota-so .mod.closed .modh svg { transform: rotate(180deg); }
+.nota-so .modb { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.nota-so .mod.closed .modb { display: none; }
+
+.nota-so .gr { display: grid; gap: 12px 14px; }
+.nota-so .g2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.nota-so .g3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+
+.nota-so .f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.nota-so .f .fl { font-size: 12px; color: var(--ink); opacity: .6; }
+.nota-so .in {
+  display: flex; align-items: center; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); min-width: 0; height: 36px; padding: 0 9px 0 10px; gap: 4px;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.nota-so .in:focus-within, .nota-so .cie:focus-within, .nota-so textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: 0;
+}
+.nota-so .in input, .nota-so .in select {
+  border: 0; outline: 0; background: none; min-width: 0; width: 100%; font-size: 13.5px;
+  padding: 0; font-variant-numeric: tabular-nums;
+}
+.nota-so .in select { color: var(--ink); cursor: pointer; }
+.nota-so .in input::placeholder, .nota-so textarea::placeholder, .nota-so .cie input::placeholder { color: var(--muted-2); }
+.nota-so .in em { font-style: normal; font-size: 11px; font-weight: 500; color: var(--muted-2); flex: none; }
+.nota-so .modb textarea {
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13.5px;
+  line-height: 1.55; resize: vertical; width: 100%; outline: none; background: var(--surface);
+}
+
+/* Sub-sección colapsable */
+.nota-so .sub { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); overflow: hidden; }
+.nota-so .subh {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; border: 0;
+  background: transparent; padding: 10px 14px; font: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--ink); cursor: pointer;
+}
+.nota-so .subb { display: none; padding: 14px; flex-direction: column; gap: 12px; background: var(--surface); border-top: 1px solid var(--border); }
+.nota-so .sub.open .subb { display: flex; }
+.nota-so .sub.open .subh svg { transform: rotate(180deg); }
+
+/* Segmentado (.sg) y escala EVA */
+.nota-so .sg, .nota-so .eva {
+  display: flex; flex-wrap: wrap; padding: 2px; gap: 2px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px;
+}
+.nota-so .sg button, .nota-so .eva button {
+  flex: 1; border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--muted); border-radius: 5px; padding: 7px 6px; cursor: pointer; transition: all .12s ease;
+}
+.nota-so .sg button.on, .nota-so .eva button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.nota-so .eva { flex-wrap: nowrap; }
+.nota-so .eva button { padding: 7px 0; font-variant-numeric: tabular-nums; min-width: 0; }
+.nota-so .cap2 { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted-2); }
+
+/* Oftalmología — AV/PIO por ojo y refracción */
+.nota-so .eyes { display: grid; grid-template-columns: 24px repeat(2, minmax(0,1fr)) minmax(0,1.3fr); gap: 6px 8px; align-items: center; }
+.nota-so .rx { display: grid; grid-template-columns: 24px repeat(4, minmax(0,1fr)); gap: 6px; align-items: center; }
+.nota-so .eyes b, .nota-so .rx b { font-size: 11.5px; font-weight: 700; color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+.nota-so .eh { font-size: 11px; color: var(--muted); font-weight: 500; }
+.nota-so .cap { margin: -4px 0 0; font-size: 11px; color: var(--muted-2); }
+
+/* CIE-10 chips */
+.nota-so .cie {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 8px; min-height: 36px; background: var(--surface);
+}
+.nota-so .cie .chips { display: contents; }
+.nota-so .cie .ch {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+  background: var(--accent-soft); color: var(--accent-ink); border-radius: 100px;
+  padding: 3px 6px 3px 10px; font-weight: 600;
+}
+.nota-so .cie .ch b { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 11px; }
+.nota-so .cie .ch button { border: 0; background: none; color: var(--accent-ink); cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1; }
+.nota-so .cie input { border: 0; outline: 0; flex: 1; min-width: 140px; font-size: 13px; padding: 3px 0; background: none; }
+
+/* Odontograma FDI */
+.nota-so .odo { display: flex; flex-direction: column; gap: 3px; align-items: stretch; padding: 8px 0; }
+.nota-so .odr { display: flex; gap: 1px; width: 100%; }
+.nota-so .odr i { width: 6px; flex: none; }
+.nota-so .odm { height: 1px; width: 100%; background: var(--border); margin: 3px 0; }
+.nota-so .odr button {
+  position: relative; flex: 1 1 0; min-width: 0; height: 28px; padding: 0;
+  border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--muted);
+  font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  cursor: pointer; transition: background .12s ease, border-color .12s ease, color .12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.nota-so .odr button:hover { background: var(--accent-soft); border-color: var(--accent-mid, #C9D6FB); color: var(--accent-ink); }
+.nota-so .odr button:focus { outline: none; }
+.nota-so .odr button:focus-visible {
+  z-index: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  color: var(--accent-ink);
+}
+.nota-so .odr button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nota-so .odr button.on:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.nota-so .odr button.on:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); color: #fff; }
+@media (max-width: 560px) { .nota-so .odr button { height: 32px; } }
+
+/* Columna de cálculos en vivo */
+.nota-so .calc { display: flex; flex-direction: column; gap: 10px; }
+.nota-so .cc {
+  border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.nota-so .cc.warn { border-color: #F1DDBF; background: var(--warn-soft); }
+.nota-so .cc .cl { font-size: 10.5px; font-weight: 700; color: var(--muted-2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 2px; }
+.nota-so .cc .cv { font-size: 21px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.nota-so .cc .cv small { font-size: 12px; color: var(--muted-2); font-weight: 500; margin-left: 3px; }
+.nota-so .cc .cs { font-size: 11px; color: var(--muted-2); line-height: 1.45; }
+.nota-so .cc .ch2 { font-size: 12.5px; color: var(--muted-2); font-style: italic; padding: 2px 0; line-height: 1.45; }
+.nota-so .cc .tg {
+  display: flex; margin-top: 9px; padding: 2px; width: 100%; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 7px; gap: 2px; box-sizing: border-box;
+}
+.nota-so .cc .tg button { flex: 1; border: none; background: transparent; padding: 5px 6px; font: inherit; font-size: 10.5px; font-weight: 600; color: var(--muted); border-radius: 5px; cursor: pointer; }
+.nota-so .cc .tg button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.nota-so .cc .pio {
+  display: grid; grid-template-columns: 24px auto 16px 1fr; align-items: baseline; gap: 2px 4px;
+  font-size: 15px; line-height: 1.5;
+}
+.nota-so .cc .pio b { font: 700 11.5px 'JetBrains Mono', monospace; color: var(--ink); }
+.nota-so .cc .pio .pm { color: var(--muted); font-weight: 500; }
+.nota-so .cc .pio i { font-style: normal; color: var(--muted-3); font-weight: 500; text-align: center; }
+.nota-so .cc .pio .pk { color: var(--ink); font-weight: 700; }
+.nota-so .cc .pio .pk.al { color: var(--warn); }
+.nota-so .cc .pio .pn { font-size: 11px; font-weight: 500; color: var(--muted-2); font-style: italic; }
+.nota-so .up { color: var(--ok); font-weight: 700; }
+.nota-so .dn { color: var(--danger); font-weight: 700; }
+.nota-so .dz { color: var(--muted); font-weight: 600; }
+.nota-so .cv .up, .nota-so .cv .dn, .nota-so .cv .dz { font-size: 15px; }
+.nota-so .al { color: var(--warn); font-weight: 600; }
+.nota-so .bar { display: block; height: 5px; background: var(--border); border-radius: 9px; overflow: hidden; margin: 3px 0 5px; }
+.nota-so .bar i { display: block; height: 100%; background: var(--accent); }
+
+/* Toolbar de la nota de sesión (RichTextEditor variant="nota") */
+.nota-so .nota .tb {
+  display: flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-bottom: 0;
+  border-radius: 8px 8px 0 0; background: var(--surface-2); padding: 6px 8px;
+}
+.nota-so .nota .tb button {
+  border: 0; background: none; width: 26px; height: 26px; border-radius: 5px; cursor: pointer;
+  color: var(--ink-2); font: 600 12px Inter; display: grid; place-items: center;
+}
+.nota-so .nota .tb button:hover { background: #fff; }
+.nota-so .nota .tb button.on { background: var(--ink); color: #fff; }
+.nota-so .nota .tb svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.nota-so .nota .tb .sp { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+.nota-so .nota .ns-editor-content {
+  border-radius: 0 0 8px 8px; min-height: 160px; padding: 12px 14px; font-size: 14px; line-height: 1.6;
+  border: 1px solid var(--border); border-top: 0; background: var(--surface);
+}
+.nota-so .nota .ns-editor-content:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Voz */
+.nota-so .voz {
+  border: 1px dashed var(--border); border-radius: 8px; padding: 28px 16px; display: flex;
+  flex-direction: column; align-items: center; gap: 10px; text-align: center;
+}
+.nota-so .voz button {
+  width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--accent);
+  display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(31,79,217,.22);
+}
+.nota-so .voz svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.nota-so .voz p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 36ch; }
+
+/* Footer */
+.nota-so .sof {
+  display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border);
+  background: var(--surface-2); flex-shrink: 0;
+}
+.nota-so .autosave { font-size: 11.5px; color: var(--muted-2); display: flex; align-items: center; gap: 6px; padding: 0 4px; margin-right: auto; }
+.nota-so .autosave .d { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); }
+.nota-so .autosave.saving .d { background: var(--muted-3); }
+
+/* Botón "Guardar nota" — definido completo acá, NO reutiliza .btn-primary global */
+.nota-so .sof .ns-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 16px; border-radius: 8px; border: 1px solid var(--ink);
+  background: var(--ink); color: #fff;
+  font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.nota-so .sof .ns-btn-primary:hover { background: #000; }
+.nota-so .sof .ns-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.nota-so .sof .ns-btn-primary svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 2; fill: none; }
+
+@media (max-width: 560px) {
+  .nota-so .cols { grid-template-columns: minmax(0,1fr); }
+  .nota-so .calc { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+}

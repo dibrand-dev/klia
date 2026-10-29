@@ -1,262 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format, differenceInYears } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
-import { cn } from '@/lib/utils'
 import RichTextEditor from '@/components/ui/RichTextEditor'
 import VoiceRecorder from '@/components/ui/VoiceRecorder'
-import StickyWidgetAntropometria from '@/components/nutricion/StickyWidgetAntropometria'
-import RxGrid from '@/components/oftalmologia/RxGrid'
-import StickyWidgetPIO from '@/components/oftalmologia/StickyWidgetPIO'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
+import { getTerminologia } from '@/hooks/useTerminologia'
+import '@/components/notas/nota-especialidad.css'
+import ModuloEspecialidad, { tieneModulo } from '@/components/notas/ModuloEspecialidad'
+import { notaPlaceholder, type ValoresModulo } from '@/lib/notas/modulos'
+import { guardarDatosModulo } from '@/lib/notas/persistencia'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
 }
 
-function num(v: string): number | null {
-  return v.trim() === '' ? null : Number(v)
+function iniciales(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/).filter(Boolean)
+  if (partes.length === 0) return '?'
+  if (partes.length === 1) return partes[0][0].toUpperCase()
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase()
 }
 
-function AntropoGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="anthro-grid">
-      {children}
-      <style jsx>{`
-        .anthro-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px 14px;
-        }
-        @media (max-width: 460px) {
-          .anthro-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-      `}</style>
-    </div>
-  )
-}
-
-function AntropoInput({ label, unit, value, onChange, tabIndex }: {
-  label: string
-  unit: string
-  value: string
-  onChange: (v: string) => void
-  tabIndex: number
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label
-        style={{
-          fontSize: 12,
-          color: 'var(--ink, #0B1220)',
-          opacity: 0.6,
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </label>
-      <div style={{ position: 'relative' }}>
-        <input
-          type="number"
-          inputMode="decimal"
-          step="0.1"
-          placeholder="0"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          tabIndex={tabIndex}
-          className="antropo-num-input"
-          style={{
-            width: '100%',
-            height: 36,
-            padding: '0 30px 0 10px',
-            fontSize: 13.5,
-            border: '1px solid var(--border, #E7E9EE)',
-            borderRadius: 'var(--r-md, 8px)',
-            outline: 'none',
-            background: 'var(--surface, #fff)',
-            color: 'var(--ink, #0B1220)',
-            fontVariantNumeric: 'tabular-nums',
-            transition: 'border-color .12s ease, box-shadow .12s ease',
-          }}
-          onFocus={(e) => { e.target.style.boxShadow = '0 0 0 3px var(--accent-soft, #EAF0FE)'; e.target.style.borderColor = 'var(--accent, #1F4FD9)' }}
-          onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--border, #E7E9EE)' }}
-        />
-        <span
-          style={{
-            position: 'absolute',
-            right: 9,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: 11,
-            color: 'var(--muted-2, #8A93A1)',
-            fontWeight: 500,
-            pointerEvents: 'none',
-          }}
-        >
-          {unit}
-        </span>
-      </div>
-      <style jsx>{`
-        .antropo-num-input::-webkit-outer-spin-button,
-        .antropo-num-input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        .antropo-num-input {
-          -moz-appearance: textfield;
-        }
-      `}</style>
-    </div>
-  )
-}
-
-function AntropometriaSection({ open, onToggle, title, children, nested }: {
-  open: boolean
-  onToggle: () => void
-  title: string
-  children: React.ReactNode
-  nested?: boolean
-}) {
-  return (
-    <div
-      style={{
-        border: '1px solid var(--border, #E7E9EE)',
-        borderRadius: 'var(--r-lg, 12px)',
-        background: nested ? 'var(--surface-2, #F6F7F9)' : 'var(--surface, #fff)',
-        overflow: 'hidden',
-      }}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: nested ? '10px 14px' : '13px 16px',
-          background: nested ? 'transparent' : 'var(--surface-2, #F6F7F9)',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13.5,
-          fontWeight: 600,
-          color: 'var(--ink, #0B1220)',
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ flex: 1, minWidth: 0 }}>{title}</span>
-        <svg
-          viewBox="0 0 24 24"
-          style={{
-            width: 16,
-            height: 16,
-            stroke: 'var(--muted-2, #8A93A1)',
-            strokeWidth: 2,
-            fill: 'none',
-            flex: 'none',
-            transform: open ? 'rotate(180deg)' : 'none',
-            transition: 'transform .15s ease',
-          }}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {open && (
-        <div style={{ padding: 16, background: nested ? 'var(--surface, #fff)' : 'transparent' }}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StickyWidgetAntropometriaBarraMobile(props: React.ComponentProps<typeof StickyWidgetAntropometria>) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div
-      style={{
-        border: '1px solid var(--border, #E7E9EE)',
-        borderRadius: 'var(--r-lg, 12px)',
-        background: 'var(--surface, #fff)',
-        marginBottom: 16,
-        overflow: 'hidden',
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 14px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--ink, #0B1220)',
-        }}
-      >
-        IMC / GEB en vivo
-        <span className="material-symbols-outlined" style={{ fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
-          expand_more
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: '0 14px 14px' }}>
-          <StickyWidgetAntropometria {...props} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StickyWidgetPIOBarraMobile(props: React.ComponentProps<typeof StickyWidgetPIO>) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div
-      style={{
-        border: '1px solid var(--border, #E7E9EE)',
-        borderRadius: 'var(--r-lg, 12px)',
-        background: 'var(--surface, #fff)',
-        marginBottom: 16,
-        overflow: 'hidden',
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 14px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--ink, #0B1220)',
-        }}
-      >
-        PIO en vivo
-        <span className="material-symbols-outlined" style={{ fontSize: 18, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
-          expand_more
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: '0 14px 14px' }}>
-          <StickyWidgetPIO {...props} />
-        </div>
-      )}
-    </div>
-  )
+function metaHeader(turnoFechaHora: string | undefined): string {
+  if (!turnoFechaHora) {
+    const hoy = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires' })
+    return `Nueva nota clínica · ${hoy}`
+  }
+  const d = new Date(turnoFechaHora)
+  const dia = d.toLocaleDateString('es-AR', { weekday: 'long', timeZone: 'America/Argentina/Buenos_Aires' })
+  const diaCap = dia.charAt(0).toUpperCase() + dia.slice(1)
+  const diaMes = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).replace('.', '')
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+  return `Nueva nota clínica · ${diaCap} ${diaMes} · ${hora}`
 }
 
 interface Props {
@@ -267,11 +44,12 @@ interface Props {
   tieneVoz?: boolean
   pacienteNombre?: string
   turnoFechaHora?: string
+  terminologia?: 'sesion' | 'consulta' | null
   onCreada?: () => void
   onClose?: () => void
 }
 
-export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, pacienteNombre, turnoFechaHora, onCreada, onClose }: Props) {
+export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'texto', especialidad, tieneVoz = false, pacienteNombre, turnoFechaHora, terminologia, onCreada, onClose }: Props) {
   const { terapeutaId } = useEffectiveTerapeutaId()
   const [modo, setModo] = useState<'texto' | 'voz'>(modoInicial)
   const [contenido, setContenido] = useState('')
@@ -281,25 +59,35 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
-  const [draftSaved, setDraftSaved] = useState(false)
+  const [autosaveEstado, setAutosaveEstado] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [horaNotaBorrador, setHoraNotaBorrador] = useState<string | null>(null)
+  const ultimoGuardadoRef = useRef<string>('')
 
-  // Antropometría — solo visible para especialidad Nutricionista
+  // Datos de los módulos por especialidad — se persisten solo al Guardar nota,
+  // nunca en el autoguardado del borrador.
   const esNutricionista = especialidad === 'Nutrición'
-  const esOftalmologo = especialidad === 'Oftalmología'
   const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
   const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
-  const [antropoOpen, setAntropoOpen] = useState(true)
-  const [pliegOpen, setPliegOpen] = useState(false)
-  const [antropo, setAntropo] = useState({
-    peso: '', altura: '', cintura: '', cadera: '',
-    porcentajeGrasa: '', porcentajeMusculo: '',
-    pliegueTricipital: '', pliegueSubescapular: '', pliegueSuprailiaco: '',
-    perimetroBrazo: '', perimetroPierna: '',
-  })
-  const [pio, setPio] = useState({
-    pioMedidaOd: '', paquimetriaOd: '', pioMedidaOi: '', paquimetriaOi: '',
-  })
+  const [datosModulo, setDatosModulo] = useState<ValoresModulo>({})
+
+  function cambiarValorModulo(key: string, val: string | string[]) {
+    setDatosModulo((p) => ({ ...p, [key]: val }))
+  }
+
+  const [pacienteNombreResuelto, setPacienteNombreResuelto] = useState<string | null>(null)
+  useEffect(() => {
+    if (pacienteNombre || !pacienteId) return
+    const supabase = createClient()
+    supabase
+      .from('pacientes')
+      .select('nombre, apellido')
+      .eq('id', pacienteId)
+      .single()
+      .then(({ data }) => {
+        if (data) setPacienteNombreResuelto(`${data.nombre} ${data.apellido}`)
+      })
+  }, [pacienteId, pacienteNombre])
+  const nombreMostrado = pacienteNombre ?? pacienteNombreResuelto ?? 'Paciente'
 
   useEffect(() => {
     setFecha(
@@ -367,41 +155,70 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         setContenido(d.contenido)
         setFecha(d.fecha)
         setHoraNotaBorrador(d.hora_nota)
-        setDraftSaved(true)
+        setAutosaveEstado('saved')
+        // El contenido recién cargado ya está persistido — no re-disparar el
+        // autoguardado debounced por este mismo valor.
+        ultimoGuardadoRef.current = d.contenido
       }
     }
     cargarBorrador()
   }, [terapeutaId])
 
-  async function autoGuardarBorrador(html: string, fechaActual: string) {
-    if (!terapeutaId) {
-      console.error('[NuevaNotaForm] terapeutaId no resuelto todavía')
-      return
-    }
-    const supabase = createClient()
-    const horaNota = new Date().toISOString()
-    const { data } = await supabase.from('notas_clinicas').insert({
-      terapeuta_id: terapeutaId,
-      paciente_id: pacienteId,
-      turno_id: turnoId ?? null,
-      fecha: fechaActual,
-      contenido: html,
-      borrador: true,
-      hora_nota: horaNota,
-    } as never).select('id').single()
-    if (data) {
-      setDraftId((data as { id: string }).id)
-      setHoraNotaBorrador(horaNota)
-      setDraftSaved(true)
-    }
-  }
+  // Autoguardado real: debounce ~2s sobre el contenido. INSERT la primera vez
+  // (guarda draftId), UPDATE por draftId después — nunca pisa hora_nota si el
+  // borrador ya la tiene.
+  useEffect(() => {
+    if (modo !== 'texto') return
+    if (isHtmlEmpty(contenido)) return
+    if (contenido === ultimoGuardadoRef.current) return
+    if (!terapeutaId) return
+
+    const timeout = setTimeout(async () => {
+      setAutosaveEstado('saving')
+      const supabase = createClient()
+      const fechaActual = fecha || format(new Date(), 'yyyy-MM-dd')
+
+      if (draftId) {
+        const { error: dbError } = await supabase.from('notas_clinicas')
+          .update({ contenido, fecha: fechaActual } as never)
+          .eq('id', draftId)
+        if (!dbError) {
+          ultimoGuardadoRef.current = contenido
+          setAutosaveEstado('saved')
+        } else {
+          setAutosaveEstado('idle')
+        }
+        return
+      }
+
+      const horaNota = new Date().toISOString()
+      const { data } = await supabase.from('notas_clinicas').insert({
+        terapeuta_id: terapeutaId,
+        paciente_id: pacienteId,
+        turno_id: turnoId ?? null,
+        fecha: fechaActual,
+        contenido,
+        borrador: true,
+        hora_nota: horaNota,
+      } as never).select('id').single()
+      if (data) {
+        setDraftId((data as { id: string }).id)
+        setHoraNotaBorrador(horaNota)
+        ultimoGuardadoRef.current = contenido
+        setAutosaveEstado('saved')
+      } else {
+        setAutosaveEstado('idle')
+      }
+    }, 2000)
+
+    return () => clearTimeout(timeout)
+  }, [contenido, modo, terapeutaId, draftId, fecha, pacienteId, turnoId])
 
   function handleTranscripcion(text: string) {
     const html = isHtmlEmpty(contenido) ? `<p>${text}</p>` : contenido + `<p>${text}</p>`
     setContenido(html)
     setModo('texto')
     setPendingText(null)
-    autoGuardarBorrador(html, fecha || format(new Date(), 'yyyy-MM-dd'))
   }
 
   function aplicarPendiente(accion: 'append' | 'replace') {
@@ -442,51 +259,12 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
     }
 
-    if (esNutricionista) {
-      const antropoValues = {
-        peso: num(antropo.peso),
-        altura: num(antropo.altura),
-        cintura: num(antropo.cintura),
-        cadera: num(antropo.cadera),
-        porcentaje_grasa: num(antropo.porcentajeGrasa),
-        porcentaje_musculo: num(antropo.porcentajeMusculo),
-        pliegue_tricipital: num(antropo.pliegueTricipital),
-        pliegue_subescapular: num(antropo.pliegueSubescapular),
-        pliegue_suprailiaco: num(antropo.pliegueSuprailiaco),
-        perimetro_brazo: num(antropo.perimetroBrazo),
-        perimetro_pierna: num(antropo.perimetroPierna),
-      }
-      const hayDatos = Object.values(antropoValues).some((v) => v != null)
-      if (hayDatos) {
-        const { error: antropoError } = await supabase.from('registros_antropometricos').insert({
-          terapeuta_id: terapeutaId,
-          paciente_id: pacienteId,
-          turno_id: turnoId ?? null,
-          fecha: fechaFinal,
-          ...antropoValues,
-        } as never)
-        if (antropoError) { setError('La nota se guardó, pero hubo un error al guardar los datos antropométricos.'); setLoading(false); return }
-      }
-    }
-
-    if (esOftalmologo) {
-      const pioValues = {
-        pio_medida_od: num(pio.pioMedidaOd),
-        paquimetria_od: num(pio.paquimetriaOd),
-        pio_medida_oi: num(pio.pioMedidaOi),
-        paquimetria_oi: num(pio.paquimetriaOi),
-      }
-      const hayDatosPio = Object.values(pioValues).some((v) => v != null)
-      if (hayDatosPio) {
-        const { error: pioError } = await supabase.from('registros_pio').insert({
-          terapeuta_id: terapeutaId,
-          paciente_id: pacienteId,
-          turno_id: turnoId ?? null,
-          fecha: fechaFinal,
-          ...pioValues,
-        } as never)
-        if (pioError) { setError('La nota se guardó, pero hubo un error al guardar el registro de PIO.'); setLoading(false); return }
-      }
+    if (tieneModulo(especialidad)) {
+      const { error: moduloError } = await guardarDatosModulo({
+        supabase, especialidad, valores: datosModulo,
+        terapeutaId, pacienteId, turnoId: turnoId ?? null, fecha: fechaFinal,
+      })
+      if (moduloError) { setError(moduloError); setLoading(false); return }
     }
 
     if (turnoId) {
@@ -508,232 +286,118 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     onCreada?.()
   }
 
-  const contextoPartes: string[] = []
-  if (pacienteNombre) contextoPartes.push(pacienteNombre)
-  if (turnoFechaHora) {
-    const d = new Date(turnoFechaHora)
-    const fechaCorta = d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
-    const horaCorta = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
-    contextoPartes.push(`Turno ${fechaCorta} ${horaCorta}`)
-  }
+  const t = getTerminologia(terminologia)
 
   return (
-    <div className="space-y-4">
-      {contextoPartes.length > 0 && (
-        <div
-          style={{
-            fontSize: 13,
-            color: 'var(--ink)',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '8px 12px',
-          }}
-        >
-          {contextoPartes.join(' · ')}
-        </div>
-      )}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
-      )}
-
-      {/* Mode toggle */}
-      {tieneVoz && (
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => setModo('texto')}
-            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors', modo === 'texto' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>edit_note</span>
-            Escribir
-          </button>
-          <button
-            type="button"
-            onClick={() => setModo('voz')}
-            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors', modo === 'voz' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>mic</span>
-            Voz
-          </button>
-        </div>
-      )}
-
-      {/* Pending transcription choice */}
-      {pendingText && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-medium text-blue-900">Transcripción lista. ¿Qué hacemos con el texto existente?</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => aplicarPendiente('append')}
-              className="flex-1 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              Agregar al final
-            </button>
-            <button
-              type="button"
-              onClick={() => aplicarPendiente('replace')}
-              className="flex-1 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Reemplazar todo
-            </button>
+    <div className="nota-so">
+      <div className="soh">
+        <div className="so-av">{iniciales(nombreMostrado)}</div>
+        <div className="so-hi">
+          <div className="so-name">{nombreMostrado}</div>
+          <div className="so-meta">
+            <span>{metaHeader(turnoFechaHora)}</span>
+            {especialidad && (
+              <>
+                <span className="dot" />
+                <span>{especialidad}</span>
+              </>
+            )}
           </div>
         </div>
-      )}
-
-      {modo === 'voz' ? (
-        <div className="card p-4">
-          <VoiceRecorder
-            onTranscription={handleTranscripcion}
-            onError={(msg) => setError(msg)}
-            maxSeconds={maxSeconds}
-          />
-        </div>
-      ) : (
-        <>
-          <div className="card p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha</label>
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className="input-field"
-            />
-          </div>
-
-          {esNutricionista && (
-            <>
-              {/* Barra colapsable de cálculo en vivo — solo mobile/tablet */}
-              <div className="lg:hidden">
-                <StickyWidgetAntropometriaBarraMobile
-                  pacienteId={pacienteId}
-                  peso={num(antropo.peso)}
-                  altura={num(antropo.altura)}
-                  edad={edadPaciente}
-                  sexo={sexoPaciente}
-                />
-              </div>
-
-              <div className="lg:flex lg:gap-4 lg:items-start">
-                <div className="flex-1 space-y-4">
-                  <AntropometriaSection
-                    open={antropoOpen}
-                    onToggle={() => setAntropoOpen((v) => !v)}
-                    title="Datos antropométricos"
-                  >
-                    <AntropoGrid>
-                      <AntropoInput label="Peso" unit="kg" value={antropo.peso} onChange={(v) => setAntropo((p) => ({ ...p, peso: v }))} tabIndex={1} />
-                      <AntropoInput label="Altura" unit="cm" value={antropo.altura} onChange={(v) => setAntropo((p) => ({ ...p, altura: v }))} tabIndex={2} />
-                      <AntropoInput label="Cintura" unit="cm" value={antropo.cintura} onChange={(v) => setAntropo((p) => ({ ...p, cintura: v }))} tabIndex={3} />
-                      <AntropoInput label="Cadera" unit="cm" value={antropo.cadera} onChange={(v) => setAntropo((p) => ({ ...p, cadera: v }))} tabIndex={4} />
-                      <AntropoInput label="% Grasa" unit="%" value={antropo.porcentajeGrasa} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeGrasa: v }))} tabIndex={5} />
-                      <AntropoInput label="% Músculo" unit="%" value={antropo.porcentajeMusculo} onChange={(v) => setAntropo((p) => ({ ...p, porcentajeMusculo: v }))} tabIndex={6} />
-                    </AntropoGrid>
-
-                    <div style={{ marginTop: 14 }}>
-                      <AntropometriaSection
-                        open={pliegOpen}
-                        onToggle={() => setPliegOpen((v) => !v)}
-                        title="Pliegues cutáneos y perímetros"
-                        nested
-                      >
-                        <AntropoGrid>
-                          <AntropoInput label="Pliegue tricipital" unit="mm" value={antropo.pliegueTricipital} onChange={(v) => setAntropo((p) => ({ ...p, pliegueTricipital: v }))} tabIndex={7} />
-                          <AntropoInput label="Pliegue subescapular" unit="mm" value={antropo.pliegueSubescapular} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSubescapular: v }))} tabIndex={8} />
-                          <AntropoInput label="Pliegue suprailíaco" unit="mm" value={antropo.pliegueSuprailiaco} onChange={(v) => setAntropo((p) => ({ ...p, pliegueSuprailiaco: v }))} tabIndex={9} />
-                          <AntropoInput label="Perímetro de brazo" unit="cm" value={antropo.perimetroBrazo} onChange={(v) => setAntropo((p) => ({ ...p, perimetroBrazo: v }))} tabIndex={10} />
-                          <AntropoInput label="Perímetro de pierna" unit="cm" value={antropo.perimetroPierna} onChange={(v) => setAntropo((p) => ({ ...p, perimetroPierna: v }))} tabIndex={11} />
-                        </AntropoGrid>
-                      </AntropometriaSection>
-                    </div>
-                  </AntropometriaSection>
-                </div>
-
-                {/* Widget sticky — solo desktop ancho */}
-                <div className="hidden lg:block lg:w-64 lg:sticky lg:top-4 lg:flex-shrink-0">
-                  <StickyWidgetAntropometria
-                    pacienteId={pacienteId}
-                    peso={num(antropo.peso)}
-                    altura={num(antropo.altura)}
-                    edad={edadPaciente}
-                    sexo={sexoPaciente}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {esOftalmologo && (
-            <>
-              <RxGrid pacienteId={pacienteId} variant="embebida" />
-
-              <div className="lg:hidden">
-                <StickyWidgetPIOBarraMobile
-                  pioMedidaOd={num(pio.pioMedidaOd)}
-                  paquimetriaOd={num(pio.paquimetriaOd)}
-                  pioMedidaOi={num(pio.pioMedidaOi)}
-                  paquimetriaOi={num(pio.paquimetriaOi)}
-                />
-              </div>
-
-              <div className="lg:flex lg:gap-4 lg:items-start">
-                <div className="flex-1 space-y-4">
-                  <div className="card p-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Presión intraocular</label>
-                    <AntropoGrid>
-                      <AntropoInput label="PIO OD" unit="mmHg" value={pio.pioMedidaOd} onChange={(v) => setPio((p) => ({ ...p, pioMedidaOd: v }))} tabIndex={1} />
-                      <AntropoInput label="Paquimetría OD" unit="µm" value={pio.paquimetriaOd} onChange={(v) => setPio((p) => ({ ...p, paquimetriaOd: v }))} tabIndex={2} />
-                      <AntropoInput label="PIO OI" unit="mmHg" value={pio.pioMedidaOi} onChange={(v) => setPio((p) => ({ ...p, pioMedidaOi: v }))} tabIndex={3} />
-                      <AntropoInput label="Paquimetría OI" unit="µm" value={pio.paquimetriaOi} onChange={(v) => setPio((p) => ({ ...p, paquimetriaOi: v }))} tabIndex={4} />
-                    </AntropoGrid>
-                  </div>
-                </div>
-
-                <div className="hidden lg:block lg:w-64 lg:sticky lg:top-4 lg:flex-shrink-0">
-                  <StickyWidgetPIO
-                    pioMedidaOd={num(pio.pioMedidaOd)}
-                    paquimetriaOd={num(pio.paquimetriaOd)}
-                    pioMedidaOi={num(pio.pioMedidaOi)}
-                    paquimetriaOi={num(pio.paquimetriaOi)}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="card p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nota de sesión</label>
-            <RichTextEditor
-              value={contenido}
-              onChange={setContenido}
-              placeholder="¿Qué trabajaron en esta sesión? Temas tratados, evolución, próximos pasos..."
-              minHeight="220px"
-            />
-          </div>
-        </>
-      )}
-
-      {draftSaved && (
-        <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-          <span className="material-symbols-outlined text-[14px]">check_circle</span>
-          Borrador guardado — podés cerrar y continuar después sin perder el texto.
-        </div>
-      )}
-
-      <div className="flex gap-3 pt-1">
-        <button
-          onClick={onClose}
-          className="btn-secondary flex-1 py-3 text-sm font-semibold"
-        >
-          Cancelar
+        <button type="button" aria-label="Cerrar" onClick={onClose}>
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
+      </div>
+
+      <div className="sob">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
+        )}
+
+        {tieneVoz && (
+          <div className="mode">
+            <button type="button" className={modo === 'texto' ? 'on' : ''} onClick={() => setModo('texto')}>
+              <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" /></svg>
+              Escribir
+            </button>
+            <button type="button" className={modo === 'voz' ? 'on' : ''} onClick={() => setModo('voz')}>
+              <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
+              Voz
+            </button>
+          </div>
+        )}
+
+        {/* Pending transcription choice */}
+        {pendingText && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+            <p className="text-sm font-medium text-blue-900">Transcripción lista. ¿Qué hacemos con el texto existente?</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => aplicarPendiente('append')}
+                className="flex-1 py-2 text-sm font-medium bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                Agregar al final
+              </button>
+              <button
+                type="button"
+                onClick={() => aplicarPendiente('replace')}
+                className="flex-1 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Reemplazar todo
+              </button>
+            </div>
+          </div>
+        )}
+
+        {modo === 'voz' ? (
+          <div className="voz">
+            <VoiceRecorder
+              onTranscription={handleTranscripcion}
+              onError={(msg) => setError(msg)}
+              maxSeconds={maxSeconds}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="ns-card">
+              <label className="fl" htmlFor="ns-fecha">Fecha</label>
+              <input className="date" type="date" id="ns-fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            </div>
+
+            {tieneModulo(especialidad) && (
+              <ModuloEspecialidad
+                especialidad={especialidad}
+                pacienteId={pacienteId}
+                valores={datosModulo}
+                onChange={cambiarValorModulo}
+                edadPaciente={edadPaciente}
+                sexoPaciente={sexoPaciente}
+              />
+            )}
+
+            <div className="ns-card nota">
+              <span className="fl">Nota de {t.sesion}</span>
+              <RichTextEditor
+                variant="nota"
+                value={contenido}
+                onChange={setContenido}
+                placeholder={notaPlaceholder(especialidad)}
+                minHeight="160px"
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="sof">
+        <span className="autosave">
+          <span className="d" />
+          {autosaveEstado === 'saving' ? 'Guardando…' : autosaveEstado === 'saved' ? 'Borrador guardado' : 'Sin guardar aún'}
+        </span>
         {modo === 'texto' && (
-          <button
-            onClick={handleGuardar}
-            disabled={loading || isHtmlEmpty(contenido)}
-            className={cn('btn-primary flex-1 py-3', (loading || isHtmlEmpty(contenido)) && 'opacity-50')}
-          >
+          <button type="button" className="ns-btn-primary" onClick={handleGuardar} disabled={loading || isHtmlEmpty(contenido)}>
+            <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
             {loading ? 'Guardando...' : 'Guardar nota'}
           </button>
         )}

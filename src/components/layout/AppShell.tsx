@@ -243,7 +243,9 @@ export default function AppShell({
         open={nuevaNotaOpen}
         onClose={() => setNuevaNotaOpen(false)}
         title="Nueva nota clínica"
-        width="lg"
+        width="nota"
+        noPadding
+        header={<></>}
       >
         <NuevaNotaForm
           key={nuevaNotaOpen ? `${notaPacienteId}-${notaTurnoId}-${notaModo}-${notaPacienteNombre}-${notaTurnoFechaHora}` : 'closed'}
@@ -254,6 +256,7 @@ export default function AppShell({
           tieneVoz={puedeAcceder('nota_voz', profile?.plan ?? '', modulos)}
           pacienteNombre={notaPacienteNombre ?? undefined}
           turnoFechaHora={notaTurnoFechaHora ?? undefined}
+          terminologia={profile?.terminologia}
           onCreada={() => { setNuevaNotaOpen(false); router.refresh() }}
           onClose={() => setNuevaNotaOpen(false)}
         />

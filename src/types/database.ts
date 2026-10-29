@@ -1035,6 +1035,7 @@ export type Database = {
           pliegue_tricipital: number | null
           pliegue_subescapular: number | null
           pliegue_suprailiaco: number | null
+          pliegue_abdominal: number | null
           perimetro_brazo: number | null
           perimetro_pierna: number | null
           porcentaje_grasa: number | null
@@ -1056,6 +1057,7 @@ export type Database = {
           pliegue_tricipital?: number | null
           pliegue_subescapular?: number | null
           pliegue_suprailiaco?: number | null
+          pliegue_abdominal?: number | null
           perimetro_brazo?: number | null
           perimetro_pierna?: number | null
           porcentaje_grasa?: number | null
@@ -1077,6 +1079,7 @@ export type Database = {
           pliegue_tricipital?: number | null
           pliegue_subescapular?: number | null
           pliegue_suprailiaco?: number | null
+          pliegue_abdominal?: number | null
           perimetro_brazo?: number | null
           perimetro_pierna?: number | null
           porcentaje_grasa?: number | null
@@ -1308,6 +1311,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'registros_refraccion_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      // Tabla creada en Supabase fuera de este repo (ver nota de la sesión que
+      // agregó el módulo de nota clínica por especialidad). Datos de módulos sin
+      // tabla propia (Kinesiología, Odontología, Psicología, Clínica Médica):
+      // un registro por nota guardada que tuvo algún dato cargado en su módulo.
+      registros_especialidad: {
+        Row: {
+          id: string
+          terapeuta_id: string
+          paciente_id: string
+          turno_id: string | null
+          nota_id: string | null
+          fecha: string
+          especialidad: string
+          datos: Record<string, unknown>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          terapeuta_id: string
+          paciente_id: string
+          turno_id?: string | null
+          nota_id?: string | null
+          fecha: string
+          especialidad: string
+          datos: Record<string, unknown>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          terapeuta_id?: string
+          paciente_id?: string
+          turno_id?: string | null
+          nota_id?: string | null
+          fecha?: string
+          especialidad?: string
+          datos?: Record<string, unknown>
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'registros_especialidad_paciente_id_fkey'
             columns: ['paciente_id']
             isOneToOne: false
             referencedRelation: 'pacientes'
@@ -2350,6 +2401,7 @@ export type Plan = Database['public']['Tables']['planes']['Row']
 export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
 export type RegistroRefraccion = Database['public']['Tables']['registros_refraccion']['Row']
 export type RegistroPIO = Database['public']['Tables']['registros_pio']['Row']
+export type RegistroEspecialidad = Database['public']['Tables']['registros_especialidad']['Row']
 export type EmailLog = Database['public']['Tables']['email_log']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']
 export type CodigoDescuento = Database['public']['Tables']['codigos_descuento']['Row']
