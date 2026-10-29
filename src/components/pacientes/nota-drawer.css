@@ -52,6 +52,7 @@
   font-size: 14px;
   line-height: 1.6;
 }
+.drawer-sec .contenido.vacio { color: var(--muted); }
 
 .drawer-foot {
   padding: 12px 20px;

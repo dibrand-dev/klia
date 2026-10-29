@@ -718,6 +718,7 @@ export type Database = {
           contenido: string
           borrador: boolean
           hora_nota: string | null
+          datos_modulo_borrador: Record<string, unknown> | null
           created_at: string
           updated_at: string
         }
@@ -730,6 +731,7 @@ export type Database = {
           contenido: string
           borrador?: boolean
           hora_nota?: string | null
+          datos_modulo_borrador?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }
@@ -742,6 +744,7 @@ export type Database = {
           contenido?: string
           borrador?: boolean
           hora_nota?: string | null
+          datos_modulo_borrador?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }

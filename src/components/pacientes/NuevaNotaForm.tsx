@@ -9,11 +9,19 @@ import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { getTerminologia } from '@/hooks/useTerminologia'
 import '@/components/notas/nota-especialidad.css'
 import ModuloEspecialidad, { tieneModulo } from '@/components/notas/ModuloEspecialidad'
-import { notaPlaceholder, type ValoresModulo } from '@/lib/notas/modulos'
+import { notaPlaceholder, normalizarValoresModulo, type ValoresModulo } from '@/lib/notas/modulos'
 import { guardarDatosModulo } from '@/lib/notas/persistencia'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
+}
+
+function hayDatosModulo(datos: ValoresModulo): boolean {
+  return Object.values(datos).some((v) => {
+    if (v == null || v === '') return false
+    if (Array.isArray(v)) return v.length > 0
+    return true
+  })
 }
 
 function iniciales(nombre: string): string {
@@ -65,9 +73,12 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [transcribiendo, setTranscribiendo] = useState(false)
   const [notaDeVoz, setNotaDeVoz] = useState<{ duracion: number } | null>(null)
   const ultimoGuardadoRef = useRef<string>('')
+  const ultimoDatosModuloGuardadoRef = useRef<string>('{}')
 
-  // Datos de los módulos por especialidad — se persisten solo al Guardar nota,
-  // nunca en el autoguardado del borrador.
+  // Datos de los módulos por especialidad — se persisten en su tabla final
+  // (registros_especialidad / registros_pio / etc.) solo al Guardar nota.
+  // Mientras tanto viajan también en notas_clinicas.datos_modulo_borrador,
+  // como respaldo del autoguardado (ver cargarBorrador / efecto de abajo).
   const esNutricionista = especialidad === 'Nutrición'
   const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
   const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
@@ -90,7 +101,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         if (data) setPacienteNombreResuelto(`${data.nombre} ${data.apellido}`)
       })
   }, [pacienteId, pacienteNombre])
-  const nombreMostrado = pacienteNombre ?? pacienteNombreResuelto ?? 'Paciente'
+  const nombreCargado = pacienteNombre ?? pacienteNombreResuelto
+  const nombreMostrado = nombreCargado ?? 'Paciente'
 
   useEffect(() => {
     setFecha(
@@ -140,7 +152,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       const supabase = createClient()
       const query = supabase
         .from('notas_clinicas')
-        .select('id, contenido, fecha, hora_nota, updated_at')
+        .select('id, contenido, fecha, hora_nota, updated_at, datos_modulo_borrador')
         .eq('terapeuta_id', terapeutaId)
         .eq('paciente_id', pacienteId)
         .eq('borrador', true as never)
@@ -153,28 +165,33 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       }
       const { data } = await query.maybeSingle()
       if (data) {
-        const d = data as { id: string; contenido: string; fecha: string; hora_nota: string | null; updated_at: string }
+        const d = data as { id: string; contenido: string; fecha: string; hora_nota: string | null; updated_at: string; datos_modulo_borrador: Record<string, unknown> | null }
+        const datosRestaurados = normalizarValoresModulo(d.datos_modulo_borrador)
         setDraftId(d.id)
         setContenido(d.contenido)
         setFecha(d.fecha)
         setHoraNotaBorrador(d.hora_nota)
         setHoraGuardado(d.updated_at)
+        setDatosModulo(datosRestaurados)
         setAutosaveEstado('saved')
-        // El contenido recién cargado ya está persistido — no re-disparar el
-        // autoguardado debounced por este mismo valor.
+        // El contenido y los datos de módulo recién cargados ya están
+        // persistidos — no re-disparar el autoguardado debounced por estos
+        // mismos valores.
         ultimoGuardadoRef.current = d.contenido
+        ultimoDatosModuloGuardadoRef.current = JSON.stringify(datosRestaurados)
       }
     }
     cargarBorrador()
   }, [terapeutaId])
 
-  // Autoguardado real: debounce 1,5s sobre el contenido. INSERT la primera vez
-  // (guarda draftId), UPDATE por draftId después — nunca pisa hora_nota si el
-  // borrador ya la tiene.
+  // Autoguardado real: debounce 1,5s sobre el contenido y/o los datos de
+  // módulo. INSERT la primera vez (guarda draftId), UPDATE por draftId
+  // después — nunca pisa hora_nota si el borrador ya la tiene.
   useEffect(() => {
     if (modo !== 'texto') return
-    if (isHtmlEmpty(contenido)) return
-    if (contenido === ultimoGuardadoRef.current) return
+    if (isHtmlEmpty(contenido) && !hayDatosModulo(datosModulo)) return
+    const datosModuloStr = JSON.stringify(datosModulo)
+    if (contenido === ultimoGuardadoRef.current && datosModuloStr === ultimoDatosModuloGuardadoRef.current) return
     if (!terapeutaId) return
 
     const timeout = setTimeout(async () => {
@@ -184,10 +201,11 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
       if (draftId) {
         const { error: dbError } = await supabase.from('notas_clinicas')
-          .update({ contenido, fecha: fechaActual } as never)
+          .update({ contenido, fecha: fechaActual, datos_modulo_borrador: datosModulo } as never)
           .eq('id', draftId)
         if (!dbError) {
           ultimoGuardadoRef.current = contenido
+          ultimoDatosModuloGuardadoRef.current = datosModuloStr
           setHoraGuardado(new Date().toISOString())
           setAutosaveEstado('saved')
         } else {
@@ -205,12 +223,14 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         contenido,
         borrador: true,
         hora_nota: horaNota,
+        datos_modulo_borrador: datosModulo,
       } as never).select('id').single()
       if (data) {
         setDraftId((data as { id: string }).id)
         setHoraNotaBorrador(horaNota)
         setHoraGuardado(horaNota)
         ultimoGuardadoRef.current = contenido
+        ultimoDatosModuloGuardadoRef.current = datosModuloStr
         setAutosaveEstado('saved')
       } else {
         setAutosaveEstado('idle')
@@ -218,7 +238,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     }, 1500)
 
     return () => clearTimeout(timeout)
-  }, [contenido, modo, terapeutaId, draftId, fecha, pacienteId, turnoId])
+  }, [contenido, datosModulo, modo, terapeutaId, draftId, fecha, pacienteId, turnoId])
 
   function handleTranscripcion(text: string, duracionSegundos?: number) {
     const html = isHtmlEmpty(contenido) ? `<p>${text}</p>` : contenido + `<p>${text}</p>`
@@ -242,7 +262,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   }
 
   async function handleGuardar() {
-    if (isHtmlEmpty(contenido)) return
+    if (isHtmlEmpty(contenido) && !hayDatosModulo(datosModulo)) return
     if (!terapeutaId) {
       console.error('[NuevaNotaForm] terapeutaId no resuelto todavía')
       return
@@ -282,6 +302,14 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       if (moduloError) { setError(moduloError); setLoading(false); return }
     }
 
+    // El módulo ya quedó persistido en su tabla final (o no había nada que
+    // persistir) — el respaldo de borrador en notas_clinicas ya no hace falta.
+    if (notaIdGuardada) {
+      await supabase.from('notas_clinicas')
+        .update({ datos_modulo_borrador: null } as never)
+        .eq('id', notaIdGuardada)
+    }
+
     if (turnoId) {
       const { data: turnoActual } = await supabase
         .from('turnos')
@@ -306,9 +334,9 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   return (
     <div className="nota-so">
       <div className="soh">
-        <div className="so-av">{iniciales(nombreMostrado)}</div>
+        <div className="so-av">{nombreCargado ? iniciales(nombreMostrado) : ''}</div>
         <div className="so-hi">
-          <div className="so-name">{nombreMostrado}</div>
+          <div className="so-name">{nombreCargado ?? ''}</div>
           <div className="so-meta">
             <span>{metaHeader(turnoFechaHora)}</span>
             {especialidad && (
@@ -441,8 +469,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
           type="button"
           className="ns-btn-primary"
           onClick={handleGuardar}
-          disabled={loading || isHtmlEmpty(contenido)}
-          title={isHtmlEmpty(contenido) ? 'Escribí o dictá la nota para guardar' : undefined}
+          disabled={loading || (isHtmlEmpty(contenido) && !hayDatosModulo(datosModulo))}
+          title={isHtmlEmpty(contenido) && !hayDatosModulo(datosModulo) ? 'Escribí o dictá la nota para guardar' : undefined}
         >
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
           {loading ? 'Guardando...' : 'Guardar nota'}

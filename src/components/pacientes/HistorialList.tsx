@@ -27,6 +27,13 @@ function previewContenido(texto: string): string {
   return stripHtmlAndMarkdown(texto)
 }
 
+// Hora compartida por la lista y el detalle: la hora real de la nota si la
+// tiene, si no la de inserción. Siempre en es-AR 24h, zona ART.
+function formatHoraNota(nota: { hora_nota: string | null; created_at: string }): string {
+  const iso = nota.hora_nota ?? nota.created_at
+  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+}
+
 function extraerTags(texto: string): string[] {
   const clean = stripHtmlAndMarkdown(texto)
   const matches = clean.match(/#[a-zA-Z0-9_-]+/g)
@@ -153,7 +160,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
   const selMeta = selectedNota ? sesionMeta(selectedNota) : null
   const selFecha = selectedNota ? parseISO(selectedNota.fecha) : null
   const selDiaHoraStr = selectedNota
-    ? `${format(selFecha!, "EEEE d MMM yyyy", { locale: es })} · ${format(parseISO(selectedNota.created_at), 'HH:mm')}`
+    ? `${format(selFecha!, "EEEE d MMM yyyy", { locale: es })} · ${formatHoraNota(selectedNota)}`
     : ''
   const selTitulo = selectedNota
     ? (selMeta!.sessionNo > 0 ? `Sesión Individual #${selMeta!.sessionNo}` : format(selFecha!, "d 'de' MMMM", { locale: es }))
@@ -176,7 +183,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
             <div key={monthKey} className="month-group">
               <div className="month-hdr">
                 <span className="m-name">{monthLabel}</span>
-                <span className="m-count">{monthNotas.length} sesión{monthNotas.length !== 1 ? 'es' : ''}</span>
+                <span className="m-count">{monthNotas.length} {monthNotas.length === 1 ? 'sesión' : 'sesiones'}</span>
                 <span className="m-line" />
               </div>
 
@@ -186,9 +193,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                   const day = format(fecha, 'd')
                   const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
                   const yearShort = format(fecha, 'yy')
-                  const time = nota.hora_nota
-                    ? new Date(nota.hora_nota).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
-                    : null
+                  const time = formatHoraNota(nota)
                   const excerpt = previewContenido(nota.contenido)
                   const tags = extraerTags(nota.contenido)
                   const meta = sesionMeta(nota)
@@ -202,7 +207,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                       <div className="s-date">
                         <div className="s-day">{day}</div>
                         <div className="s-month-year">{monthShort} · {yearShort}</div>
-                        {time && <div className="s-time">{time} hs</div>}
+                        <div className="s-time">{time} hs</div>
                       </div>
 
                       <div className="s-body">
@@ -216,7 +221,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                           {meta.statusLabel && <span className={`chip ${meta.statusChipClass}`}>{meta.statusLabel}</span>}
                         </div>
 
-                        <p className="s-excerpt">{excerpt}</p>
+                        <p className="s-excerpt">{isHtmlEmpty(nota.contenido) ? 'Sin texto · datos del examen registrados' : excerpt}</p>
 
                         {tags.length > 0 && (
                           <div className="s-tags">

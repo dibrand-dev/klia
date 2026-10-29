@@ -8,6 +8,9 @@ export function isHtmlEmpty(html: string): boolean {
 }
 
 function renderContenido(contenido: string) {
+  if (isHtmlEmpty(contenido)) {
+    return <p className="contenido vacio">Sin texto · datos del examen registrados</p>
+  }
   const isHtml = contenido.trim().startsWith('<')
   if (isHtml) {
     return <div className="prose prose-sm max-w-none contenido" dangerouslySetInnerHTML={{ __html: contenido }} />

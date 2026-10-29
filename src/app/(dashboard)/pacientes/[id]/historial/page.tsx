@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs from '@/components/pacientes/PacienteTabs'
 import HistorialList from '@/components/pacientes/HistorialList'
 import CrearPrimeraNotaButton from '@/components/pacientes/CrearPrimeraNotaButton'
+import AbrirNuevaNotaDesdeQuery from '@/components/pacientes/AbrirNuevaNotaDesdeQuery'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Historial clínico — KLIA' }
@@ -66,6 +68,9 @@ export default async function HistorialPage({ params }: { params: { id: string }
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
+      <Suspense fallback={null}>
+        <AbrirNuevaNotaDesdeQuery pacienteId={paciente.id} />
+      </Suspense>
       <PacienteHeader paciente={paciente} summary={summary} />
       <PacienteTabs
         pacienteId={paciente.id}

@@ -52,3 +52,17 @@ export function metaModulo(especialidad: string | null | undefined): MetaEspecia
 export function notaPlaceholder(especialidad: string | null | undefined): string {
   return metaModulo(especialidad)?.notaPlaceholder ?? NOTA_PLACEHOLDER_DEFAULT
 }
+
+// Normaliza lo que vuelve de notas_clinicas.datos_modulo_borrador (JSONB) a
+// la forma de ValoresModulo: descarta cualquier valor que no sea string o
+// string[] (campos de un módulo que ya no existe, tipos corrompidos, etc.)
+// en vez de romper — el módulo actual simplemente los trata como ausentes.
+export function normalizarValoresModulo(raw: unknown): ValoresModulo {
+  if (!raw || typeof raw !== 'object') return {}
+  const out: ValoresModulo = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'string') out[k] = v
+    else if (Array.isArray(v) && v.every((x) => typeof x === 'string')) out[k] = v
+  }
+  return out
+}
