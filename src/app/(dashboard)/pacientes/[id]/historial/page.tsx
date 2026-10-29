@@ -1,9 +1,9 @@
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import PacienteHeader, { type SummaryData } from '@/components/pacientes/PacienteHeader'
 import PacienteTabs from '@/components/pacientes/PacienteTabs'
 import HistorialList from '@/components/pacientes/HistorialList'
+import CrearPrimeraNotaButton from '@/components/pacientes/CrearPrimeraNotaButton'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
 export const metadata = { title: 'Historial clínico — KLIA' }
@@ -82,10 +82,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
           </div>
           <h3 className="text-[15px] font-bold text-on-surface mb-1 tracking-tight">Todavía no hay notas para este paciente</h3>
           <p className="text-[13px] text-on-surface-variant mb-5">Las notas aparecen al marcar un turno como realizado o podés crearlas manualmente.</p>
-          <Link href={`/pacientes/${params.id}/historial/nueva`} className="btn-primary inline-flex">
-            <span className="material-symbols-outlined text-sm">add</span>
-            Crear primera nota
-          </Link>
+          <CrearPrimeraNotaButton pacienteId={params.id} />
         </div>
       ) : (
         <HistorialList notas={notasList} turnos={turnosList} pacienteId={params.id} proximaSesion={proximaSesion} />
