@@ -240,14 +240,16 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     const supabase = createClient()
 
     const fechaFinal = fecha || format(new Date(), 'yyyy-MM-dd')
+    let notaIdGuardada: string | null = null
 
     if (draftId) {
       const { error: dbError } = await supabase.from('notas_clinicas')
         .update({ contenido, fecha: fechaFinal, borrador: false, hora_nota: horaNotaBorrador ?? new Date().toISOString() } as never)
         .eq('id', draftId)
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
+      notaIdGuardada = draftId
     } else {
-      const { error: dbError } = await supabase.from('notas_clinicas').insert({
+      const { data: notaCreada, error: dbError } = await supabase.from('notas_clinicas').insert({
         terapeuta_id: terapeutaId,
         paciente_id: pacienteId,
         turno_id: turnoId ?? null,
@@ -255,14 +257,15 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         contenido,
         borrador: false,
         hora_nota: new Date().toISOString(),
-      } as never)
+      } as never).select('id').single()
       if (dbError) { setError('Error al guardar la nota. Intentá de nuevo.'); setLoading(false); return }
+      notaIdGuardada = (notaCreada as { id: string } | null)?.id ?? null
     }
 
     if (tieneModulo(especialidad)) {
       const { error: moduloError } = await guardarDatosModulo({
         supabase, especialidad, valores: datosModulo,
-        terapeutaId, pacienteId, turnoId: turnoId ?? null, fecha: fechaFinal,
+        terapeutaId, pacienteId, turnoId: turnoId ?? null, fecha: fechaFinal, notaId: notaIdGuardada,
       })
       if (moduloError) { setError(moduloError); setLoading(false); return }
     }
