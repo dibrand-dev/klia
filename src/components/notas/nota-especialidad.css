@@ -45,6 +45,7 @@
   padding: 5px 12px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px;
 }
 .nota-so .mode button.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,48,.08); }
+.nota-so .mode button:disabled { opacity: .5; cursor: not-allowed; }
 .nota-so .mode svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
 
 /* Card propia — NO reutiliza .card global (tiene shadow y otras props) */
@@ -235,26 +236,98 @@
 }
 .nota-so .nota .ns-editor-content:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-/* Voz */
+/* Voz — alto fijo para todos los estados, así el layout no salta */
 .nota-so .voz {
-  border: 1px dashed var(--border); border-radius: 8px; padding: 28px 16px; display: flex;
-  flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  border: 1px dashed var(--border); border-radius: 8px; padding: 20px 16px; min-height: 196px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
 }
-.nota-so .voz button {
-  width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--accent);
+.nota-so .voz .ns-mic {
+  width: 52px; height: 52px; border-radius: 50%; border: 0; padding: 0; background: var(--accent);
   display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 10px rgba(31,79,217,.22);
 }
-.nota-so .voz svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; }
-.nota-so .voz p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 36ch; }
+.nota-so .voz .ns-mic svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.nota-so .voz p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 36ch; line-height: 1.5; text-wrap: pretty; }
+.nota-so .voz .ns-t { font-size: 14px; font-weight: 600; color: var(--ink); margin: 0; }
+.nota-so .voz .ns-tx { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+/* Grabando */
+.nota-so .ns-rec {
+  display: flex; align-items: center; gap: 8px; font: 600 11px/1 var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--danger);
+}
+.nota-so .ns-pulse { position: relative; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+.nota-so .ns-pulse::after {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--danger);
+  opacity: 0; animation: ns-pl 1.6s ease-out infinite;
+}
+@keyframes ns-pl { 0% { transform: scale(.5); opacity: .55; } 100% { transform: scale(1.3); opacity: 0; } }
+.nota-so .ns-timer {
+  font: 600 30px/1 var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; letter-spacing: -.02em; color: var(--ink);
+  display: flex; align-items: baseline; gap: 6px;
+}
+.nota-so .ns-timer small { font: 500 12px var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; color: var(--muted-2); letter-spacing: 0; }
+.nota-so .ns-timer.w { color: var(--warn); }
+.nota-so .ns-warnl {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--warn);
+  background: var(--warn-soft); border-radius: 6px; padding: 4px 8px;
+}
+.nota-so .ns-warnl svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+/* Botones de los estados de voz */
+.nota-so .ns-b {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 14px;
+  border-radius: 8px; font: 600 13.5px Inter, sans-serif; border: 1px solid var(--border-strong);
+  background: #fff; color: var(--ink-2); cursor: pointer;
+}
+.nota-so .ns-b:hover { background: var(--surface-2); }
+.nota-so .ns-b svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nota-so .ns-b.ns-pr { background: var(--ink); border-color: var(--ink); color: #fff; }
+.nota-so .ns-b.ns-pr:hover { background: #000; }
+.nota-so .ns-b .sq { width: 10px; height: 10px; border-radius: 2px; background: var(--danger); }
+.nota-so .ns-bb { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.nota-so .ns-lk { font-size: 12.5px; font-weight: 500; color: var(--accent); text-decoration: none; background: none; border: 0; cursor: pointer; padding: 0; }
+.nota-so .ns-lk:hover { color: var(--accent-ink); }
+
+/* Íconos de estado (completado / error) */
+.nota-so .ns-ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.nota-so .ns-ic svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nota-so .ns-ic.ok { background: var(--ok-soft); color: var(--ok); }
+.nota-so .ns-ic.er { background: var(--danger-soft); color: var(--danger); }
+
+/* Transcribiendo */
+.nota-so .ns-spin {
+  width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft);
+  border-top-color: var(--accent); animation: ns-sp .9s linear infinite;
+}
+@keyframes ns-sp { to { transform: rotate(360deg); } }
+.nota-so .ns-bar { width: 160px; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; position: relative; }
+.nota-so .ns-bar i { position: absolute; top: 0; bottom: 0; width: 40%; border-radius: 2px; background: var(--accent); animation: ns-br 1.4s ease-in-out infinite; }
+@keyframes ns-br { 0% { left: -40%; } 100% { left: 100%; } }
+
+/* Completado */
+.nota-so .voz.okz { border-color: var(--ok); border-style: solid; background: var(--ok-soft); }
+.nota-so .voz.okz p { color: var(--ink-2); }
+
+/* Etiqueta "Transcripto por voz" sobre el editor */
+.nota-so .ns-trn {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ok); font-weight: 500;
+  background: var(--ok-soft); border-radius: 6px; padding: 5px 8px; align-self: flex-start;
+}
+.nota-so .ns-trn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.nota-so .ns-trn span { color: var(--muted); }
 
 /* Footer */
 .nota-so .sof {
   display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border);
   background: var(--surface-2); flex-shrink: 0;
 }
-.nota-so .autosave { font-size: 11.5px; color: var(--muted-2); display: flex; align-items: center; gap: 6px; padding: 0 4px; margin-right: auto; }
-.nota-so .autosave .d { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); }
-.nota-so .autosave.saving .d { background: var(--muted-3); }
+.nota-so .autosave { font-size: 11.5px; color: var(--muted-2); display: flex; align-items: center; gap: 6px; padding: 0 4px; margin-right: auto; white-space: nowrap; }
+.nota-so .autosave .d { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.nota-so .autosave .d.ok { background: var(--ok); }
+.nota-so .autosave .d.no { background: transparent; border: 1.5px solid var(--muted-3); }
+.nota-so .autosave .s { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--border-strong); border-top-color: var(--muted); animation: ns-sp .8s linear infinite; flex: none; }
+.nota-so .autosave time { font-family: var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; }
+.nota-so .autosave .sh { display: none; }
 
 /* Botón "Guardar nota" — definido completo acá, NO reutiliza .btn-primary global */
 .nota-so .sof .ns-btn-primary {
@@ -264,10 +337,18 @@
   font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
 .nota-so .sof .ns-btn-primary:hover { background: #000; }
-.nota-so .sof .ns-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.nota-so .sof .ns-btn-primary svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 2; fill: none; }
+.nota-so .sof .ns-btn-primary:disabled {
+  background: var(--surface-3); border-color: var(--border); color: var(--muted-2);
+  cursor: not-allowed; opacity: 1;
+}
+.nota-so .sof .ns-btn-primary:disabled:hover { background: var(--surface-3); }
+.nota-so .sof .ns-btn-primary svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
 
 @media (max-width: 560px) {
   .nota-so .cols { grid-template-columns: minmax(0,1fr); }
   .nota-so .calc { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .nota-so .sof { padding: 12px; }
+  .nota-so .sof .ns-btn-primary { padding: 11px 14px; }
+  .nota-so .autosave .lg { display: none; }
+  .nota-so .autosave .sh { display: inline; }
 }

@@ -61,6 +61,9 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const [draftId, setDraftId] = useState<string | null>(null)
   const [autosaveEstado, setAutosaveEstado] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [horaNotaBorrador, setHoraNotaBorrador] = useState<string | null>(null)
+  const [horaGuardado, setHoraGuardado] = useState<string | null>(null)
+  const [transcribiendo, setTranscribiendo] = useState(false)
+  const [notaDeVoz, setNotaDeVoz] = useState<{ duracion: number } | null>(null)
   const ultimoGuardadoRef = useRef<string>('')
 
   // Datos de los módulos por especialidad — se persisten solo al Guardar nota,
@@ -137,7 +140,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       const supabase = createClient()
       const query = supabase
         .from('notas_clinicas')
-        .select('id, contenido, fecha, hora_nota')
+        .select('id, contenido, fecha, hora_nota, updated_at')
         .eq('terapeuta_id', terapeutaId)
         .eq('paciente_id', pacienteId)
         .eq('borrador', true as never)
@@ -150,11 +153,12 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       }
       const { data } = await query.maybeSingle()
       if (data) {
-        const d = data as { id: string; contenido: string; fecha: string; hora_nota: string | null }
+        const d = data as { id: string; contenido: string; fecha: string; hora_nota: string | null; updated_at: string }
         setDraftId(d.id)
         setContenido(d.contenido)
         setFecha(d.fecha)
         setHoraNotaBorrador(d.hora_nota)
+        setHoraGuardado(d.updated_at)
         setAutosaveEstado('saved')
         // El contenido recién cargado ya está persistido — no re-disparar el
         // autoguardado debounced por este mismo valor.
@@ -164,7 +168,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
     cargarBorrador()
   }, [terapeutaId])
 
-  // Autoguardado real: debounce ~2s sobre el contenido. INSERT la primera vez
+  // Autoguardado real: debounce 1,5s sobre el contenido. INSERT la primera vez
   // (guarda draftId), UPDATE por draftId después — nunca pisa hora_nota si el
   // borrador ya la tiene.
   useEffect(() => {
@@ -184,6 +188,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
           .eq('id', draftId)
         if (!dbError) {
           ultimoGuardadoRef.current = contenido
+          setHoraGuardado(new Date().toISOString())
           setAutosaveEstado('saved')
         } else {
           setAutosaveEstado('idle')
@@ -204,21 +209,28 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
       if (data) {
         setDraftId((data as { id: string }).id)
         setHoraNotaBorrador(horaNota)
+        setHoraGuardado(horaNota)
         ultimoGuardadoRef.current = contenido
         setAutosaveEstado('saved')
       } else {
         setAutosaveEstado('idle')
       }
-    }, 2000)
+    }, 1500)
 
     return () => clearTimeout(timeout)
   }, [contenido, modo, terapeutaId, draftId, fecha, pacienteId, turnoId])
 
-  function handleTranscripcion(text: string) {
+  function handleTranscripcion(text: string, duracionSegundos?: number) {
     const html = isHtmlEmpty(contenido) ? `<p>${text}</p>` : contenido + `<p>${text}</p>`
     setContenido(html)
     setModo('texto')
     setPendingText(null)
+    setNotaDeVoz(duracionSegundos != null ? { duracion: duracionSegundos } : null)
+  }
+
+  function handleContenidoChange(html: string) {
+    setContenido(html)
+    if (notaDeVoz) setNotaDeVoz(null)
   }
 
   function aplicarPendiente(accion: 'append' | 'replace') {
@@ -319,11 +331,11 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
 
         {tieneVoz && (
           <div className="mode">
-            <button type="button" className={modo === 'texto' ? 'on' : ''} onClick={() => setModo('texto')}>
+            <button type="button" className={modo === 'texto' ? 'on' : ''} onClick={() => setModo('texto')} disabled={transcribiendo}>
               <svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" /></svg>
               Escribir
             </button>
-            <button type="button" className={modo === 'voz' ? 'on' : ''} onClick={() => setModo('voz')}>
+            <button type="button" className={modo === 'voz' ? 'on' : ''} onClick={() => setModo('voz')} disabled={transcribiendo}>
               <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
               Voz
             </button>
@@ -372,31 +384,66 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         <div className="ns-card nota">
           <span className="fl">Nota de {t.sesion}</span>
           {modo === 'voz' ? (
-            <div className="voz">
-              <VoiceRecorder
-                onTranscription={handleTranscripcion}
-                onError={(msg) => setError(msg)}
-                maxSeconds={maxSeconds}
-              />
-            </div>
-          ) : (
-            <RichTextEditor
+            <VoiceRecorder
               variant="nota"
-              value={contenido}
-              onChange={setContenido}
-              placeholder={notaPlaceholder(especialidad)}
-              minHeight="160px"
+              onTranscription={handleTranscripcion}
+              onError={(msg) => setError(msg)}
+              onTranscribingChange={setTranscribiendo}
+              maxSeconds={maxSeconds}
             />
+          ) : (
+            <>
+              {notaDeVoz && (
+                <span className="ns-trn">
+                  <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
+                  Transcripto por voz<span>· {`${String(Math.floor(notaDeVoz.duracion / 60)).padStart(2, '0')}:${String(notaDeVoz.duracion % 60).padStart(2, '0')}`}</span>
+                </span>
+              )}
+              <RichTextEditor
+                variant="nota"
+                value={contenido}
+                onChange={handleContenidoChange}
+                placeholder={notaPlaceholder(especialidad)}
+                minHeight="160px"
+              />
+            </>
           )}
         </div>
       </div>
 
       <div className="sof">
-        <span className="autosave">
-          <span className="d" />
-          {autosaveEstado === 'saving' ? 'Guardando…' : autosaveEstado === 'saved' ? 'Borrador guardado' : 'Sin guardar aún'}
+        <span className="autosave" aria-live={autosaveEstado === 'saving' ? 'polite' : undefined}>
+          {autosaveEstado === 'saving' ? (
+            <>
+              <span className="s" />
+              Guardando…
+            </>
+          ) : autosaveEstado === 'saved' ? (
+            <>
+              <span className="d ok" />
+              <span className="lg">Borrador guardado</span>
+              <span className="sh">Guardado</span>
+              {horaGuardado && (
+                <>
+                  {' · '}
+                  <time>{new Date(horaGuardado).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })}</time>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="d no" />
+              Sin guardar aún
+            </>
+          )}
         </span>
-        <button type="button" className="ns-btn-primary" onClick={handleGuardar} disabled={loading || isHtmlEmpty(contenido)}>
+        <button
+          type="button"
+          className="ns-btn-primary"
+          onClick={handleGuardar}
+          disabled={loading || isHtmlEmpty(contenido)}
+          title={isHtmlEmpty(contenido) ? 'Escribí o dictá la nota para guardar' : undefined}
+        >
           <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
           {loading ? 'Guardando...' : 'Guardar nota'}
         </button>
