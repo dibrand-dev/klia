@@ -49,7 +49,8 @@ export default function SlideOver({
 
       <div
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex flex-col bg-white shadow-xl w-full transition-transform duration-300',
+          'fixed inset-y-0 right-0 z-50 flex flex-col bg-white w-full transition-transform duration-300',
+          width === 'nota' ? 'shadow-[var(--shadow-lg)]' : 'shadow-xl',
           WIDTH_MAP[width],
           open ? 'translate-x-0' : 'translate-x-full',
         )}

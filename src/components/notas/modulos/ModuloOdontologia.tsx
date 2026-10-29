@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hint, type ResultadoCalc } from '@/lib/notas/calc-utils'
-import { CampoSegmentado, CampoSelect, CampoCie10, Odontograma, TarjetaCalc } from '@/components/notas/campos'
+import { Grilla, CampoSegmentado, CampoSelect, CampoCie10, Odontograma, TarjetaCalc } from '@/components/notas/campos'
 import type { ValoresModulo } from '@/lib/notas/modulos'
 
 interface Props {
@@ -78,7 +78,9 @@ export default function ModuloOdontologia({ pacienteId, valores, onChange }: Pro
         <div className="modb">
           <Odontograma piezas={piezas} onChange={(x) => onChange('piezas', x)} />
           <CampoSegmentado label="Caras" opciones={CARAS} valor={caras} onChange={(x) => onChange('caras', x)} multi />
-          <CampoSelect label="Prestación" opciones={PRESTACIONES} valor={prestacion} onChange={(x) => onChange('prest', x)} />
+          <Grilla cols={2}>
+            <CampoSelect label="Prestación" opciones={PRESTACIONES} valor={prestacion} onChange={(x) => onChange('prest', x)} />
+          </Grilla>
           <CampoCie10 chips={cie} onChange={(x) => onChange('cie_od', x)} />
         </div>
       </section>

@@ -66,7 +66,8 @@ export default function ModuloClinicaMedica({ pacienteId, valores, onChange }: P
     const s = n(v('tas'))
     if (!s) return hint('Completá la TA para comparar')
     if (!ultimo || ultimo.tas == null) return { val: '–', sub: 'Sin registros previos' }
-    return { val: `TAS ${dl(s, ultimo.tas, '', true)}`, sub: `Última: ${ultimo.tas}/${ultimo.tad ?? '–'}` }
+    const fechaFmt = new Date(ultimo.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+    return { val: `TAS ${dl(s, ultimo.tas, '', true)}`, sub: `Última: ${ultimo.tas}/${ultimo.tad ?? '–'} · ${fechaFmt}` }
   })()
 
   return (

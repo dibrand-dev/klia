@@ -61,20 +61,25 @@ export default function ModuloOftalmologia({ pacienteId, valores, onChange }: Pr
   const [closed, setClosed] = useState(false)
   const [rxOpen, setRxOpen] = useState(true)
   const [bioOpen, setBioOpen] = useState(false)
-  const [ultimo, setUltimo] = useState<{ pioOd: number | null; pioOi: number | null; avOdCc: string | null } | null>(null)
+  const [ultimo, setUltimo] = useState<{ pioOd: number | null; pioOi: number | null; avOdCc: string | null; avOdFecha: string | null } | null>(null)
 
   useEffect(() => {
     let cancelado = false
     const supabase = createClient()
     Promise.all([
       supabase.from('registros_pio').select('pio_medida_od, pio_medida_oi').eq('paciente_id', pacienteId).order('fecha', { ascending: false }).limit(1),
-      supabase.from('registros_refraccion').select('av_od').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(1),
+      supabase.from('registros_refraccion').select('av_od, created_at').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(1),
     ]).then(([pio, rx]) => {
       if (cancelado) return
       const pioRow = (pio.data ?? [])[0] as { pio_medida_od: number | null; pio_medida_oi: number | null } | undefined
-      const rxRow = (rx.data ?? [])[0] as { av_od: string | null } | undefined
+      const rxRow = (rx.data ?? [])[0] as { av_od: string | null; created_at: string } | undefined
       if (!pioRow && !rxRow) { setUltimo(null); return }
-      setUltimo({ pioOd: pioRow?.pio_medida_od ?? null, pioOi: pioRow?.pio_medida_oi ?? null, avOdCc: rxRow?.av_od ?? null })
+      setUltimo({
+        pioOd: pioRow?.pio_medida_od ?? null,
+        pioOi: pioRow?.pio_medida_oi ?? null,
+        avOdCc: rxRow?.av_od ?? null,
+        avOdFecha: rxRow?.created_at ?? null,
+      })
     })
     return () => { cancelado = true }
   }, [pacienteId])
@@ -88,9 +93,12 @@ export default function ModuloOftalmologia({ pacienteId, valores, onChange }: Pr
     if (!ultimo) return { val: '–', sub: 'Sin registros previos' }
     const lineaOd = a != null && ultimo.pioOd != null ? dl(a, ultimo.pioOd, '', true) : '–'
     const lineaOi = b != null && ultimo.pioOi != null ? dl(b, ultimo.pioOi, '', true) : '–'
+    const fechaFmt = ultimo.avOdFecha
+      ? new Date(ultimo.avOdFecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+      : null
     return {
       val: `PIO OD ${lineaOd}<br>PIO OI ${lineaOi}`,
-      sub: `AV cc OD: ${ultimo.avOdCc ?? '–'} → ${v('av_od_cc') || '–'}`,
+      sub: `AV cc OD: ${ultimo.avOdCc ?? '–'} → ${v('av_od_cc') || '–'}${fechaFmt ? ` · ${fechaFmt}` : ''}`,
     }
   })()
 

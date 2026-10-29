@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import Script from 'next/script'
 import { AuthSessionCleaner } from '@/components/auth/AuthSessionCleaner'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' })
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  display: 'swap',
+  variable: '--font-jbmono',
+})
 
 export const metadata: Metadata = {
   title: 'KLIA',
@@ -49,7 +55,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           rel="stylesheet"
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${jetbrainsMono.variable}`}>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe

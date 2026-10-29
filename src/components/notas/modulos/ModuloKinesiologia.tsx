@@ -20,24 +20,24 @@ const DANIELS = ['0', '1', '2', '3', '4', '5']
 export default function ModuloKinesiologia({ pacienteId, valores, onChange }: Props) {
   const [closed, setClosed] = useState(false)
   const [romOpen, setRomOpen] = useState(true)
-  const [ultimo, setUltimo] = useState<{ eva: number | null; rom: number | null; mov: string | null } | null>(null)
+  const [ultimo, setUltimo] = useState<{ eva: number | null; rom: number | null; mov: string | null; fecha: string | null } | null>(null)
 
   useEffect(() => {
     let cancelado = false
     const supabase = createClient()
     supabase
       .from('registros_especialidad')
-      .select('datos')
+      .select('fecha, datos')
       .eq('paciente_id', pacienteId)
       .eq('especialidad', 'Kinesiología')
       .order('fecha', { ascending: false })
       .limit(1)
       .then(({ data }) => {
         if (cancelado) return
-        const row = (data ?? [])[0] as { datos: Record<string, unknown> } | undefined
+        const row = (data ?? [])[0] as { fecha: string; datos: Record<string, unknown> } | undefined
         if (!row) { setUltimo(null); return }
         const d = row.datos
-        setUltimo({ eva: n(d.eva as string), rom: n(d.rom as string), mov: (d.mov as string) ?? null })
+        setUltimo({ eva: n(d.eva as string), rom: n(d.rom as string), mov: (d.mov as string) ?? null, fecha: row.fecha })
       })
     return () => { cancelado = true }
   }, [pacienteId])
@@ -48,7 +48,10 @@ export default function ModuloKinesiologia({ pacienteId, valores, onChange }: Pr
     const e = n(v('eva'))
     if (e == null) return hint('Marcá el dolor en la escala')
     if (!ultimo || ultimo.eva == null) return { val: `${e}/10`, sub: 'Sin registros previos' }
-    return { val: `${e}/10 ${dl(e, ultimo.eva, '', true)}`, sub: `Última: ${ultimo.eva}/10` }
+    const fechaFmt = ultimo.fecha
+      ? new Date(ultimo.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+      : null
+    return { val: `${e}/10 ${dl(e, ultimo.eva, '', true)}`, sub: `Última: ${ultimo.eva}/10${fechaFmt ? ` · ${fechaFmt}` : ''}` }
   })()
 
   const calcRom: ResultadoCalc = (() => {
@@ -98,8 +101,10 @@ export default function ModuloKinesiologia({ pacienteId, valores, onChange }: Pr
           ) : (
             <>
               <span className="cv">{sesionActual} de {sesionesTotal}</span>
-              <BarraProgreso pct={Math.min(sesionActual! / sesionesTotal!, 1) * 100} />
-              <span className="cs">Quedan {Math.max(sesionesTotal! - sesionActual!, 0)} sesiones</span>
+              <span className="cs">
+                <BarraProgreso pct={Math.min(sesionActual! / sesionesTotal!, 1) * 100} />
+                Quedan {Math.max(sesionesTotal! - sesionActual!, 0)} sesiones
+              </span>
             </>
           )}
         </div>

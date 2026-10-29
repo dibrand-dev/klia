@@ -48,14 +48,14 @@
 .nota-so .mode svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
 
 /* Card propia — NO reutiliza .card global (tiene shadow y otras props) */
-.ns-card {
+.nota-so .ns-card {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
   background: var(--surface);
   box-shadow: none;
 }
-.ns-card > .fl { font-size: 12px; color: var(--ink); font-weight: 500; }
+.nota-so .ns-card > .fl { font-size: 12px; color: var(--ink); font-weight: 500; }
 
 .nota-so .fl { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
 .nota-so input, .nota-so select, .nota-so textarea { font: inherit; color: var(--ink); }
@@ -105,7 +105,7 @@
 .nota-so .in select { color: var(--ink); cursor: pointer; }
 .nota-so .in input::placeholder, .nota-so textarea::placeholder, .nota-so .cie input::placeholder { color: var(--muted-2); }
 .nota-so .in em { font-style: normal; font-size: 11px; font-weight: 500; color: var(--muted-2); flex: none; }
-.nota-so .modb textarea {
+.nota-so textarea {
   border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13.5px;
   line-height: 1.55; resize: vertical; width: 100%; outline: none; background: var(--surface);
 }
@@ -138,7 +138,7 @@
 /* Oftalmología — AV/PIO por ojo y refracción */
 .nota-so .eyes { display: grid; grid-template-columns: 24px repeat(2, minmax(0,1fr)) minmax(0,1.3fr); gap: 6px 8px; align-items: center; }
 .nota-so .rx { display: grid; grid-template-columns: 24px repeat(4, minmax(0,1fr)); gap: 6px; align-items: center; }
-.nota-so .eyes b, .nota-so .rx b { font-size: 11.5px; font-weight: 700; color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+.nota-so .eyes b, .nota-so .rx b { font-size: 11.5px; font-weight: 700; color: var(--ink); font-family: var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; }
 .nota-so .eh { font-size: 11px; color: var(--muted); font-weight: 500; }
 .nota-so .cap { margin: -4px 0 0; font-size: 11px; color: var(--muted-2); }
 
@@ -153,7 +153,7 @@
   background: var(--accent-soft); color: var(--accent-ink); border-radius: 100px;
   padding: 3px 6px 3px 10px; font-weight: 600;
 }
-.nota-so .cie .ch b { font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: 11px; }
+.nota-so .cie .ch b { font-family: var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; font-weight: 500; font-size: 11px; }
 .nota-so .cie .ch button { border: 0; background: none; color: var(--accent-ink); cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1; }
 .nota-so .cie input { border: 0; outline: 0; flex: 1; min-width: 140px; font-size: 13px; padding: 3px 0; background: none; }
 
@@ -165,7 +165,7 @@
 .nota-so .odr button {
   position: relative; flex: 1 1 0; min-width: 0; height: 28px; padding: 0;
   border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--muted);
-  font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  font: 500 10px/1 var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums;
   cursor: pointer; transition: background .12s ease, border-color .12s ease, color .12s ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -202,7 +202,7 @@
   display: grid; grid-template-columns: 24px auto 16px 1fr; align-items: baseline; gap: 2px 4px;
   font-size: 15px; line-height: 1.5;
 }
-.nota-so .cc .pio b { font: 700 11.5px 'JetBrains Mono', monospace; color: var(--ink); }
+.nota-so .cc .pio b { font: 700 11.5px var(--font-jbmono), 'JetBrains Mono', ui-monospace, monospace; color: var(--ink); }
 .nota-so .cc .pio .pm { color: var(--muted); font-weight: 500; }
 .nota-so .cc .pio i { font-style: normal; color: var(--muted-3); font-weight: 500; text-align: center; }
 .nota-so .cc .pio .pk { color: var(--ink); font-weight: 700; }
@@ -226,12 +226,12 @@
   color: var(--ink-2); font: 600 12px Inter; display: grid; place-items: center;
 }
 .nota-so .nota .tb button:hover { background: #fff; }
-.nota-so .nota .tb button.on { background: var(--ink); color: #fff; }
+.nota-so .nota .tb button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(14,20,48,.08); }
 .nota-so .nota .tb svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .nota-so .nota .tb .sp { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
 .nota-so .nota .ns-editor-content {
   border-radius: 0 0 8px 8px; min-height: 160px; padding: 12px 14px; font-size: 14px; line-height: 1.6;
-  border: 1px solid var(--border); border-top: 0; background: var(--surface);
+  border: 1px solid var(--border); background: var(--surface);
 }
 .nota-so .nota .ns-editor-content:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 

@@ -353,44 +353,42 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
           </div>
         )}
 
-        {modo === 'voz' ? (
-          <div className="voz">
-            <VoiceRecorder
-              onTranscription={handleTranscripcion}
-              onError={(msg) => setError(msg)}
-              maxSeconds={maxSeconds}
-            />
-          </div>
-        ) : (
-          <>
-            <div className="ns-card">
-              <label className="fl" htmlFor="ns-fecha">Fecha</label>
-              <input className="date" type="date" id="ns-fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            </div>
+        <div className="ns-card">
+          <label className="fl" htmlFor="ns-fecha">Fecha</label>
+          <input className="date" type="date" id="ns-fecha" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        </div>
 
-            {tieneModulo(especialidad) && (
-              <ModuloEspecialidad
-                especialidad={especialidad}
-                pacienteId={pacienteId}
-                valores={datosModulo}
-                onChange={cambiarValorModulo}
-                edadPaciente={edadPaciente}
-                sexoPaciente={sexoPaciente}
-              />
-            )}
-
-            <div className="ns-card nota">
-              <span className="fl">Nota de {t.sesion}</span>
-              <RichTextEditor
-                variant="nota"
-                value={contenido}
-                onChange={setContenido}
-                placeholder={notaPlaceholder(especialidad)}
-                minHeight="160px"
-              />
-            </div>
-          </>
+        {tieneModulo(especialidad) && (
+          <ModuloEspecialidad
+            especialidad={especialidad}
+            pacienteId={pacienteId}
+            valores={datosModulo}
+            onChange={cambiarValorModulo}
+            edadPaciente={edadPaciente}
+            sexoPaciente={sexoPaciente}
+          />
         )}
+
+        <div className="ns-card nota">
+          <span className="fl">Nota de {t.sesion}</span>
+          {modo === 'voz' ? (
+            <div className="voz">
+              <VoiceRecorder
+                onTranscription={handleTranscripcion}
+                onError={(msg) => setError(msg)}
+                maxSeconds={maxSeconds}
+              />
+            </div>
+          ) : (
+            <RichTextEditor
+              variant="nota"
+              value={contenido}
+              onChange={setContenido}
+              placeholder={notaPlaceholder(especialidad)}
+              minHeight="160px"
+            />
+          )}
+        </div>
       </div>
 
       <div className="sof">
@@ -398,12 +396,10 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
           <span className="d" />
           {autosaveEstado === 'saving' ? 'Guardando…' : autosaveEstado === 'saved' ? 'Borrador guardado' : 'Sin guardar aún'}
         </span>
-        {modo === 'texto' && (
-          <button type="button" className="ns-btn-primary" onClick={handleGuardar} disabled={loading || isHtmlEmpty(contenido)}>
-            <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
-            {loading ? 'Guardando...' : 'Guardar nota'}
-          </button>
-        )}
+        <button type="button" className="ns-btn-primary" onClick={handleGuardar} disabled={loading || isHtmlEmpty(contenido)}>
+          <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
+          {loading ? 'Guardando...' : 'Guardar nota'}
+        </button>
       </div>
     </div>
   )
