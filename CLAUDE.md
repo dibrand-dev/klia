@@ -421,10 +421,14 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-10-28_
+_Actualizado el 2026-10-30_
 
 ```
-943b01e feat: nota clínica con contexto de turno, hora real y timestamps de atención
-87eb121 fix: mensajes de error claros al actualizar turnos
-a31397f feat: permitir cerrar la barra de trial con una X
+8a02045 fix: borrador conserva datos de módulo, guardado con solo módulo y ruta legacy
+b82e624 fix: estados de voz y guardado de la nota clínica según diseño
+50ae7f3 fix: ajusta nota clínica por especialidad al diseño (pixel-perfect)
+810facc fix: "Crear primera nota" abre el SlideOver con módulos por especialidad
+46416c7 fix: guarda AV sc sola y vincula nota_id en registros_especialidad
+cbc9bf5 feat: nota clínica con módulos por especialidad (diseño nuevo)
+9674a41 fix: corrige PIO corregida a Ehlers (0,071 mmHg/µm, ref. 545 µm)
 ```
