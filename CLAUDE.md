@@ -43,6 +43,26 @@ KLIA tiene dos ambientes: producción (main, Vercel + Supabase Klin) y staging (
 
 `git push origin HEAD:main` para producción, `git push origin HEAD:staging` para staging — nunca confundir destino.
 
+### Entornos e infraestructura (verificado 2026-10-30)
+
+**Staging existe y está operativo. KLIA SÍ tiene entorno de staging/preview** — no asumir lo contrario ni decir "se prueba directo en producción" para cambios de auth/middleware/RLS.
+
+| | Producción | Staging |
+|---|---|---|
+| Rama | `main` | `staging` |
+| Supabase | proyecto `Klin`, ref `bdokvwturcbebsjxtbpi` | proyecto `klia-staging`, ref `cxtvldzsceukuepbchkw` |
+| Vercel | proyecto `klin-app` (`prj_lY3z2V4tGdBxO4arjM92AR4cLRMq`), deploy de producción | mismo proyecto `klin-app`: cada push a `staging` genera un deployment de **Preview** (`target: null`) con su propia URL |
+
+- Vercel team: `dibrand-devs-projects` (`team_pgFeqpGsn3Dnn0wjpHRlDW8e`). Proyectos: `klin-app` (esta app) y `klia-landing` (landing, repo aparte).
+- **Herramientas disponibles para quien trabaje en este repo (Claude en chat/Cowork/Code):** conectores MCP a **Supabase** (ambos proyectos), **Vercel** y **GitHub**. Antes de decir que algo "no se puede verificar" o de pedirle a Norberto que lo mire a mano, consultar el estado real con esos conectores (migraciones, tablas, deployments, ramas).
+- El SQL se ejecuta **por separado en cada proyecto**: primero en `klia-staging`, validar, y recién después en `Klin` (producción). Un cambio de schema aplicado solo en uno de los dos deja los entornos divergentes.
+
+**Estado conocido de staging al 2026-10-30 (puede estar desactualizado, re-verificar antes de depender de esto):**
+- Atrasado respecto de producción: última migración en staging `20261009…`, en producción `20261029…`. Producción tiene 64 tablas, staging 61: faltan `pagos_suscripcion`, `registros_especialidad` y `whatsapp_cuentas_habilitadas`, además de varios cambios de columnas posteriores al 09/10.
+- La rama `staging` quedó en `74332ae` (25/10), detrás de `main`. Antes de probar algo ahí hay que traer `main` a `staging` y aplicar las migraciones faltantes en `klia-staging`.
+- Las tablas `planes` y `codigos_descuento` están **vacías** en staging (0 filas): para probar planes, códigos o canjes hay que sembrarlas primero.
+- Las migraciones tienen nombres distintos entre ambos proyectos (sufijo `_prod` / `_staging`), así que no se pueden comparar solo por nombre: comparar por tablas/columnas.
+
 ## CRITICAL — Supabase: new tables require explicit GRANTs (breaking change 2026-05-30)
 
 Every new `CREATE TABLE` in the `public` schema MUST include:
