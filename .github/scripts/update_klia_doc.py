@@ -64,10 +64,6 @@ Nunca inventes funcionalidades que no estén en este documento.
 Siempre invitá a la prueba gratuita de 21 días como primer paso.
 Cuando el prospecto tenga muchos pacientes o cobre a obras sociales, empujá el plan Profesional.
 
-IMPORTANTE — NO OFRECER TODAVÍA: los recordatorios automáticos por WhatsApp están
-construidos técnicamente pero NO habilitados comercialmente para ningún plan. No le
-digas a ningún prospecto que KLIA manda recordatorios por WhatsApp — hoy son por email.
-
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. RESUMEN EJECUTIVO
@@ -160,7 +156,7 @@ Disponible en: todos los planes
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 QUÉ HACE
-Vista semanal del consultorio con arrastre y redimensionado de turnos. Soporte para múltiples franjas horarias por día (por ejemplo mañana y tarde con corte al mediodía), y por sede si el profesional atiende en más de un lugar. Turnos únicos y recurrentes (series automáticas semanales, quincenales, mensuales). Recordatorio automático por email al paciente 24 hs antes. Registro de inasistencias con opción de cobrar la sesión igual. Bonificación automática de feriados nacionales y provinciales configurables. (Nota interna: el envío de recordatorios por WhatsApp ya está construido pero no habilitado comercialmente — no ofrecerlo todavía.)
+Vista semanal del consultorio con arrastre y redimensionado de turnos. Soporte para múltiples franjas horarias por día (por ejemplo mañana y tarde con corte al mediodía), y por sede si el profesional atiende en más de un lugar. Turnos únicos y recurrentes (series automáticas semanales, quincenales, mensuales). Recordatorio automático por email al paciente 24 hs antes. Registro de inasistencias con opción de cobrar la sesión igual. Bonificación automática de feriados nacionales y provinciales configurables.
 
 PROBLEMA QUE RESUELVE
 El profesional pierde tiempo coordinando turnos por WhatsApp, se olvida de recordar a pacientes y no tiene registro claro de quién faltó.
@@ -175,6 +171,26 @@ PREGUNTAS QUE HACE EL AGENTE AL PROSPECTO
   · "¿Hoy cómo manejás tu agenda? ¿Papel, Google Calendar, WhatsApp?"
   · "¿Te pasa que los pacientes olvidan los turnos y no avisan?"
   · "¿Tenés pacientes que faltan seguido y no sabés cómo manejarlo?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MÓDULO: RECORDATORIOS POR WHATSAPP Y CORREO
+Disponible en: todos los planes (cupo mensual de WhatsApp según plan)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUÉ HACE
+KLIA manda un recordatorio automático al paciente 24 hs antes de su turno, por email y por WhatsApp desde un número verificado de KLIA. Desde el mismo mensaje de WhatsApp el paciente puede confirmar o cancelar el turno con un botón, sin tener que escribir ni llamar. El WhatsApp solo se envía a pacientes que dieron su consentimiento, y cualquier paciente puede darse de baja en cualquier momento respondiendo "BAJA".
+
+CUPO MENSUAL DE WHATSAPP (el recordatorio por email no se descuenta de ningún cupo)
+  · Esencial: 30 recordatorios por WhatsApp al mes
+  · Profesional: 100 recordatorios por WhatsApp al mes
+  · Premium: 150 recordatorios por WhatsApp al mes
+  · Durante la prueba gratuita de 21 días: 30 recordatorios por WhatsApp
+
+PROBLEMA QUE RESUELVE
+El recordatorio por email se puede perder entre otros mails o no leerse a tiempo. WhatsApp es el canal que el paciente realmente mira, y confirmar o cancelar con un botón es más rápido que escribir o llamar.
+
+EVIDENCIA PARA EL AGENTE — citar la fuente, nunca como una cifra propia de KLIA
+Hay evidencia publicada de que los recordatorios de turno por WhatsApp reducen entre un 20% y un 25% las inasistencias, frente al recordatorio solo por email o sin recordatorio (estudio del sistema público de salud de Buenos Aires, preprint 2026; Am J Med 2010). Usá esta evidencia como respaldo general de por qué WhatsApp funciona mejor que el email solo. NUNCA digas "KLIA reduce las inasistencias un X%" — KLIA no tiene ese dato medido sobre su propia base de usuarios, la cifra es de estudios externos sobre recordatorios por WhatsApp en general.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MÓDULO: PACIENTES E HISTORIA CLÍNICA
@@ -436,6 +452,7 @@ MÓDULO                        ESENCIAL   PROFESIONAL   PREMIUM
 ─────────────────────────────────────────────────────────────────
 Agenda y turnos                  ✓            ✓            ✓
 Recordatorios por email          ✓            ✓            ✓
+Recordatorios por WhatsApp       ✓            ✓            ✓
 Pacientes e historia clínica     ✓            ✓            ✓
 Google Calendar sync             ✓            ✓            ✓
 Sedes / sucursales               ✓            ✓            ✓
