@@ -17,6 +17,10 @@
 .DS_Store
 *.pem
 
+# python (scripts/*.py helpers, e.g. .github/scripts/)
+__pycache__/
+*.pyc
+
 # debug
 npm-debug.log*
 yarn-debug.log*
