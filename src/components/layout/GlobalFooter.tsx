@@ -1,5 +1,4 @@
 import Logo from '@/components/ui/Logo'
-import CentroDeAyudaButton from './CentroDeAyudaButton'
 import PrivacidadButton from './PrivacidadButton'
 
 export default function GlobalFooter() {
@@ -9,8 +8,6 @@ export default function GlobalFooter() {
         <div className="flex items-center space-x-6">
           <Logo className="h-5 w-auto opacity-70" />
           <nav className="flex items-center space-x-3">
-            <span className="text-slate-300">|</span>
-            <CentroDeAyudaButton />
             <span className="text-slate-300">|</span>
             <PrivacidadButton />
           </nav>

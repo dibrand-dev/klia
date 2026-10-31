@@ -33,6 +33,7 @@ export default function NavigationDrawer({
   profile,
   modulos,
   onNuevaSesion,
+  onAyuda,
   mobileOpen = false,
   onClose,
   esColaborador = false,
@@ -42,6 +43,7 @@ export default function NavigationDrawer({
   profile: Profile | null
   modulos: ModuloConfig[]
   onNuevaSesion: () => void
+  onAyuda: () => void
   mobileOpen?: boolean
   onClose?: () => void
   esColaborador?: boolean
@@ -141,6 +143,16 @@ export default function NavigationDrawer({
             </li>
           )
         })}
+        <li>
+          <button
+            type="button"
+            onClick={() => { onClose?.(); onAyuda() }}
+            className="flex items-center gap-3 text-on-surface-variant font-medium px-4 py-2 rounded-lg hover:bg-surface-container-low transition-colors duration-200 active:scale-[0.98] w-full text-left"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>help</span>
+            <span className="text-sm">Ayuda</span>
+          </button>
+        </li>
       </ul>
 
       {/* Action Button */}

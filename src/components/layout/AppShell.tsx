@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile, Paciente, ModuloConfig, PacienteColaboradorRow } from '@/types/database'
 import GlobalFooter from './GlobalFooter'
 import NavigationDrawer from './NavigationDrawer'
+import CentroDeAyudaSlideOver from './CentroDeAyudaSlideOver'
 import SlideOver from '@/components/ui/SlideOver'
 import { puedeAcceder } from '@/lib/modulos'
 import Logo from '@/components/ui/Logo'
@@ -94,6 +95,7 @@ export default function AppShell({
   const [notaPacienteNombre, setNotaPacienteNombre] = useState<string | null>(null)
   const [notaTurnoFechaHora, setNotaTurnoFechaHora] = useState<string | null>(null)
   const [nombrePropio, setNombrePropio] = useState<string | undefined>(undefined)
+  const [ayudaOpen, setAyudaOpen] = useState(false)
 
   useEffect(() => {
     if (!esColaborador || loadingIdentidad) return
@@ -201,7 +203,7 @@ export default function AppShell({
       )}
 
       {/* Navigation Drawer */}
-      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} nombrePropio={nombrePropio} veCobros={veCobros} />
+      <NavigationDrawer profile={profile} modulos={modulos} onNuevaSesion={abrirNuevoTurno} onAyuda={() => setAyudaOpen(true)} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} esColaborador={esColaborador} nombrePropio={nombrePropio} veCobros={veCobros} />
 
       {/* Main content */}
       <main
@@ -290,6 +292,8 @@ export default function AppShell({
           />
         </Suspense>
       </SlideOver>
+
+      <CentroDeAyudaSlideOver open={ayudaOpen} onClose={() => setAyudaOpen(false)} />
     </>
   )
 }
