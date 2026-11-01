@@ -1,8 +1,10 @@
 import { serviceClient } from '@/lib/supabase/service'
 import { enviarEmail } from '@/lib/brevo'
 import { puedeUsarPortal } from '@/lib/portal/acceso'
+import { diasRetencionPorPlan } from '@/lib/portal/retencion'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
+const LOGO_URL = 'https://app.klia.com.ar/logo-email.png'
 
 type ResultadoInvitacion =
   | { ok: true }
@@ -11,10 +13,79 @@ type ResultadoInvitacion =
 const EMAIL_YA_REGISTRADO = /already registered|already been registered|already exists/i
 
 // ── Email provisorio ──────────────────────────────────────────────────────
+// Mail de invitación definitivo (diseño "Mail - Invitacion Portal.html"):
+// tabla a prueba de clientes de correo (bgcolor + <a> con fondo propio +
+// VML para Outlook vía <!--[if mso]-->), preheader oculto, logo con URL
+// absoluta pública (igual que el resto de los mails de email-templates.ts).
+function emailInvitacionPaciente(nombreProfesional: string, nombrePacientePrimerNombre: string, actionLink: string, diasRetencion: number | null): string {
+  const dias = diasRetencion ?? 60
+  const nombrePaciente = nombrePacientePrimerNombre || 'paciente'
+  return `<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${nombreProfesional} te invitó a su portal de pacientes</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse}
+img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;display:block}
+a{color:#1F4FD9}
+a:hover{color:#16389F}
+@media only screen and (max-width:620px){.container{width:100%!important}.px{padding-left:24px!important;padding-right:24px!important}.h1{font-size:22px!important;line-height:28px!important}}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F1F3F6;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F1F3F6;">Activá tu cuenta para ver tu plan y registrar tus comidas.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#F1F3F6" style="background-color:#F1F3F6;">
+<tr><td align="center" style="padding:32px 12px;">
+<!--[if mso]><table role="presentation" width="560" border="0" cellspacing="0" cellpadding="0"><tr><td><![endif]-->
+<table role="presentation" class="container" width="560" border="0" cellspacing="0" cellpadding="0" style="width:560px;max-width:560px;">
+<tr><td style="padding:0 4px 18px 4px;"><img src="${LOGO_URL}" width="92" alt="KLIA" style="width:92px;height:auto;"></td></tr>
+<tr><td bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #E7E9EE;border-radius:12px;">
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+<tr><td class="px" style="padding:36px 40px 8px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5B6472;">Nutrición · Portal del paciente</p>
+<h1 class="h1" style="margin:0 0 18px 0;font-size:24px;line-height:30px;font-weight:700;color:#0B1220;">${nombreProfesional} te invitó a su portal de pacientes</h1>
+<p style="margin:0 0 14px 0;font-size:16px;line-height:24px;color:#1F2937;">Hola, ${nombrePaciente}:</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1F2937;">Desde el portal vas a poder ver tu plan alimentario y registrar con una foto lo que comés en cada comida. Activá tu cuenta y creá tu contraseña para empezar.</p>
+</td></tr>
+<tr><td align="center" class="px" style="padding:0 40px 28px 40px;">
+<table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
+<tr><td align="center" bgcolor="#0B1220" style="background-color:#0B1220;border-radius:8px;">
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${actionLink}" style="height:50px;v-text-anchor:middle;width:240px;" arcsize="16%" stroke="f" fillcolor="#0B1220"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Activar mi cuenta</center></v:roundrect><![endif]-->
+<!--[if !mso]><!--><a href="${actionLink}" target="_blank" style="display:inline-block;background-color:#0B1220;border:1px solid #0B1220;border-radius:8px;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;mso-hide:all;"><span style="color:#FFFFFF;">Activar mi cuenta</span></a><!--<![endif]-->
+</td></tr>
+</table>
+</td></tr>
+<tr><td class="px" style="padding:0 40px 30px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#5B6472;">Si el botón no funciona, copiá y pegá este link en tu navegador:</p>
+<p style="margin:0;font-size:13px;line-height:20px;word-break:break-all;"><a href="${actionLink}" target="_blank" style="color:#1F4FD9;text-decoration:underline;">${actionLink}</a></p>
+</td></tr>
+<tr><td class="px" style="padding:0 40px 34px 40px;">
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F6F7F9" style="background-color:#F6F7F9;border:1px solid #E7E9EE;border-radius:8px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#1F2937;">Tus fotos y comentarios son visibles solo para tu profesional. Se conservan ${dias} días y luego se eliminan.</td></tr></table>
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5B6472;">Recibiste este mail porque ${nombreProfesional} te registró como paciente en KLIA. Si no la conocés, podés ignorar este mensaje.</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>`
+}
+
 // A PROPÓSITO no usa baseTemplate/cta de email-templates.ts (ese catálogo es
 // el diseño "real" de KLIA) — esto es un placeholder hasta tener el diseño
-// del portal del paciente. Tabla con bgcolor (no solo CSS, varios clientes
-// de correo lo ignoran) + link en texto plano debajo como respaldo.
+// del portal del paciente para el caso de "vínculo" (email ya tenía cuenta
+// de paciente por otro profesional). Tabla con bgcolor (no solo CSS, varios
+// clientes de correo lo ignoran) + link en texto plano debajo como respaldo.
 function emailBoton(texto: string, url: string): string {
   return `<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr>
     <td bgcolor="#001a48" style="background-color:#001a48;border-radius:8px;">
@@ -22,15 +93,6 @@ function emailBoton(texto: string, url: string): string {
     </td>
   </tr></table>
   <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#5B6472;margin-top:16px;">Si el botón no funciona, copiá y pegá este link en tu navegador:<br>${url}</p>`
-}
-
-function emailInvitacionPacienteProvisorio(nombreProfesional: string, nombrePaciente: string, urlInvitacion: string): string {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0B1220;max-width:480px;">
-    <p>Hola ${nombrePaciente || ''},</p>
-    <p>${nombreProfesional} te invitó a usar el portal de pacientes de KLIA. Desde ahí vas a poder acceder a tu información.</p>
-    <p>Para activar tu cuenta, elegí una contraseña:</p>
-    ${emailBoton('Activar mi cuenta', urlInvitacion)}
-  </div>`
 }
 
 function emailVinculoPortalProvisorio(nombreProfesional: string, nombrePaciente: string): string {
@@ -67,12 +129,10 @@ export async function crearInvitacionPaciente(params: {
   const { pacienteId, terapeutaId, nombreProfesional } = params
   const db = serviceClient()
 
-  const { data: paciente } = await db
-    .from('pacientes')
-    .select('id, nombre, apellido, email')
-    .eq('id', pacienteId)
-    .eq('terapeuta_id', terapeutaId)
-    .maybeSingle()
+  const [{ data: paciente }, { data: profile }] = await Promise.all([
+    db.from('pacientes').select('id, nombre, apellido, email').eq('id', pacienteId).eq('terapeuta_id', terapeutaId).maybeSingle(),
+    db.from('profiles').select('plan').eq('id', terapeutaId).maybeSingle(),
+  ])
 
   if (!paciente) return { ok: false, status: 404, error: 'paciente_no_encontrado' }
   if (!paciente.email) {
@@ -83,6 +143,8 @@ export async function crearInvitacionPaciente(params: {
   if (!habilitado) {
     return { ok: false, status: 403, error: 'portal_no_habilitado', message: 'Tu plan no incluye el portal del paciente.' }
   }
+
+  const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
 
   const email = paciente.email
   const nombrePaciente = `${paciente.nombre} ${paciente.apellido}`.trim()
@@ -187,8 +249,8 @@ export async function crearInvitacionPaciente(params: {
     await enviarEmail({
       destinatario: email,
       nombreDestinatario: nombrePaciente || email,
-      asunto: `${nombreProfesional} te invitó a KLIA`,
-      htmlContent: emailInvitacionPacienteProvisorio(nombreProfesional, nombrePaciente, linkData.properties.action_link),
+      asunto: `${nombreProfesional} te invitó a su portal de pacientes`,
+      htmlContent: emailInvitacionPaciente(nombreProfesional, paciente.nombre, linkData.properties.action_link, diasRetencion),
     })
   } catch (emailError) {
     console.error('[portal/invitacion] Error enviando email:', emailError)

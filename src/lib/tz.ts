@@ -21,6 +21,15 @@ export function inicioMesActualAR(now = new Date()): Date {
   return new Date(Date.UTC(y, m, 1, 0, 0, 0, 0) + AR_OFFSET_MS)
 }
 
+// Fecha calendario de "hoy" en hora Argentina, como string YYYY-MM-DD — mismo
+// motivo que el resto del archivo: el server corre en UTC, así que un
+// new Date().toISOString().slice(0,10) suelto puede dar el día de mañana
+// entre las 21:00 y las 00:00 hora Argentina.
+export function hoyFechaAR(now = new Date()): string {
+  const ar = new Date(now.getTime() - AR_OFFSET_MS)
+  return `${ar.getUTCFullYear()}-${String(ar.getUTCMonth() + 1).padStart(2, '0')}-${String(ar.getUTCDate()).padStart(2, '0')}`
+}
+
 // Fecha/hora legibles en hora Argentina para mails y respuestas de API —
 // nunca date-fns format() en servidor (su locale 'es' no lleva timeZone y
 // termina formateando en la hora del server, no en AR).

@@ -28,6 +28,7 @@ import PlanillaOSSlide from './PlanillaOSSlide'
 import TabComposicionCorporal from '@/components/nutricion/TabComposicionCorporal'
 import PlanAlimentarioTab from '@/components/nutricion/PlanAlimentarioTab'
 import HabitosTab from '@/components/nutricion/HabitosTab'
+import RegistroTab from '@/components/nutricion/RegistroTab'
 import RxGrid from '@/components/oftalmologia/RxGrid'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
@@ -819,6 +820,10 @@ export default function PacienteDetalle({
     return <>{autorizacionBanner}<RxGrid pacienteId={paciente.id} variant="standalone" /></>
   }
 
+  if (activeTab === 'registro') {
+    return <>{autorizacionBanner}<RegistroTab paciente={paciente} /></>
+  }
+
   if (activeTab && activeTab !== 'datos') {
     return <>{autorizacionBanner}<TabEmptyState tab={activeTab} /></>
   }
@@ -1193,6 +1198,7 @@ function TabEmptyState({ tab }: { tab: PacienteTabKey }) {
     composicion: { title: 'Antropometría', body: '' },
     'plan-alimentario': { title: 'Plan Alimentario', body: '' },
     habitos: { title: 'Hábitos', body: '' },
+    registro: { title: 'Registro', body: '' },
   }
   const c = config[tab]
   return (

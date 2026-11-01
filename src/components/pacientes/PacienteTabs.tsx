@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ESPECIALIDADES_SALUD_MENTAL } from '@/lib/especialidades'
 
-export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion' | 'plan-alimentario' | 'habitos' | 'refraccion'
+export type PacienteTabKey = 'resumen' | 'datos' | 'historial' | 'informes' | 'facturacion' | 'interconsultas' | 'archivos' | 'admision' | 'composicion' | 'plan-alimentario' | 'habitos' | 'refraccion' | 'registro'
 
 interface TabDef {
   key: PacienteTabKey
@@ -21,6 +21,7 @@ export default function PacienteTabs({
   tieneDrive = false,
   especialidad,
   esColaborador = false,
+  puedeUsarPortal = false,
 }: {
   pacienteId: string
   active: PacienteTabKey
@@ -28,11 +29,17 @@ export default function PacienteTabs({
   tieneDrive?: boolean
   especialidad?: string | null
   esColaborador?: boolean
+  puedeUsarPortal?: boolean
 }) {
   const router = useRouter()
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
   const showComposicion = especialidad === 'Nutrición'
   const showRefraccion = especialidad === 'Oftalmología'
+  // A diferencia de Antropometría/Plan Alimentario/Hábitos (solo por
+  // especialidad), Registro también depende del plan — puedeUsarPortal ya
+  // viene resuelto desde el server (mismo terapeuta efectivo que ve la
+  // colaboradora, sin chequeo propio acá).
+  const showRegistro = especialidad === 'Nutrición' && puedeUsarPortal
 
   const tabs: TabDef[] = [
     { key: 'resumen', label: 'Resumen' },
@@ -47,6 +54,7 @@ export default function PacienteTabs({
     ...(showRefraccion ? [{ key: 'refraccion' as PacienteTabKey, label: 'Refracción' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
+    ...(showRegistro ? [{ key: 'registro' as PacienteTabKey, label: 'Registro' }] : []),
   ]
 
   return (
@@ -65,6 +73,7 @@ export default function PacienteTabs({
           : tab.key === 'habitos' ? `/pacientes/${pacienteId}?tab=habitos`
           : tab.key === 'refraccion' ? `/pacientes/${pacienteId}?tab=refraccion`
           : tab.key === 'facturacion' ? `/pacientes/${pacienteId}?tab=facturacion`
+          : tab.key === 'registro' ? `/pacientes/${pacienteId}?tab=registro`
           : `/pacientes/${pacienteId}?tab=interconsultas`
 
         return (

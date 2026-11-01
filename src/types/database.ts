@@ -458,6 +458,94 @@ export type Database = {
           },
         ]
       }
+      portal_registros: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          plan_comida_id: string | null
+          tipo_comida: string
+          fecha_local: string
+          registrado_at: string
+          foto_path: string | null
+          foto_thumb_path: string | null
+          foto_bytes: number | null
+          foto_vencida: boolean
+          comentario: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          plan_comida_id?: string | null
+          tipo_comida: string
+          fecha_local: string
+          registrado_at?: string
+          foto_path?: string | null
+          foto_thumb_path?: string | null
+          foto_bytes?: number | null
+          foto_vencida?: boolean
+          comentario?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          plan_comida_id?: string | null
+          tipo_comida?: string
+          fecha_local?: string
+          registrado_at?: string
+          foto_path?: string | null
+          foto_thumb_path?: string | null
+          foto_bytes?: number | null
+          foto_vencida?: boolean
+          comentario?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'portal_registros_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'portal_registros_plan_comida_id_fkey'
+            columns: ['plan_comida_id']
+            isOneToOne: false
+            referencedRelation: 'plan_comidas'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'portal_registros_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      portal_retencion_plan: {
+        Row: {
+          plan: string
+          retencion_dias: number
+        }
+        Insert: {
+          plan: string
+          retencion_dias: number
+        }
+        Update: {
+          plan?: string
+          retencion_dias?: number
+        }
+        Relationships: []
+      }
       pacientes: {
         Row: {
           id: string
@@ -2451,6 +2539,7 @@ export type Database = {
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Paciente = Database['public']['Tables']['pacientes']['Row']
 export type PacienteAcceso = Database['public']['Tables']['paciente_accesos']['Row']
+export type PortalRegistro = Database['public']['Tables']['portal_registros']['Row']
 export type TurnoRow = Database['public']['Tables']['turnos']['Row']
 export type EstadoTurno = Database['public']['Enums']['estado_turno']
 export type ModalidadTurno = Database['public']['Enums']['modalidad_turno']
