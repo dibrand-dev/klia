@@ -22,8 +22,15 @@ export default function HomePage() {
             refresh_token: refreshToken,
           })
 
-          if (!error && data.session?.user?.user_metadata?.tipo_cuenta === 'colaborador') {
+          // Pista de redirect únicamente (ver nota en middleware.ts) — nunca
+          // se usa user_metadata para autorizar nada.
+          const tipoCuenta = data.session?.user?.user_metadata?.tipo_cuenta
+          if (!error && tipoCuenta === 'colaborador') {
             router.replace('/colaboradora/activar')
+            return
+          }
+          if (!error && tipoCuenta === 'paciente') {
+            router.replace('/portal/activar')
             return
           }
         }

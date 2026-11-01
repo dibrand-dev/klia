@@ -28,6 +28,13 @@ export function useEffectiveTerapeutaId(): EstadoTerapeutaEfectivo {
         return
       }
 
+      // Mismo chequeo que la versión server (getEffectiveTerapeutaIdServer):
+      // una cuenta de portal del paciente nunca actúa como profesional.
+      if (user.app_metadata?.tipo_cuenta === 'paciente') {
+        if (!cancelado) { setEstado(null); setLoading(false) }
+        return
+      }
+
       const { data: colaboracion } = await supabase
         .from('colaboradores')
         .select('profesional_id, ve_cobros')

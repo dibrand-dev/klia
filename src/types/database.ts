@@ -398,6 +398,66 @@ export type Database = {
           },
         ]
       }
+      paciente_accesos: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          auth_user_id: string | null
+          email: string
+          estado: 'invitado' | 'activo' | 'revocado'
+          registro_habilitado: boolean
+          invitado_at: string
+          activado_at: string | null
+          consentimiento_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          auth_user_id?: string | null
+          email: string
+          estado?: 'invitado' | 'activo' | 'revocado'
+          registro_habilitado?: boolean
+          invitado_at?: string
+          activado_at?: string | null
+          consentimiento_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          auth_user_id?: string | null
+          email?: string
+          estado?: 'invitado' | 'activo' | 'revocado'
+          registro_habilitado?: boolean
+          invitado_at?: string
+          activado_at?: string | null
+          consentimiento_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'paciente_accesos_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: true
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'paciente_accesos_terapeuta_id_fkey'
+            columns: ['terapeuta_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       pacientes: {
         Row: {
           id: string
@@ -2390,6 +2450,7 @@ export type Database = {
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Paciente = Database['public']['Tables']['pacientes']['Row']
+export type PacienteAcceso = Database['public']['Tables']['paciente_accesos']['Row']
 export type TurnoRow = Database['public']['Tables']['turnos']['Row']
 export type EstadoTurno = Database['public']['Enums']['estado_turno']
 export type ModalidadTurno = Database['public']['Enums']['modalidad_turno']

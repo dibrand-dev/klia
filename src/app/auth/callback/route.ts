@@ -52,6 +52,19 @@ export async function GET(request: NextRequest) {
     .eq('id', session.user.id)
     .single()
 
+  // Cuenta del portal del paciente: nunca tiene fila en profiles, por diseño.
+  // En el flujo normal de invitación no pasa por acá — eso lo maneja
+  // /portal/activar del lado del cliente leyendo el hash de la URL, igual
+  // que colaboradora — esto es defensivo para cuando una sesión de paciente
+  // termina en este callback compartido (ej. el mismo fallback de
+  // generateLink que ya intercepta middleware.ts). Sin este chequeo, con
+  // !profile el código de abajo la trataba como "profesional nuevo": pisaba
+  // plan/estado_cuenta con un UPDATE que no tocaba ninguna fila, mandaba el
+  // mail de bienvenida de profesional y redirigía a /bienvenida.
+  if (!profile && session.user.user_metadata?.tipo_cuenta === 'paciente') {
+    return NextResponse.redirect(new URL('/portal', origin))
+  }
+
   if (!profile?.trial_fin && profile?.tipo_cuenta === 'colaborador') {
     return NextResponse.redirect(new URL('/dashboard', origin))
   }

@@ -20,6 +20,12 @@ const PUBLIC_ROUTES = [
   '/privacidad',
   '/colaboradora/activar',
   '/turno/',
+  // Portal del paciente: /activar lee los tokens del hash de la URL del lado
+  // del cliente (igual que /colaboradora/activar) — el server nunca ve ese
+  // hash, así que tiene que ser pública. /login es el login propio del
+  // portal, mismo trato que /login a secas.
+  '/portal/activar',
+  '/portal/login',
 ]
 
 // Routes that require a specific module to be enabled for the professional's plan
@@ -89,9 +95,13 @@ export async function updateSession(request: NextRequest) {
   if (pathname === '/' && inviteCode) {
     const { data: exchangeData } = await supabase.auth.exchangeCodeForSession(inviteCode)
     const tipoCuenta = exchangeData.session?.user?.user_metadata?.tipo_cuenta
-    if (tipoCuenta === 'colaborador') {
+    // Esto es solo una pista de a dónde mandar al usuario a terminar de
+    // activarse — user_metadata la puede editar el propio usuario desde el
+    // cliente, así que nunca se usa para autorizar nada, solo para elegir
+    // el destino del redirect acá.
+    if (tipoCuenta === 'colaborador' || tipoCuenta === 'paciente') {
       const url = request.nextUrl.clone()
-      url.pathname = '/colaboradora/activar'
+      url.pathname = tipoCuenta === 'colaborador' ? '/colaboradora/activar' : '/portal/activar'
       url.search = ''
       const redirectResponse = NextResponse.redirect(url)
       supabaseResponse.cookies.getAll().forEach((cookie) => {
@@ -99,8 +109,8 @@ export async function updateSession(request: NextRequest) {
       })
       return redirectResponse
     }
-    // Si no es colaboradora (o el exchange falló), no hacemos nada especial
-    // acá — dejamos que el flujo normal de abajo siga su curso.
+    // Si no es colaboradora/paciente (o el exchange falló), no hacemos nada
+    // especial acá — dejamos que el flujo normal de abajo siga su curso.
   }
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -117,10 +127,11 @@ export async function updateSession(request: NextRequest) {
 
   const isAuthRoute = pathname.startsWith('/login') ||
     pathname.startsWith('/registro')
+  const esRutaPortal = pathname === '/portal' || pathname.startsWith('/portal/')
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = esRutaPortal ? '/portal/login' : '/login'
     return NextResponse.redirect(url)
   }
 
@@ -135,13 +146,38 @@ export async function updateSession(request: NextRequest) {
         : Promise.resolve({ data: null }),
     ])
 
-    if (profile?.estado_cuenta === 'bloqueada') {
+    // Sin fila en profiles = cuenta de portal del paciente (u otra cuenta sin
+    // perfil de profesional) — nunca se decide por user_metadata, que el
+    // usuario puede editar desde el cliente con auth.updateUser(); la
+    // ausencia de fila en profiles (ya la consultamos arriba, sin query
+    // extra) es la única señal server-side confiable acá. Solo puede ver
+    // /portal/*.
+    if (!profile) {
+      if (!esRutaPortal) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/portal'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
+      return supabaseResponse
+    }
+
+    // Tiene perfil de profesional (o colaboradora) — el portal del paciente
+    // no es para esta cuenta.
+    if (esRutaPortal) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+
+    if (profile.estado_cuenta === 'bloqueada') {
       const url = request.nextUrl.clone()
       url.pathname = '/cuenta-bloqueada'
       return NextResponse.redirect(url)
     }
 
-    if (moduloId && modulos && profile?.plan) {
+    if (moduloId && modulos && profile.plan) {
       const modulo = modulos.find((m: { modulo_id: string; planes: string[] }) => m.modulo_id === moduloId)
       if (modulo && !modulo.planes.includes(profile.plan)) {
         const url = request.nextUrl.clone()
