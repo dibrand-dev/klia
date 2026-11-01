@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
+import { accesosHabilitados } from '@/lib/portal/acceso'
+import PortalLogoutButton from './PortalLogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +21,10 @@ export default async function PortalLayout({ children }: { children: React.React
   if (user.app_metadata?.tipo_cuenta !== 'paciente') redirect('/')
 
   const db = serviceClient()
+
+  // Tiene que existir al menos un acceso 'activo' para no mandar a alguien
+  // que ya activó su cuenta de vuelta a /portal/login como si nunca hubiera
+  // activado nada.
   const { data: accesos } = await db
     .from('paciente_accesos')
     .select('paciente_id')
@@ -27,6 +33,20 @@ export default async function PortalLayout({ children }: { children: React.React
     .limit(1)
 
   if (!accesos || accesos.length === 0) redirect('/portal/login')
+
+  // De esos accesos activos, cuáles tienen el portal habilitado AHORA (el
+  // plan/estado de cuenta del profesional puede haber cambiado después de
+  // la activación) — "el acceso está activo" nunca alcanza por sí solo.
+  const habilitados = await accesosHabilitados(db, user.id)
+
+  if (habilitados.length === 0) {
+    return (
+      <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
+        <p>Tu profesional ya no tiene habilitado el portal.</p>
+        <PortalLogoutButton />
+      </div>
+    )
+  }
 
   return <>{children}</>
 }

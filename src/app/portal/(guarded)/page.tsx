@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
+import { accesosHabilitados } from '@/lib/portal/acceso'
 import PortalLogoutButton from './PortalLogoutButton'
 
 export const dynamic = 'force-dynamic'
@@ -12,11 +13,19 @@ export default async function PortalPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const db = serviceClient()
-  const { data: accesos } = await db
-    .from('paciente_accesos')
-    .select('paciente_id, pacientes(nombre, apellido)')
-    .eq('auth_user_id', user!.id)
-    .eq('estado', 'activo')
+  // El layout ya garantiza al menos un acceso habilitado para llegar acá —
+  // igual se vuelve a filtrar por puedeUsarPortal acá, nunca se listan
+  // accesos 'activo' sin ese filtro (mismo motivo que el fix del layout).
+  const habilitados = await accesosHabilitados(db, user!.id)
+
+  let pacientes: { id: string; nombre: string; apellido: string }[] = []
+  if (habilitados.length > 0) {
+    const { data } = await db
+      .from('pacientes')
+      .select('id, nombre, apellido')
+      .in('id', habilitados.map((a) => a.pacienteId))
+    pacientes = data ?? []
+  }
 
   return (
     <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
@@ -24,14 +33,9 @@ export default async function PortalPage() {
       <p>Sesión: {user?.email}</p>
       <p>Accesos activos:</p>
       <ul>
-        {(accesos ?? []).map((a) => {
-          const paciente = a.pacientes as unknown as { nombre: string; apellido: string } | null
-          return (
-            <li key={a.paciente_id}>
-              {paciente ? `${paciente.nombre} ${paciente.apellido}` : a.paciente_id}
-            </li>
-          )
-        })}
+        {pacientes.map((p) => (
+          <li key={p.id}>{p.nombre} {p.apellido}</li>
+        ))}
       </ul>
       <PortalLogoutButton />
     </div>
