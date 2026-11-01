@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
-import { accesosHabilitados } from '@/lib/portal/acceso'
-import PortalLogoutButton from './PortalLogoutButton'
+import { accesoPrincipal } from '@/lib/portal/acceso'
+import PortalShell from '@/components/portal/PortalShell'
+import PortalNoDisponible from '@/components/portal/PortalNoDisponible'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,19 +35,31 @@ export default async function PortalLayout({ children }: { children: React.React
 
   if (!accesos || accesos.length === 0) redirect('/portal/login')
 
-  // De esos accesos activos, cuáles tienen el portal habilitado AHORA (el
-  // plan/estado de cuenta del profesional puede haber cambiado después de
-  // la activación) — "el acceso está activo" nunca alcanza por sí solo.
-  const habilitados = await accesosHabilitados(db, user.id)
+  // El diseño asume un único profesional — accesoPrincipal ya filtra por
+  // puedeUsarPortal y devuelve el más reciente entre los habilitados (o
+  // null si ninguno lo está AHORA, aunque el acceso siga 'activo').
+  const principal = await accesoPrincipal(db, user.id)
 
-  if (habilitados.length === 0) {
-    return (
-      <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
-        <p>Tu profesional ya no tiene habilitado el portal.</p>
-        <PortalLogoutButton />
-      </div>
-    )
+  if (!principal) {
+    return <PortalNoDisponible />
   }
 
-  return <>{children}</>
+  const [{ data: paciente }, { data: profile }] = await Promise.all([
+    db.from('pacientes').select('nombre, apellido').eq('id', principal.pacienteId).maybeSingle(),
+    db.from('profiles').select('nombre, apellido, especialidad').eq('id', principal.terapeutaId).maybeSingle(),
+  ])
+
+  const profesionalNombre = [profile?.nombre, profile?.apellido].filter(Boolean).join(' ') || 'Tu profesional'
+
+  return (
+    <PortalShell
+      profesionalNombre={profesionalNombre}
+      especialidad={profile?.especialidad ?? null}
+      pacienteNombre={paciente?.nombre ?? ''}
+      pacienteApellido={paciente?.apellido ?? ''}
+      pacienteEmail={user.email ?? ''}
+    >
+      {children}
+    </PortalShell>
+  )
 }

@@ -26,9 +26,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
   }
 
-  // Handle password recovery
+  // Handle password recovery. app_metadata (nunca user_metadata — el usuario
+  // la puede editar desde el cliente con auth.updateUser) distingue si la
+  // cuenta es del portal del paciente para mandarla a su propia pantalla de
+  // nueva contraseña — cualquier otro caso mantiene el destino de siempre.
   if (type === 'recovery') {
-    return NextResponse.redirect(new URL('/nueva-contrasena', origin))
+    const destino = data.session.user.app_metadata?.tipo_cuenta === 'paciente' ? '/portal/nueva-contrasena' : '/nueva-contrasena'
+    return NextResponse.redirect(new URL(destino, origin))
   }
 
   const session = data.session

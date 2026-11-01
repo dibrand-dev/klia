@@ -82,3 +82,27 @@ export async function accesoHabilitado(
   if (!(await puedeUsarPortal(supabase, acceso.terapeuta_id))) return null
   return { pacienteId: acceso.paciente_id, terapeutaId: acceso.terapeuta_id }
 }
+
+// El diseño de Fase 2B asume un único profesional por paciente — si hay más
+// de un acceso habilitado (la misma persona, paciente de más de un
+// profesional), se usa el más reciente por activado_at, sin selector.
+// TODO (fase futura): selector de profesional cuando el diseño lo soporte.
+export async function accesoPrincipal(
+  supabase: SupabaseClient,
+  authUserId: string,
+): Promise<AccesoPaciente | null> {
+  const { data } = await supabase
+    .from('paciente_accesos')
+    .select('paciente_id, terapeuta_id')
+    .eq('auth_user_id', authUserId)
+    .eq('estado', 'activo')
+    .order('activado_at', { ascending: false })
+
+  if (!data) return null
+  for (const acceso of data) {
+    if (await puedeUsarPortal(supabase, acceso.terapeuta_id)) {
+      return { pacienteId: acceso.paciente_id, terapeutaId: acceso.terapeuta_id }
+    }
+  }
+  return null
+}

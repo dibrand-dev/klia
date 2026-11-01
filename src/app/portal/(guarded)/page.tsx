@@ -1,43 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
-import { accesosHabilitados } from '@/lib/portal/acceso'
-import PortalLogoutButton from './PortalLogoutButton'
+import { accesoPrincipal } from '@/lib/portal/acceso'
+import HoyClient from '@/components/portal/HoyClient'
 
 export const dynamic = 'force-dynamic'
 
-// TEMPORAL — texto plano, sin diseño. Placeholder para probar el guard
-// (invitación → activación → gating por plan) de punta a punta antes de
-// construir la UI real (registro de fotos, Fase 2+).
-export default async function PortalPage() {
+export default async function PortalHoyPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const db = serviceClient()
-  // El layout ya garantiza al menos un acceso habilitado para llegar acá —
-  // igual se vuelve a filtrar por puedeUsarPortal acá, nunca se listan
-  // accesos 'activo' sin ese filtro (mismo motivo que el fix del layout).
-  const habilitados = await accesosHabilitados(db, user!.id)
+  // El layout ya redirige a PortalNoDisponible si accesoPrincipal es null —
+  // si esta página llegó a renderizar, hay un principal válido.
+  const principal = await accesoPrincipal(db, user!.id)
 
-  let pacientes: { id: string; nombre: string; apellido: string }[] = []
-  if (habilitados.length > 0) {
-    const { data } = await db
-      .from('pacientes')
-      .select('id, nombre, apellido')
-      .in('id', habilitados.map((a) => a.pacienteId))
-    pacientes = data ?? []
-  }
+  const [{ data: paciente }, { data: profile }] = await Promise.all([
+    db.from('pacientes').select('nombre').eq('id', principal!.pacienteId).maybeSingle(),
+    db.from('profiles').select('nombre, apellido').eq('id', principal!.terapeutaId).maybeSingle(),
+  ])
 
-  return (
-    <div style={{ padding: 32, fontFamily: 'sans-serif' }}>
-      <h1>Portal del paciente (temporal)</h1>
-      <p>Sesión: {user?.email}</p>
-      <p>Accesos activos:</p>
-      <ul>
-        {pacientes.map((p) => (
-          <li key={p.id}>{p.nombre} {p.apellido}</li>
-        ))}
-      </ul>
-      <PortalLogoutButton />
-    </div>
-  )
+  const profesionalNombre = [profile?.nombre, profile?.apellido].filter(Boolean).join(' ') || 'tu profesional'
+
+  return <HoyClient pacienteNombre={paciente?.nombre ?? ''} profesionalNombre={profesionalNombre} />
 }
