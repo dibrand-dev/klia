@@ -441,10 +441,8 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-01_
+_Actualizado el 2026-11-02_
 
 ```
-f9ac4f0 chore: ignorar __pycache__ de scripts Python (.github/scripts/)
-fcdb5ce docs: base de conocimiento habilita recordatorios WhatsApp
-11bf023 feat: acceso a Centro de Ayuda desde el menú lateral
+052c156 fix: registrar cobros de suscripción que llegan como notificación payment
 ```
