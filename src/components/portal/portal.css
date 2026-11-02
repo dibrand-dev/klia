@@ -171,7 +171,7 @@ body { background: var(--surface-3); }
 .pp-tips { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
 .pp-tips li { display: grid; grid-template-columns: 16px 1fr; gap: 9px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
 .pp-tips li svg { width: 15px; height: 15px; stroke: var(--ok); stroke-width: 2.2; fill: none; margin-top: 3px; }
-.pp-days-wrap { position: sticky; top: -20px; z-index: 5; background: var(--bg); padding: 8px 0 4px; margin: 12px 0 8px; }
+.pp-days-wrap { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 4px; margin: 12px 0 8px; }
 .pp-days { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; margin: 0; }
 .pp-days button { height: 40px; border: none; background: transparent; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 0; }
 .pp-days button:hover { color: var(--ink-2); }

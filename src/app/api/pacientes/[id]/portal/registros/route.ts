@@ -6,6 +6,7 @@ import { puedeUsarPortal } from '@/lib/portal/acceso'
 import { diasRetencionPorPlan } from '@/lib/portal/retencion'
 import { hoyFechaAR } from '@/lib/tz'
 import { lunesDe, rangoSemana, sumarDias, diaSemanaKey } from '@/lib/portal/semana'
+import { compararItems } from '@/lib/nutricion/orden-comidas'
 
 export const runtime = 'nodejs'
 
@@ -18,6 +19,7 @@ type ItemRow = {
   alimento_fuente: string | null
   alimento_id: string | null
   cantidad_gramos: number | null
+  orden: number
 }
 
 type ComidaRow = {
@@ -126,10 +128,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
   }
   const tiposFilas = new Set<string>(Array.from(ordenPorTipo.keys()).concat(registros.map((r) => r.tipo_comida)))
+  // Mismo criterio que compararComidas (orden → hora → desempate final
+  // estable) — acá el desempate final es el string de tipo_comida en vez de
+  // un id porque esto agrupa por NOMBRE de comida a través de varios días,
+  // no son filas individuales con id propio.
   const filas = Array.from(tiposFilas).sort((a, b) => {
     const oa = ordenPorTipo.get(a) ?? Infinity
     const ob = ordenPorTipo.get(b) ?? Infinity
-    return oa !== ob ? oa - ob : a.localeCompare(b)
+    if (oa !== ob) return oa - ob
+    const ha = horaPorTipo.get(a) ?? '99:99:99'
+    const hb = horaPorTipo.get(b) ?? '99:99:99'
+    if (ha !== hb) return ha < hb ? -1 : 1
+    return a.localeCompare(b)
   })
 
   // Comidas históricas (plan_comida_id de un registro) que ya no están en el
@@ -158,7 +168,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     })()
     for (const c of Array.from(comidaPorId.values())) {
       itemsResueltosPorComida.set(c.id, (c.plan_comida_items ?? [])
-        .sort((a, b) => a.id.localeCompare(b.id))
+        .sort(compararItems)
         .map((item) => ({
           tipo: item.tipo,
           nombre: item.tipo === 'alimento' && item.alimento_id

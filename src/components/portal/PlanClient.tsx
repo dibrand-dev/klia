@@ -102,7 +102,7 @@ export default function PlanClient() {
         </div>
       )}
 
-      {data.mostrarMacros && (data.kcalObjetivo != null || (data.porcentajeCarbohidratos ?? 0) > 0 || (data.porcentajeProteinas ?? 0) > 0 || (data.porcentajeGrasas ?? 0) > 0) && (
+      {data.mostrarMacros && data.kcalObjetivo != null && (
         <div className="pp-card" style={{ marginTop: 10 }}>
           <div className="pp-lbl">Valor calórico diario</div>
           <div className="pp-kc"><b>{data.kcalObjetivo ?? '—'}</b><span>kcal por día</span></div>

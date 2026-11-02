@@ -2,6 +2,12 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
+// Bases sin barra final — esRutaPublica() matchea por segmento completo
+// (pathname === base, o pathname.startsWith(base + '/')), nunca por prefijo
+// suelto. Bug real cazado en QA: '/p' con startsWith() sin límite de
+// segmento matcheaba también '/pacientes' (y todo /pacientes/*), dejando
+// esa ruta de profesional completamente pública — nunca llegaba ni a la
+// Capa 1 ni a la Capa 2 de más abajo.
 const PUBLIC_ROUTES = [
   '/login',
   '/registro',
@@ -18,7 +24,7 @@ const PUBLIC_ROUTES = [
   '/terminos',
   '/privacidad',
   '/colaboradora/activar',
-  '/turno/',
+  '/turno',
   // '/cuenta-bloqueada' NO va acá (antes sí estaba): tiene que pasar por la
   // Capa 1 para que una cuenta de paciente la redirija a /portal en vez de
   // poder verla (no tiene "estado_cuenta bloqueada" — ese concepto es
@@ -32,6 +38,10 @@ const PUBLIC_ROUTES = [
   '/portal/activar',
   '/portal/login',
 ]
+
+function esRutaPublica(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((base) => pathname === base || pathname.startsWith(`${base}/`))
+}
 
 // Routes that require a specific module to be enabled for the professional's plan
 const MODULE_PATHS: Record<string, string> = {
@@ -63,7 +73,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Si es ruta pública → pasar directamente sin llamar a Supabase
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+  if (esRutaPublica(pathname)) {
     return NextResponse.next()
   }
 

@@ -5,6 +5,7 @@ import { accesoPrincipal } from '@/lib/portal/acceso'
 import { estaEnPlazo } from '@/lib/portal/plazo'
 import { hoyFechaAR } from '@/lib/tz'
 import { diaSemanaKey } from '@/lib/portal/semana'
+import { compararComidas } from '@/lib/nutricion/orden-comidas'
 
 export const runtime = 'nodejs'
 
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
   const dia = diaSemanaKey(fecha)
 
   const [{ data: plan }, { data: acceso }] = await Promise.all([
-    db.from('planes_alimentarios').select('id').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
+    db.from('planes_alimentarios').select('id, created_at').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
     db.from('paciente_accesos').select('registro_habilitado').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
   ])
 
@@ -37,12 +38,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ fecha, noPlan: true, registroHabilitado, filas: [] })
   }
 
+  // Antes de que el plan activo existiera no hay nada que mostrar — mismo
+  // estado vacío que "sin comidas ese día", comparando fechas civiles ART.
+  const fechaCreacionPlan = hoyFechaAR(new Date(plan.created_at))
+  if (fecha < fechaCreacionPlan) {
+    return NextResponse.json({ fecha, noPlan: false, registroHabilitado, filas: [] })
+  }
+
   const [{ data: comidasRaw }, { data: registrosRaw }] = await Promise.all([
-    db.from('plan_comidas').select('id, tipo_comida, hora, orden').eq('plan_id', plan.id).eq('dia_semana', dia).order('orden', { ascending: true }),
+    db.from('plan_comidas').select('id, tipo_comida, hora, orden').eq('plan_id', plan.id).eq('dia_semana', dia),
     db.from('portal_registros').select('tipo_comida, registrado_at, comentario, foto_vencida').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('fecha_local', fecha),
   ])
 
-  const comidas = (comidasRaw ?? []) as ComidaRow[]
+  const comidas = ((comidasRaw ?? []) as ComidaRow[]).sort(compararComidas)
   const registroPorTipo = new Map<string, RegistroRow>()
   for (const r of (registrosRaw ?? []) as RegistroRow[]) registroPorTipo.set(r.tipo_comida, r)
 

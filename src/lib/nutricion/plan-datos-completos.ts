@@ -7,6 +7,7 @@ import { calcularMacrosPlan } from '@/lib/planes-alimentarios/macros'
 import { serviceClient } from '@/lib/supabase/service'
 import type { ComidaPlan, ItemComida, DatosPlanAlimentario } from '@/lib/planillas/plan-alimentario'
 import { formatNombreCompleto } from '@/lib/utils'
+import { compararComidas, compararItems } from '@/lib/nutricion/orden-comidas'
 
 type Db = ReturnType<typeof serviceClient>
 
@@ -17,6 +18,7 @@ type ItemRow = {
   alimento_fuente: string | null
   alimento_id: string | null
   cantidad_gramos: number | null
+  orden: number
 }
 
 type ComidaRow = {
@@ -25,6 +27,7 @@ type ComidaRow = {
   tipo_comida: string
   hora: string | null
   nota: string | null
+  orden: number
   plan_comida_items: ItemRow[]
 }
 
@@ -49,7 +52,7 @@ export async function obtenerDatosPlanAlimentario(
   const [{ data: plan }, { data: profile }] = await Promise.all([
     db
       .from('planes_alimentarios')
-      .select('*, plan_comidas(id, dia_semana, tipo_comida, hora, nota, plan_comida_items(*))')
+      .select('*, plan_comidas(id, dia_semana, tipo_comida, hora, nota, orden, plan_comida_items(*))')
       .eq('id', planId)
       .eq('terapeuta_id', terapeutaId)
       .maybeSingle(),
@@ -120,8 +123,8 @@ export async function obtenerDatosPlanAlimentario(
     for (const a of alimentos ?? []) nombrePorAlimentoId.set(String(a.id), a.nombre)
   }
 
-  const comidas: ComidaPlan[] = comidasRaw.map((comida) => {
-    const items: ItemComida[] = (comida.plan_comida_items ?? []).map((item) => {
+  const comidas: ComidaPlan[] = [...comidasRaw].sort(compararComidas).map((comida) => {
+    const items: ItemComida[] = [...(comida.plan_comida_items ?? [])].sort(compararItems).map((item) => {
       const nombre = item.tipo === 'alimento' && item.alimento_id
         ? (nombrePorAlimentoId.get(String(item.alimento_id)) ?? 'Alimento sin nombre cargado')
         : (item.contenido_texto ?? '')
