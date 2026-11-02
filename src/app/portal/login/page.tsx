@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -21,6 +21,18 @@ export default function PortalLoginPage() {
   const [forgotEmail, setForgotEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
+  const olvideBtnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!sheetOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setSheetOpen(false)
+      olvideBtnRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [sheetOpen])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -83,7 +95,7 @@ export default function PortalLoginPage() {
               <label htmlFor="l-pw">Contraseña</label>
               <input className="pw" id="l-pw" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <button type="button" className="pp-lnk" style={{ marginBottom: 14 }} onClick={abrirOlvide}>Olvidé mi contraseña</button>
+            <button ref={olvideBtnRef} type="button" className="pp-lnk" style={{ marginBottom: 14 }} onClick={abrirOlvide}>Olvidé mi contraseña</button>
             <button type="submit" className="pp-pb pri full" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</button>
           </form>
         </div>

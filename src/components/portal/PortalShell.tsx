@@ -37,6 +37,8 @@ export default function PortalShell({
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
   const menuRef = useRef<HTMLDivElement>(null)
+  const acctBtnRef = useRef<HTMLButtonElement>(null)
+  const cambiarPwBtnRef = useRef<HTMLButtonElement>(null)
 
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
@@ -61,6 +63,22 @@ export default function PortalShell({
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!sheetOpen && !menuOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (sheetOpen) {
+        setSheetOpen(false)
+        cambiarPwBtnRef.current?.focus()
+      } else if (menuOpen) {
+        setMenuOpen(false)
+        acctBtnRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [sheetOpen, menuOpen])
 
   function toast(msg: string) {
     setToastMsg(msg)
@@ -117,6 +135,7 @@ export default function PortalShell({
         {/* sin position propio — el .menu se posiciona absoluto contra .pp-hd (position:relative), igual que en el diseño */}
         <div ref={menuRef}>
           <button
+            ref={acctBtnRef}
             className="pp-acct" aria-label="Menú de cuenta" aria-haspopup="menu" aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
@@ -124,7 +143,7 @@ export default function PortalShell({
           </button>
           <div className={`pp-menu${menuOpen ? ' open' : ''}`} role="menu">
             <div className="pp-who"><b>{pacienteNombre} {pacienteApellido}</b><span>{pacienteEmail}</span></div>
-            <button className="pp-mi" role="menuitem" onClick={abrirCambiarContrasena}>{IconLock}Cambiar contraseña</button>
+            <button ref={cambiarPwBtnRef} className="pp-mi" role="menuitem" onClick={abrirCambiarContrasena}>{IconLock}Cambiar contraseña</button>
             <button className="pp-mi danger" role="menuitem" onClick={cerrarSesion}>{IconLogout}Cerrar sesión</button>
           </div>
         </div>

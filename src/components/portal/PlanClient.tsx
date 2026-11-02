@@ -147,7 +147,7 @@ export default function PlanClient() {
           const items = c.items.filter((item) => item.tipo !== 'texto_libre' || item.nombre.trim().length > 0)
           return (
             <div className="pp-pmeal" key={c.tipoComida}>
-              <div className="pp-hd"><b>{c.tipoComida}</b>{c.hora && <span>{c.hora.slice(0, 5)}</span>}</div>
+              <div className="pp-meal-hd"><b>{c.tipoComida}</b>{c.hora && <span>{c.hora.slice(0, 5)}</span>}</div>
               <ul className="pp-items">
                 {items.length === 0 && <li>Sin ítems cargados.</li>}
                 {items.map((item, i) => (

@@ -171,16 +171,16 @@ body { background: var(--surface-3); }
 .pp-tips { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
 .pp-tips li { display: grid; grid-template-columns: 16px 1fr; gap: 9px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
 .pp-tips li svg { width: 15px; height: 15px; stroke: var(--ok); stroke-width: 2.2; fill: none; margin-top: 3px; }
-.pp-days-wrap { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0 4px; margin: 12px 0 8px; }
+.pp-days-wrap { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 8px 0 4px; margin: 12px 0 8px; }
 .pp-days { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; margin: 0; }
 .pp-days button { height: 40px; border: none; background: transparent; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 0; }
 .pp-days button:hover { color: var(--ink-2); }
 .pp-days button.on { background: var(--ink); color: #fff; }
 .pp-pmeal { padding: 14px 16px; }
 .pp-pmeal + .pp-pmeal { border-top: 1px solid var(--border); }
-.pp-pmeal .pp-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.pp-pmeal .pp-hd b { font-size: 15px; font-weight: 600; }
-.pp-pmeal .pp-hd span { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pp-pmeal .pp-meal-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.pp-pmeal .pp-meal-hd b { font-size: 15px; font-weight: 600; }
+.pp-pmeal .pp-meal-hd span { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pp-items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .pp-items li { position: relative; padding-left: 16px; font-size: 14px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
 .pp-items li::before { content: ""; position: absolute; left: 2px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: var(--muted-3); }
