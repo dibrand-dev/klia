@@ -25,6 +25,81 @@ async function obtenerAuthorizedPayment(authorizedPaymentId: string) {
   }>
 }
 
+// El objeto Payment (vía SDK) no trae ningún campo que apunte a su
+// preapproval de origen — chequeado contra PaymentResponse del SDK
+// (point_of_interaction, metadata, external_reference: ninguno lo trae acá,
+// porque la preapproval se crea sin external_reference). El único camino
+// documentado por MP es al revés: por cada preapproval buscar sus
+// authorized_payments y matchear el id del payment. Se recorre en orden de
+// creación descendente porque el caso típico que dispara esto es el primer
+// cobro de una suscripción recién creada.
+type AuthorizedPaymentSearchItem = {
+  id: number
+  preapproval_id: string
+  payment: { id: number; status: string; transaction_amount: number }
+}
+
+async function buscarAuthorizedPaymentPorPreapproval(
+  preapprovalId: string,
+  paymentId: string,
+): Promise<AuthorizedPaymentSearchItem | null> {
+  const res = await fetch(
+    `https://api.mercadopago.com/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=50`,
+    { headers: { Authorization: `Bearer ${mpAccessToken}` } },
+  )
+  if (!res.ok) {
+    throw new Error(`MP authorized_payments/search (preapproval ${preapprovalId}) respondió ${res.status}`)
+  }
+  const data = (await res.json()) as { results?: AuthorizedPaymentSearchItem[] }
+  const results = Array.isArray(data.results) ? data.results : []
+  return results.find((r) => String(r.payment?.id) === paymentId) ?? null
+}
+
+async function resolverSuscripcionDePago(
+  db: ReturnType<typeof serviceClient>,
+  paymentId: string,
+): Promise<{ sub: { id: string; terapeuta_id: string; plan: string | null }; preapprovalId: string } | null> {
+  const { data: subs } = await db
+    .from('suscripciones')
+    .select('id, terapeuta_id, plan, mp_preapproval_id')
+    .not('mp_preapproval_id', 'is', null)
+    .order('created_at', { ascending: false })
+
+  for (const sub of subs ?? []) {
+    if (!sub.mp_preapproval_id) continue
+    try {
+      const found = await buscarAuthorizedPaymentPorPreapproval(sub.mp_preapproval_id, paymentId)
+      if (found) {
+        return { sub, preapprovalId: sub.mp_preapproval_id }
+      }
+    } catch (err) {
+      console.error('[webhook suscripcion] error buscando authorized_payment por preapproval', sub.mp_preapproval_id, err)
+    }
+  }
+  return null
+}
+
+async function guardarPagoSuscripcion(
+  db: ReturnType<typeof serviceClient>,
+  pago: {
+    terapeuta_id: string
+    suscripcion_id: string
+    mp_payment_id: string
+    mp_preapproval_id: string
+    plan: string | null
+    monto_bruto: number
+    monto_neto: number | null
+    estado: string
+    fecha_pago: string
+    raw: Record<string, unknown>
+  },
+) {
+  const { error } = await db.from('pagos_suscripcion').upsert(pago, { onConflict: 'mp_payment_id' })
+  if (error) {
+    console.error('[webhook suscripcion] error al guardar pago en pagos_suscripcion', pago.mp_payment_id, error)
+  }
+}
+
 function verificarFirmaMP(req: NextRequest, dataId: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET
   if (!secret) return true
@@ -93,7 +168,7 @@ export async function POST(req: NextRequest) {
         console.error('[webhook suscripcion] no se pudo obtener el neto del payment', paymentId, err)
       }
 
-      const { error: upsertError } = await db.from('pagos_suscripcion').upsert({
+      await guardarPagoSuscripcion(db, {
         terapeuta_id: sub.terapeuta_id,
         suscripcion_id: sub.id,
         mp_payment_id: paymentId,
@@ -104,11 +179,44 @@ export async function POST(req: NextRequest) {
         estado: authorizedPayment.payment.status,
         fecha_pago: new Date().toISOString(),
         raw: authorizedPayment as unknown as Record<string, unknown>,
-      }, { onConflict: 'mp_payment_id' })
+      })
 
-      if (upsertError) {
-        console.error('[webhook suscripcion] error al guardar pago en pagos_suscripcion', paymentId, upsertError)
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.type === 'payment') {
+      const db = serviceClient()
+      const paymentId = dataId
+
+      let paymentDetail
+      try {
+        paymentDetail = await new Payment(mpClient).get({ id: Number(paymentId) })
+      } catch (err) {
+        console.error('[webhook suscripcion] no se pudo obtener el payment', paymentId, err)
+        return NextResponse.json({ ok: true })
       }
+
+      const resuelto = await resolverSuscripcionDePago(db, paymentId)
+
+      if (!resuelto) {
+        // No es un cobro de suscripción KLIA (ej. un cobro del profesional a
+        // su paciente vía su propia cuenta de MP) — se ignora sin error.
+        console.log('[webhook suscripcion] payment sin suscripcion KLIA asociada, ignorado', paymentId)
+        return NextResponse.json({ ok: true })
+      }
+
+      await guardarPagoSuscripcion(db, {
+        terapeuta_id: resuelto.sub.terapeuta_id,
+        suscripcion_id: resuelto.sub.id,
+        mp_payment_id: paymentId,
+        mp_preapproval_id: resuelto.preapprovalId,
+        plan: resuelto.sub.plan,
+        monto_bruto: paymentDetail.transaction_amount ?? 0,
+        monto_neto: paymentDetail.transaction_details?.net_received_amount ?? null,
+        estado: paymentDetail.status ?? 'desconocido',
+        fecha_pago: paymentDetail.date_approved ?? new Date().toISOString(),
+        raw: paymentDetail as unknown as Record<string, unknown>,
+      })
 
       return NextResponse.json({ ok: true })
     }
