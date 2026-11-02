@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useOffline } from '@/lib/portal/useOffline'
 import { PasswordField, PasswordRequirementsList, passwordRequisitos } from './password'
+import { ToastProvider, useToast } from './ToastContext'
 import './portal.css'
 
 const IconLock = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--muted)', strokeWidth: 1.7, fill: 'none' }}><rect x="4" y="10.5" width="16" height="10.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></svg>
@@ -19,7 +21,22 @@ function iniciales(nombre: string, apellido: string): string {
   return `${nombre[0] ?? ''}${apellido[0] ?? ''}`.toUpperCase()
 }
 
-export default function PortalShell({
+export default function PortalShell(props: {
+  profesionalNombre: string
+  especialidad: string | null
+  pacienteNombre: string
+  pacienteApellido: string
+  pacienteEmail: string
+  children: React.ReactNode
+}) {
+  return (
+    <ToastProvider>
+      <PortalShellInner {...props} />
+    </ToastProvider>
+  )
+}
+
+function PortalShellInner({
   profesionalNombre, especialidad, pacienteNombre, pacienteApellido, pacienteEmail, children,
 }: {
   profesionalNombre: string
@@ -31,11 +48,10 @@ export default function PortalShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  const toast = useToast()
+  const offline = useOffline()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [offline, setOffline] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>()
   const menuRef = useRef<HTMLDivElement>(null)
   const acctBtnRef = useRef<HTMLButtonElement>(null)
   const cambiarPwBtnRef = useRef<HTMLButtonElement>(null)
@@ -45,15 +61,6 @@ export default function PortalShell({
   const [confirmar, setConfirmar] = useState('')
   const [pwError, setPwError] = useState<string | null>(null)
   const [pwLoading, setPwLoading] = useState(false)
-
-  useEffect(() => {
-    setOffline(!navigator.onLine)
-    const on = () => setOffline(false)
-    const off = () => setOffline(true)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off) }
-  }, [])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -79,12 +86,6 @@ export default function PortalShell({
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [sheetOpen, menuOpen])
-
-  function toast(msg: string) {
-    setToastMsg(msg)
-    clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToastMsg(null), 2400)
-  }
 
   async function cerrarSesion() {
     const supabase = createClient()
@@ -181,8 +182,6 @@ export default function PortalShell({
           </button>
         </div>
       </section>
-
-      {toastMsg && <div className="pp-toast show" role="status" aria-live="polite">{toastMsg}</div>}
     </div>
   )
 }

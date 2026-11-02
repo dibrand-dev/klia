@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
 import { accesoPrincipal } from '@/lib/portal/acceso'
 import { estaEnPlazo } from '@/lib/portal/plazo'
+import { diasRetencionPorPlan, fotoVencida } from '@/lib/portal/retencion'
+import { planVigentePorFecha } from '@/lib/portal/plan-vigente'
 import { hoyFechaAR } from '@/lib/tz'
 import { diaSemanaKey } from '@/lib/portal/semana'
 import { compararComidas } from '@/lib/nutricion/orden-comidas'
@@ -12,7 +14,14 @@ export const runtime = 'nodejs'
 const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 type ComidaRow = { id: string; tipo_comida: string; hora: string | null; orden: number }
-type RegistroRow = { tipo_comida: string; registrado_at: string; comentario: string | null; foto_vencida: boolean }
+type RegistroRow = {
+  id: string
+  tipo_comida: string
+  registrado_at: string
+  comentario: string | null
+  foto_vencida: boolean
+  updated_at: string
+}
 
 export async function GET(req: NextRequest) {
   const supabase = createClient()
@@ -27,30 +36,22 @@ export async function GET(req: NextRequest) {
   const fecha = fechaParam && FECHA_REGEX.test(fechaParam) ? fechaParam : hoyFechaAR()
   const dia = diaSemanaKey(fecha)
 
-  const [{ data: planesRaw }, { data: acceso }] = await Promise.all([
-    db.from('planes_alimentarios').select('id, created_at').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).neq('estado', 'archivado').order('created_at', { ascending: false }),
+  const [{ data: acceso }, { data: profile }] = await Promise.all([
     db.from('paciente_accesos').select('registro_habilitado').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
+    db.from('profiles').select('plan').eq('id', principal.terapeutaId).maybeSingle(),
   ])
 
   const registroHabilitado = acceso?.registro_habilitado ?? true
-  const planes = planesRaw ?? []
+  const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
 
-  if (planes.length === 0) {
-    return NextResponse.json({ fecha, noPlan: true, registroHabilitado, filas: [] })
-  }
-
-  // Plan vigente de la fecha pedida: el más reciente (no archivado, incluye
-  // 'pasado') cuya fecha de creación (civil ART) sea anterior o igual a esa
-  // fecha — no necesariamente el plan activo hoy. `planes` ya viene ordenado
-  // por created_at desc, así que el primer match es el más reciente.
-  const plan = planes.find((p) => hoyFechaAR(new Date(p.created_at)) <= fecha) ?? null
+  const plan = await planVigentePorFecha(db, principal.pacienteId, principal.terapeutaId, fecha)
   if (!plan) {
-    return NextResponse.json({ fecha, noPlan: false, registroHabilitado, filas: [] })
+    return NextResponse.json({ fecha, noPlan: false, registroHabilitado, diasRetencion, filas: [] })
   }
 
   const [{ data: comidasRaw }, { data: registrosRaw }] = await Promise.all([
     db.from('plan_comidas').select('id, tipo_comida, hora, orden').eq('plan_id', plan.id).eq('dia_semana', dia),
-    db.from('portal_registros').select('tipo_comida, registrado_at, comentario, foto_vencida').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('fecha_local', fecha),
+    db.from('portal_registros').select('id, tipo_comida, registrado_at, comentario, foto_vencida, updated_at').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('fecha_local', fecha),
   ])
 
   const comidas = ((comidasRaw ?? []) as ComidaRow[]).sort(compararComidas)
@@ -67,10 +68,17 @@ export async function GET(req: NextRequest) {
     return {
       tipoComida: c.tipo_comida,
       hora: c.hora,
+      planComidaId: c.id,
       estado,
-      registro: registro ? { registradoAt: registro.registrado_at, comentario: registro.comentario, fotoVencida: registro.foto_vencida } : null,
+      registro: registro ? {
+        id: registro.id,
+        registradoAt: registro.registrado_at,
+        comentario: registro.comentario,
+        fotoVencida: fotoVencida(registro, diasRetencion),
+        fotoVersion: new Date(registro.updated_at).getTime(),
+      } : null,
     }
   })
 
-  return NextResponse.json({ fecha, noPlan: false, registroHabilitado, filas })
+  return NextResponse.json({ fecha, noPlan: false, registroHabilitado, diasRetencion, filas })
 }

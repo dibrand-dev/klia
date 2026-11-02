@@ -192,8 +192,11 @@ body { background: var(--surface-3); }
 .pp-scrim.open { opacity: 1; pointer-events: auto; }
 .pp-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: calc(100% - 28px); background: var(--surface); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-lg); transform: translateY(102%); transition: transform .26s cubic-bezier(.2,.8,.2,1); z-index: 50; display: flex; flex-direction: column; }
 .pp-sheet.open { transform: none; }
+.pp-sheet.full { top: 0; max-height: none; border-radius: 0; }
+.pp-sheet.full .pp-grab { display: none; }
 .pp-grab { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 8px auto 0; flex: none; }
-.pp-so-hdr { padding: 12px 8px 12px 16px; border-bottom: 0; padding-top: 8px; padding-bottom: 4px; display: flex; align-items: center; gap: 10px; flex: none; }
+.pp-so-hdr { padding: 12px 8px 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex: none; }
+.pp-sheet:not(.full) .pp-so-hdr { border-bottom: 0; padding-top: 8px; padding-bottom: 4px; }
 .pp-so-hdr .pp-tt { flex: 1; min-width: 0; }
 .pp-so-hdr h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); }
 .pp-so-hdr .pp-sb { font-size: 13px; color: var(--muted); margin-top: 1px; }
@@ -211,3 +214,42 @@ body { background: var(--surface-3); }
 .pp-toast { position: absolute; left: 50%; bottom: 76px; transform: translate(-50%,12px); background: var(--ink); color: #fff; font-size: 14px; padding: 11px 16px; border-radius: 100px; box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 70; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
 .pp-toast.show { opacity: 1; transform: translate(-50%,0); }
 .pp-shell.auth-mode .pp-toast { bottom: 24px; }
+
+/* registro de comidas con foto (Fase 2C) */
+.pp-pb.big { min-height: 60px; font-size: 15px; justify-content: flex-start; padding: 0 18px; gap: 12px; }
+.pp-pb.big svg { width: 22px; height: 22px; }
+.pp-acts { display: flex; flex-direction: column; gap: 10px; }
+.pp-tip { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.pp-tip svg { width: 17px; height: 17px; stroke: var(--muted); stroke-width: 1.8; fill: none; flex: none; margin-top: 1px; }
+
+.pp-ta { width: 100%; display: block; min-height: 104px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 16px; line-height: 1.5; color: var(--ink); background: var(--surface); outline: none; resize: none; transition: border-color .12s, box-shadow .12s; }
+.pp-ta:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.pp-ta::placeholder, .pp-af input::placeholder { color: var(--muted-2); }
+.pp-ta:disabled { background: var(--surface-2); color: var(--muted); }
+.pp-cnt { display: flex; justify-content: flex-end; font-size: 12.5px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+.pp-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 16px; }
+.pp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px; border-radius: 100px; background: var(--surface-3); color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.pp-chip svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 1.9; fill: none; }
+.pp-chip.ok { background: var(--ok-soft); color: var(--ok); }
+
+.pp-upl { flex: 1 1 100%; }
+.pp-upl .pp-r { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 500; color: var(--ink-2); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.pp-upl .pp-r span { color: var(--muted); }
+.pp-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.pp-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .15s linear; }
+
+.pp-ro-c { font-size: 15px; line-height: 1.55; color: var(--ink-2); padding: 12px 14px; background: var(--surface-2); border-radius: 8px; white-space: pre-wrap; }
+.pp-ro-c.none { color: var(--muted); }
+
+/* foto real — thumb de 50x50 en Hoy, shot 1:1 completo en los sheets */
+.pp-thumb.foto { overflow: hidden; padding: 0; }
+.pp-thumb.foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-thumb.gone { border: 1px dashed var(--border-strong); background: repeating-linear-gradient(135deg, var(--surface-3) 0 6px, var(--surface-2) 6px 12px); display: grid; place-items: center; color: var(--muted); }
+.pp-thumb.gone svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+
+.pp-shot { width: 100%; aspect-ratio: 1/1; border-radius: 12px; border: 1px solid var(--border); display: block; overflow: hidden; background: var(--surface-2); }
+.pp-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-shot.gone { display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); }
+.pp-shot.gone svg { width: 28px; height: 28px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+.pp-shot.gone p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); max-width: 250px; }

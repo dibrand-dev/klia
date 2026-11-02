@@ -26,6 +26,14 @@ const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DIA_LARGO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const MES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
+// ?t={fotoVersion} rompe el cache del navegador cuando se reemplaza la foto
+// (el pathname del blob cambia en cada subida, pero la URL que ve el
+// cliente es siempre la misma — sin esto, el navegador podría seguir
+// mostrando la miniatura vieja desde su cache).
+function fotoUrl(registroId: string, version: number, v: 'thumb' | 'full'): string {
+  return `/api/portal/fotos/${registroId}?v=${v}&t=${version}`
+}
+
 function partes(fecha: string) {
   const [y, m, d] = fecha.split('-').map(Number)
   const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
@@ -54,7 +62,7 @@ type Celda =
   | { estado: 'no_aplica' }
   | { estado: 'fut' }
   | { estado: 'miss'; plan: CeldaPlan }
-  | { estado: 'registro'; registro: { id: string; registradoAt: string; comentario: string | null; fotoVencida: boolean }; plan: CeldaPlan }
+  | { estado: 'registro'; registro: { id: string; registradoAt: string; comentario: string | null; fotoVencida: boolean; fotoVersion: number }; plan: CeldaPlan }
 
 interface Fila { tipoComida: string; hora: string | null; celdas: Celda[] }
 
@@ -282,6 +290,7 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
       }
       return (
         <button type="button" className={`rg-cell rg-ph${sel ? ' sel' : ''}`} onClick={() => setSlideKey(key)} aria-label={`${lab}: subida ${horaCorta(celda.registro.registradoAt)}${celda.registro.comentario ? ', con comentario' : ''}`}>
+          <img src={fotoUrl(celda.registro.id, celda.registro.fotoVersion, 'thumb')} alt="" />
           <span className="rg-tm">{horaCorta(celda.registro.registradoAt)}</span>
           {celda.registro.comentario && <span className="rg-cmi">{IconComment}</span>}
         </button>
@@ -306,7 +315,9 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
       const gone = celda.registro.fotoVencida
       return (
         <button type="button" className="rg-lrow" key={key} onClick={() => setSlideKey(key)}>
-          <div className={`rg-th rg-ph${gone ? ' rg-gone' : ''}`}>{gone && IconGone}</div>
+          <div className={`rg-th rg-ph${gone ? ' rg-gone' : ''}`}>
+            {gone ? IconGone : <img src={fotoUrl(celda.registro.id, celda.registro.fotoVersion, 'thumb')} alt="" />}
+          </div>
           <div className="rg-tx"><b>{fila.tipoComida}</b>{fila.hora && <span>Plan {fila.hora.slice(0, 5)}</span>}</div>
           <span className={`rg-st${gone ? '' : ' ok'}`}>{celda.registro.comentario && IconComment}{gone ? 'Foto vencida' : `Subida ${horaCorta(celda.registro.registradoAt)}`}</span>
         </button>
@@ -512,8 +523,9 @@ function DetalleSlideBody({ detalle, primerNombre }: {
         ) : gone ? (
           <div className="rg-shot rg-gone">{IconGone}<span>La foto se eliminó.<br />Se conserva el comentario.</span></div>
         ) : (
-          // TODO (Fase 2C): reemplazar por la foto real desde Vercel Blob — todavía no existe, esto es un placeholder.
-          <div className="rg-shot rg-ph" role="img" aria-label={`Foto de ${fila.tipoComida.toLowerCase()} subida por ${primerNombre}`} />
+          <div className="rg-shot rg-ph">
+            <img src={fotoUrl(celda.registro.id, celda.registro.fotoVersion, 'full')} alt={`Foto de ${fila.tipoComida.toLowerCase()} subida por ${primerNombre}`} />
+          </div>
         )}
         {esRegistro && (
           <>

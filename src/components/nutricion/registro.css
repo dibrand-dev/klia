@@ -93,7 +93,7 @@ table.rg-table-g td.rg-mn span { display: block; font-family: 'JetBrains Mono', 
 .rg-lrow:hover { background: var(--surface-2); }
 .rg-lrow.rg-static { cursor: default; }
 .rg-lrow.rg-static:hover { background: var(--surface); }
-.rg-lrow .rg-th { width: 44px; height: 44px; border-radius: 8px; flex: none; }
+.rg-lrow .rg-th { width: 44px; height: 44px; border-radius: 8px; flex: none; overflow: hidden; }
 .rg-lrow .rg-th.rg-miss { border: 1px dashed var(--border-strong); background: var(--surface-2); }
 .rg-lrow .rg-tx { flex: 1; min-width: 0; }
 .rg-lrow .rg-tx b { display: block; font-size: 14px; font-weight: 600; }
@@ -137,7 +137,8 @@ table.rg-table-g td.rg-mn span { display: block; font-family: 'JetBrains Mono', 
   .rg-planbox { margin: 0 10px 10px; }
 }
 .rg-col-h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
-.rg-shot { width: 100%; aspect-ratio: 1/1; border-radius: var(--r-lg); border: 1px solid var(--border); display: block; }
+.rg-shot { width: 100%; aspect-ratio: 1/1; border-radius: var(--r-lg); border: 1px solid var(--border); display: block; overflow: hidden; }
+.rg-cell img, .rg-th img, .rg-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .rg-shot.rg-gone, .rg-shot.rg-miss { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
 .rg-shot.rg-gone svg { width: 26px; height: 26px; }
 .rg-shot.rg-miss { background: var(--surface-2); border-style: dashed; border-color: var(--border-strong); color: var(--muted); }
@@ -156,7 +157,7 @@ table.rg-table-g td.rg-mn span { display: block; font-family: 'JetBrains Mono', 
 .rg-items li b { font-weight: 600; color: var(--ink); }
 .rg-ptip { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); padding: 8px 10px; background: var(--surface-2); border-radius: var(--r-md); }
 
-/* placeholder de foto (sin Blob todavía — Fase 2C) */
-.rg-ph { background-color: oklch(.78 .03 60); background-image: radial-gradient(circle at 50% 50%, oklch(.76 .1 60) 0 24%, oklch(.84 .08 110) 24.5% 31%, #fff 31.5% 43%, oklch(.9 .012 80) 43.5% 45.5%, transparent 46%), linear-gradient(135deg, oklch(.8 .035 62), oklch(.7 .04 52)); background-size: cover; background-position: center; }
+/* foto real (Vercel Blob) — .rg-ph es el fondo mientras el <img> carga */
+.rg-ph { background: var(--surface-2); }
 .rg-ph.rg-gone { background: repeating-linear-gradient(135deg, var(--surface-3) 0 6px, var(--surface-2) 6px 12px); display: grid; place-items: center; color: var(--muted); }
 .rg-ph.rg-gone svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.7; fill: none; }

@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { hoyFechaAR } from '@/lib/tz'
 import { sumarDias, diffDias, formatCorto, formatLargo, diaCortoYNumero } from '@/lib/portal/semana'
+import { useOffline } from '@/lib/portal/useOffline'
+import { useToast } from './ToastContext'
+import RegistroSheet, { type FilaHoy } from './RegistroSheet'
 
 const SEMANAS_ATRAS_MAX = 12
 
@@ -15,18 +18,13 @@ const IconLockNote = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, st
 const IconClock = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
 const IconPause = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></svg>
 const IconComment = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+const IconGone = <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'currentColor', strokeWidth: 1.7, fill: 'none' }}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 3l18 18" /></svg>
 
 function horaCorta(iso: string) {
   return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
-type Fila = {
-  tipoComida: string
-  hora: string | null
-  estado: 'registrada' | 'pendiente' | 'vencida'
-  registro: { registradoAt: string; comentario: string | null; fotoVencida: boolean } | null
-}
-type HoyData = { fecha: string; noPlan: boolean; registroHabilitado: boolean; filas: Fila[] }
+type HoyData = { fecha: string; noPlan: boolean; registroHabilitado: boolean; diasRetencion: number | null; filas: FilaHoy[] }
 
 async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
@@ -51,10 +49,16 @@ function skRows(n: number) {
 
 export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacienteNombre: string; profesionalNombre: string }) {
   const hoy = hoyFechaAR()
+  const toast = useToast()
+  const offline = useOffline()
   const [win, setWin] = useState(0)
   const [fecha, setFecha] = useState(hoy)
   const [data, setData] = useState<HoyData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const [filaAbierta, setFilaAbierta] = useState<FilaHoy | null>(null)
+  const [pantalla, setPantalla] = useState<'cerrado' | 'reg' | 'conf' | 'det'>('cerrado')
+  const [reemplazo, setReemplazo] = useState(false)
 
   const cargar = useCallback(async (f: string) => {
     setLoading(true)
@@ -70,6 +74,22 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
     const nuevoWin = Math.max(0, Math.min(SEMANAS_ATRAS_MAX, win + delta))
     setWin(nuevoWin)
     setFecha(sumarDias(hoy, -7 * nuevoWin))
+  }
+
+  function abrirRegistro(f: FilaHoy) {
+    if (offline) { toast('Sin conexión. Probá de nuevo cuando vuelva la señal.'); return }
+    setFilaAbierta(f)
+    setReemplazo(false)
+    setPantalla('reg')
+  }
+  function abrirDetalle(f: FilaHoy) {
+    setFilaAbierta(f)
+    setReemplazo(false)
+    setPantalla('det')
+  }
+  function reemplazarFoto() {
+    setReemplazo(true)
+    setPantalla('reg')
   }
 
   const end = sumarDias(hoy, -7 * win)
@@ -149,23 +169,28 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
           <div className="pp-meals">
             {data.filas.map((f) => {
               if (f.estado === 'registrada' && f.registro) {
+                const r = f.registro
                 return (
-                  <div className="pp-mrow pp-static" key={f.tipoComida}>
-                    {/* TODO (Fase 2C): miniatura real de la foto subida — placeholder por ahora. */}
-                    <div className="pp-thumb" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }} />
+                  <button type="button" className="pp-mrow" key={f.tipoComida} onClick={() => abrirDetalle(f)}>
+                    {r.fotoVencida ? (
+                      <div className="pp-thumb gone">{IconGone}</div>
+                    ) : (
+                      <div className="pp-thumb foto">
+                        <img src={`/api/portal/fotos/${r.id}?v=thumb&t=${r.fotoVersion}`} alt="" />
+                      </div>
+                    )}
                     <div className="pp-mtx"><b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span></div>
-                    <span className="pp-mst ok">{f.registro.comentario && IconComment}Subida {horaCorta(f.registro.registradoAt)}</span>
-                  </div>
+                    <span className="pp-mst ok">{r.comentario && IconComment}Subida {horaCorta(r.registradoAt)}</span>
+                  </button>
                 )
               }
               if (f.estado === 'pendiente' && data.registroHabilitado) {
                 return (
-                  // TODO (Fase 2C): habilitar click para abrir el flujo de registro.
-                  <div className="pp-mrow pp-static" key={f.tipoComida}>
+                  <button type="button" className="pp-mrow" key={f.tipoComida} onClick={() => abrirRegistro(f)}>
                     <div className="pp-thumb pp-cam">{IconCam}</div>
                     <div className="pp-mtx"><b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span></div>
                     <span className="pp-mst">Pendiente</span>
-                  </div>
+                  </button>
                 )
               }
               const pausada = f.estado === 'pendiente' && !data.registroHabilitado
@@ -180,6 +205,19 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
           </div>
         </>
       )}
+
+      <RegistroSheet
+        fecha={fecha}
+        fila={filaAbierta}
+        pantalla={pantalla}
+        reemplazo={reemplazo}
+        registroHabilitado={data?.registroHabilitado ?? true}
+        diasRetencion={data?.diasRetencion ?? null}
+        onClose={() => setPantalla('cerrado')}
+        onPantalla={setPantalla}
+        onReemplazar={reemplazarFoto}
+        onGuardado={() => cargar(fecha)}
+      />
     </>
   )
 }

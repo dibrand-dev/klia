@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { serviceClient } from '@/lib/supabase/service'
 import { puedeUsarPortal } from '@/lib/portal/acceso'
-import { diasRetencionPorPlan } from '@/lib/portal/retencion'
+import { diasRetencionPorPlan, fotoVencida } from '@/lib/portal/retencion'
 import { hoyFechaAR } from '@/lib/tz'
 import { lunesDe, rangoSemana, sumarDias, diaSemanaKey } from '@/lib/portal/semana'
 import { compararItems } from '@/lib/nutricion/orden-comidas'
@@ -40,6 +40,7 @@ type RegistroRow = {
   registrado_at: string
   foto_vencida: boolean
   comentario: string | null
+  updated_at: string
 }
 
 function horaActualAR(): string {
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: registrosRaw } = await db
     .from('portal_registros')
-    .select('id, plan_comida_id, tipo_comida, fecha_local, registrado_at, foto_vencida, comentario')
+    .select('id, plan_comida_id, tipo_comida, fecha_local, registrado_at, foto_vencida, comentario, updated_at')
     .eq('paciente_id', params.id)
     .eq('terapeuta_id', efectivo.terapeutaId)
     .gte('fecha_local', dias[0])
@@ -180,6 +181,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   const horaActual = horaActualAR()
+  const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
   let hechas = 0
   let total = 0
 
@@ -204,7 +206,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             id: registro.id,
             registradoAt: registro.registrado_at,
             comentario: registro.comentario,
-            fotoVencida: registro.foto_vencida,
+            fotoVencida: fotoVencida(registro, diasRetencion),
+            fotoVersion: new Date(registro.updated_at).getTime(),
           },
           plan: comidaHistorica
             ? { cambiado: false as const, hora: comidaHistorica.hora, nota: comidaHistorica.nota, items: itemsResueltosPorComida.get(comidaHistorica.id) ?? [] }
@@ -225,8 +228,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       }
     }),
   }))
-
-  const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
 
   return NextResponse.json({
     semanaInicio: dias[0],
