@@ -56,9 +56,14 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
   const [data, setData] = useState<HoyData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [filaAbierta, setFilaAbierta] = useState<FilaHoy | null>(null)
+  // Se guarda solo la clave (tipoComida) y se busca la fila vigente en cada
+  // render — así, si se guarda un comentario y se refetchea Hoy mientras el
+  // sheet de detalle sigue abierto, el sheet ve el dato fresco en vez de la
+  // foto fija del momento en que se abrió.
+  const [filaAbiertaKey, setFilaAbiertaKey] = useState<string | null>(null)
   const [pantalla, setPantalla] = useState<'cerrado' | 'reg' | 'conf' | 'det'>('cerrado')
   const [reemplazo, setReemplazo] = useState(false)
+  const filaAbierta = data?.filas.find((f) => f.tipoComida === filaAbiertaKey) ?? null
 
   const cargar = useCallback(async (f: string) => {
     setLoading(true)
@@ -78,12 +83,12 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
 
   function abrirRegistro(f: FilaHoy) {
     if (offline) { toast('Sin conexión. Probá de nuevo cuando vuelva la señal.'); return }
-    setFilaAbierta(f)
+    setFilaAbiertaKey(f.tipoComida)
     setReemplazo(false)
     setPantalla('reg')
   }
   function abrirDetalle(f: FilaHoy) {
-    setFilaAbierta(f)
+    setFilaAbiertaKey(f.tipoComida)
     setReemplazo(false)
     setPantalla('det')
   }
