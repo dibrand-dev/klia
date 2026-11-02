@@ -27,21 +27,24 @@ export async function GET(req: NextRequest) {
   const fecha = fechaParam && FECHA_REGEX.test(fechaParam) ? fechaParam : hoyFechaAR()
   const dia = diaSemanaKey(fecha)
 
-  const [{ data: plan }, { data: acceso }] = await Promise.all([
-    db.from('planes_alimentarios').select('id, created_at').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
+  const [{ data: planesRaw }, { data: acceso }] = await Promise.all([
+    db.from('planes_alimentarios').select('id, created_at').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).neq('estado', 'archivado').order('created_at', { ascending: false }),
     db.from('paciente_accesos').select('registro_habilitado').eq('paciente_id', principal.pacienteId).eq('terapeuta_id', principal.terapeutaId).eq('estado', 'activo').maybeSingle(),
   ])
 
   const registroHabilitado = acceso?.registro_habilitado ?? true
+  const planes = planesRaw ?? []
 
-  if (!plan) {
+  if (planes.length === 0) {
     return NextResponse.json({ fecha, noPlan: true, registroHabilitado, filas: [] })
   }
 
-  // Antes de que el plan activo existiera no hay nada que mostrar — mismo
-  // estado vacío que "sin comidas ese día", comparando fechas civiles ART.
-  const fechaCreacionPlan = hoyFechaAR(new Date(plan.created_at))
-  if (fecha < fechaCreacionPlan) {
+  // Plan vigente de la fecha pedida: el más reciente (no archivado, incluye
+  // 'pasado') cuya fecha de creación (civil ART) sea anterior o igual a esa
+  // fecha — no necesariamente el plan activo hoy. `planes` ya viene ordenado
+  // por created_at desc, así que el primer match es el más reciente.
+  const plan = planes.find((p) => hoyFechaAR(new Date(p.created_at)) <= fecha) ?? null
+  if (!plan) {
     return NextResponse.json({ fecha, noPlan: false, registroHabilitado, filas: [] })
   }
 
