@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolverBaseUrl } from '@/lib/urls'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -9,11 +10,16 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
 
   if (!code) {
+    // Caso borde (sin `code`, ej. link ya consumido) — mismo criterio que
+    // el resto del archivo: el origin se valida contra la lista de dominios
+    // conocidos, nunca se asume producción salvo que el request realmente
+    // venga de ahí.
+    const baseUrl = resolverBaseUrl(request)
     if (type === 'recovery') {
-      return NextResponse.redirect(new URL('/nueva-contrasena', 'https://app.klia.com.ar'))
+      return NextResponse.redirect(new URL('/nueva-contrasena', baseUrl))
     }
     if (type === 'signup') {
-      return NextResponse.redirect(new URL('/auth/confirm', 'https://app.klia.com.ar'))
+      return NextResponse.redirect(new URL('/auth/confirm', baseUrl))
     }
     return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
   }

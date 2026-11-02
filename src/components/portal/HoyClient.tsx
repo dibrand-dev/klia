@@ -125,15 +125,23 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
         </div>
       )}
 
-      {!loading && data && !data.noPlan && (
+      {!loading && data && !data.noPlan && total === 0 && (
+        // Copy provisorio ("No hay comidas indicadas para este día.") — avisado.
+        <div className="pp-empty">
+          <div className="pp-ic">{IconDoc}</div>
+          <h3>No hay comidas indicadas para este día.</h3>
+        </div>
+      )}
+
+      {!loading && data && !data.noPlan && total > 0 && (
         <>
           {!data.registroHabilitado && (
             <div className="pp-note warn">{IconPause}<span><b>El registro de comidas está pausado.</b> Lo pausó tu profesional. Podés seguir viendo tu plan y tus registros.</span></div>
           )}
-          {data.registroHabilitado && total > 0 && off > 0 && eds === 0 && (
+          {data.registroHabilitado && off > 0 && eds === 0 && (
             <div className="pp-note">{IconLockNote}<span><b>Solo lectura.</b> Podés registrar comidas de hasta 48 h atrás.</span></div>
           )}
-          {data.registroHabilitado && total > 0 && off > 0 && eds > 0 && eds < total && (
+          {data.registroHabilitado && off > 0 && eds > 0 && eds < total && (
             <div className="pp-note">{IconClock}<span>Algunas comidas de este día ya no se pueden registrar: el plazo es de 48 h.</span></div>
           )}
 

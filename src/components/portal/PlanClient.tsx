@@ -94,13 +94,15 @@ export default function PlanClient() {
       <h1 className="pp-ph1">Mi plan</h1>
       <p className="pp-sub">Indicado por {data.profesionalNombreCorto} · vigente desde el {data.fechaPreparacion ? formatCorto(data.fechaPreparacion.slice(0, 10)) : '—'}</p>
 
-      <div className="pp-card pp-goal">
-        <div className="pp-lbl">Objetivo</div>
-        <p className="pp-v">{data.objetivoTitulo || 'Sin objetivo cargado'}</p>
-        {data.objetivoNota && <p>{data.objetivoNota}</p>}
-      </div>
+      {(data.objetivoTitulo || data.objetivoNota) && (
+        <div className="pp-card pp-goal">
+          <div className="pp-lbl">Objetivo</div>
+          {data.objetivoTitulo && <p className="pp-v">{data.objetivoTitulo}</p>}
+          {data.objetivoNota && <p>{data.objetivoNota}</p>}
+        </div>
+      )}
 
-      {data.mostrarMacros && (
+      {data.mostrarMacros && (data.kcalObjetivo != null || (data.porcentajeCarbohidratos ?? 0) > 0 || (data.porcentajeProteinas ?? 0) > 0 || (data.porcentajeGrasas ?? 0) > 0) && (
         <div className="pp-card" style={{ marginTop: 10 }}>
           <div className="pp-lbl">Valor calórico diario</div>
           <div className="pp-kc"><b>{data.kcalObjetivo ?? '—'}</b><span>kcal por día</span></div>
@@ -139,18 +141,23 @@ export default function PlanClient() {
         {comidasDelDia.length === 0 && (
           <p style={{ margin: 0, padding: 16, fontSize: 14, color: 'var(--muted)' }}>Sin comidas cargadas para este día.</p>
         )}
-        {comidasDelDia.map((c) => (
-          <div className="pp-pmeal" key={c.tipoComida}>
-            <div className="pp-hd"><b>{c.tipoComida}</b>{c.hora && <span>{c.hora.slice(0, 5)}</span>}</div>
-            <ul className="pp-items">
-              {c.items.length === 0 && <li>Sin ítems cargados.</li>}
-              {c.items.map((item, i) => (
-                <li key={i}><b>{item.nombre}</b>{item.cantidadGramos != null ? ` — ${item.cantidadGramos} g` : ''}</li>
-              ))}
-            </ul>
-            {c.nota && <p className="pp-ptip">{c.nota}</p>}
-          </div>
-        ))}
+        {comidasDelDia.map((c) => {
+          // Ítems de texto libre con contenido vacío no se muestran — no
+          // son un alimento cargado, son un placeholder sin completar.
+          const items = c.items.filter((item) => item.tipo !== 'texto_libre' || item.nombre.trim().length > 0)
+          return (
+            <div className="pp-pmeal" key={c.tipoComida}>
+              <div className="pp-hd"><b>{c.tipoComida}</b>{c.hora && <span>{c.hora.slice(0, 5)}</span>}</div>
+              <ul className="pp-items">
+                {items.length === 0 && <li>Sin ítems cargados.</li>}
+                {items.map((item, i) => (
+                  <li key={i}><b>{item.nombre}</b>{item.cantidadGramos != null ? ` — ${item.cantidadGramos} g` : ''}</li>
+                ))}
+              </ul>
+              {c.nota && <p className="pp-ptip">{c.nota}</p>}
+            </div>
+          )
+        })}
       </div>
 
       {data.mostrarMacros && kcalDia != null && (

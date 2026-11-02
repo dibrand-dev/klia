@@ -34,7 +34,7 @@ body { background: var(--surface-3); }
 .pp-mi.danger:hover { background: var(--danger-soft); }
 
 /* main */
-.pp-main { flex: 1; min-height: 0; overflow: auto; padding: 20px 16px 28px; }
+.pp-main { flex: 1; min-height: 0; overflow: auto; padding: 20px 16px 28px; scrollbar-gutter: stable; }
 .pp-greet h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
 .pp-greet p { margin: 3px 0 0; font-size: 14px; color: var(--muted); }
 .pp-strip-hd { display: flex; align-items: center; gap: 8px; margin: 18px 0 6px; }

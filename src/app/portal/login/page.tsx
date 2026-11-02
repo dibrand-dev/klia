@@ -25,8 +25,13 @@ export default function PortalLoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoginError(null)
-    setLoading(true)
 
+    if (!email || !password) {
+      setLoginError('Completá tu email y tu contraseña.')
+      return
+    }
+
+    setLoading(true)
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
@@ -69,7 +74,7 @@ export default function PortalLoginPage() {
             <div className="pp-note danger" style={{ margin: '0 0 16px' }} role="alert">{IconAlert}<span>{loginError}</span></div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className={`pp-af${loginError ? ' err' : ''}`}>
               <label htmlFor="l-em">Email</label>
               <input id="l-em" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

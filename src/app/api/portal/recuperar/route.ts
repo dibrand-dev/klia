@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serviceClient } from '@/lib/supabase/service'
 import { enviarEmail } from '@/lib/brevo'
 import { emailRecuperacionContrasena } from '@/lib/email-templates'
+import { resolverBaseUrl } from '@/lib/urls'
 
 export const runtime = 'nodejs'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 const TIEMPO_MINIMO_MS = 400
 
 function sleep(ms: number) {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
           type: 'recovery',
           email,
-          options: { redirectTo: `${appUrl}/auth/callback?type=recovery` },
+          options: { redirectTo: `${resolverBaseUrl(req)}/auth/callback?type=recovery` },
         })
 
         if (!linkError && linkData?.properties?.action_link) {

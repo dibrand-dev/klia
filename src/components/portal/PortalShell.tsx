@@ -149,7 +149,7 @@ export default function PortalShell({
           <button className="pp-so-close" aria-label="Cerrar" onClick={() => setSheetOpen(false)}>{IconX}</button>
         </div>
         <div className="pp-so-body">
-          {pwError && <div className="pp-note danger" role="alert" style={{ marginTop: 0 }}>{IconAlert}<span>{pwError}</span></div>}
+          {pwError && <div className="pp-note danger" role="alert" style={{ marginTop: 0, marginBottom: 16 }}>{IconAlert}<span>{pwError}</span></div>}
           <PasswordField id="pw-actual" label="Contraseña actual" autoComplete="current-password" value={actual} onChange={setActual} />
           <PasswordField id="pw-nueva" label="Nueva contraseña" autoComplete="new-password" value={nueva} onChange={setNueva} />
           <PasswordField id="pw-confirmar" label="Confirmar nueva contraseña" autoComplete="new-password" value={confirmar} onChange={setConfirmar} />

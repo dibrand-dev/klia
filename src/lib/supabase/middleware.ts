@@ -14,12 +14,17 @@ const PUBLIC_ROUTES = [
   '/ops/login',
   '/planes',
   '/pagar',
-  '/cuenta-bloqueada',
   '/checkout',
   '/terminos',
   '/privacidad',
   '/colaboradora/activar',
   '/turno/',
+  // '/cuenta-bloqueada' NO va acá (antes sí estaba): tiene que pasar por la
+  // Capa 1 para que una cuenta de paciente la redirija a /portal en vez de
+  // poder verla (no tiene "estado_cuenta bloqueada" — ese concepto es
+  // exclusivo de profiles). La Capa 2 la excluye de re-chequear
+  // estado_cuenta para no loopear contra sí misma cuando la Capa 2 ya
+  // redirigió ahí.
   // Portal del paciente: /activar lee los tokens del hash de la URL del lado
   // del cliente (igual que /colaboradora/activar) — el server nunca ve ese
   // hash, así que tiene que ser pública. /login es el login propio del
@@ -115,6 +120,28 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Capa 1 — barrera temprana para cuentas de paciente, SIN consulta a
+  // profiles: se decide solo por app_metadata (nunca user_metadata, que el
+  // propio usuario puede editar desde el cliente con auth.updateUser).
+  // Corre ANTES que los bypass de /auth/ y /ops/ de más abajo a propósito:
+  // esos bypass existen para que /auth/* y /ops/* resuelvan su propia
+  // autenticación sin pasar por el chequeo de profiles — pero antes de esta
+  // capa, ese mismo bypass dejaba pasar a una cuenta de paciente a /ops/* o
+  // /cuenta-bloqueada sin ningún control, porque esas rutas nunca llegaban
+  // a la Capa 2 (su guard vive más abajo, adentro del bloque que ellas
+  // mismas bypassean). Esta capa es una lista permitida explícita — no una
+  // cadena de exclusiones — así que cubre cualquier ruta nueva por diseño,
+  // sin tener que acordarse de agregarla.
+  if (user?.app_metadata?.tipo_cuenta === 'paciente') {
+    const permitido = pathname.startsWith('/portal') || pathname.startsWith('/auth/') || pathname === '/logout'
+    if (!permitido) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/portal'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+  }
+
   // /auth/* routes handle their own authentication internally
   if (pathname.startsWith('/auth/')) {
     return supabaseResponse
@@ -135,8 +162,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Page-level checks (skip API routes and ops)
-  if (user && !isAuthRoute && !pathname.startsWith('/cuenta-bloqueada') && !pathname.startsWith('/api/') && !pathname.startsWith('/ops/')) {
+  // Capa 2 — el resto de las rutas de página (profesional/colaboradora) con
+  // perfil en `profiles`. Por diseño, ninguna cuenta de paciente llega hasta
+  // acá para una ruta fuera de /portal/* (la Capa 1 ya la mandó de vuelta),
+  // así que esto es una segunda red — no depende de la Capa 1 para ser
+  // correcto, por si en algún momento una cuenta queda sin profiles por otro
+  // motivo que no sea el portal del paciente.
+  //
+  // Lista permitida explícita de las rutas que SÍ necesitan este chequeo —
+  // las que quedan afuera (api, ops, cuenta-bloqueada, auth) ya resuelven su
+  // propia autenticación por su cuenta, arriba o en su propio código.
+  const RUTAS_CON_GUARD_PROPIO = ['/api/', '/ops/', '/cuenta-bloqueada']
+  const necesitaChequeoDePerfil = !isAuthRoute && !RUTAS_CON_GUARD_PROPIO.some((p) => pathname.startsWith(p))
+
+  if (user && necesitaChequeoDePerfil) {
     const moduloId = getModuloFromPath(pathname)
 
     const [{ data: profile }, { data: modulos }] = await Promise.all([
