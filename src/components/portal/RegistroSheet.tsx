@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { estaEnPlazo } from '@/lib/portal/plazo'
 import { procesarFoto, ImagenError, type FotoProcesada } from '@/lib/portal/imagen'
+import { reportarErrorFoto } from '@/lib/portal/telemetria-foto'
 import { useOffline } from '@/lib/portal/useOffline'
 import { useToast } from './ToastContext'
 import { formatCorto, formatLargo } from '@/lib/portal/semana'
@@ -125,7 +126,7 @@ export default function RegistroSheet({
     onPantalla('conf')
   }
 
-  function subirConXHR(procesado: FotoProcesada): Promise<boolean> {
+  function subirConXHR(procesado: FotoProcesada): Promise<{ ok: boolean; status: number }> {
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest()
       xhr.open('POST', '/api/portal/registros')
@@ -139,18 +140,19 @@ export default function RegistroSheet({
         if (!e.lengthComputable) return
         setSubiendo({ fase: 'sub', pct: 35 + (e.loaded / e.total) * 65 })
       }
-      xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300)
-      xhr.onerror = () => resolve(false)
+      xhr.onload = () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status })
+      xhr.onerror = () => resolve({ ok: false, status: 0 })
       xhr.send(fd)
     })
   }
 
   async function subirAhora(procesado: FotoProcesada) {
     setSubiendo({ fase: 'sub', pct: 35 })
-    const ok = await subirConXHR(procesado)
+    const { ok, status } = await subirConXHR(procesado)
     if (!ok) {
       setSubiendo(null)
       setError(true)
+      reportarErrorFoto({ etapa: 'subida', error: new Error(`xhr status ${status}`), file: draft?.file })
       return
     }
     setSubiendo({ fase: 'sub', pct: 100 })
@@ -173,6 +175,7 @@ export default function RegistroSheet({
     } catch (e) {
       setSubiendo(null)
       if (e instanceof ImagenError) {
+        reportarErrorFoto({ etapa: 'compresion', error: e, file: draft.file, ancho: e.ancho, alto: e.alto })
         toast(e.codigo === 'decode' ? 'No pudimos leer esta foto. Probá con otra o sacá una nueva.' : 'La foto es demasiado grande. Probá con otra o sacá una nueva.')
         onPantalla('reg')
       }
