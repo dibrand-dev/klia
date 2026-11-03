@@ -441,8 +441,8 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-02_
+_Actualizado el 2026-11-03_
 
 ```
-052c156 fix: registrar cobros de suscripción que llegan como notificación payment
+dcf1f78 fix: redirigir /ops/login al login normal (www.klia.com.ar/login)
 ```
