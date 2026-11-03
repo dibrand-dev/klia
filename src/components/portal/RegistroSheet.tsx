@@ -7,6 +7,7 @@ import { reportarErrorFoto } from '@/lib/portal/telemetria-foto'
 import { useOffline } from '@/lib/portal/useOffline'
 import { useToast } from './ToastContext'
 import { formatCorto, formatLargo } from '@/lib/portal/semana'
+import type { ComentarioProfesionalOut } from '@/lib/portal/comentario-profesional'
 
 const IconCam = <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, stroke: 'currentColor', strokeWidth: 1.7, fill: 'none' }}><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>
 const IconImg = <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, stroke: 'currentColor', strokeWidth: 1.7, fill: 'none' }}><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-9 9" /></svg>
@@ -24,13 +25,28 @@ function horaCortaAR(iso: string): string {
 function horaActualAR(): string {
   return new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
+// "d mmm · HH:MM" en ART (ej. "30 oct · 18:20") para "Comentado el ...". El
+// mes corto de Intl en es-AR trae un punto final ("oct.") que el diseño no tiene.
+function fechaCortaConHora(iso: string): string {
+  const d = new Date(iso)
+  const fecha = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).replace('.', '')
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
+  return `${fecha} · ${hora}`
+}
 
 export interface FilaHoy {
   tipoComida: string
   hora: string | null
   planComidaId: string
   estado: 'registrada' | 'pendiente' | 'vencida'
-  registro: { id: string; registradoAt: string; comentario: string | null; fotoVencida: boolean; fotoVersion: number } | null
+  registro: {
+    id: string
+    registradoAt: string
+    comentario: string | null
+    fotoVencida: boolean
+    fotoVersion: number
+    comentarioProfesional: ComentarioProfesionalOut | null
+  } | null
 }
 
 type Pantalla = 'cerrado' | 'reg' | 'conf' | 'det'
@@ -300,9 +316,21 @@ export default function RegistroSheet({
                     <span className="pp-chip ok">{IconCheck}Subida {horaCortaAR(fila.registro.registradoAt)}</span>
                     <span className="pp-chip">Indicado {fila.hora ? fila.hora.slice(0, 5) : '—'}</span>
                   </div>
+                  {fila.registro.comentarioProfesional && (
+                    <div className="pp-pro-c">
+                      <div className="pp-pro-hd">
+                        <span className="pp-av" aria-hidden="true">{fila.registro.comentarioProfesional.autorIniciales}</span>
+                        <div>
+                          <b>Comentario de {fila.registro.comentarioProfesional.autorNombre}</b>
+                          <span>{fechaCortaConHora(fila.registro.comentarioProfesional.at)}{fila.registro.comentarioProfesional.editado ? ' · editado' : ''}</span>
+                        </div>
+                      </div>
+                      <p>{fila.registro.comentarioProfesional.texto}</p>
+                    </div>
+                  )}
                   {puedeEditarDet ? (
                     <div className="pp-af" style={{ margin: 0 }}>
-                      <label htmlFor="rs-det-comentario">Comentario</label>
+                      <label htmlFor="rs-det-comentario">{fila.registro.comentarioProfesional ? 'Tu comentario' : 'Comentario'}</label>
                       <textarea
                         className="pp-ta" id="rs-det-comentario" maxLength={300}
                         placeholder="Agregá un comentario para tu profesional"
@@ -313,7 +341,7 @@ export default function RegistroSheet({
                     </div>
                   ) : (
                     <>
-                      <div className="pp-lbl" style={{ marginBottom: 6 }}>Comentario</div>
+                      <div className="pp-lbl" style={{ marginBottom: 6 }}>{fila.registro.comentarioProfesional ? 'Tu comentario' : 'Comentario'}</div>
                       <div className={`pp-ro-c${fila.registro.comentario ? '' : ' none'}`}>{fila.registro.comentario || 'Sin comentario.'}</div>
                       {!fila.registro.fotoVencida && (
                         <div className="pp-note">

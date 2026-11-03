@@ -24,7 +24,7 @@ function horaCorta(iso: string) {
   return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
-type HoyData = { fecha: string; noPlan: boolean; registroHabilitado: boolean; diasRetencion: number | null; filas: FilaHoy[] }
+type HoyData = { fecha: string; noPlan: boolean; registroHabilitado: boolean; diasRetencion: number | null; diasConComentarioNuevo: string[]; filas: FilaHoy[] }
 
 async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
@@ -65,15 +65,19 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
   const [reemplazo, setReemplazo] = useState(false)
   const filaAbierta = data?.filas.find((f) => f.tipoComida === filaAbiertaKey) ?? null
 
-  const cargar = useCallback(async (f: string) => {
+  const end = sumarDias(hoy, -7 * win)
+  const start = sumarDias(end, -6)
+  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(start, i))
+
+  const cargar = useCallback(async (f: string, desde: string, hasta: string) => {
     setLoading(true)
-    const res = await fetch(`/api/portal/hoy?fecha=${f}`)
+    const res = await fetch(`/api/portal/hoy?fecha=${f}&desde=${desde}&hasta=${hasta}`)
     const body = await jsonOrNull(res)
     if (res.ok) setData(body)
     setLoading(false)
   }, [])
 
-  useEffect(() => { cargar(fecha) }, [fecha, cargar])
+  useEffect(() => { cargar(fecha, start, end) }, [fecha, start, end, cargar])
 
   function irVentana(delta: number) {
     const nuevoWin = Math.max(0, Math.min(SEMANAS_ATRAS_MAX, win + delta))
@@ -87,19 +91,37 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
     setReemplazo(false)
     setPantalla('reg')
   }
+
+  // Optimista: oculta "Nuevo comentario" y, si era el único de ese día, el
+  // punto en la tira — sin esperar la respuesta de /visto, que se dispara en
+  // paralelo y no bloquea la apertura del detalle.
   function abrirDetalle(f: FilaHoy) {
     setFilaAbiertaKey(f.tipoComida)
     setReemplazo(false)
     setPantalla('det')
+
+    const registro = f.registro
+    if (registro?.comentarioProfesional?.nuevo) {
+      setData((prev) => {
+        if (!prev) return prev
+        const filas = prev.filas.map((fila) => {
+          if (fila.tipoComida !== f.tipoComida || !fila.registro?.comentarioProfesional) return fila
+          return { ...fila, registro: { ...fila.registro, comentarioProfesional: { ...fila.registro.comentarioProfesional, nuevo: false } } }
+        })
+        const quedaAlgunoNuevo = filas.some((fila) => fila.registro?.comentarioProfesional?.nuevo)
+        const diasConComentarioNuevo = quedaAlgunoNuevo
+          ? prev.diasConComentarioNuevo
+          : prev.diasConComentarioNuevo.filter((d) => d !== fecha)
+        return { ...prev, filas, diasConComentarioNuevo }
+      })
+      fetch(`/api/portal/registros/${registro.id}/visto`, { method: 'POST' }).catch(() => {})
+    }
   }
+
   function reemplazarFoto() {
     setReemplazo(true)
     setPantalla('reg')
   }
-
-  const end = sumarDias(hoy, -7 * win)
-  const start = sumarDias(end, -6)
-  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(start, i))
   const off = diffDias(hoy, fecha)
   const dayLabel = off === 0 ? `Hoy · ${formatLargo(fecha).toLowerCase()}` : off === 1 ? `Ayer · ${formatLargo(fecha).toLowerCase()}` : formatLargo(fecha)
 
@@ -121,15 +143,17 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
         {dias.map((d) => {
           const sel = d === fecha
           const { diaCorto, numero } = diaCortoYNumero(d)
+          const tieneNuevo = data?.diasConComentarioNuevo.includes(d) ?? false
           return (
             <button
               key={d}
               className={`pp-dbtn${sel ? ' sel' : ''}${diffDias(hoy, d) === 0 ? ' today' : ''}`}
               aria-pressed={sel}
-              aria-label={formatLargo(d)}
+              aria-label={`${formatLargo(d)}${tieneNuevo ? ', comentario nuevo' : ''}`}
               onClick={() => setFecha(d)}
             >
               <span className="pp-w">{diaCorto}</span><span className="pp-n">{numero}</span>
+              {tieneNuevo && <i className="pp-ndot" aria-hidden="true" />}
             </button>
           )
         })}
@@ -184,7 +208,10 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
                         <img src={`/api/portal/fotos/${r.id}?v=thumb&t=${r.fotoVersion}`} alt="" />
                       </div>
                     )}
-                    <div className="pp-mtx"><b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span></div>
+                    <div className="pp-mtx">
+                      <b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span>
+                      {r.comentarioProfesional?.nuevo && <span className="pp-ntag">Nuevo comentario</span>}
+                    </div>
                     <span className="pp-mst ok">{r.comentario && IconComment}Subida {horaCorta(r.registradoAt)}</span>
                   </button>
                 )
@@ -221,7 +248,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
         onClose={() => setPantalla('cerrado')}
         onPantalla={setPantalla}
         onReemplazar={reemplazarFoto}
-        onGuardado={() => cargar(fecha)}
+        onGuardado={() => cargar(fecha, start, end)}
       />
     </>
   )

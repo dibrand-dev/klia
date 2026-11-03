@@ -161,3 +161,35 @@ table.rg-table-g td.rg-mn span { display: block; font-family: 'JetBrains Mono', 
 .rg-ph { background: var(--surface-2); }
 .rg-ph.rg-gone { background: repeating-linear-gradient(135deg, var(--surface-3) 0 6px, var(--surface-2) 6px 12px); display: grid; place-items: center; color: var(--muted); }
 .rg-ph.rg-gone svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+
+/* indicador "tenés un comentario" (círculo negro con lápiz) — grilla, lista
+   mobile y leyenda. En la grilla/lista grande es absoluto (esquina inferior
+   derecha, el comentario del paciente ya ocupa la superior); en la lista
+   mobile (dentro de .rg-st) y en la leyenda (.lg) es un ícono en línea más,
+   sin el borde blanco. */
+.rg-pci { position: absolute; right: 5px; bottom: 5px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+.rg-pci svg { width: 11px; height: 11px; stroke: #fff; stroke-width: 2; fill: none; }
+.rg-lrow .rg-st .rg-pci, .rg-pci.lg { position: static; box-shadow: none; width: 18px; height: 18px; flex: none; }
+.rg-lrow .rg-st .rg-pci svg, .rg-pci.lg svg { width: 10px; height: 10px; }
+
+/* comentario del profesional sobre la foto (Fase 2D) */
+.rg-pc { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.rg-pc-t { font-size: 16px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); margin: 0 0 12px; }
+.rg-pc .rg-cmt { font-size: 15px; color: var(--ink); background: var(--surface); }
+.rg-pc .rg-inote { margin: 12px 0 0; }
+.rg-pc .rg-inote.dng { margin: 0 0 12px; }
+.rg-pc-ta { width: 100%; display: block; min-height: 112px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 13.5px; line-height: 1.55; color: var(--ink); background: var(--surface); resize: vertical; outline: none; box-sizing: border-box; }
+.rg-pc-ta:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.rg-pc-ta:disabled { background: var(--surface-2); color: var(--muted); }
+.rg-pc-ta::placeholder { color: var(--muted-2); }
+.rg-pc-sub { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.rg-pc-sub span:last-child { font-variant-numeric: tabular-nums; flex: none; }
+.rg-pc-act { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.rg-pc-act .btn { padding: 11px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 600; min-height: 44px; justify-content: center; }
+.rg-pc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.rg-pc-meta { font-size: 12.5px; color: var(--muted); flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.rg-pc-row .btn { min-height: 40px; }
+.rg-pc-ok { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--ok); }
+.rg-pc-ok svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.rg-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: rg-spin .8s linear infinite; display: inline-block; flex: none; margin-right: 6px; vertical-align: -2px; }
+@keyframes rg-spin { to { transform: rotate(360deg); } }

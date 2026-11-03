@@ -4,6 +4,7 @@ import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaI
 import { serviceClient } from '@/lib/supabase/service'
 import { puedeUsarPortal } from '@/lib/portal/acceso'
 import { diasRetencionPorPlan, fotoVencida } from '@/lib/portal/retencion'
+import { armarComentarioProfesional, formatNombreProfesional } from '@/lib/portal/comentario-profesional'
 import { hoyFechaAR } from '@/lib/tz'
 import { lunesDe, rangoSemana, sumarDias, diaSemanaKey } from '@/lib/portal/semana'
 import { compararItems } from '@/lib/nutricion/orden-comidas'
@@ -41,6 +42,11 @@ type RegistroRow = {
   foto_vencida: boolean
   comentario: string | null
   updated_at: string
+  comentario_profesional: string | null
+  comentario_profesional_at: string | null
+  comentario_profesional_editado_at: string | null
+  comentario_profesional_por: string | null
+  comentario_visto_at: string | null
 }
 
 function horaActualAR(): string {
@@ -65,7 +71,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const [{ data: paciente }, { data: profile }] = await Promise.all([
     db.from('pacientes').select('id').eq('id', params.id).eq('terapeuta_id', efectivo.terapeutaId).maybeSingle(),
-    db.from('profiles').select('plan').eq('id', efectivo.terapeutaId).maybeSingle(),
+    db.from('profiles').select('plan, nombre, apellido').eq('id', efectivo.terapeutaId).maybeSingle(),
   ])
   if (!paciente) return NextResponse.json({ error: 'Paciente no encontrado' }, { status: 404 })
 
@@ -100,7 +106,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: registrosRaw } = await db
     .from('portal_registros')
-    .select('id, plan_comida_id, tipo_comida, fecha_local, registrado_at, foto_vencida, comentario, updated_at')
+    .select('id, plan_comida_id, tipo_comida, fecha_local, registrado_at, foto_vencida, comentario, updated_at, comentario_profesional, comentario_profesional_at, comentario_profesional_editado_at, comentario_profesional_por, comentario_visto_at')
     .eq('paciente_id', params.id)
     .eq('terapeuta_id', efectivo.terapeutaId)
     .gte('fecha_local', dias[0])
@@ -182,6 +188,26 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const horaActual = horaActualAR()
   const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
+  const nombreProfesionalActual = formatNombreProfesional(profile?.nombre ?? null, profile?.apellido ?? null)
+
+  // Nombre del autor del comentario — casi siempre el profesional dueño
+  // actual (único que puede escribir); si comentario_profesional_por quedó
+  // null (autor eliminado) o referencia a otro perfil, se resuelve aparte.
+  const idsAutoresExtra = Array.from(new Set(
+    registros
+      .map((r) => r.comentario_profesional_por)
+      .filter((id): id is string => !!id && id !== efectivo.terapeutaId),
+  ))
+  const nombrePorAutorId = new Map<string, string>([[efectivo.terapeutaId, nombreProfesionalActual]])
+  if (idsAutoresExtra.length > 0) {
+    const { data: autores } = await db.from('profiles').select('id, nombre, apellido').in('id', idsAutoresExtra)
+    for (const a of autores ?? []) nombrePorAutorId.set(a.id, formatNombreProfesional(a.nombre, a.apellido))
+  }
+  function nombreAutor(autorId: string | null): string {
+    if (autorId && nombrePorAutorId.has(autorId)) return nombrePorAutorId.get(autorId)!
+    return nombreProfesionalActual
+  }
+
   let hechas = 0
   let total = 0
 
@@ -208,6 +234,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             comentario: registro.comentario,
             fotoVencida: fotoVencida(registro, diasRetencion),
             fotoVersion: new Date(registro.updated_at).getTime(),
+            comentarioProfesional: armarComentarioProfesional(registro, nombreAutor(registro.comentario_profesional_por)),
           },
           plan: comidaHistorica
             ? { cambiado: false as const, hora: comidaHistorica.hora, nota: comidaHistorica.nota, items: itemsResueltosPorComida.get(comidaHistorica.id) ?? [] }
@@ -238,5 +265,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     filas: grilla,
     contador: { hechas, total },
     diasRetencion,
+    esColaborador: efectivo.esColaborador,
+    profesionalNombre: nombreProfesionalActual,
   })
 }

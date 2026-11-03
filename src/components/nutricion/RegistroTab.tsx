@@ -6,6 +6,7 @@ import type { Paciente } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 import { sumarDias } from '@/lib/portal/semana'
 import { hoyFechaAR } from '@/lib/tz'
+import type { ComentarioProfesionalOut } from '@/lib/portal/comentario-profesional'
 import './registro.css'
 
 const IconSend = <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z" /></svg>
@@ -20,6 +21,19 @@ const IconCam = <svg viewBox="0 0 24 24" style={{ width: 21, height: 21, stroke:
 const IconGone = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'currentColor', strokeWidth: 1.7, fill: 'none' }}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 3l18 18" /></svg>
 const IconComment = <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'var(--ink-2)', strokeWidth: 1.9, fill: 'none' }}><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
 const IconCheck = <svg viewBox="0 0 24 24" style={{ width: 11, height: 11, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M20 6L9 17l-5-5" /></svg>
+const IconLock = <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><rect x="4" y="10.5" width="16" height="10.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></svg>
+const IconPen = <svg viewBox="0 0 24 24" style={{ width: 13, height: 13, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+const IconPci = <svg viewBox="0 0 24 24" style={{ width: 11, height: 11, stroke: '#fff', strokeWidth: 2, fill: 'none' }}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+
+// Fecha + hora en ART, formato "d mmm · HH:MM" (ej. "30 oct · 18:20") para
+// "Comentado el ...". El mes corto de Intl en es-AR viene con un punto
+// final ("oct."), que el diseño no tiene.
+function fechaCortaConHora(iso: string) {
+  const d = new Date(iso)
+  const fecha = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', timeZone: 'America/Argentina/Buenos_Aires' }).replace('.', '')
+  const hora = d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
+  return `${fecha} · ${hora}`
+}
 
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const DIA_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -62,7 +76,7 @@ type Celda =
   | { estado: 'no_aplica' }
   | { estado: 'fut' }
   | { estado: 'miss'; plan: CeldaPlan }
-  | { estado: 'registro'; registro: { id: string; registradoAt: string; comentario: string | null; fotoVencida: boolean; fotoVersion: number }; plan: CeldaPlan }
+  | { estado: 'registro'; registro: { id: string; registradoAt: string; comentario: string | null; fotoVencida: boolean; fotoVersion: number; comentarioProfesional: ComentarioProfesionalOut | null }; plan: CeldaPlan }
 
 interface Fila { tipoComida: string; hora: string | null; celdas: Celda[] }
 
@@ -75,6 +89,8 @@ interface SemanaData {
   filas: Fila[]
   contador: { hechas: number; total: number }
   diasRetencion: number | null
+  esColaborador: boolean
+  profesionalNombre: string
 }
 
 interface EstadoAcceso {
@@ -198,6 +214,30 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
   const detalle = slideKey ? celdaPorKey(slideKey) : null
   const hoy = hoyFechaAR()
 
+  // Actualiza el comentario del profesional en el estado local tras
+  // guardar/editar/eliminar — sin refetch, usando slideKey para ubicar la
+  // celda exacta dentro de data.filas.
+  function actualizarComentarioLocal(nuevo: ComentarioProfesionalOut | null) {
+    if (!detalle) return
+    setData((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        filas: prev.filas.map((fila) => {
+          if (fila.tipoComida !== detalle.fila.tipoComida) return fila
+          return {
+            ...fila,
+            celdas: fila.celdas.map((celda, i) => {
+              if (prev.dias[i] !== detalle.fecha) return celda
+              if (celda.estado !== 'registro') return celda
+              return { ...celda, registro: { ...celda.registro, comentarioProfesional: nuevo } }
+            }),
+          }
+        }),
+      }
+    })
+  }
+
   function renderAccesoCard() {
     if (accesoLoading) return <div className="card" style={{ padding: 20, fontSize: 13, color: 'var(--muted)' }}>Cargando...</div>
     if (accesoError) return <div className="card" style={{ padding: 20, fontSize: 13, color: 'var(--danger)' }}>{accesoError}</div>
@@ -283,16 +323,18 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
     if (celda.estado === 'registro') {
       if (celda.registro.fotoVencida) {
         return (
-          <button type="button" className={`rg-cell rg-ph rg-gone${sel ? ' sel' : ''}`} onClick={() => setSlideKey(key)} aria-label={`${lab}: foto vencida${celda.registro.comentario ? ', con comentario' : ''}`}>
+          <button type="button" className={`rg-cell rg-ph rg-gone${sel ? ' sel' : ''}`} onClick={() => setSlideKey(key)} aria-label={`${lab}: foto vencida${celda.registro.comentario ? ', con comentario' : ''}${celda.registro.comentarioProfesional ? ', con tu comentario' : ''}`}>
             {IconGone}Foto vencida{celda.registro.comentario && <span className="rg-cmi">{IconComment}</span>}
+            {celda.registro.comentarioProfesional && <span className="rg-pci" aria-hidden="true">{IconPci}</span>}
           </button>
         )
       }
       return (
-        <button type="button" className={`rg-cell rg-ph${sel ? ' sel' : ''}`} onClick={() => setSlideKey(key)} aria-label={`${lab}: subida ${horaCorta(celda.registro.registradoAt)}${celda.registro.comentario ? ', con comentario' : ''}`}>
+        <button type="button" className={`rg-cell rg-ph${sel ? ' sel' : ''}`} onClick={() => setSlideKey(key)} aria-label={`${lab}: subida ${horaCorta(celda.registro.registradoAt)}${celda.registro.comentario ? ', con comentario' : ''}${celda.registro.comentarioProfesional ? ', con tu comentario' : ''}`}>
           <img src={fotoUrl(celda.registro.id, celda.registro.fotoVersion, 'thumb')} alt="" />
           <span className="rg-tm">{horaCorta(celda.registro.registradoAt)}</span>
           {celda.registro.comentario && <span className="rg-cmi">{IconComment}</span>}
+          {celda.registro.comentarioProfesional && <span className="rg-pci" aria-hidden="true">{IconPci}</span>}
         </button>
       )
     }
@@ -319,7 +361,11 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
             {gone ? IconGone : <img src={fotoUrl(celda.registro.id, celda.registro.fotoVersion, 'thumb')} alt="" />}
           </div>
           <div className="rg-tx"><b>{fila.tipoComida}</b>{fila.hora && <span>Plan {fila.hora.slice(0, 5)}</span>}</div>
-          <span className={`rg-st${gone ? '' : ' ok'}`}>{celda.registro.comentario && IconComment}{gone ? 'Foto vencida' : `Subida ${horaCorta(celda.registro.registradoAt)}`}</span>
+          <span className={`rg-st${gone ? '' : ' ok'}`}>
+            {celda.registro.comentarioProfesional && <span className="rg-pci" aria-hidden="true">{IconPci}</span>}
+            {celda.registro.comentario && IconComment}
+            {gone ? 'Foto vencida' : `Subida ${horaCorta(celda.registro.registradoAt)}`}
+          </span>
         </button>
       )
     }
@@ -447,7 +493,8 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
         <div className="rg-wk-foot">
           {IconInfo}<span>Las fotos se conservan {data.diasRetencion ?? '—'} días (según tu plan).</span>
           <span className="rg-wk-lg">
-            <span><span style={{ display: 'inline-grid', placeItems: 'center', width: 18, height: 18, borderRadius: 5, background: '#fff', border: '1px solid var(--border)' }}>{IconComment}</span>Con comentario</span>
+            <span><span style={{ display: 'inline-grid', placeItems: 'center', width: 18, height: 18, borderRadius: 5, background: '#fff', border: '1px solid var(--border)' }}>{IconComment}</span>Comentario de {primerNombre}</span>
+            <span><span className="rg-pci lg" aria-hidden="true">{IconPci}</span>Tu comentario</span>
             <span><span className="rg-lg-sw" style={{ border: '1px dashed var(--border-strong)', background: '#fff' }} />Sin registro</span>
             <span><span className="rg-lg-sw rg-ph rg-gone" style={{ border: '1px solid var(--border)' }} />Foto vencida</span>
           </span>
@@ -489,15 +536,30 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
           </div>
         }
       >
-        {detalle && <DetalleSlideBody detalle={detalle} primerNombre={primerNombre} />}
+        {detalle && (
+          <DetalleSlideBody
+            detalle={detalle}
+            primerNombre={primerNombre}
+            pacienteId={paciente.id}
+            registroHabilitado={acceso?.registroHabilitado ?? true}
+            esColaborador={data?.esColaborador ?? false}
+            profesionalNombre={data?.profesionalNombre ?? 'Tu profesional'}
+            onGuardadoComentario={actualizarComentarioLocal}
+          />
+        )}
       </SlideOver>
     </div>
   )
 }
 
-function DetalleSlideBody({ detalle, primerNombre }: {
+function DetalleSlideBody({ detalle, primerNombre, pacienteId, registroHabilitado, esColaborador, profesionalNombre, onGuardadoComentario }: {
   detalle: { fecha: string; fila: Fila; celda: Celda & { estado: 'registro' | 'miss' } }
   primerNombre: string
+  pacienteId: string
+  registroHabilitado: boolean
+  esColaborador: boolean
+  profesionalNombre: string
+  onGuardadoComentario: (nuevo: ComentarioProfesionalOut | null) => void
 }) {
   const { fecha, fila, celda } = detalle
   const detailsRef = useRef<HTMLDetailsElement>(null)
@@ -536,6 +598,17 @@ function DetalleSlideBody({ detalle, primerNombre }: {
             </div>
             <div className="rg-cmt-l">Comentario</div>
             <div className={`rg-cmt${celda.registro.comentario ? '' : ' rg-none'}`}>{celda.registro.comentario || 'Sin comentario.'}</div>
+            <ComentarioProfesionalBlock
+              pacienteId={pacienteId}
+              registroId={celda.registro.id}
+              comentario={celda.registro.comentarioProfesional}
+              gone={gone}
+              esColaborador={esColaborador}
+              registroHabilitado={registroHabilitado}
+              primerNombre={primerNombre}
+              profesionalNombre={profesionalNombre}
+              onGuardado={onGuardadoComentario}
+            />
           </>
         )}
       </section>
@@ -561,6 +634,123 @@ function DetalleSlideBody({ detalle, primerNombre }: {
           )}
         </div>
       </details>
+    </div>
+  )
+}
+
+function ComentarioProfesionalBlock({
+  pacienteId, registroId, comentario, gone, esColaborador, registroHabilitado, primerNombre, profesionalNombre, onGuardado,
+}: {
+  pacienteId: string
+  registroId: string
+  comentario: ComentarioProfesionalOut | null
+  gone: boolean
+  esColaborador: boolean
+  registroHabilitado: boolean
+  primerNombre: string
+  profesionalNombre: string
+  onGuardado: (nuevo: ComentarioProfesionalOut | null) => void
+}) {
+  const [modo, setModo] = useState<'view' | 'edit'>(comentario ? 'view' : 'edit')
+  const [draft, setDraft] = useState(comentario?.texto ?? '')
+  const [estado, setEstado] = useState<'' | 'saving' | 'saved' | 'error' | 'deleted'>('')
+
+  // Reinicia al cambiar de comida/registro (otro slideKey) — nunca arrastrar
+  // el borrador de una celda a otra.
+  useEffect(() => {
+    setModo(comentario ? 'view' : 'edit')
+    setDraft(comentario?.texto ?? '')
+    setEstado('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registroId])
+
+  const puedeGuardar = comentario ? draft.trim() !== comentario.texto : draft.trim().length > 0
+  const titulo = esColaborador ? `Comentario de ${profesionalNombre}` : `Tu comentario para ${primerNombre}`
+
+  async function guardar() {
+    setEstado('saving')
+    const res = await fetch(`/api/pacientes/${pacienteId}/portal/registros/${registroId}/comentario`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: draft }),
+    })
+    const body = await res.json().catch(() => null)
+    if (!res.ok) { setEstado('error'); return }
+    const nuevo = (body?.comentario ?? null) as ComentarioProfesionalOut | null
+    onGuardado(nuevo)
+    if (nuevo) {
+      setModo('view'); setDraft(nuevo.texto); setEstado('saved')
+    } else {
+      setDraft(''); setEstado('deleted')
+    }
+    setTimeout(() => setEstado((e) => (e === 'saved' || e === 'deleted' ? '' : e)), 2600)
+  }
+
+  return (
+    <div className="rg-pc">
+      <div className="rg-pc-t">{titulo}</div>
+      {gone ? (
+        comentario ? (
+          <>
+            <div className="rg-cmt">{comentario.texto}</div>
+            <div className="rg-pc-row"><span className="rg-pc-meta">Comentado el {fechaCortaConHora(comentario.at)}{comentario.editado ? ' · editado' : ''}</span></div>
+            <div className="rg-inote neu">{IconLock}<span className="rg-tx">La foto venció: el comentario ya no se puede editar.</span></div>
+          </>
+        ) : (
+          <div className="rg-inote neu" style={{ marginTop: 0 }}>{IconGone}<span className="rg-tx">La foto venció, ya no se puede comentar.</span></div>
+        )
+      ) : esColaborador ? (
+        <>
+          {comentario && (
+            <>
+              <div className="rg-cmt">{comentario.texto}</div>
+              <div className="rg-pc-row"><span className="rg-pc-meta">Comentado el {fechaCortaConHora(comentario.at)}{comentario.editado ? ' · editado' : ''}</span></div>
+            </>
+          )}
+          <div className="rg-inote neu" style={comentario ? undefined : { marginTop: 0 }}>{IconLock}<span className="rg-tx">Solo el profesional puede comentar.</span></div>
+        </>
+      ) : (
+        <>
+          {!registroHabilitado && (
+            <div className="rg-inote neu" style={{ marginTop: 0 }}>{IconPause}<span className="rg-tx">El registro está pausado, pero podés seguir comentando las comidas ya registradas.</span></div>
+          )}
+          {comentario && modo === 'view' ? (
+            <>
+              <div className="rg-cmt">{comentario.texto}</div>
+              <div className="rg-pc-row">
+                <span className="rg-pc-meta">Comentado el {fechaCortaConHora(comentario.at)}{comentario.editado ? ' · editado' : ''}</span>
+                {estado === 'saved' && <span className="rg-pc-ok">{IconCheck}Guardado</span>}
+                <button className="btn" onClick={() => { setModo('edit'); setDraft(comentario.texto) }}>{IconPen}Editar</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {estado === 'error' && (
+                <div className="rg-inote dng" role="alert">{IconAlert}<span className="rg-tx"><b>No pudimos guardar el comentario.</b> Revisá tu conexión y volvé a intentar. Lo que escribiste no se pierde.</span></div>
+              )}
+              <label style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }} htmlFor={`pc-ta-${registroId}`}>{titulo}</label>
+              <textarea
+                className="rg-pc-ta" id={`pc-ta-${registroId}`} maxLength={500} disabled={estado === 'saving'}
+                placeholder="Ej.: la porción de arroz está bien; sumá más verduras al plato."
+                value={draft} onChange={(e) => setDraft(e.target.value)}
+              />
+              <div className="rg-pc-sub">
+                <span>{comentario ? 'Si guardás el campo vacío, se elimina el comentario.' : `${primerNombre} lo ve en esta comida, dentro de su portal.`}</span>
+                <span>{draft.length}/500</span>
+              </div>
+              <div className="rg-pc-act">
+                {estado === 'deleted' && <span className="rg-pc-ok">{IconCheck}Comentario eliminado</span>}
+                {comentario && (
+                  <button className="btn" disabled={estado === 'saving'} onClick={() => { setModo('view'); setDraft(comentario.texto); setEstado('') }}>Cancelar</button>
+                )}
+                <button className="btn primary" disabled={estado === 'saving' || (!puedeGuardar && estado !== 'error')} onClick={guardar}>
+                  {estado === 'saving' ? (<><span className="rg-spin" aria-hidden="true" />Guardando…</>) : estado === 'error' ? 'Reintentar' : 'Guardar comentario'}
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }
