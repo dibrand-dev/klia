@@ -282,7 +282,7 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
           <div className="rg-inote warn" role="status">
             {IconAlert}
             <span className="rg-tx"><b>Cargá el email de {primerNombre} para poder invitarla.</b></span>
-            <button className="btn" onClick={() => router.push(`/pacientes/${paciente.id}?tab=datos`)}>{IconUser}Ir a Datos personales</button>
+            <button className="btn" onClick={() => router.push(`/pacientes/${paciente.id}?tab=datos`)}>{IconUser}Ir a Información</button>
           </div>
         )}
 
