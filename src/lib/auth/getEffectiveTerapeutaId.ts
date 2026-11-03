@@ -18,6 +18,12 @@ export async function getEffectiveTerapeutaIdServer(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  // Cuenta del portal del paciente — nunca actúa como profesional. Se decide
+  // por app_metadata, que el usuario NO puede editar desde el cliente (solo
+  // lo escribe el server con service_role) — nunca por user_metadata, que sí
+  // es editable con auth.updateUser() y por eso nunca sirve para autorizar.
+  if (user.app_metadata?.tipo_cuenta === 'paciente') return null
+
   const { data: colaboracion } = await supabase
     .from('colaboradores')
     .select('profesional_id, ve_cobros')

@@ -6,6 +6,7 @@ import PacienteTabs, { type PacienteTabKey } from '@/components/pacientes/Pacien
 import { combinarObrasSociales } from '@/lib/obras-sociales'
 import { calcularDeudaMes, resolverPoliticaInasistencia, sesionGeneraDeuda } from '@/lib/deuda'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
+import { puedeUsarPortal } from '@/lib/portal/acceso'
 import type { Paciente, PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Paciente — KLIA' }
@@ -54,7 +55,7 @@ export default async function PacienteDetallePage({
   const [{ data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }, { data: googleTokens }, { data: osValidadasData }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, direccion, localidad, provincia, email, telefono, firma_sello_url')
+      .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, direccion, localidad, provincia, email, telefono, firma_sello_url, plan, estado_cuenta')
       .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
@@ -133,6 +134,13 @@ export default async function PacienteDetallePage({
   const medicaciones = medicacionesRes.data ?? []
   const tieneDrive = !!googleTokens
 
+  // Registro (portal del paciente) depende de la especialidad Y del plan —
+  // a diferencia de Antropometría/Plan Alimentario/Hábitos, que solo miran
+  // la especialidad. Solo se consulta si la especialidad ya calificaría.
+  const habilitaRegistro = profile?.especialidad === 'Nutrición'
+    ? await puedeUsarPortal(supabase, efectivo.terapeutaId)
+    : false
+
   const tab: PacienteTabKey =
     searchParams.tab === 'datos' ||
     searchParams.tab === 'historial' ||
@@ -144,7 +152,8 @@ export default async function PacienteDetallePage({
     searchParams.tab === 'habitos' ||
     searchParams.tab === 'refraccion' ||
     searchParams.tab === 'facturacion' ||
-    searchParams.tab === 'interconsultas'
+    searchParams.tab === 'interconsultas' ||
+    (searchParams.tab === 'registro' && habilitaRegistro)
       ? (searchParams.tab as PacienteTabKey)
       : 'resumen'
 
@@ -175,6 +184,7 @@ export default async function PacienteDetallePage({
         tieneDrive={tieneDrive}
         especialidad={profile?.especialidad}
         esColaborador={efectivo.esColaborador}
+        puedeUsarPortal={habilitaRegistro}
       />
       <PacienteDetalle
         paciente={paciente}

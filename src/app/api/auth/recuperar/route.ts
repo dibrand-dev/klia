@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { enviarEmail } from '@/lib/brevo'
 import { emailRecuperacionContrasena } from '@/lib/email-templates'
+import { resolverBaseUrl } from '@/lib/urls'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       type: 'recovery',
       email,
       options: {
-        redirectTo: 'https://app.klia.com.ar/auth/callback?type=recovery',
+        redirectTo: `${resolverBaseUrl(req)}/auth/callback?type=recovery`,
       },
     })
 

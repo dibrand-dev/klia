@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolverBaseUrl } from '@/lib/urls'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -9,11 +10,16 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type')
 
   if (!code) {
+    // Caso borde (sin `code`, ej. link ya consumido) — mismo criterio que
+    // el resto del archivo: el origin se valida contra la lista de dominios
+    // conocidos, nunca se asume producción salvo que el request realmente
+    // venga de ahí.
+    const baseUrl = resolverBaseUrl(request)
     if (type === 'recovery') {
-      return NextResponse.redirect(new URL('/nueva-contrasena', 'https://app.klia.com.ar'))
+      return NextResponse.redirect(new URL('/nueva-contrasena', baseUrl))
     }
     if (type === 'signup') {
-      return NextResponse.redirect(new URL('/auth/confirm', 'https://app.klia.com.ar'))
+      return NextResponse.redirect(new URL('/auth/confirm', baseUrl))
     }
     return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
   }
@@ -26,9 +32,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('https://www.klia.com.ar/login?error=auth_callback_error'))
   }
 
-  // Handle password recovery
+  // Handle password recovery. app_metadata (nunca user_metadata — el usuario
+  // la puede editar desde el cliente con auth.updateUser) distingue si la
+  // cuenta es del portal del paciente para mandarla a su propia pantalla de
+  // nueva contraseña — cualquier otro caso mantiene el destino de siempre.
   if (type === 'recovery') {
-    return NextResponse.redirect(new URL('/nueva-contrasena', origin))
+    const destino = data.session.user.app_metadata?.tipo_cuenta === 'paciente' ? '/portal/nueva-contrasena' : '/nueva-contrasena'
+    return NextResponse.redirect(new URL(destino, origin))
   }
 
   const session = data.session
@@ -51,6 +61,19 @@ export async function GET(request: NextRequest) {
     .select('trial_fin, nombre, apellido, avatar_url, tipo_cuenta, plan, estado_cuenta')
     .eq('id', session.user.id)
     .single()
+
+  // Cuenta del portal del paciente: nunca tiene fila en profiles, por diseño.
+  // En el flujo normal de invitación no pasa por acá — eso lo maneja
+  // /portal/activar del lado del cliente leyendo el hash de la URL, igual
+  // que colaboradora — esto es defensivo para cuando una sesión de paciente
+  // termina en este callback compartido (ej. el mismo fallback de
+  // generateLink que ya intercepta middleware.ts). Sin este chequeo, con
+  // !profile el código de abajo la trataba como "profesional nuevo": pisaba
+  // plan/estado_cuenta con un UPDATE que no tocaba ninguna fila, mandaba el
+  // mail de bienvenida de profesional y redirigía a /bienvenida.
+  if (!profile && session.user.user_metadata?.tipo_cuenta === 'paciente') {
+    return NextResponse.redirect(new URL('/portal', origin))
+  }
 
   if (!profile?.trial_fin && profile?.tipo_cuenta === 'colaborador') {
     return NextResponse.redirect(new URL('/dashboard', origin))
