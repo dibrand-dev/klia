@@ -51,10 +51,10 @@ export default function PacienteTabs({
     ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
     ...(showComposicion ? [{ key: 'plan-alimentario' as PacienteTabKey, label: 'Plan Alimentario' }] : []),
     ...(showComposicion ? [{ key: 'habitos' as PacienteTabKey, label: 'Hábitos' }] : []),
+    ...(showRegistro ? [{ key: 'registro' as PacienteTabKey, label: 'Registro' }] : []),
     ...(showRefraccion ? [{ key: 'refraccion' as PacienteTabKey, label: 'Refracción' }] : []),
     { key: 'facturacion', label: 'Facturación' },
     { key: 'interconsultas', label: 'Interconsultas' },
-    ...(showRegistro ? [{ key: 'registro' as PacienteTabKey, label: 'Registro' }] : []),
   ]
 
   return (

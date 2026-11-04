@@ -11,7 +11,7 @@
   touch-action: pan-x;
 }
 .tab {
-  padding: 10px 14px;
+  padding: 10px 10px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--muted);
