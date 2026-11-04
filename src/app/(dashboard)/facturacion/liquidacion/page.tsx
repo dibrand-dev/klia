@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import LiquidacionView from '@/components/facturacion/LiquidacionView'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
+export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Liquidación OS — KLIA' }
 
 export default async function LiquidacionPage() {

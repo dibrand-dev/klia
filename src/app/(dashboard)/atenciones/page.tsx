@@ -7,6 +7,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { getTerminologia } from '@/hooks/useTerminologia'
 import type { Database, PacienteColaboradorRow } from '@/types/database'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = { title: 'Atenciones del Día — KLIA' }
 
 export default async function AtencionesPage() {

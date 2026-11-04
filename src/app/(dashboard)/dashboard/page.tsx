@@ -4,6 +4,7 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import type { Profile, PacienteColaboradorRow } from '@/types/database'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 
+export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dashboard — KLIA' }
 
 export default async function DashboardPage() {

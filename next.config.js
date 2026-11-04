@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Client-side Router Cache: sin esto, Next sirve páginas dinámicas (dashboard,
+  // agenda, pacientes, etc.) desde el cache del navegador hasta 30s al navegar
+  // con <Link>/router.push(), aunque el server ya tenga datos frescos.
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+    },
+  },
   images: {
     remotePatterns: [
       {
