@@ -124,14 +124,24 @@ export default async function PacientesPage({
         return true
       })
 
-  // Orden: sin ninguna consulta registrada primero (son los que más necesitan
-  // atención/seguimiento), después por ultima_cita descendente (más reciente arriba).
-  const ordenados = [...filtradosPorUltimaCita].sort((a, b) => {
-    if (a.ultima_cita === null && b.ultima_cita === null) return 0
-    if (a.ultima_cita === null) return -1
-    if (b.ultima_cita === null) return 1
-    return new Date(b.ultima_cita).getTime() - new Date(a.ultima_cita).getTime()
-  })
+  // Orden: con el filtro "Última cita: todas" (sin filtro aplicado), por
+  // último modificado (pacientes.updated_at, actualizado por trigger en
+  // cualquier UPDATE — incluye la foto) descendente, desempatando por id para
+  // que la paginación sea estable. Con un filtro de última cita específico
+  // (incluye "sin consultas"), se mantiene el orden anterior: sin ninguna
+  // consulta registrada primero (son los que más necesitan atención/
+  // seguimiento), después por ultima_cita descendente.
+  const ordenados = ultimaCitaParam === null
+    ? [...filtradosPorUltimaCita].sort((a, b) => {
+        const diff = new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        return diff !== 0 ? diff : a.id.localeCompare(b.id)
+      })
+    : [...filtradosPorUltimaCita].sort((a, b) => {
+        if (a.ultima_cita === null && b.ultima_cita === null) return 0
+        if (a.ultima_cita === null) return -1
+        if (b.ultima_cita === null) return 1
+        return new Date(b.ultima_cita).getTime() - new Date(a.ultima_cita).getTime()
+      })
 
   const totalCount = ordenados.length
   const pacientesListado = ordenados.slice(from, to + 1)
