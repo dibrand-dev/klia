@@ -2662,9 +2662,9 @@ export type PacienteColaboradorRow = {
   activo: boolean
   created_at: string
   updated_at: string
-  // No vienen de get_pacientes_colaborador() (su SELECT no las incluye) — la
-  // page.tsx las completa siempre con una lectura service_role aparte antes
-  // de armar este objeto. Ver pacientes/[id]/page.tsx.
+  // avatar_path/avatar_updated_at sí vienen de get_pacientes_colaborador()
+  // (agregados a su SELECT, Fase 3b). avatar_origen sigue sin estar ahí — se
+  // completa aparte con service_role donde hace falta. Ver pacientes/[id]/page.tsx.
   avatar_path: string | null
   avatar_updated_at: string | null
   avatar_origen: 'profesional' | 'paciente' | null
