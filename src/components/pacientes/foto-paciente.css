@@ -1,0 +1,137 @@
+/* Foto del paciente — Fase 1 (ficha, profesional/colaboradora). Se suma a
+   globals.css, reutiliza tokens y .btn/.avatar existentes. No toca el portal
+   (fuera de scope de esta fase) ni el directorio.
+   Prefijo fp- en los selectores propios de esta feature (mismo criterio que
+   pp- en portal.css) para no colisionar con otros SlideOvers/clases globales. */
+
+/* Avatar con foto — modificador de .avatar (paciente-header.css) */
+.pav { position: relative; overflow: hidden; }
+.pav > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.pav.has-img { background: var(--surface-3); box-shadow: none; }
+/* Anillo interno 1px: separa fotos claras del fondo blanco */
+.pav.has-img::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(11,18,32,.10); pointer-events: none;
+}
+
+/* Avatar editable de la ficha */
+.av-wrap { position: relative; flex: none; }
+.av-edit { border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.av-ov {
+  position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(11,18,32,.62); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .01em;
+  opacity: 0; transition: opacity .15s; z-index: 1;
+}
+.av-ov svg { width: 16px; height: 16px; stroke: #fff; stroke-width: 1.8; fill: none; }
+.av-edit:hover .av-ov, .av-edit:focus-visible .av-ov, .av-edit.is-hover .av-ov { opacity: 1; }
+/* Badge táctil (sin hover) */
+.av-badge {
+  position: absolute; right: -5px; bottom: -5px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  display: none; place-items: center; pointer-events: none; z-index: 2;
+}
+.av-badge svg { width: 13px; height: 13px; stroke: var(--ink-2); stroke-width: 1.9; fill: none; }
+@media (hover: none) { .av-badge { display: grid; } }
+.av-wrap.is-touch .av-badge { display: grid; }
+
+/* Footer del SlideOver "Foto del paciente" (width="narrow" en SlideOver.tsx).
+   Prefijado fp- a propósito: en el diseño original el ancho/alineación del
+   footer colgaban de ".slideover.sm", pero "sm" ya existe en este proyecto a
+   448px y la usan otros SlideOvers (Ajustes, Prestadores) — reusarlo le
+   hubiera cambiado el ancho a esos sin que nadie lo pidiera. El ancho de
+   480px ya lo da la variante 'narrow' de SlideOver.tsx; esta clase solo
+   pone el footer-bar y el orden de los botones. */
+.fp-so-foot {
+  border-top: 1px solid var(--border); padding: 12px 16px;
+  display: flex; gap: 8px; background: var(--surface-2); justify-content: flex-end;
+}
+.fp-so-foot .btn.dng { margin-right: auto; }
+.fp-so-foot .btn:disabled { opacity: .45; cursor: not-allowed; }
+.fp-so-foot .btn.primary:disabled:hover { background: var(--ink); }
+
+/* Botón "Quitar foto" — ghost danger, distinto del .btn.danger (relleno)
+   que ya existe en globals.css y usan otras pantallas */
+.btn.dng { color: var(--danger); border-color: transparent; background: transparent; box-shadow: none; }
+.btn.dng:hover { background: var(--danger-soft); }
+
+/* Recorte: cuadrado con máscara circular */
+.crop {
+  position: relative; width: 100%; max-width: 320px; aspect-ratio: 1/1; margin: 0 auto;
+  border-radius: var(--r-lg); overflow: hidden; background: var(--surface-3);
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.crop:active { cursor: grabbing; }
+.crop > img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transform-origin: center; pointer-events: none; -webkit-user-drag: none;
+}
+.crop-mask {
+  position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 400px rgba(11,18,32,.5), inset 0 0 0 1.5px rgba(255,255,255,.85);
+  pointer-events: none;
+}
+.crop.empty {
+  cursor: default; border: 1px dashed var(--border-strong); background: var(--surface-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  text-align: center; padding: 24px;
+}
+.crop.empty p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 220px; }
+.crop.drag { border-color: var(--accent); background: var(--accent-soft-2); }
+.crop.busy { cursor: default; }
+.crop.busy::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.55); z-index: 2; }
+.crop-spin {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; border: 2.5px solid var(--border-strong); border-top-color: var(--ink);
+  animation: fp-spin .8s linear infinite; z-index: 3;
+}
+.big-av {
+  width: 112px; height: 112px; border-radius: 50%;
+  background: linear-gradient(145deg,#E3E9F6,#C9D3E9); color: var(--accent-ink);
+  display: grid; place-items: center; font-size: 36px; font-weight: 600; letter-spacing: -.02em;
+  box-shadow: inset 0 0 0 1px rgba(31,79,217,.10);
+}
+@keyframes fp-spin { to { transform: rotate(360deg); } }
+
+/* Zoom */
+.zoom { display: flex; align-items: center; gap: 10px; max-width: 320px; margin: 14px auto 0; }
+.zoom svg { width: 17px; height: 17px; stroke: var(--muted); stroke-width: 1.8; fill: none; flex: none; }
+.zoom input { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 28px; background: transparent; margin: 0; cursor: pointer; }
+.zoom input::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--ink),var(--ink)) 0/var(--p,0%) 100% no-repeat, var(--surface-3); }
+.zoom input::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface-3); }
+.zoom input::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--ink); }
+.zoom input::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8px; border-radius: 50%; background: #fff; border: 1px solid var(--border-strong); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.zoom input::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1px solid var(--border-strong); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.zoom input:focus-visible { outline: none; }
+.zoom input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-soft); border-color: var(--accent); }
+.zoom input:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Textos bajo la vista previa */
+.pf-note { margin: 12px auto 0; max-width: 320px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.pf-pick { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+.pf-pick .btn { min-height: 40px; padding: 9px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 600; }
+.pf-fmt { margin: 10px auto 0; max-width: 340px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted-2); }
+.pf-err { margin: 16px 0 0; }
+.only-touch { display: none !important; }
+@media (max-width: 720px), (pointer: coarse) { .only-touch { display: inline-flex !important; } }
+
+/* Banner de error inline (nuevo — no existía .inote en el proyecto) */
+.inote { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: var(--r-lg); font-size: 13px; line-height: 1.5; }
+.inote svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.8; fill: none; flex: none; }
+.inote .tx { flex: 1; min-width: 0; }
+.inote.dng { background: var(--danger-soft); color: #8F1C13; }
+
+/* Spinner del botón "Guardando…" */
+.fp-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: fp-spin .8s linear infinite; display: inline-block; flex: none; }
+.btn.dng .fp-spin { border-color: rgba(180,35,24,.25); border-top-color: var(--danger); }
+
+/* Toast de confirmación — mismo visual que el diseño (#toast), prefijado
+   para no colisionar con un futuro toast genérico del dashboard */
+.fp-toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translate(-50%,14px);
+  background: var(--ink); color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 100px;
+  box-shadow: var(--shadow-lg); opacity: 0; pointer-events: none;
+  transition: opacity .18s, transform .18s; z-index: 70;
+}
+.fp-toast.show { opacity: 1; transform: translate(-50%,0); }

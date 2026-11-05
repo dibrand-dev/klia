@@ -1,6 +1,7 @@
 'use client'
 
 import './paciente-header.css'
+import './foto-paciente.css'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseISO, differenceInYears, format } from 'date-fns'
@@ -10,6 +11,7 @@ import { formatNombreCompleto } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente, Turno } from '@/types/database'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import FotoPacienteSlide from '@/components/pacientes/FotoPacienteSlide'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 
 export interface SummaryData {
@@ -41,8 +43,15 @@ export default function PacienteHeader({
   const { esColaborador } = useEffectiveTerapeutaId()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [fotoOpen, setFotoOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [menuPos, setMenuPos] = useState<{ align: 'left' | 'right'; maxWidth: number } | null>(null)
+
+  function mostrarToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2600)
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -69,6 +78,7 @@ export default function PacienteHeader({
   }, [menuOpen])
 
   const iniciales = `${paciente.nombre[0] ?? ''}${paciente.apellido[0] ?? ''}`.toUpperCase()
+  const avatarVersion = paciente.avatar_updated_at ? new Date(paciente.avatar_updated_at).getTime() : 0
   const edad = paciente.fecha_nacimiento
     ? differenceInYears(new Date(), parseISO(paciente.fecha_nacimiento))
     : null
@@ -119,7 +129,27 @@ export default function PacienteHeader({
 
       <header className="patient-hdr">
         <div className="patient-top">
-          <div className="avatar">{iniciales}</div>
+          <div className="av-wrap">
+            <button
+              type="button"
+              className={`avatar pav av-edit${paciente.avatar_path ? ' has-img' : ''}`}
+              aria-label={`${paciente.avatar_path ? 'Cambiar' : 'Agregar'} foto de ${formatNombreCompleto(paciente.nombre, paciente.apellido)}`}
+              onClick={() => setFotoOpen(true)}
+            >
+              {paciente.avatar_path ? (
+                <img src={`/api/pacientes/${paciente.id}/foto?v=${avatarVersion}`} alt="" />
+              ) : (
+                <span>{iniciales}</span>
+              )}
+              <span className="av-ov">
+                <svg viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>
+                <span>{paciente.avatar_path ? 'Cambiar' : 'Agregar'}</span>
+              </span>
+            </button>
+            <span className="av-badge">
+              <svg viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>
+            </span>
+          </div>
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="patient-id-row">
@@ -273,6 +303,30 @@ export default function PacienteHeader({
         onConfirm={() => { setConfirmOpen(false); handleEliminar() }}
         onCancel={() => setConfirmOpen(false)}
       />
+
+      <FotoPacienteSlide
+        open={fotoOpen}
+        onClose={() => setFotoOpen(false)}
+        pacienteId={paciente.id}
+        pacienteNombreCompleto={formatNombreCompleto(paciente.nombre, paciente.apellido)}
+        pacientePrimerNombre={paciente.nombre}
+        iniciales={iniciales}
+        avatarPath={paciente.avatar_path}
+        avatarUpdatedAt={paciente.avatar_updated_at}
+        avatarOrigen={paciente.avatar_origen}
+        onSaved={() => {
+          setFotoOpen(false)
+          router.refresh()
+          mostrarToast(`Foto guardada. ${paciente.nombre} la ve en su portal.`)
+        }}
+        onRemoved={() => {
+          setFotoOpen(false)
+          router.refresh()
+          mostrarToast('Foto quitada.')
+        }}
+      />
+
+      {toast && <div className={`fp-toast${toast ? ' show' : ''}`}>{toast}</div>}
     </>
   )
 }

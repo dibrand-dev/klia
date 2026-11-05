@@ -585,6 +585,9 @@ export type Database = {
           firma_paciente_url: string | null
           moneda_preferida: string
           cobrar_inasistencias: boolean | null
+          avatar_path: string | null
+          avatar_updated_at: string | null
+          avatar_origen: 'profesional' | 'paciente' | null
           created_at: string
           updated_at: string
         }
@@ -625,6 +628,9 @@ export type Database = {
           autorizacion_vigencia_hasta?: string | null
           moneda_preferida?: string
           cobrar_inasistencias?: boolean | null
+          avatar_path?: string | null
+          avatar_updated_at?: string | null
+          avatar_origen?: 'profesional' | 'paciente' | null
           created_at?: string
           updated_at?: string
         }
@@ -665,6 +671,9 @@ export type Database = {
           autorizacion_vigencia_hasta?: string | null
           moneda_preferida?: string
           cobrar_inasistencias?: boolean | null
+          avatar_path?: string | null
+          avatar_updated_at?: string | null
+          avatar_origen?: 'profesional' | 'paciente' | null
           created_at?: string
           updated_at?: string
         }
@@ -2653,6 +2662,12 @@ export type PacienteColaboradorRow = {
   activo: boolean
   created_at: string
   updated_at: string
+  // No vienen de get_pacientes_colaborador() (su SELECT no las incluye) — la
+  // page.tsx las completa siempre con una lectura service_role aparte antes
+  // de armar este objeto. Ver pacientes/[id]/page.tsx.
+  avatar_path: string | null
+  avatar_updated_at: string | null
+  avatar_origen: 'profesional' | 'paciente' | null
 }
 
 export type DatosContactoPaciente = {

@@ -7,6 +7,7 @@ import { combinarObrasSociales } from '@/lib/obras-sociales'
 import { calcularDeudaMes, resolverPoliticaInasistencia, sesionGeneraDeuda } from '@/lib/deuda'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { puedeUsarPortal } from '@/lib/portal/acceso'
+import { serviceClient } from '@/lib/supabase/service'
 import type { Paciente, PacienteColaboradorRow } from '@/types/database'
 
 export const metadata = { title: 'Paciente — KLIA' }
@@ -34,6 +35,18 @@ export default async function PacienteDetallePage({
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
     const todosPacientes = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
     const encontrado = todosPacientes.find((p) => p.id === params.id)
+    // get_pacientes_colaborador() no trae avatar_path/avatar_updated_at/avatar_origen
+    // (no están en su SELECT) — se completan aparte con service_role en vez de tocar
+    // esa RPC. Seguro: la colaboradora ya está autorizada a ver este paciente (está
+    // en la lista que la RPC le devolvió) y el avatar es un dato no clínico.
+    const avatarFila = encontrado
+      ? (await serviceClient()
+          .from('pacientes')
+          .select('avatar_path, avatar_updated_at, avatar_origen')
+          .eq('id', params.id)
+          .eq('terapeuta_id', encontrado.terapeuta_id)
+          .maybeSingle()).data
+      : null
     paciente = encontrado ? ({
       ...encontrado,
       notas: null,
@@ -41,6 +54,9 @@ export default async function PacienteDetallePage({
       codigo_diagnostico: null,
       gravedad_estimada: null,
       fecha_inicio_tratamiento: null,
+      avatar_path: avatarFila?.avatar_path ?? null,
+      avatar_updated_at: avatarFila?.avatar_updated_at ?? null,
+      avatar_origen: avatarFila?.avatar_origen ?? null,
     } as Paciente) : null
   } else {
     const { data } = await supabase

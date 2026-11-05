@@ -10,13 +10,14 @@ interface SlideOverProps {
   subtitle?: string
   subtitleCapitalize?: boolean
   children: React.ReactNode
-  width?: 'compact' | 'sm' | 'md' | 'lg' | 'xl' | 'nota'
+  width?: 'narrow' | 'compact' | 'sm' | 'md' | 'lg' | 'xl' | 'nota'
   header?: React.ReactNode
   footer?: React.ReactNode
   noPadding?: boolean
 }
 
 const WIDTH_MAP = {
+  narrow: 'sm:max-w-[480px]',
   compact: 'sm:max-w-[470px]',
   sm: 'sm:max-w-md',
   md: 'sm:max-w-lg',
