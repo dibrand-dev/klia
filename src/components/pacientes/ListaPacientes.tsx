@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 import './directorio.css'
+import '@/components/pacientes/foto-paciente.css'
 
 type PacienteListado = Paciente & { ultima_cita: string | null; proxima_sesion?: string | null }
 
@@ -399,6 +400,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
   const { esColaborador } = useEffectiveTerapeutaId()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [fotoError, setFotoError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const nombre = formatNombreCompleto(paciente.nombre, paciente.apellido)
@@ -439,7 +441,19 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
       }}
     >
       <div className="dir-pc-top">
-        <div className="dir-av" style={{ background: AVBG[hashStr(nombre) % AVBG.length] }}>{initials(paciente.nombre, paciente.apellido)}</div>
+        {paciente.avatar_path && !fotoError ? (
+          <div className="dir-av pav has-img">
+            <img
+              src={`/api/pacientes/${paciente.id}/foto?v=${new Date(paciente.avatar_updated_at ?? 0).getTime()}`}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setFotoError(true)}
+            />
+          </div>
+        ) : (
+          <div className="dir-av" style={{ background: AVBG[hashStr(nombre) % AVBG.length] }}>{initials(paciente.nombre, paciente.apellido)}</div>
+        )}
         <div className="dir-pc-id">
           <h3>{nombre}</h3>
           <span className="code">PAC-{paciente.id.slice(0, 8).toUpperCase()}</span>
