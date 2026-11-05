@@ -45,7 +45,7 @@ export default async function PortalLayout({ children }: { children: React.React
   }
 
   const [{ data: paciente }, { data: profile }] = await Promise.all([
-    db.from('pacientes').select('nombre, apellido').eq('id', principal.pacienteId).maybeSingle(),
+    db.from('pacientes').select('nombre, apellido, avatar_path, avatar_updated_at, avatar_origen').eq('id', principal.pacienteId).maybeSingle(),
     db.from('profiles').select('nombre, apellido, especialidad').eq('id', principal.terapeutaId).maybeSingle(),
   ])
 
@@ -58,6 +58,9 @@ export default async function PortalLayout({ children }: { children: React.React
       pacienteNombre={paciente?.nombre ?? ''}
       pacienteApellido={paciente?.apellido ?? ''}
       pacienteEmail={user.email ?? ''}
+      avatarPath={paciente?.avatar_path ?? null}
+      avatarUpdatedAt={paciente?.avatar_updated_at ?? null}
+      avatarOrigen={paciente?.avatar_origen ?? null}
     >
       {children}
     </PortalShell>

@@ -7,10 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useOffline } from '@/lib/portal/useOffline'
 import { PasswordField, PasswordRequirementsList, passwordRequisitos } from './password'
 import { ToastProvider, useToast } from './ToastContext'
+import FotoPerfilSheet from './FotoPerfilSheet'
 import './portal.css'
 
 const IconLock = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--muted)', strokeWidth: 1.7, fill: 'none' }}><rect x="4" y="10.5" width="16" height="10.5" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></svg>
 const IconLogout = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--danger)', strokeWidth: 1.7, fill: 'none' }}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+const IconCam = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--muted)', strokeWidth: 1.7, fill: 'none' }}><path d="M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.5" /></svg>
 const IconOffline = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#fff', strokeWidth: 1.9, fill: 'none' }}><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01M3 3l18 18" /></svg>
 const IconX = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--ink-2)', strokeWidth: 1.8, fill: 'none' }}><path d="M6 6l12 12M18 6L6 18" /></svg>
 const IconAlert = <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M12 3l10 18H2z" /><path d="M12 10v5M12 18h.01" /></svg>
@@ -27,6 +29,9 @@ export default function PortalShell(props: {
   pacienteNombre: string
   pacienteApellido: string
   pacienteEmail: string
+  avatarPath: string | null
+  avatarUpdatedAt: string | null
+  avatarOrigen: 'profesional' | 'paciente' | null
   children: React.ReactNode
 }) {
   return (
@@ -37,13 +42,17 @@ export default function PortalShell(props: {
 }
 
 function PortalShellInner({
-  profesionalNombre, especialidad, pacienteNombre, pacienteApellido, pacienteEmail, children,
+  profesionalNombre, especialidad, pacienteNombre, pacienteApellido, pacienteEmail,
+  avatarPath, avatarUpdatedAt, avatarOrigen, children,
 }: {
   profesionalNombre: string
   especialidad: string | null
   pacienteNombre: string
   pacienteApellido: string
   pacienteEmail: string
+  avatarPath: string | null
+  avatarUpdatedAt: string | null
+  avatarOrigen: 'profesional' | 'paciente' | null
   children: React.ReactNode
 }) {
   const router = useRouter()
@@ -52,9 +61,11 @@ function PortalShellInner({
   const offline = useOffline()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [fotoSheetOpen, setFotoSheetOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const acctBtnRef = useRef<HTMLButtonElement>(null)
   const cambiarPwBtnRef = useRef<HTMLButtonElement>(null)
+  const fotoMenuBtnRef = useRef<HTMLButtonElement>(null)
 
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
@@ -99,6 +110,15 @@ function PortalShellInner({
     setSheetOpen(true)
   }
 
+  function abrirFotoSheet() {
+    setMenuOpen(false)
+    setFotoSheetOpen(true)
+  }
+  function cerrarFotoSheet() {
+    setFotoSheetOpen(false)
+    fotoMenuBtnRef.current?.focus()
+  }
+
   async function guardarContrasena() {
     setPwError(null)
     if (!actual) { setPwError('Ingresá tu contraseña actual.'); return }
@@ -123,6 +143,7 @@ function PortalShellInner({
   }
 
   const puedeGuardarContrasena = !!actual && passwordRequisitos(nueva, confirmar).every((r) => r.ok)
+  const avatarVersion = avatarUpdatedAt ? new Date(avatarUpdatedAt).getTime() : 0
 
   return (
     <div className={`pp-shell${offline ? ' offline' : ''}`} id="pp">
@@ -140,10 +161,18 @@ function PortalShellInner({
             className="pp-acct" aria-label="Menú de cuenta" aria-haspopup="menu" aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <span className="pp-av">{iniciales(pacienteNombre, pacienteApellido)}</span>
+            <span className={`pp-av${avatarPath ? ' has-img' : ''}`}>
+              {avatarPath ? <img src={`/api/portal/foto?v=${avatarVersion}`} alt="" /> : iniciales(pacienteNombre, pacienteApellido)}
+            </span>
           </button>
           <div className={`pp-menu${menuOpen ? ' open' : ''}`} role="menu">
-            <div className="pp-who"><b>{pacienteNombre} {pacienteApellido}</b><span>{pacienteEmail}</span></div>
+            <div className="pp-who">
+              <span className={`pp-av${avatarPath ? ' has-img' : ''}`}>
+                {avatarPath ? <img src={`/api/portal/foto?v=${avatarVersion}`} alt="" /> : iniciales(pacienteNombre, pacienteApellido)}
+              </span>
+              <div><b>{pacienteNombre} {pacienteApellido}</b><span>{pacienteEmail}</span></div>
+            </div>
+            <button ref={fotoMenuBtnRef} className="pp-mi" role="menuitem" onClick={abrirFotoSheet}>{IconCam}{avatarPath ? 'Cambiar foto de perfil' : 'Agregar foto de perfil'}</button>
             <button ref={cambiarPwBtnRef} className="pp-mi" role="menuitem" onClick={abrirCambiarContrasena}>{IconLock}Cambiar contraseña</button>
             <button className="pp-mi danger" role="menuitem" onClick={cerrarSesion}>{IconLogout}Cerrar sesión</button>
           </div>
@@ -182,6 +211,25 @@ function PortalShellInner({
           </button>
         </div>
       </section>
+
+      <FotoPerfilSheet
+        open={fotoSheetOpen}
+        onClose={cerrarFotoSheet}
+        iniciales={iniciales(pacienteNombre, pacienteApellido)}
+        avatarPath={avatarPath}
+        avatarUpdatedAt={avatarUpdatedAt}
+        avatarOrigen={avatarOrigen}
+        onSaved={() => {
+          cerrarFotoSheet()
+          router.refresh()
+          toast('Foto guardada. Tu nutricionista la ve en tu ficha.')
+        }}
+        onRemoved={() => {
+          cerrarFotoSheet()
+          router.refresh()
+          toast('Foto quitada.')
+        }}
+      />
     </div>
   )
 }

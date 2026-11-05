@@ -29,9 +29,19 @@ body { background: var(--surface-3); }
 .pp-acct .pp-av { width: 34px; height: 34px; border-radius: 50%; background: #D6DEEF; color: var(--accent-ink); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
 .pp-menu { position: absolute; top: calc(100% + 4px); right: 10px; width: 248px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-md); padding: 6px; opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .12s, transform .12s; }
 .pp-menu.open { opacity: 1; transform: none; pointer-events: auto; }
-.pp-menu .pp-who { padding: 10px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.pp-menu .pp-who { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.pp-menu .pp-who .pp-av { width: 40px; height: 40px; border-radius: 50%; background: #D6DEEF; color: var(--accent-ink); display: grid; place-items: center; font-size: 13.5px; font-weight: 600; flex: none; }
+.pp-menu .pp-who > div { min-width: 0; }
 .pp-menu .pp-who b { display: block; font-size: 14px; font-weight: 600; }
 .pp-menu .pp-who span { font-size: 12.5px; color: var(--muted); }
+
+/* Avatar con foto — modificador de .pp-av (header y menú). Mismo patrón que
+   .pav de la ficha (anillo interno 1px, object-fit:cover) pero bajo el
+   prefijo pp- propio del portal, sin importar foto-paciente.css acá. */
+.pp-av { position: relative; overflow: hidden; }
+.pp-av > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-av.has-img { background: var(--surface-3); }
+.pp-av.has-img::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(11,18,32,.10); pointer-events: none; }
 .pp-mi { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; border: none; background: transparent; border-radius: 8px; font: inherit; font-size: 14px; color: var(--ink-2); cursor: pointer; text-align: left; }
 .pp-mi:hover { background: var(--surface-2); }
 .pp-mi svg { width: 17px; height: 17px; stroke: var(--muted); stroke-width: 1.7; fill: none; flex: none; }
@@ -118,6 +128,8 @@ body { background: var(--surface-3); }
 .pp-pb.full { width: 100%; }
 .pp-lnk { display: inline-flex; align-items: center; min-height: 44px; border: none; background: none; font: inherit; font-size: 14px; font-weight: 500; color: var(--accent); cursor: pointer; padding: 0; }
 .pp-lnk:hover { color: var(--accent-ink); text-decoration: underline; }
+.pp-lnk.dng { color: var(--danger); }
+.pp-lnk.dng:hover { color: #8F1C13; }
 
 /* campos */
 .pp-af { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
@@ -272,3 +284,59 @@ body { background: var(--surface-3); }
 .pp-mtx .pp-ntag { display: inline-flex; align-items: center; margin-top: 6px; padding: 2px 8px; border-radius: 100px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11.5px; font-weight: 600; }
 .pp-ndot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .pp-dbtn.sel .pp-ndot { background: #fff; box-shadow: 0 0 0 2px var(--ink); }
+
+/* Foto de perfil (Fase 2) — recorte circular del bottom sheet, a los tamaños
+   del portal (248px, slider de 44px/thumb 24px). Mismo cálculo de pan/zoom
+   que .crop de la ficha (useRecorteFoto), clases propias pp- sin depender
+   de foto-paciente.css. */
+.pp-crop {
+  position: relative; width: 100%; max-width: 248px; aspect-ratio: 1/1; margin: 0 auto;
+  border-radius: var(--r-lg); overflow: hidden; background: var(--surface-3);
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.pp-crop:active { cursor: grabbing; }
+.pp-crop > img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transform-origin: center; pointer-events: none; -webkit-user-drag: none;
+}
+.pp-crop-mask {
+  position: absolute; inset: 0; border-radius: 50%;
+  box-shadow: 0 0 0 400px rgba(11,18,32,.5), inset 0 0 0 1.5px rgba(255,255,255,.85);
+  pointer-events: none;
+}
+.pp-crop.empty {
+  cursor: default; border: 1px dashed var(--border-strong); background: var(--surface-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  text-align: center; padding: 24px;
+}
+.pp-crop.empty p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 200px; }
+.pp-crop.drag { border-color: var(--accent); background: var(--accent-soft-2); }
+.pp-crop.busy { cursor: default; }
+.pp-crop.busy::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.55); z-index: 2; }
+.pp-crop-spin {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 50%; border: 2.5px solid var(--border-strong); border-top-color: var(--ink);
+  animation: pp-spin .8s linear infinite; z-index: 3;
+}
+.pp-big-av {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: linear-gradient(145deg,#E3E9F6,#C9D3E9); color: var(--accent-ink);
+  display: grid; place-items: center; font-size: 30px; font-weight: 600; letter-spacing: -.02em;
+  box-shadow: inset 0 0 0 1px rgba(31,79,217,.10);
+}
+@keyframes pp-spin { to { transform: rotate(360deg); } }
+
+.pp-zoom { display: flex; align-items: center; gap: 10px; max-width: 248px; margin: 14px auto 0; }
+.pp-zoom svg { width: 17px; height: 17px; stroke: var(--muted); stroke-width: 1.8; fill: none; flex: none; }
+.pp-zoom input { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 44px; background: transparent; margin: 0; cursor: pointer; }
+.pp-zoom input::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--ink),var(--ink)) 0/var(--p,0%) 100% no-repeat, var(--surface-3); }
+.pp-zoom input::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface-3); }
+.pp-zoom input::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--ink); }
+.pp-zoom input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%; background: #fff; border: 1px solid var(--border-strong); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.pp-zoom input::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 1px solid var(--border-strong); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.pp-zoom input:focus-visible { outline: none; }
+.pp-zoom input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-soft); border-color: var(--accent); }
+.pp-zoom input:disabled { opacity: .45; cursor: not-allowed; }
+
+.pp-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: pp-spin .8s linear infinite; display: inline-block; flex: none; }
+.pp-lnk.dng .pp-spin { border-color: rgba(180,35,24,.25); border-top-color: var(--danger); }
