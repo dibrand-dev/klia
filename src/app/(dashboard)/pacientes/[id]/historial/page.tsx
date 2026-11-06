@@ -80,6 +80,15 @@ export default async function HistorialPage({ params }: { params: { id: string }
         esColaborador={efectivo.esColaborador}
       />
 
+      {totalNotas > 0 && (
+        <div className="flex justify-end mt-4">
+          <a href={`/pacientes/${params.id}/historial/exportar`} target="_blank" rel="noopener noreferrer" className="btn-secondary inline-flex">
+            <span className="material-symbols-outlined text-sm">print</span>
+            Exportar / Imprimir
+          </a>
+        </div>
+      )}
+
       {totalNotas === 0 ? (
         <div className="mt-6 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest p-10 text-center">
           <div className="w-14 h-14 rounded-xl bg-surface-container flex items-center justify-center mx-auto mb-4">

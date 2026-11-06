@@ -1,0 +1,84 @@
+/* KL1-T40 — exportación/impresión de historia clínica. Clases propias
+   (hc-*), sin reutilizar pp-* del portal ni nada de foto-paciente.css.
+   Los tokens de color (--ink, --border, etc.) son los reales de
+   globals.css — el mockup los redefinía con los mismos valores hex, así
+   que no hace falta un :root paralelo. */
+
+.hc-root { margin: 0; font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; color: var(--ink); background: #E9EBEF; font-size: 11pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.hc-root a { color: var(--ink); text-decoration: underline; }
+.hc-toolbar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; gap: 12px; align-items: center; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); }
+.hc-toolbar span { font-size: 13px; color: var(--muted); }
+.hc-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 8px; font: 600 13.5px/1 'Inter', sans-serif; background: var(--ink); color: #fff; border: 1px solid var(--ink); cursor: pointer; }
+.hc-btn:hover { background: #000; }
+.hc-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hc-sheet { width: 210mm; max-width: 100%; margin: 24px auto 48px; background: #fff; padding: 16mm 16mm 18mm; box-shadow: 0 1px 3px rgba(11,18,32,.08), 0 8px 24px rgba(11,18,32,.06); }
+
+/* Membrete */
+.hc-mb { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding-bottom: 12px; border-bottom: 1.5pt solid var(--ink); }
+.hc-mb h1 { margin: 0; font-size: 17pt; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+.hc-mb .hc-pro { margin-top: 2px; font-size: 10.5pt; color: var(--ink-2); }
+.hc-mb .hc-em { text-align: right; font-size: 9.5pt; color: var(--muted); line-height: 1.45; }
+.hc-mb .hc-em b { display: block; color: var(--ink); font-size: 10.5pt; }
+
+.hc-pac { display: grid; grid-template-columns: 2fr 1fr 1.3fr 1.6fr; margin: 12px 0 22px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.hc-pac div { padding: 8px 12px; border-left: 1px solid var(--border-strong); }
+.hc-pac div:first-child { border-left: 0; }
+.hc-lb { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.hc-pac b { display: block; font-size: 11pt; font-weight: 600; }
+
+.hc-sec { margin: 26px 0 10px; font-size: 10pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+.hc-sec:first-of-type { margin-top: 0; }
+
+/* Nota */
+.hc-nota { break-inside: avoid; page-break-inside: avoid; padding: 14px 0 16px; border-bottom: 1px solid var(--border-strong); }
+.hc-nota:last-of-type { border-bottom: 0; }
+.hc-nh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; }
+.hc-nh .hc-fe { font-size: 12pt; font-weight: 700; }
+.hc-nh .hc-meta { font-size: 10pt; color: var(--ink-2); }
+.hc-tx { font-size: 11pt; color: var(--ink); orphans: 3; widows: 3; }
+.hc-tx p { margin: 0 0 6px; }
+.hc-tx ul, .hc-tx ol { margin: 0 0 6px; padding-left: 20px; }
+.hc-tx li { margin: 1px 0; }
+.hc-tx strong { font-weight: 700; }
+
+/* Bloque de módulo */
+.hc-mod { margin-top: 10px; border: 1px solid var(--border-strong); border-radius: 6px; break-inside: avoid; page-break-inside: avoid; }
+.hc-mod > .hc-mt { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-strong); border-radius: 6px 6px 0 0; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.hc-mod > .hc-mt span { font-weight: 500; color: var(--muted); letter-spacing: .04em; }
+.hc-mb2 { padding: 8px 10px 10px; display: grid; gap: 8px; }
+.hc-kv { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; border: 1px solid var(--border); border-radius: 4px; }
+.hc-kv.c4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.hc-kv.c3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.hc-kv.c2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.hc-kv.c1 { grid-template-columns: minmax(0,1fr); }
+.hc-kv div { padding: 5px 8px; border-left: 1px solid var(--border); }
+.hc-kv div:first-child { border-left: 0; }
+.hc-kv b { display: block; font-size: 10.5pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hc-kv b small { font-size: 8.5pt; font-weight: 500; color: var(--ink-2); }
+.hc-st { font-size: 8.5pt; font-weight: 600; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 3px; }
+.hc-mod table { width: 100%; border-collapse: collapse; font-size: 10pt; font-variant-numeric: tabular-nums; }
+.hc-mod th, .hc-mod td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+.hc-mod thead th { font-size: 8pt; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: #fff; }
+.hc-mod tbody th { font-weight: 700; width: 44px; }
+.hc-mod td.n { text-align: right; }
+.hc-al { font-weight: 700; }
+.hc-al::after { content: " (!)"; }
+.hc-ln { display: grid; grid-template-columns: 130px minmax(0,1fr); gap: 4px 10px; font-size: 10pt; }
+.hc-ln dt { font-weight: 600; color: var(--ink-2); }
+.hc-ln dd { margin: 0; }
+.hc-cie { display: flex; flex-wrap: wrap; gap: 6px; }
+.hc-cie span { font-size: 9.5pt; border: 1px solid var(--border-strong); border-radius: 4px; padding: 1px 6px; }
+.hc-cie span b { font-weight: 700; margin-right: 4px; }
+.hc-cap { font-size: 8.5pt; color: var(--muted); }
+
+.hc-cierre { margin-top: 34px; display: grid; grid-template-columns: 1fr 240px; gap: 24px; align-items: end; break-inside: avoid; }
+.hc-cierre p { margin: 0; font-size: 9pt; color: var(--muted); line-height: 1.45; }
+.hc-firma { border-top: 1px solid var(--ink); padding-top: 6px; text-align: center; font-size: 9.5pt; }
+.hc-firma b { display: block; font-size: 10.5pt; }
+
+@media print {
+  .hc-root { background: #fff; }
+  .hc-toolbar { display: none !important; }
+  .hc-sheet { width: auto; max-width: none; margin: 0; padding: 0; box-shadow: none; }
+  .hc-mod > .hc-mt { background: #F2F3F5; }
+}

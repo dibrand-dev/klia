@@ -12,3 +12,11 @@ export function clasificarPIO(pio: number): { label: string; status: IMCStatus }
   if (pio <= 21) return { label: 'Normal', status: 'success' }
   return { label: 'Elevada', status: 'warning' }
 }
+
+// Extraído de ModuloOftalmologia.tsx (vivía inline dentro de equivalenteEsferico,
+// mezclado con el armado del string para la tarjeta de UI) para reutilizar el
+// cálculo crudo también en la exportación impresa de la historia clínica
+// (KL1-T40), sin duplicar la fórmula ni el redondeo a cuarto de dioptría.
+export function calcularEquivalenteEsferico(esfera: number, cilindro: number): number {
+  return Math.round((esfera + cilindro / 2) * 4) / 4
+}

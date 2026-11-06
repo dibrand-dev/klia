@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calcularIMC, clasificarIMC } from '@/lib/nutricion/calculos'
+import { clasificarTA } from '@/lib/clinica-medica/calculos'
 import { n, dl, hint, type ResultadoCalc } from '@/lib/notas/calc-utils'
 import { Grilla, CampoNum, Colapsable, CampoCie10, TarjetaCalc } from '@/components/notas/campos'
 import type { ValoresModulo } from '@/lib/notas/modulos'
@@ -11,13 +12,6 @@ interface Props {
   pacienteId: string
   valores: ValoresModulo
   onChange: (key: string, val: string | string[]) => void
-}
-
-function clasificarTA(s: number, d: number): string {
-  if (s >= 140 || d >= 90) return 'HTA estadio 2'
-  if (s >= 130 || d >= 80) return 'HTA estadio 1'
-  if (s >= 120) return 'Elevada'
-  return 'Normal'
 }
 
 export default function ModuloClinicaMedica({ pacienteId, valores, onChange }: Props) {

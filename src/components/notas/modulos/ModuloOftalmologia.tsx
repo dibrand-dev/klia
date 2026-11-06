@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { calcularPIOCorregida } from '@/lib/oftalmologia/calculos'
+import { calcularPIOCorregida, calcularEquivalenteEsferico } from '@/lib/oftalmologia/calculos'
 import { n, f1, dl, hint, type ResultadoCalc } from '@/lib/notas/calc-utils'
 import { Grilla, CampoNum, Colapsable, CampoTexto, CampoCie10, TarjetaCalc } from '@/components/notas/campos'
 import type { ValoresModulo } from '@/lib/notas/modulos'
@@ -18,7 +18,7 @@ function equivalenteEsferico(v: (k: string) => string): ResultadoCalc {
     const esf = n(v(`esf_${o}`))
     if (esf == null) return null
     const cil = n(v(`cil_${o}`)) ?? 0
-    const q = Math.round((esf + cil / 2) * 4) / 4
+    const q = calcularEquivalenteEsferico(esf, cil)
     const signo = q > 0 ? '+' : q < 0 ? '−' : ''
     const abs = Math.abs(q).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     return `${o.toUpperCase()} ${signo}${abs} D`

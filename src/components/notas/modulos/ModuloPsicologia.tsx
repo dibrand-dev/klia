@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { n, dl, hint, type ResultadoCalc } from '@/lib/notas/calc-utils'
 import { Grilla, CampoNum, CampoSegmentado, TarjetaCalc } from '@/components/notas/campos'
 import type { ValoresModulo } from '@/lib/notas/modulos'
+import { severidadPHQ9, severidadGAD7 } from '@/lib/psicologia/calculos'
 
 interface Props {
   pacienteId: string
@@ -13,13 +14,6 @@ interface Props {
 }
 
 const RIESGOS = ['Sin riesgo', 'Bajo', 'Moderado', 'Alto']
-
-function severidadPHQ9(x: number): string {
-  return x < 5 ? 'Mínima' : x < 10 ? 'Leve' : x < 15 ? 'Moderada' : x < 20 ? 'Moderadamente severa' : 'Severa'
-}
-function severidadGAD7(x: number): string {
-  return x < 5 ? 'Mínima' : x < 10 ? 'Leve' : x < 15 ? 'Moderada' : 'Severa'
-}
 
 export default function ModuloPsicologia({ pacienteId, valores, onChange }: Props) {
   const [closed, setClosed] = useState(false)
