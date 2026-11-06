@@ -1653,6 +1653,116 @@ export type Database = {
         }
         Relationships: []
       }
+      webinars: {
+        Row: {
+          id: string
+          slug: string
+          titulo: string
+          bajada: string
+          institucion: string | null
+          imagen_url: string | null
+          fecha_inicio: string
+          duracion_min: number
+          cierre_inscripcion: string
+          url_videoconferencia: string
+          estado: 'borrador' | 'publicado' | 'cancelado'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          titulo: string
+          bajada: string
+          institucion?: string | null
+          imagen_url?: string | null
+          fecha_inicio: string
+          duracion_min?: number
+          cierre_inscripcion: string
+          url_videoconferencia: string
+          estado?: 'borrador' | 'publicado' | 'cancelado'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          titulo?: string
+          bajada?: string
+          institucion?: string | null
+          imagen_url?: string | null
+          fecha_inicio?: string
+          duracion_min?: number
+          cierre_inscripcion?: string
+          url_videoconferencia?: string
+          estado?: 'borrador' | 'publicado' | 'cancelado'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inscripciones_webinar: {
+        Row: {
+          id: string
+          webinar_id: string
+          nombre_apellido: string
+          institucion: string | null
+          email: string
+          telefono: string
+          especialidad: string
+          respuestas: Record<string, unknown>
+          consentimiento_at: string
+          utm: Record<string, unknown> | null
+          confirmacion_enviada_at: string | null
+          recordatorio_1d_enviado_at: string | null
+          recordatorio_30m_enviado_at: string | null
+          postevento_enviado_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          webinar_id: string
+          nombre_apellido: string
+          institucion?: string | null
+          email: string
+          telefono: string
+          especialidad: string
+          respuestas?: Record<string, unknown>
+          consentimiento_at?: string
+          utm?: Record<string, unknown> | null
+          confirmacion_enviada_at?: string | null
+          recordatorio_1d_enviado_at?: string | null
+          recordatorio_30m_enviado_at?: string | null
+          postevento_enviado_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          webinar_id?: string
+          nombre_apellido?: string
+          institucion?: string | null
+          email?: string
+          telefono?: string
+          especialidad?: string
+          respuestas?: Record<string, unknown>
+          consentimiento_at?: string
+          utm?: Record<string, unknown> | null
+          confirmacion_enviada_at?: string | null
+          recordatorio_1d_enviado_at?: string | null
+          recordatorio_30m_enviado_at?: string | null
+          postevento_enviado_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'inscripciones_webinar_webinar_id_fkey'
+            columns: ['webinar_id']
+            isOneToOne: false
+            referencedRelation: 'webinars'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       colegios: {
         Row: {
           id: string
@@ -2608,6 +2718,8 @@ export type VademecumAlimento = Database['public']['Tables']['vademecum_alimento
 export type VademecumNutriente = Database['public']['Tables']['vademecum_nutrientes']['Row']
 export type VademecumAlimentoNutriente = Database['public']['Tables']['vademecum_alimento_nutrientes']['Row']
 export type Testimonio = Database['public']['Tables']['testimonios']['Row']
+export type Webinar = Database['public']['Tables']['webinars']['Row']
+export type InscripcionWebinar = Database['public']['Tables']['inscripciones_webinar']['Row']
 export type Sucursal = Database['public']['Tables']['sucursales']['Row']
 export type HorarioSucursal = Database['public']['Tables']['horarios_sucursal']['Row']
 export type TipoTurno = Database['public']['Tables']['tipos_turno']['Row']

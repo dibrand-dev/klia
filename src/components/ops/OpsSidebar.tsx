@@ -20,6 +20,7 @@ const NAV_ITEMS_TOTAL = [
   { href: '/ops/planes', label: 'Planes', icon: 'workspace_premium' },
   { href: '/ops/colegios', label: 'Códigos de descuento', icon: 'confirmation_number' },
   { href: '/ops/testimonios', label: 'Testimonios', icon: 'format_quote' },
+  { href: '/ops/webinars', label: 'Webinars', icon: 'videocam' },
   { href: '/ops/modulos', label: 'Módulos', icon: 'extension' },
   { href: '/ops/configuracion', label: 'Configuración', icon: 'settings' },
 ]
