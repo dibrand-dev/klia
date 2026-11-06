@@ -59,6 +59,15 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     return NextResponse.json({ error: 'demasiados_intentos' }, { status: 429, headers })
   }
 
+  // Corta antes de parsear: un body público sin límite de tamaño declarado
+  // es una superficie fácil de abusar (payload gigante solo para gastar CPU
+  // parseándolo). 20 KB es generoso para este formulario — ninguna respuesta
+  // legítima (ni q3txt/q2txt al máximo) se acerca a eso.
+  const contentLength = Number(req.headers.get('content-length') ?? '0')
+  if (contentLength > 20_000) {
+    return NextResponse.json({ error: 'payload_demasiado_grande' }, { status: 413, headers })
+  }
+
   let body: Record<string, unknown>
   try {
     body = await req.json()
@@ -111,12 +120,13 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   // violación de ese índice si dos requests llegan en simultáneo.
   const { data: existente } = await supabase
     .from('inscripciones_webinar')
-    .select('id')
+    .select('id, confirmacion_enviada_at')
     .eq('webinar_id', webinar.id)
     .eq('email', datos.email)
     .maybeSingle()
 
   let already = !!existente
+  let confirmacionEnviadaAt = existente?.confirmacion_enviada_at ?? null
 
   if (!existente) {
     const { error: insertError } = await supabase.from('inscripciones_webinar').insert({
@@ -141,31 +151,44 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     }
   }
 
-  // Mail de confirmación — se reenvía también si already=true. Un fallo de
-  // Brevo nunca hace fallar la inscripción: se loguea y la marca queda null
-  // para poder detectar el caso, pero la respuesta sigue siendo ok.
-  try {
-    const html = emailConfirmacionWebinar({
-      nombre: datos.nombre_apellido,
-      titulo: webinar.titulo,
-      fecha_inicio: webinar.fecha_inicio,
-      duracion_min: webinar.duracion_min,
-      url_videoconferencia: webinar.url_videoconferencia,
-      urlAgendar: urlGoogleCalendar(webinar),
-    })
-    await enviarEmail({
-      destinatario: datos.email,
-      nombreDestinatario: datos.nombre_apellido,
-      asunto: `Confirmación — ${webinar.titulo}`,
-      htmlContent: html,
-    })
-    await supabase
-      .from('inscripciones_webinar')
-      .update({ confirmacion_enviada_at: new Date().toISOString() })
-      .eq('webinar_id', webinar.id)
-      .eq('email', datos.email)
-  } catch (err) {
-    console.error('[webinars/inscribir] Error enviando mail de confirmación', webinar.id, (err as Error)?.message)
+  // Freno al reenvío: una inscripción nueva siempre manda el mail; una ya
+  // existente solo lo reenvía si nunca salió o si la última vez fue hace
+  // más de 10 minutos — evita que alguien reenviando el mismo POST (bot,
+  // doble click, reintento de cliente) bombardee de mails a un tercero
+  // cuyo email se usó para inscribirse.
+  const DIEZ_MIN_MS = 10 * 60 * 1000
+  const debeEnviarConfirmacion = !existente
+    || !confirmacionEnviadaAt
+    || Date.now() - new Date(confirmacionEnviadaAt).getTime() > DIEZ_MIN_MS
+
+  if (debeEnviarConfirmacion) {
+    // Un fallo de Brevo nunca hace fallar la inscripción: se loguea y la
+    // marca queda null/vieja para poder detectar el caso, pero la
+    // respuesta sigue siendo ok.
+    try {
+      const html = emailConfirmacionWebinar({
+        nombre: datos.nombre_apellido,
+        titulo: webinar.titulo,
+        fecha_inicio: webinar.fecha_inicio,
+        duracion_min: webinar.duracion_min,
+        url_videoconferencia: webinar.url_videoconferencia,
+        urlAgendar: urlGoogleCalendar(webinar),
+      })
+      await enviarEmail({
+        destinatario: datos.email,
+        nombreDestinatario: datos.nombre_apellido,
+        asunto: `Confirmación — ${webinar.titulo}`,
+        htmlContent: html,
+      })
+      confirmacionEnviadaAt = new Date().toISOString()
+      await supabase
+        .from('inscripciones_webinar')
+        .update({ confirmacion_enviada_at: confirmacionEnviadaAt })
+        .eq('webinar_id', webinar.id)
+        .eq('email', datos.email)
+    } catch (err) {
+      console.error('[webinars/inscribir] Error enviando mail de confirmación', webinar.id, (err as Error)?.message)
+    }
   }
 
   return NextResponse.json({

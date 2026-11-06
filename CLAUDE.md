@@ -402,7 +402,7 @@ Categories: Laboratorio, Imágenes, Documentos, Otros
 - `0 6 * * *` → /api/cron/bloquear-trials
 - `0 7 * * *` → /api/pagos/vencer
 - `0 12 * * *` → /api/cron/recordatorios (sends reminders for tomorrow's sessions, email + WhatsApp — moved from 09:00 UTC/06:00 ART to 12:00 UTC/09:00 ART so patients don't get a 6am notification; single Vercel cron plan slot shared by both channels)
-- `*/15 * * * *` → /api/cron/webinars (1d/30min reminders + post-event mail for webinar signups — first non-daily cron in this project; lowered from the originally-requested */5 to reduce risk of Vercel rejecting the deploy over plan cron-frequency limits, unconfirmed as of 2026-11)
+- `*/5 * * * *` → /api/cron/webinars (1d/30min reminders + post-event mail for webinar signups — first non-daily cron in this project; plan is Pro, confirmed the deploy accepts this frequency)
 - Auth: accepts `x-vercel-cron: 1` header OR `Authorization: Bearer CRON_SECRET`
 
 ## Environment variables (all set in Vercel)

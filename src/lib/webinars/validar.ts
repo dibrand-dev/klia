@@ -6,6 +6,11 @@ import { Q1_OPCIONES, Q2_OPCIONES, Q2_OTRO, Q2TXT_MAX, Q3_OPCIONES, Q3_OTRO, Q3_
 const CODIGOS_PAIS = ['+54', '+598', '+56', '+595', '+591', '+55', '+51', '+57', '+52', '+34', '+1']
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
+const NOMBRE_MAX = 120
+const INSTITUCION_MAX = 160
+const EMAIL_MAX = 254
+const TELEFONO_DIGITOS_MAX = 15
+
 export interface InscripcionInput {
   nombre_apellido?: unknown
   institucion?: unknown
@@ -46,10 +51,23 @@ export function validarInscripcion(body: InscripcionInput): ResultadoValidacion 
   const campos: Record<string, string> = {}
 
   const nombre = typeof body.nombre_apellido === 'string' ? body.nombre_apellido.trim() : ''
-  if (nombre.length < 3) campos.nombre_apellido = 'Ingresá tu nombre y apellido.'
+  if (nombre.length < 3) {
+    campos.nombre_apellido = 'Ingresá tu nombre y apellido.'
+  } else if (nombre.length > NOMBRE_MAX) {
+    campos.nombre_apellido = `El nombre no puede superar los ${NOMBRE_MAX} caracteres.`
+  }
+
+  const institucionTrim = typeof body.institucion === 'string' ? body.institucion.trim() : ''
+  if (institucionTrim.length > INSTITUCION_MAX) {
+    campos.institucion = `La institución no puede superar los ${INSTITUCION_MAX} caracteres.`
+  }
 
   const emailNormalizado = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
-  if (!EMAIL_REGEX.test(emailNormalizado)) campos.email = 'Ingresá un email válido.'
+  if (emailNormalizado.length > EMAIL_MAX) {
+    campos.email = `El email no puede superar los ${EMAIL_MAX} caracteres.`
+  } else if (!EMAIL_REGEX.test(emailNormalizado)) {
+    campos.email = 'Ingresá un email válido.'
+  }
 
   const cc = typeof body.cc === 'string' ? body.cc.trim() : ''
   const telefonoDigitos = typeof body.telefono === 'string' ? body.telefono.replace(/\D/g, '') : ''
@@ -57,6 +75,8 @@ export function validarInscripcion(body: InscripcionInput): ResultadoValidacion 
     campos.telefono = 'Seleccioná el código de país.'
   } else if (telefonoDigitos.length < 8) {
     campos.telefono = 'Ingresá un teléfono válido (mínimo 8 dígitos).'
+  } else if (telefonoDigitos.length > TELEFONO_DIGITOS_MAX) {
+    campos.telefono = `El teléfono no puede superar los ${TELEFONO_DIGITOS_MAX} dígitos.`
   }
 
   const especialidad = typeof body.especialidad === 'string' ? body.especialidad : ''
@@ -100,7 +120,7 @@ export function validarInscripcion(body: InscripcionInput): ResultadoValidacion 
     ok: true,
     data: {
       nombre_apellido: nombre,
-      institucion: typeof body.institucion === 'string' && body.institucion.trim() ? body.institucion.trim() : null,
+      institucion: institucionTrim || null,
       email: emailNormalizado,
       telefono: `${cc}${telefonoDigitos}`,
       especialidad,

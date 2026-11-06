@@ -3,6 +3,18 @@
 // footer), HTML propio y autocontenido porque los helpers de
 // email-templates.ts son privados (no exportados) y no se pueden importar.
 
+// `nombre` viene de un formulario público (hostil) y `titulo`/las URLs vienen
+// de datos ya guardados pero igual se escapan acá, nunca se confía en texto
+// libre al armar HTML — ver KL1 endurecimiento del módulo.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function formatearFechaHoraAR(fechaISO: string): { fecha: string; hora: string } {
   const d = new Date(fechaISO)
   const fecha = d.toLocaleDateString('es-AR', {
@@ -18,7 +30,7 @@ function formatearFechaHoraAR(fechaISO: string): { fecha: string; hora: string }
 function base(tituloPagina: string, eyebrow: string, contenido: string): string {
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${tituloPagina}</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(tituloPagina)}</title></head>
 <body style="margin:0;padding:0;background-color:#FBFBFC;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#FBFBFC;">
   <tbody><tr><td align="center" style="padding:32px 16px 48px 16px;">
@@ -61,12 +73,12 @@ function base(tituloPagina: string, eyebrow: string, contenido: string): string 
 </body></html>`
 }
 
-function detalleEvento(titulo: string, fecha: string, hora: string, duracionMin: number): string {
+function detalleEvento(tituloSafe: string, fecha: string, hora: string, duracionMin: number): string {
   return `
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:18px;border-radius:12px;border:1px solid #e8eaef;">
       <tbody>
         <tr><td style="padding:16px 18px;">
-          <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1428;">${titulo}</p>
+          <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1428;">${tituloSafe}</p>
           <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.6;color:#444651;text-transform:capitalize;">${fecha}</p>
           <p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.6;color:#444651;">${hora} hs (Argentina) · ${duracionMin} min</p>
         </td></tr>
@@ -74,12 +86,16 @@ function detalleEvento(titulo: string, fecha: string, hora: string, duracionMin:
     </table>`
 }
 
+// `url` se escapa acá adentro (no en cada call site) para cubrir las 3 URLs
+// dinámicas que entran a un atributo href en este archivo (link de la
+// videoconferencia, de Google Calendar, y del CTA post-evento) desde un
+// solo lugar.
 function boton(texto: string, url: string, color = '#1F4FD9'): string {
   return `
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:24px auto 0;">
       <tbody><tr>
         <td align="center" bgcolor="${color}" style="background-color:${color};border-radius:10px;">
-          <a href="${url}" target="_blank" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">${texto}</a>
+          <a href="${escapeHtml(url)}" target="_blank" style="display:inline-block;padding:13px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">${texto}</a>
         </td>
       </tr></tbody>
     </table>`
@@ -90,7 +106,7 @@ function botonSecundario(texto: string, url: string): string {
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin:12px auto 0;">
       <tbody><tr>
         <td align="center" style="border:1px solid #d8dde6;border-radius:10px;">
-          <a href="${url}" target="_blank" style="display:inline-block;padding:11px 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#444651;text-decoration:none;border-radius:10px;">${texto}</a>
+          <a href="${escapeHtml(url)}" target="_blank" style="display:inline-block;padding:11px 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;color:#444651;text-decoration:none;border-radius:10px;">${texto}</a>
         </td>
       </tr></tbody>
     </table>`
@@ -106,13 +122,15 @@ interface WebinarEmailBase {
 }
 
 export function emailConfirmacionWebinar(p: WebinarEmailBase): string {
+  const nombre = escapeHtml(p.nombre)
+  const titulo = escapeHtml(p.titulo)
   const { fecha, hora } = formatearFechaHoraAR(p.fecha_inicio)
   const contenido = `
-    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">¡Listo, ${p.nombre}! Tu lugar está confirmado</h1>
+    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">¡Listo, ${nombre}! Tu lugar está confirmado</h1>
     <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.65;color:#444651;">
-      Guardá esta fecha — te vamos a estar esperando. Unos minutos antes te mandamos un recordatorio con el link de acceso, pero ya lo tenés acá también.
+      Guardá esta fecha — te vamos a estar esperando. Te vamos a enviar un recordatorio el día anterior y otro 30 minutos antes. El link de acceso ya lo tenés acá.
     </p>
-    ${detalleEvento(p.titulo, fecha, hora, p.duracion_min)}
+    ${detalleEvento(titulo, fecha, hora, p.duracion_min)}
     ${boton('Unirme al webinar', p.url_videoconferencia)}
     ${botonSecundario('Agregar a Google Calendar', p.urlAgendar)}
   `
@@ -120,13 +138,15 @@ export function emailConfirmacionWebinar(p: WebinarEmailBase): string {
 }
 
 export function emailRecordatorio1dWebinar(p: WebinarEmailBase): string {
+  const nombre = escapeHtml(p.nombre)
+  const titulo = escapeHtml(p.titulo)
   const { fecha, hora } = formatearFechaHoraAR(p.fecha_inicio)
   const contenido = `
-    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">Mañana es el webinar, ${p.nombre}</h1>
+    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">Mañana es el webinar, ${nombre}</h1>
     <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.65;color:#444651;">
-      Te escribimos para recordarte que mañana es "${p.titulo}". Dejamos el link de acceso acá para que lo tengas a mano.
+      Te escribimos para recordarte que mañana es "${titulo}". Dejamos el link de acceso acá para que lo tengas a mano.
     </p>
-    ${detalleEvento(p.titulo, fecha, hora, p.duracion_min)}
+    ${detalleEvento(titulo, fecha, hora, p.duracion_min)}
     ${boton('Unirme al webinar', p.url_videoconferencia)}
     ${botonSecundario('Agregar a Google Calendar', p.urlAgendar)}
   `
@@ -134,11 +154,13 @@ export function emailRecordatorio1dWebinar(p: WebinarEmailBase): string {
 }
 
 export function emailRecordatorio30mWebinar(p: WebinarEmailBase): string {
+  const nombre = escapeHtml(p.nombre)
+  const titulo = escapeHtml(p.titulo)
   const { hora } = formatearFechaHoraAR(p.fecha_inicio)
   const contenido = `
-    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">${p.titulo} empieza en 30 minutos</h1>
+    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">${titulo} empieza en 30 minutos</h1>
     <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.65;color:#444651;">
-      Hola ${p.nombre}, en media hora (${hora} hs, Argentina) arrancamos. Te dejamos el link para que entres cuando quieras.
+      Hola ${nombre}, en media hora (${hora} hs, Argentina) arrancamos. Te dejamos el link para que entres cuando quieras.
     </p>
     ${boton('Unirme ahora', p.url_videoconferencia)}
   `
@@ -152,11 +174,13 @@ interface WebinarPostEventoParams {
 }
 
 export function emailPostEventoWebinar(p: WebinarPostEventoParams): string {
+  const nombre = escapeHtml(p.nombre)
+  const titulo = escapeHtml(p.titulo)
   const ctaUrl = `https://www.klia.com.ar/registro?utm_source=webinar&utm_medium=email&utm_campaign=${encodeURIComponent(p.slug)}`
   const contenido = `
-    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">¡Gracias por participar, ${p.nombre}!</h1>
+    <h1 style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;color:#0B1428;letter-spacing:-0.01em;">¡Gracias por participar, ${nombre}!</h1>
     <p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.65;color:#444651;">
-      Esperamos que "${p.titulo}" te haya servido. Si querés seguir ordenando tu consultorio con todo lo que vimos, te invitamos a probar KLIA gratis durante 21 días, sin tarjeta.
+      Esperamos que "${titulo}" te haya servido. Si querés seguir ordenando tu consultorio con todo lo que vimos, te invitamos a probar KLIA gratis durante 21 días, sin tarjeta.
     </p>
     ${boton('Probá KLIA 21 días gratis', ctaUrl)}
   `

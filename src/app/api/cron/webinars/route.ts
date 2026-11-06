@@ -8,6 +8,7 @@ import { urlGoogleCalendar } from '@/lib/webinars/calendario'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 const MAX_ENVIOS_POR_CORRIDA = 200
 const HORA_MS = 60 * 60 * 1000
