@@ -1,8 +1,9 @@
 import { requireAdminUser } from '@/lib/ops/auth'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { zonedDateArgentina } from '@/lib/timezone'
 import PrestadorActions from '@/components/ops/PrestadorActions'
 import PrestadorEditButton from '@/components/ops/PrestadorEditButton'
 import type { EmailLog } from '@/types/database'
@@ -80,16 +81,16 @@ export default async function PrestadorDetallePage({
       label: TIPO_EMAIL_LABEL[tipo],
       cantidad: envios.length,
       abiertos: envios.filter((e) => e.opened_at).length,
-      ultimoEnvio: ultimo ? format(parseISO(ultimo.enviado_at), "d MMM ''yy", { locale: es }) : null,
+      ultimoEnvio: ultimo ? format(zonedDateArgentina(ultimo.enviado_at), "d MMM ''yy", { locale: es }) : null,
     }
   }).filter((e) => e.cantidad > 0)
 
   const lastSesionLabel = lastSesion?.fecha_hora
-    ? format(parseISO(lastSesion.fecha_hora), "d MMM ''yy", { locale: es })
+    ? format(zonedDateArgentina(lastSesion.fecha_hora), "d MMM ''yy", { locale: es })
     : '—'
 
   const lastSignInLabel = lastSignIn
-    ? format(parseISO(lastSignIn as string), 'dd/MM/yy HH:mm', { locale: es })
+    ? format(zonedDateArgentina(lastSignIn as string), 'dd/MM/yy HH:mm', { locale: es })
     : '—'
 
   return (
@@ -126,7 +127,7 @@ export default async function PrestadorDetallePage({
             <dt>Especialidad</dt><dd>{profile.especialidad ?? '—'}</dd>
             <dt>Matrícula</dt><dd>{profile.matricula ?? '—'}</dd>
             <dt>Teléfono</dt><dd>{profile.telefono ?? '—'}</dd>
-            <dt>Registro</dt><dd>{format(parseISO(profile.created_at), "d 'de' MMMM yyyy", { locale: es })}</dd>
+            <dt>Registro</dt><dd>{format(zonedDateArgentina(profile.created_at), "d 'de' MMMM yyyy", { locale: es })}</dd>
             <dt>Último acceso</dt><dd>{lastSignInLabel}</dd>
           </dl>
         </div>
@@ -199,7 +200,7 @@ export default async function PrestadorDetallePage({
               {(turnos ?? []).map((t) => (
                 <tr key={t.id} className="border-b border-outline-variant/5">
                   <td className="px-6 py-3 text-on-surface">
-                    {format(parseISO(t.fecha_hora), "d MMM yyyy HH:mm", { locale: es })}
+                    {format(zonedDateArgentina(t.fecha_hora), "d MMM yyyy HH:mm", { locale: es })}
                   </td>
                   <td className="px-6 py-3 capitalize text-on-surface-variant">{t.estado}</td>
                 </tr>

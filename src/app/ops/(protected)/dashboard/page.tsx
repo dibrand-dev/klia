@@ -178,7 +178,7 @@ export default async function OpsDashboardPage() {
                     </td>
                     <td className="px-6 py-3 text-on-surface-variant">{p.especialidad ?? '—'}</td>
                     <td className="px-6 py-3 text-on-surface-variant whitespace-nowrap">
-                      {format(parseISO(p.created_at), 'd MMM yyyy', { locale: es })}
+                      {format(toZonedTime(parseISO(p.created_at), ARGENTINA_TZ), 'd MMM yyyy', { locale: es })}
                     </td>
                   </tr>
                 ))}
@@ -218,7 +218,7 @@ export default async function OpsDashboardPage() {
                         {PLAN_LABELS[p.plan ?? ''] ?? p.plan ?? '—'}
                       </p>
                       <p className="text-[11px] text-on-surface-variant opacity-60 mt-0.5">
-                        {format(parseISO(p.fecha_pago), "d MMM yyyy", { locale: es })}
+                        {format(toZonedTime(parseISO(p.fecha_pago), ARGENTINA_TZ), "d MMM yyyy", { locale: es })}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-bold text-green-600">

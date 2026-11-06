@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { format, parseISO, differenceInDays } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { zonedDateArgentina } from '@/lib/timezone'
 import type { ProfileWithLastSignIn } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 
@@ -554,10 +555,10 @@ export default function PrestadoresTable({ prestadores, codigoPorProfile = {} }:
                   <EstadoBadge row={p} />
                 </td>
                 <td className="px-3 py-4 text-on-surface-variant whitespace-nowrap">
-                  {format(parseISO(p.created_at), 'dd/MM/yy', { locale: es })}
+                  {format(zonedDateArgentina(p.created_at), 'dd/MM/yy', { locale: es })}
                 </td>
                 <td className="px-3 py-4 text-on-surface-variant whitespace-nowrap">
-                  {p.last_sign_in_at ? format(parseISO(p.last_sign_in_at), 'dd/MM/yy HH:mm') : '—'}
+                  {p.last_sign_in_at ? format(zonedDateArgentina(p.last_sign_in_at), 'dd/MM/yy HH:mm', { locale: es }) : '—'}
                 </td>
                 <td className="px-3 py-4">
                   <RowMenu
