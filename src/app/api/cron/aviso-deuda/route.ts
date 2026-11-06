@@ -3,9 +3,26 @@ import { generarEmailAvisoDeuda } from '@/lib/emails/aviso-deuda'
 import { enviarEmail } from '@/lib/brevo'
 import { verificarCron } from '@/lib/cron-auth'
 import { serviceClient } from '@/lib/supabase/service'
+import { calcularFinSesion, calcularFechaAvisoDeuda, type AvisoDeudaTiming } from '@/lib/avisoDeuda'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+// KL1-T39 — disponible solo en estos planes (Esencial queda afuera).
+const PLANES_HABILITADOS = ['profesional', 'premium', 'bonificado']
+
+type TurnoCandidato = {
+  id: string
+  paciente_id: string
+  fecha_hora: string
+  duracion_min: number
+  fin_real_at: string | null
+  monto: number | null
+  monto_pagado: number | null
+  moneda: string
+  estado_pago: string | null
+  paciente: { os_config_id: string | null } | null
+}
 
 export async function GET(req: NextRequest) {
   if (!verificarCron(req)) {
@@ -13,87 +30,79 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = serviceClient()
+  const ahora = new Date()
 
   const { data: terapeutas } = await supabase
     .from('profiles')
-    .select('id, nombre, apellido, especialidad, email, telefono, matricula, matricula_tipo, matricula_provincia')
-    .eq('aviso_deuda_activo', true)
+    .select('id, nombre, apellido, especialidad, email, telefono, matricula, matricula_tipo, matricula_provincia, plan, aviso_deuda_timing')
+    .neq('aviso_deuda_timing', 'nunca')
+    .in('plan', PLANES_HABILITADOS)
 
   if (!terapeutas?.length) {
     return NextResponse.json({ ok: true, enviados: 0 })
   }
 
-  // Rango: ayer 00:00 - 23:59 en AR
-  const ahoraAR = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }))
-  const ayerAR = new Date(ahoraAR)
-  ayerAR.setDate(ayerAR.getDate() - 1)
-  const ayerDesde = new Date(ayerAR); ayerDesde.setHours(0, 0, 0, 0)
-  const ayerHasta = new Date(ayerAR); ayerHasta.setHours(23, 59, 59, 999)
-  const hoyStr = ahoraAR.toISOString().split('T')[0]
-
   let enviados = 0
 
   for (const terapeuta of terapeutas) {
-    // Buscar turnos realizados ayer sin pagar
-    const { data: turnosAyer } = await supabase
+    const timing = terapeuta.aviso_deuda_timing as AvisoDeudaTiming
+
+    // Candidatas: realizada, no pagada del todo, sin aviso previo. El filtro
+    // particular/obra social y bonificada/saldo real se resuelve abajo en JS
+    // (os_config_id vive en pacientes, no en turnos).
+    const { data } = await supabase
       .from('turnos')
-      .select('paciente_id')
+      .select('id, paciente_id, fecha_hora, duracion_min, fin_real_at, monto, monto_pagado, moneda, estado_pago, paciente:pacientes(os_config_id)')
       .eq('terapeuta_id', terapeuta.id)
-      .gte('fecha_hora', ayerDesde.toISOString())
-      .lte('fecha_hora', ayerHasta.toISOString())
       .eq('estado', 'realizado')
       .eq('pagado', false)
+      .eq('aviso_deuda_enviado', false)
 
-    if (!turnosAyer?.length) continue
+    const turnos = (data ?? []) as unknown as TurnoCandidato[]
+    if (!turnos.length) continue
 
-    // Pacientes únicos con sesión ayer sin pagar
-    const pacientesIds = Array.from(new Set(turnosAyer.map(t => t.paciente_id)))
+    const pacientesCache = new Map<string, { nombre: string; apellido: string; email: string | null }>()
 
-    for (const pacienteId of pacientesIds) {
-      // Verificar que no se envió aviso hoy ya
-      const { data: yaEnviado } = await supabase
-        .from('avisos_deuda_enviados')
+    for (const turno of turnos) {
+      if (turno.paciente?.os_config_id) continue // obra social, no particular
+      if (turno.estado_pago === 'bonificado') continue
+
+      const saldoPendiente = (turno.monto ?? 0) - Math.min(turno.monto_pagado ?? 0, turno.monto ?? 0)
+      if (saldoPendiente <= 0) continue
+
+      const finSesion = calcularFinSesion(turno)
+      const fechaAviso = calcularFechaAvisoDeuda(finSesion, timing)
+      if (!fechaAviso || fechaAviso > ahora) continue
+
+      // Reclamo atómico — mismo patrón que recordatorio_enviado: si otra
+      // corrida ya lo marcó, el update no afecta filas y se salta sin reenviar.
+      const { data: reclamado } = await supabase
+        .from('turnos')
+        .update({ aviso_deuda_enviado: true })
+        .eq('id', turno.id)
+        .eq('aviso_deuda_enviado', false)
         .select('id')
-        .eq('terapeuta_id', terapeuta.id)
-        .eq('paciente_id', pacienteId)
-        .gte('enviado_at', `${hoyStr}T00:00:00`)
-        .maybeSingle()
 
-      if (yaEnviado) continue
+      if (!reclamado?.length) continue
 
-      // Traer datos del paciente
-      const { data: paciente } = await supabase
-        .from('pacientes')
-        .select('nombre, apellido, email')
-        .eq('id', pacienteId)
-        .single()
+      let paciente = pacientesCache.get(turno.paciente_id)
+      if (!paciente) {
+        const { data: pacienteData } = await supabase
+          .from('pacientes')
+          .select('nombre, apellido, email')
+          .eq('id', turno.paciente_id)
+          .single()
+        if (pacienteData) {
+          paciente = pacienteData
+          pacientesCache.set(turno.paciente_id, pacienteData)
+        }
+      }
 
       if (!paciente?.email) continue
 
-      // Traer TODAS las sesiones impagas del paciente (historial completo)
-      const { data: todasImpagas } = await supabase
-        .from('turnos')
-        .select('id, fecha_hora, monto, moneda')
-        .eq('terapeuta_id', terapeuta.id)
-        .eq('paciente_id', pacienteId)
-        .eq('estado', 'realizado')
-        .eq('pagado', false)
-        .order('fecha_hora', { ascending: true })
-
-      if (!todasImpagas?.length) continue
-
       const matriculaFormateada = terapeuta.matricula
-        ? `${(terapeuta as Record<string, unknown>).matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${terapeuta.matricula}${(terapeuta as Record<string, unknown>).matricula_provincia ? ` (${(terapeuta as Record<string, unknown>).matricula_provincia})` : ''}`
+        ? `${terapeuta.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${terapeuta.matricula}${terapeuta.matricula_provincia ? ` (${terapeuta.matricula_provincia})` : ''}`
         : null
-
-      const sesiones = todasImpagas.map(t => ({
-        fecha: new Date(t.fecha_hora).toLocaleDateString('es-AR'),
-        descripcion: 'Sesión',
-        monto: t.monto ?? 0,
-        moneda: (t as Record<string, unknown>).moneda as string ?? 'ARS',
-      }))
-
-      const monedaTotal = sesiones[0]?.moneda ?? 'ARS'
 
       const html = generarEmailAvisoDeuda({
         pacienteNombre: `${paciente.nombre} ${paciente.apellido}`,
@@ -102,27 +111,27 @@ export async function GET(req: NextRequest) {
         profesionalMatricula: matriculaFormateada,
         profesionalEmail: terapeuta.email,
         profesionalTelefono: terapeuta.telefono,
-        sesiones,
-        monedaTotal,
+        sesiones: [{
+          fecha: new Date(turno.fecha_hora).toLocaleDateString('es-AR'),
+          descripcion: 'Sesión',
+          monto: turno.monto ?? 0,
+          moneda: turno.moneda ?? 'ARS',
+        }],
+        monedaTotal: turno.moneda ?? 'ARS',
       })
 
       try {
         await enviarEmail({
           destinatario: paciente.email,
           nombreDestinatario: `${paciente.nombre} ${paciente.apellido}`,
-          asunto: `Recordatorio de sesiones pendientes — ${terapeuta.nombre} ${terapeuta.apellido}`,
+          asunto: `Recordatorio de sesión pendiente — ${terapeuta.nombre} ${terapeuta.apellido}`,
           htmlContent: html,
         })
-
-        await supabase.from('avisos_deuda_enviados').insert({
-          terapeuta_id: terapeuta.id,
-          paciente_id: pacienteId,
-          turno_ids: todasImpagas.map(t => t.id),
-        })
-
         enviados++
       } catch (err) {
         console.error('[cron/aviso-deuda] Error enviando a', paciente.email, err)
+        // Revertir el reclamo para poder reintentar en la próxima corrida.
+        await supabase.from('turnos').update({ aviso_deuda_enviado: false }).eq('id', turno.id)
       }
     }
   }

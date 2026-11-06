@@ -99,6 +99,18 @@ const hintStyle: React.CSSProperties = {
   fontSize: 11.5, color: 'var(--muted-2)',
 }
 
+// KL1-T39 — mismos planes en los que está disponible el aviso de deuda,
+// consultados también server-side en el cron (/api/cron/aviso-deuda).
+const PLANES_AVISO_DEUDA = ['profesional', 'premium', 'bonificado']
+const OPCIONES_AVISO_DEUDA: { value: string; label: string }[] = [
+  { value: 'nunca', label: 'Nunca' },
+  { value: '24h', label: '24 horas después de la sesión' },
+  { value: '48h', label: '48 horas después' },
+  { value: '72h', label: '72 horas después' },
+  { value: '7dias', label: 'A los 7 días' },
+  { value: 'fin_mes', label: 'A fin de mes' },
+]
+
 // ── Section icons ──────────────────────────────────────────────────────
 const icnSvg = (d: string | React.ReactNode) => (
   <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'currentColor', strokeWidth: 1.7, fill: 'none' }}>
@@ -218,6 +230,7 @@ const DIAS_SEMANA_CONFIG = [
 // ── Main component ─────────────────────────────────────────────────────
 export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno, sedes }: Props) {
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
+  const mostrarAvisoDeuda = PLANES_AVISO_DEUDA.includes(profile.plan ?? '')
   const router = useRouter()
   const [activeSection, setActiveSection] = useState('perfil')
   const [multiSede, setMultiSede] = useState(false)
@@ -283,8 +296,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [horarioSaved, setHorarioSaved] = useState(false)
 
   // Aviso de deuda state
-  const [avisoDeuda, setAvisoDeuda] = useState<boolean>(
-    (profile as Record<string, unknown>).aviso_deuda_activo as boolean ?? false
+  const [avisoDeudaTiming, setAvisoDeudaTiming] = useState<string>(
+    (profile as Record<string, unknown>).aviso_deuda_timing as string ?? 'nunca'
   )
   const [avisoDeudaLoading, setAvisoDeudaLoading] = useState(false)
   const [avisoDeudaSaved, setAvisoDeudaSaved] = useState(false)
@@ -477,12 +490,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     router.refresh()
   }
 
-  // ── Aviso de deuda toggle ──────────────────────────────────────────
-  async function handleAvisoDeudaToggle(val: boolean) {
+  // ── Aviso de deuda — cuándo enviarlo ────────────────────────────────
+  async function handleAvisoDeudaTimingChange(val: string) {
     setAvisoDeudaLoading(true)
     const supabase = createClient()
-    await supabase.from('profiles').update({ aviso_deuda_activo: val } as never).eq('id', profile.id)
-    setAvisoDeuda(val)
+    await supabase.from('profiles').update({ aviso_deuda_timing: val } as never).eq('id', profile.id)
+    setAvisoDeudaTiming(val)
     setAvisoDeudaLoading(false)
     setAvisoDeudaSaved(true)
     setTimeout(() => setAvisoDeudaSaved(false), 2000)
@@ -691,7 +704,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'tipos-turno', label: 'Tipos de turno' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'transferencia', label: 'Transferencia bancaria' },
-    { id: 'aviso-deuda', label: 'Aviso de deuda' },
+    ...(mostrarAvisoDeuda ? [{ id: 'aviso-deuda', label: 'Aviso de deuda' }] : []),
     { id: 'politica', label: 'Política de cobros' },
     { id: 'feriados', label: 'Feriados' },
     { id: 'obras', label: 'Obras sociales' },
@@ -1342,31 +1355,39 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             </form>
           </section>
 
-          {/* ═══ AVISO DE DEUDA ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'aviso-deuda' ? ' hidden md:block' : ''}`} id="aviso-deuda" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--warn-soft)', '#B45309')}>
-                {icnSvg(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>)}
+          {mostrarAvisoDeuda && (
+            <section className={`ajustes-sec${activeSection !== 'aviso-deuda' ? ' hidden md:block' : ''}`} id="aviso-deuda" style={secStyle}>
+              <div style={secHdrStyle}>
+                <div style={icnStyle('var(--warn-soft)', '#B45309')}>
+                  {icnSvg(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Aviso de deuda</h2>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Notificá automáticamente a pacientes particulares con sesiones realizadas sin pagar.</p>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Aviso de deuda</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Notificá automáticamente a pacientes con sesiones realizadas sin pagar.</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Cuándo enviar el aviso</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Contado desde el fin de la sesión. Un solo aviso por email por sesión — no aplica a obras sociales, bonificadas, ausencias ni cancelaciones.</div>
+                </div>
+                <select
+                  style={{ ...inputStyle, width: 240, flexShrink: 0 }}
+                  value={avisoDeudaTiming}
+                  onChange={e => handleAvisoDeudaTimingChange(e.target.value)}
+                  disabled={avisoDeudaLoading}
+                >
+                  {OPCIONES_AVISO_DEUDA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Activar aviso automático de deuda</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Se envía al día siguiente a pacientes con sesiones impagas. El email incluye el total histórico pendiente.</div>
-              </div>
-              <Toggle on={avisoDeuda} onChange={() => handleAvisoDeudaToggle(!avisoDeuda)} disabled={avisoDeudaLoading} />
-            </div>
-            {avisoDeudaSaved && (
-              <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                Guardado
-              </span>
-            )}
-          </section>
+              {avisoDeudaSaved && (
+                <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                  Guardado
+                </span>
+              )}
+            </section>
+          )}
 
           {/* ═══ POLÍTICA DE COBROS ═══ */}
           <section className={`ajustes-sec${activeSection !== 'politica' ? ' hidden md:block' : ''}`} id="politica" style={secStyle}>

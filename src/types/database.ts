@@ -63,7 +63,7 @@ export type Database = {
           onboarding_completed: boolean
           onboarding_skipped: boolean
           onboarding_max_step_reached: number
-          aviso_deuda_activo: boolean | null
+          aviso_deuda_timing: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
           tipo_cuenta: string | null
           transferencia_banco: string | null
           transferencia_alias: string | null
@@ -134,7 +134,7 @@ export type Database = {
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
-          aviso_deuda_activo?: boolean | null
+          aviso_deuda_timing?: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
           tipo_cuenta?: string | null
           transferencia_banco?: string | null
           transferencia_alias?: string | null
@@ -205,7 +205,7 @@ export type Database = {
           onboarding_completed?: boolean
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
-          aviso_deuda_activo?: boolean | null
+          aviso_deuda_timing?: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
           tipo_cuenta?: string | null
           transferencia_banco?: string | null
           transferencia_alias?: string | null
@@ -703,6 +703,7 @@ export type Database = {
           pagado: boolean
           motivo_cancelacion: string | null
           recordatorio_enviado: boolean
+          aviso_deuda_enviado: boolean
           serie_recurrente_id: string | null
           google_event_id: string | null
           meet_link: string | null
@@ -740,6 +741,7 @@ export type Database = {
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
+          aviso_deuda_enviado?: boolean
           serie_recurrente_id?: string | null
           google_event_id?: string | null
           meet_link?: string | null
@@ -784,6 +786,7 @@ export type Database = {
           pagado?: boolean
           motivo_cancelacion?: string | null
           recordatorio_enviado?: boolean
+          aviso_deuda_enviado?: boolean
           serie_recurrente_id?: string | null
           google_event_id?: string | null
           meet_link?: string | null
