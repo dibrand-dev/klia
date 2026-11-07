@@ -441,14 +441,10 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-06_
+_Actualizado el 2026-11-07_
 
 ```
-09da17b feat: aviso de sesión impaga configurable por profesional (KL1-T39)
-d637b7a feat: directorio de pacientes ordenado por último modificado
-77b4217 feat: foto del paciente en el directorio para la colaboradora
-ce48f4e feat: foto del paciente en el directorio de pacientes
-d90ed05 feat: foto del paciente en el portal (fase 2) — endpoint, avatar y bottom sheet
-afb0549 feat: foto del paciente en la ficha (fase 1) — endpoints, recorte y SlideOver
-e245d08 docs: CLAUDE.md - commits del dia 2026-11-05
+a8de336 fix: mostrar último acceso en hora Argentina en panel OPS
+cfdaaf0 feat: exportar e imprimir historia clínica (KL1-T40)
+b07a95b docs: CLAUDE.md - commits del dia 2026-11-06
 ```
