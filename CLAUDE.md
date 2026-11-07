@@ -378,6 +378,16 @@ Antes, los tres selectores de obra social (Ajustes → `ObraSocialesConfig.tsx`,
 - **`src/lib/obras-sociales.ts`** — `combinarObrasSociales(...listas)`: junta `obras_sociales` (`validada=true`) con las propias del profesional (`profesional_obras_sociales`/`list` según el selector), sin duplicados (comparación sin mayúsculas/tildes, conserva el primer casing visto) y ordenada alfabéticamente. `OBRAS_SOCIALES`/`salud-ar.ts` ya no se usan como fuente de estos tres selectores (siguen existiendo para otras cosas, ej. `PAISES`).
 - **OPS (`src/components/ops/ObrasSocialesTable.tsx`)** — la tabla de obras sociales activas ahora tiene acción **Eliminar** (SlideOver de confirmación, nunca `window.confirm`), que borra solo la fila de `obras_sociales` — nunca toca `pacientes` ni `profesional_obras_sociales`, porque esas tablas guardan el nombre de la OS como texto propio, no una referencia a esta fila.
 
+## Módulo de Webinars (agregado 2026-11)
+
+Backend de webinars gratuitos publicados en la landing: inscripción pública, ABM en OPS, cron de recordatorios y mails. Tablas `webinars`/`inscripciones_webinar` y bucket `webinar-heroes` — migración `supabase/migrations/021_webinars.sql`.
+
+- **`src/lib/webinars/`** — módulo compartido: `preguntas.ts` (única fuente de verdad de las 4 preguntas fijas de inscripción, iguales para todos los webinars), `validar.ts` (mismas reglas que el cliente de la landing — teléfono `cc + dígitos` de una lista cerrada de códigos de país, email regex, especialidad contra `ESPECIALIDADES`), `estado.ts` (`estadoWebinar()` → `open`/`closed`/`ended` según el reloj, independiente de la columna `estado`), `calendario.ts` (`urlGoogleCalendar()`).
+- **`POST /api/webinars/[slug]/inscribir`** — único endpoint público. CORS restringido a `WEBINAR_ALLOWED_ORIGINS` (env var, lista separada por comas, default `https://www.klia.com.ar`; el origin se refleja solo si está en la lista). Honeypot (`hp`) finge éxito sin insertar ni enviar nada. Rate limit best-effort en memoria por IP (10 req/10 min). Usa `service_role` siempre — `webinars`/`inscripciones_webinar` no tienen GRANT a `anon`/`authenticated` salvo un set acotado de columnas públicas de `webinars` (sin `url_videoconferencia`). Idempotente por `(webinar_id, lower(email))`: una segunda inscripción con el mismo mail no duplica fila, reenvía el mail de confirmación y responde `already:true`.
+  - **Regla dura: `url_videoconferencia` nunca sale por ninguna lectura pública.** El único lugar que la entrega es la respuesta de este endpoint (campo `meet_url`, solo a quien se inscribe) y los mails que recibe esa misma persona — nunca en un listado público de webinars ni en ninguna otra respuesta.
+- **`GET /api/cron/webinars`** (`vercel.json`, `*/15 * * * *`, auth `verificarCron`/`CRON_SECRET`) — recordatorio 24h antes, recordatorio 30min antes, y mail post-evento (CTA a probar KLIA) con reclamo atómico sobre las columnas `*_enviado_at` de `inscripciones_webinar` (mismo patrón que `turnos.recordatorio_enviado`), serie, máx. 200 envíos por corrida, revierte el flag si el envío falla.
+- **OPS** — `/ops/webinars` (entrada en el sidebar debajo de Testimonios), ABM con los mismos componentes/estilos que Testimonios (`SlideOver`, no modal). Imagen hero sube directo desde el browser al bucket `webinar-heroes` (policy de Storage solo para `admin_users` activos vía `auth.email()`). Los `datetime-local` del form se interpretan como hora Argentina (UTC-3 fijo) y se convierten a UTC antes de guardar. `DELETE` rechaza con 409 si el webinar tiene inscriptos (sugiere pasarlo a `cancelado`). Ver inscriptos + exportar CSV (UTF-8 con BOM) con las 4 respuestas desglosadas.
+
 ## Holidays
 - API: nolaborables.com.ar/api/v2/feriados/{año}
 - profiles.feriados_nacionales, profiles.feriados_provinciales (boolean toggles)
@@ -392,6 +402,7 @@ Categories: Laboratorio, Imágenes, Documentos, Otros
 - `0 6 * * *` → /api/cron/bloquear-trials
 - `0 7 * * *` → /api/pagos/vencer
 - `0 12 * * *` → /api/cron/recordatorios (sends reminders for tomorrow's sessions, email + WhatsApp — moved from 09:00 UTC/06:00 ART to 12:00 UTC/09:00 ART so patients don't get a 6am notification; single Vercel cron plan slot shared by both channels)
+- `*/5 * * * *` → /api/cron/webinars (1d/30min reminders + post-event mail for webinar signups — first non-daily cron in this project; plan is Pro, confirmed the deploy accepts this frequency)
 - Auth: accepts `x-vercel-cron: 1` header OR `Authorization: Bearer CRON_SECRET`
 
 ## Environment variables (all set in Vercel)
@@ -403,7 +414,8 @@ NEXT_PUBLIC_APP_URL,
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
 GEMINI_API_KEY, ORCHARD_API_KEY, CRON_SECRET,
 SUPABASE_WEBHOOK_SECRET, PUSHOVER_API_TOKEN, PUSHOVER_USER_KEY,
-WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, WHATSAPP_TOPE_RESPUESTAS_MES
+WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN, WHATSAPP_TOPE_RESPUESTAS_MES,
+WEBINAR_ALLOWED_ORIGINS, REVALIDATE_SECRET
 
 ## Design system
 Custom CSS variables defined in component-level CSS files:
