@@ -17,10 +17,15 @@ function escapeHtml(value: string): string {
 
 function formatearFechaHoraAR(fechaISO: string): { fecha: string; hora: string } {
   const d = new Date(fechaISO)
-  const fecha = d.toLocaleDateString('es-AR', {
+  const fechaCruda = d.toLocaleDateString('es-AR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     timeZone: 'America/Argentina/Buenos_Aires',
   })
+  // Solo la primera letra en mayúscula (ej. "Lunes, 9 de noviembre de 2026")
+  // — toLocaleDateString con weekday:'long' devuelve todo en minúsculas en
+  // es-AR, y un text-transform:capitalize en CSS también mayusculiza cada
+  // palabra después de "de", no solo la inicial del string.
+  const fecha = fechaCruda.charAt(0).toUpperCase() + fechaCruda.slice(1)
   const hora = d.toLocaleTimeString('es-AR', {
     hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires',
   })
@@ -38,7 +43,7 @@ function base(tituloPagina: string, eyebrow: string, contenido: string): string 
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;">
       <tbody><tr><td align="center" style="padding:8px 0 20px 0;">
         <a href="https://app.klia.com.ar" target="_blank" style="text-decoration:none;">
-          <span style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:800;color:#0B1428;letter-spacing:-0.03em;">KLIA</span>
+          <img src="https://app.klia.com.ar/logo-email.png" width="160" height="80" alt="KLIA" style="display:block;border:0;outline:none;text-decoration:none;" />
         </a>
       </td></tr></tbody>
     </table>
@@ -79,7 +84,7 @@ function detalleEvento(tituloSafe: string, fecha: string, hora: string, duracion
       <tbody>
         <tr><td style="padding:16px 18px;">
           <p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#0B1428;">${tituloSafe}</p>
-          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.6;color:#444651;text-transform:capitalize;">${fecha}</p>
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.6;color:#444651;">${fecha}</p>
           <p style="margin:2px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13.5px;line-height:1.6;color:#444651;">${hora} hs (Argentina) · ${duracionMin} min</p>
         </td></tr>
       </tbody>
