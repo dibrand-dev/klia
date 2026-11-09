@@ -4,6 +4,7 @@ export const ESPECIALIDADES = [
   'Cardiología',
   'Cirugía General',
   'Clínica Médica',
+  'Cosmetología',
   'Dermatología',
   'Endocrinología',
   'Estimulación Temprana',
