@@ -2604,11 +2604,247 @@ export type Database = {
         }
         Relationships: []
       }
+      vendedores: {
+        Row: {
+          id: string
+          user_id: string
+          colegio_id: string
+          nombre: string
+          apellido: string
+          email: string
+          comision_pct: number
+          meses_comision: number
+          dias_colchon: number
+          activo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          colegio_id: string
+          nombre: string
+          apellido: string
+          email: string
+          comision_pct?: number
+          meses_comision?: number
+          dias_colchon?: number
+          activo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          colegio_id?: string
+          nombre?: string
+          apellido?: string
+          email?: string
+          comision_pct?: number
+          meses_comision?: number
+          dias_colchon?: number
+          activo?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'vendedores_colegio_id_fkey'
+            columns: ['colegio_id']
+            isOneToOne: false
+            referencedRelation: 'colegios'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      comisiones: {
+        Row: {
+          id: string
+          vendedor_id: string
+          mp_payment_id: string
+          pago_suscripcion_id: string | null
+          terapeuta_id: string | null
+          terapeuta_nombre: string | null
+          mes_numero: number
+          monto_cobrado: number
+          monto_neto: number
+          comision_pct: number
+          monto_comision: number
+          estado: string
+          liquidacion_id: string | null
+          fecha_pago: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          vendedor_id: string
+          mp_payment_id: string
+          pago_suscripcion_id?: string | null
+          terapeuta_id?: string | null
+          terapeuta_nombre?: string | null
+          mes_numero: number
+          monto_cobrado: number
+          monto_neto: number
+          comision_pct: number
+          monto_comision: number
+          estado?: string
+          liquidacion_id?: string | null
+          fecha_pago: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          vendedor_id?: string
+          mp_payment_id?: string
+          pago_suscripcion_id?: string | null
+          terapeuta_id?: string | null
+          terapeuta_nombre?: string | null
+          mes_numero?: number
+          monto_cobrado?: number
+          monto_neto?: number
+          comision_pct?: number
+          monto_comision?: number
+          estado?: string
+          liquidacion_id?: string | null
+          fecha_pago?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'comisiones_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'comisiones_liquidacion_id_fkey'
+            columns: ['liquidacion_id']
+            isOneToOne: false
+            referencedRelation: 'liquidaciones_vendedor'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      liquidaciones_vendedor: {
+        Row: {
+          id: string
+          vendedor_id: string
+          total: number
+          cantidad: number
+          notas: string | null
+          pagada_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          vendedor_id: string
+          total: number
+          cantidad: number
+          notas?: string | null
+          pagada_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          vendedor_id?: string
+          total?: number
+          cantidad?: number
+          notas?: string | null
+          pagada_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'liquidaciones_vendedor_vendedor_id_fkey'
+            columns: ['vendedor_id']
+            isOneToOne: false
+            referencedRelation: 'vendedores'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      vendedor_get_resumen: {
+        Args: Record<string, never>
+        Returns: {
+          registrados: number
+          en_trial: number
+          trials_por_vencer: number
+          pagando: number
+          bloqueados: number
+          comision_mes: number
+          comision_por_cobrar: number
+          comision_liquidable: number
+          comision_liquidada: number
+          proyeccion_mensual: number
+          comision_pct: number
+          meses_comision: number
+        }[]
+      }
+      vendedor_get_clientes: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          nombre: string
+          apellido: string
+          email: string
+          telefono: string | null
+          especialidad: string | null
+          created_at: string
+          last_sign_in_at: string | null
+          estado_cuenta: string
+          plan: string
+          trial_fin: string | null
+          dias_trial_restantes: number | null
+          pacientes: number
+          turnos: number
+          primer_pago: string | null
+          ultimo_pago: string | null
+          mes_comision: number | null
+          comision_generada: number
+        }[]
+      }
+      vendedor_get_comisiones: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          terapeuta_nombre: string | null
+          mes_numero: number
+          fecha_pago: string
+          monto_cobrado: number
+          monto_neto: number
+          monto_comision: number
+          estado: string
+          liquidada_at: string | null
+        }[]
+      }
+      ops_get_vendedores: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          nombre: string
+          apellido: string
+          email: string
+          codigo: string
+          activo: boolean
+          comision_pct: number
+          meses_comision: number
+          dias_colchon: number
+          registrados: number
+          pagando: number
+          comision_por_liquidar: number
+          comision_liquidable: number
+          comision_liquidada: number
+        }[]
+      }
+      ops_liquidar_vendedor: {
+        Args: { p_vendedor_id: string; p_notas?: string | null }
+        Returns:
+          | { success: true; liquidacion_id: string; total: number; cantidad: number }
+          | { success: false; error: 'no_autorizado' | 'vendedor_inexistente' | 'sin_comisiones_liquidables' }
+      }
       get_interconsultas: {
         Args: { p_paciente_id: string }
         Returns: Interconsulta[]
