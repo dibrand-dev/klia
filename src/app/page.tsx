@@ -3,12 +3,16 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { limpiarCookiesSesionDuplicadas } from '@/lib/supabase/cookie-domain'
 
 export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
     async function resolver() {
+      // Antes del fetch a home-redirect: si conviven la cookie de sesión de
+      // www (Domain=.klia.com.ar) y una host-only vieja, el servidor leería la vieja.
+      limpiarCookiesSesionDuplicadas()
       const hash = window.location.hash
       if (hash.includes('access_token')) {
         const params = new URLSearchParams(hash.substring(1))

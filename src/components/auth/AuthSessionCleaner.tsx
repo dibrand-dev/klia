@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { limpiarCookiesSesionDuplicadas } from '@/lib/supabase/cookie-domain'
 
 export function AuthSessionCleaner() {
   useEffect(() => {
+    limpiarCookiesSesionDuplicadas()
     const supabase = createClient()
 
     // Limpiar sesión inválida cuando hay error de refresh token
@@ -16,7 +18,9 @@ export function AuthSessionCleaner() {
           const { data } = await supabase.auth.getSession()
           if (!data.session) {
             // Sign out para limpiar las cookies inválidas
-            await supabase.auth.signOut()
+            // scope 'local': solo limpia este navegador. El default ('global')
+            // revocaba también las sesiones recién creadas en otros dispositivos.
+            await supabase.auth.signOut({ scope: 'local' })
           }
         }
       }

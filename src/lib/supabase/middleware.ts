@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
+import { cookieDomainForHost } from './cookie-domain'
 
 // Bases sin barra final — esRutaPublica() matchea por segmento completo
 // (pathname === base, o pathname.startsWith(base + '/')), nunca por prefijo
@@ -78,6 +79,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   let supabaseResponse = NextResponse.next({ request })
+  const cookieDomain = cookieDomainForHost(request.headers.get('x-forwarded-host') ?? request.headers.get('host'))
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,7 +95,7 @@ export async function updateSession(request: NextRequest) {
           )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, cookieDomain ? { ...options, domain: cookieDomain } : options)
           )
         },
       },
