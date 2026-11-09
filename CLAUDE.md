@@ -453,10 +453,10 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-08_
+_Actualizado el 2026-11-09_
 
 ```
-c0ed75f fix: mails de webinars responsive en mobile
-4cd3cb0 fix: logo y formato de fecha en mails de webinars
-a5659e7 docs: CLAUDE.md - commits del dia 2026-11-07
+a38907f fix: cookie de sesión con Domain=.klia.com.ar en la app (login volvía a /login sin error)
+a01ae0c docs: CLAUDE.md - commits del dia 2026-11-08
+5c71b12 feat: módulo de webinars (OPS, inscripción pública, cron de mails)
 ```
