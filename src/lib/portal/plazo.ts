@@ -20,3 +20,17 @@ export function estaEnPlazo(fecha: string, hora: string | null, ahora: Date): bo
   const horasTranscurridas = (ahora.getTime() - momentoComidaUTC) / 36e5
   return horasTranscurridas <= 48
 }
+
+// Plazo del registro en modo libre (sin plan, o sin comidas de plan ese
+// día): no hay una hora de comida de la que contar 48 h, así que el plazo
+// es fijo por fecha civil — se puede registrar hasta el fin del día
+// SIGUIENTE a `fecha` (23:59:59.999 hora Argentina). Ej.: una comida libre
+// del lunes se puede cargar hasta las 23:59:59 del martes; a partir de las
+// 00:00:00 del miércoles ya quedó fuera de plazo.
+export function estaEnPlazoLibre(fecha: string, ahora: Date): boolean {
+  const [y, m, d] = fecha.split('-').map(Number)
+  // Date.UTC con día `d + 1` normaliza el mes/año automáticamente (cambio de
+  // mes o de año incluido) — mismo truco que sumarDias en semana.ts.
+  const finDelDiaSiguienteUTC = Date.UTC(y, m - 1, d + 1, 23, 59, 59, 999) + AR_OFFSET_MS
+  return ahora.getTime() <= finDelDiaSiguienteUTC
+}

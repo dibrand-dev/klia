@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { estaEnPlazo } from '@/lib/portal/plazo'
+import { estaEnPlazo, estaEnPlazoLibre } from '@/lib/portal/plazo'
 import { procesarFoto, ImagenError, type FotoProcesada } from '@/lib/portal/imagen'
 import { reportarErrorFoto } from '@/lib/portal/telemetria-foto'
 import { useOffline } from '@/lib/portal/useOffline'
@@ -35,9 +35,10 @@ function fechaCortaConHora(iso: string): string {
 }
 
 export interface FilaHoy {
+  clave: string
   tipoComida: string
   hora: string | null
-  planComidaId: string
+  planComidaId: string | null
   estado: 'registrada' | 'pendiente' | 'vencida'
   registro: {
     id: string
@@ -150,7 +151,10 @@ export default function RegistroSheet({
       fd.append('foto', procesado.foto, `foto.${procesado.ext}`)
       fd.append('miniatura', procesado.miniatura, `thumb.${procesado.ext}`)
       fd.append('fecha', fecha)
-      fd.append('comida', fila?.planComidaId ?? '')
+      // En modo libre (sin plan ese día) no hay plan_comida_id — se manda
+      // tipo_comida en su lugar, la comida de la lista fija (ver COMIDAS_LIBRES).
+      if (fila?.planComidaId) fd.append('comida', fila.planComidaId)
+      else fd.append('tipo_comida', fila?.tipoComida ?? '')
       fd.append('comentario', draft?.comentario ?? '')
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return
@@ -220,8 +224,11 @@ export default function RegistroSheet({
     onGuardado()
   }
 
+  // En modo libre (sin plan_comida_id) el plazo no se cuenta desde una hora
+  // de comida — es fijo por fecha civil (ver estaEnPlazoLibre).
+  const enPlazoDet = fila ? (fila.planComidaId ? estaEnPlazo(fecha, fila.hora, new Date()) : estaEnPlazoLibre(fecha, new Date())) : false
   const puedeEditarDet = !!fila?.registro && !fila.registro.fotoVencida
-    && estaEnPlazo(fecha, fila.hora, new Date()) && registroHabilitado && !offline
+    && enPlazoDet && registroHabilitado && !offline
 
   return (
     <>

@@ -70,6 +70,7 @@ function fechaCorta(iso: string) {
 
 type CeldaPlan =
   | { cambiado: true }
+  | { libre: true }
   | { cambiado: false; hora: string | null; nota: string | null; items: { tipo: string; nombre: string; cantidadGramos: number | null }[] }
 
 type Celda =
@@ -619,7 +620,9 @@ function DetalleSlideBody({ detalle, primerNombre, pacienteId, registroHabilitad
           <svg className="rg-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </summary>
         <div className="rg-planbox">
-          {plan.cambiado ? (
+          {'libre' in plan ? (
+            <p style={{ margin: 0, fontSize: 13.5, color: 'var(--muted)' }}>Sin plan asignado — registro libre, sin una comida de plan asociada.</p>
+          ) : plan.cambiado ? (
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--muted)' }}>El plan cambió desde entonces.</p>
           ) : (
             <>

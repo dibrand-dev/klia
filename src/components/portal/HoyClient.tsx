@@ -24,7 +24,7 @@ function horaCorta(iso: string) {
   return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
-type HoyData = { fecha: string; noPlan: boolean; registroHabilitado: boolean; diasRetencion: number | null; diasConComentarioNuevo: string[]; filas: FilaHoy[] }
+type HoyData = { fecha: string; modoLibre: boolean; registroHabilitado: boolean; diasRetencion: number | null; diasConComentarioNuevo: string[]; filas: FilaHoy[] }
 
 async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
@@ -63,7 +63,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
   const [filaAbiertaKey, setFilaAbiertaKey] = useState<string | null>(null)
   const [pantalla, setPantalla] = useState<'cerrado' | 'reg' | 'conf' | 'det'>('cerrado')
   const [reemplazo, setReemplazo] = useState(false)
-  const filaAbierta = data?.filas.find((f) => f.tipoComida === filaAbiertaKey) ?? null
+  const filaAbierta = data?.filas.find((f) => f.clave === filaAbiertaKey) ?? null
 
   const end = sumarDias(hoy, -7 * win)
   const start = sumarDias(end, -6)
@@ -87,7 +87,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
 
   function abrirRegistro(f: FilaHoy) {
     if (offline) { toast('Sin conexión. Probá de nuevo cuando vuelva la señal.'); return }
-    setFilaAbiertaKey(f.tipoComida)
+    setFilaAbiertaKey(f.clave)
     setReemplazo(false)
     setPantalla('reg')
   }
@@ -96,7 +96,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
   // punto en la tira — sin esperar la respuesta de /visto, que se dispara en
   // paralelo y no bloquea la apertura del detalle.
   function abrirDetalle(f: FilaHoy) {
-    setFilaAbiertaKey(f.tipoComida)
+    setFilaAbiertaKey(f.clave)
     setReemplazo(false)
     setPantalla('det')
 
@@ -105,7 +105,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
       setData((prev) => {
         if (!prev) return prev
         const filas = prev.filas.map((fila) => {
-          if (fila.tipoComida !== f.tipoComida || !fila.registro?.comentarioProfesional) return fila
+          if (fila.clave !== f.clave || !fila.registro?.comentarioProfesional) return fila
           return { ...fila, registro: { ...fila.registro, comentarioProfesional: { ...fila.registro.comentarioProfesional, nuevo: false } } }
         })
         const quedaAlgunoNuevo = filas.some((fila) => fila.registro?.comentarioProfesional?.nuevo)
@@ -166,15 +166,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
         </>
       )}
 
-      {!loading && data?.noPlan && (
-        <div className="pp-empty">
-          <div className="pp-ic">{IconDoc}</div>
-          <h3>Tu profesional todavía no te cargó un plan</h3>
-          <p>Cuando {profesionalNombre} lo cargue, vas a ver acá las comidas del día para registrarlas.</p>
-        </div>
-      )}
-
-      {!loading && data && !data.noPlan && total === 0 && (
+      {!loading && data && total === 0 && (
         // Copy provisorio ("No hay comidas indicadas para este día.") — avisado.
         <div className="pp-empty">
           <div className="pp-ic">{IconDoc}</div>
@@ -182,7 +174,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
         </div>
       )}
 
-      {!loading && data && !data.noPlan && total > 0 && (
+      {!loading && data && total > 0 && (
         <>
           {!data.registroHabilitado && (
             <div className="pp-note warn">{IconPause}<span><b>El registro de comidas está pausado.</b> Lo pausó tu profesional. Podés seguir viendo tu plan y tus registros.</span></div>
@@ -200,7 +192,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
               if (f.estado === 'registrada' && f.registro) {
                 const r = f.registro
                 return (
-                  <button type="button" className="pp-mrow" key={f.tipoComida} onClick={() => abrirDetalle(f)}>
+                  <button type="button" className="pp-mrow" key={f.clave} onClick={() => abrirDetalle(f)}>
                     {r.fotoVencida ? (
                       <div className="pp-thumb gone">{IconGone}</div>
                     ) : (
@@ -218,7 +210,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
               }
               if (f.estado === 'pendiente' && data.registroHabilitado) {
                 return (
-                  <button type="button" className="pp-mrow" key={f.tipoComida} onClick={() => abrirRegistro(f)}>
+                  <button type="button" className="pp-mrow" key={f.clave} onClick={() => abrirRegistro(f)}>
                     <div className="pp-thumb pp-cam">{IconCam}</div>
                     <div className="pp-mtx"><b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span></div>
                     <span className="pp-mst">Pendiente</span>
@@ -227,7 +219,7 @@ export default function HoyClient({ pacienteNombre, profesionalNombre }: { pacie
               }
               const pausada = f.estado === 'pendiente' && !data.registroHabilitado
               return (
-                <div className="pp-mrow pp-static" key={f.tipoComida}>
+                <div className="pp-mrow pp-static" key={f.clave}>
                   <div className="pp-thumb pp-cam off">{IconCamOff}</div>
                   <div className="pp-mtx"><b>{f.tipoComida}</b><span>Indicado {f.hora ? f.hora.slice(0, 5) : '—'}</span></div>
                   <span className="pp-mst">{pausada ? 'Pausado' : 'Sin registro'}</span>

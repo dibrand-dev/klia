@@ -4,11 +4,12 @@ import { put, del } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
 import { accesoPrincipal } from '@/lib/portal/acceso'
-import { estaEnPlazo } from '@/lib/portal/plazo'
+import { estaEnPlazo, estaEnPlazoLibre } from '@/lib/portal/plazo'
 import { planVigentePorFecha } from '@/lib/portal/plan-vigente'
 import { diaSemanaKey } from '@/lib/portal/semana'
 import { hoyFechaAR } from '@/lib/tz'
 import { tipoImagenReal } from '@/lib/portal/magic-bytes'
+import { COMIDA_LIBRE_MULTIPLE, esComidaLibre } from '@/lib/portal/comidas-libres'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -62,13 +63,14 @@ export async function POST(req: NextRequest) {
   const fotoFile = form.get('foto')
   const miniaturaFile = form.get('miniatura')
   const fecha = String(form.get('fecha') ?? '')
-  const planComidaId = String(form.get('comida') ?? '')
+  const planComidaId = String(form.get('comida') ?? '') || null
+  const tipoComidaLibreForm = String(form.get('tipo_comida') ?? '') || null
   const comentario = String(form.get('comentario') ?? '').trim().slice(0, 300) || null
 
   if (!(fotoFile instanceof File) || !(miniaturaFile instanceof File)) {
     return NextResponse.json({ error: 'falta_archivo', message: 'Falta la foto o la miniatura.' }, { status: 400 })
   }
-  if (!FECHA_REGEX.test(fecha) || !planComidaId) {
+  if (!FECHA_REGEX.test(fecha) || (!planComidaId && !tipoComidaLibreForm)) {
     return NextResponse.json({ error: 'datos_invalidos', message: 'Faltan datos de la comida.' }, { status: 400 })
   }
   if (fotoFile.size > MAX_FOTO_BYTES || miniaturaFile.size > MAX_THUMB_BYTES) {
@@ -88,35 +90,65 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'tipo_invalido', message: 'El archivo no es una imagen válida.' }, { status: 400 })
   }
 
+  // El modo (plan vs. libre) nunca se confía al cliente — se recalcula acá
+  // igual que en GET /api/portal/hoy: con plan vigente y comidas cargadas
+  // ESE día, se exige `comida` (plan_comida_id); si no, es modo libre y se
+  // exige `tipo_comida` de la lista fija.
   const plan = await planVigentePorFecha(db, principal.pacienteId, principal.terapeutaId, fecha)
-  if (!plan) {
-    return NextResponse.json({ error: 'sin_plan_vigente', message: 'No hay un plan alimentario vigente para esa fecha.' }, { status: 400 })
-  }
-
   const dia = diaSemanaKey(fecha)
-  const { data: comida } = await db
-    .from('plan_comidas')
-    .select('id, hora, tipo_comida')
-    .eq('id', planComidaId)
-    .eq('plan_id', plan.id)
-    .eq('dia_semana', dia)
-    .maybeSingle()
-  if (!comida) {
-    return NextResponse.json({ error: 'comida_no_coincide', message: 'Esta comida ya no está en el plan vigente de esa fecha.' }, { status: 400 })
+  const { data: comidasDelDiaRaw } = plan
+    ? await db.from('plan_comidas').select('id').eq('plan_id', plan.id).eq('dia_semana', dia)
+    : { data: [] as { id: string }[] }
+  const modoLibre = !plan || (comidasDelDiaRaw ?? []).length === 0
+
+  let tipoComida: string
+  let planComidaIdFinal: string | null = null
+
+  if (!modoLibre) {
+    if (!planComidaId) {
+      return NextResponse.json({ error: 'datos_invalidos', message: 'Esta fecha tiene plan alimentario — elegí una comida del plan.' }, { status: 400 })
+    }
+    const { data: comida } = await db
+      .from('plan_comidas')
+      .select('id, hora, tipo_comida')
+      .eq('id', planComidaId)
+      .eq('plan_id', plan!.id)
+      .eq('dia_semana', dia)
+      .maybeSingle()
+    if (!comida) {
+      return NextResponse.json({ error: 'comida_no_coincide', message: 'Esta comida ya no está en el plan vigente de esa fecha.' }, { status: 400 })
+    }
+    if (!estaEnPlazo(fecha, comida.hora, new Date())) {
+      return NextResponse.json({ error: 'fuera_de_plazo', message: 'Ya pasaron más de 48 h desde esta comida.' }, { status: 403 })
+    }
+    tipoComida = comida.tipo_comida
+    planComidaIdFinal = comida.id
+  } else {
+    if (!tipoComidaLibreForm || !esComidaLibre(tipoComidaLibreForm)) {
+      return NextResponse.json({ error: 'tipo_comida_invalido', message: 'Elegí una comida válida.' }, { status: 400 })
+    }
+    if (!estaEnPlazoLibre(fecha, new Date())) {
+      return NextResponse.json({ error: 'fuera_de_plazo', message: 'Ya pasó el plazo para registrar esta fecha.' }, { status: 403 })
+    }
+    tipoComida = tipoComidaLibreForm
   }
 
-  if (!estaEnPlazo(fecha, comida.hora, new Date())) {
-    return NextResponse.json({ error: 'fuera_de_plazo', message: 'Ya pasaron más de 48 h desde esta comida.' }, { status: 403 })
-  }
+  const esColacionLibre = modoLibre && tipoComida === COMIDA_LIBRE_MULTIPLE
 
-  const { data: existenteRaw } = await db
-    .from('portal_registros')
-    .select('id, foto_path, foto_thumb_path')
-    .eq('paciente_id', principal.pacienteId)
-    .eq('fecha_local', fecha)
-    .eq('plan_comida_id', planComidaId)
-    .maybeSingle()
-  let existente = existenteRaw as RegistroExistente | null
+  // Busca un registro existente para reemplazar — mismo criterio que el
+  // índice único real de cada caso: (paciente, fecha, plan_comida_id) en
+  // modo plan; (paciente, fecha, tipo_comida) con plan_comida_id null en
+  // modo libre no-Colación (portal_registros_slot_libre_uq). Colación nunca
+  // busca: cada foto es un registro nuevo, puede haber varias por día.
+  let existente: RegistroExistente | null = null
+  if (!esColacionLibre) {
+    let q = db.from('portal_registros').select('id, foto_path, foto_thumb_path')
+      .eq('paciente_id', principal.pacienteId)
+      .eq('fecha_local', fecha)
+    q = modoLibre ? q.is('plan_comida_id', null).eq('tipo_comida', tipoComida) : q.eq('plan_comida_id', planComidaIdFinal)
+    const { data: existenteRaw } = await q.maybeSingle()
+    existente = existenteRaw as RegistroExistente | null
+  }
 
   // Pathname versionado (timestamp): cada subida —incluso un reemplazo del
   // mismo registro— queda en un blob nuevo, así el cliente puede romper el
@@ -133,8 +165,8 @@ export async function POST(req: NextRequest) {
   const filaBase = {
     paciente_id: principal.pacienteId,
     terapeuta_id: principal.terapeutaId,
-    plan_comida_id: planComidaId,
-    tipo_comida: comida.tipo_comida,
+    plan_comida_id: planComidaIdFinal,
+    tipo_comida: tipoComida,
     fecha_local: fecha,
     registrado_at: new Date().toISOString(),
     foto_path: fotoPath,
@@ -153,17 +185,17 @@ export async function POST(req: NextRequest) {
     }
   } else {
     const { error } = await db.from('portal_registros').insert({ id: registroId, ...filaBase })
-    if (error?.code === '23505') {
-      // Carrera: otro request insertó primero (mismo paciente+fecha+comida).
-      // Nos "convertimos" en un reemplazo de ESA fila — nunca creamos dos
-      // registros para el mismo slot.
-      const { data: ganador } = await db
-        .from('portal_registros')
-        .select('id, foto_path, foto_thumb_path')
+    if (error?.code === '23505' && !esColacionLibre) {
+      // Carrera: otro request insertó primero el mismo slot (mismo
+      // paciente+fecha+comida, o paciente+fecha+tipo_comida libre). Nos
+      // "convertimos" en un reemplazo de ESA fila — nunca creamos dos
+      // registros para el mismo slot. Colación nunca puede chocar: cada
+      // insert es un registro nuevo e independiente.
+      let qGanador = db.from('portal_registros').select('id, foto_path, foto_thumb_path')
         .eq('paciente_id', principal.pacienteId)
         .eq('fecha_local', fecha)
-        .eq('plan_comida_id', planComidaId)
-        .maybeSingle()
+      qGanador = modoLibre ? qGanador.is('plan_comida_id', null).eq('tipo_comida', tipoComida) : qGanador.eq('plan_comida_id', planComidaIdFinal)
+      const { data: ganador } = await qGanador.maybeSingle()
       if (!ganador) {
         console.error('[portal/registros] conflicto de unicidad sin fila ganadora')
         return NextResponse.json({ error: 'error_guardado', message: 'No pudimos guardar el registro.' }, { status: 500 })
