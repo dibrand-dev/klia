@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import SlideOver from '@/components/ui/SlideOver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -16,6 +16,95 @@ interface Props {
 
 function moneda(n: number): string {
   return `$${n.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
+}
+
+// Menú de 3 puntos por fila — mismo patrón de PacienteHeader.tsx (botón +
+// popover anclado, cierre por click afuera/Esc), pero con las clases
+// Tailwind/variables del resto de OPS en vez del CSS propio de esa pantalla.
+function MenuAcciones({ vendedor, onEditar, onCambiarEstado, onLiquidar }: {
+  vendedor: VendedorOps
+  onEditar: () => void
+  onCambiarEstado: () => void
+  onLiquidar: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    if (open) {
+      document.addEventListener('click', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.removeEventListener('click', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  const puedeLiquidar = vendedor.comision_liquidable > 0
+
+  return (
+    <div className="relative inline-block text-left" ref={ref}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Más acciones"
+        onClick={() => setOpen((v) => !v)}
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors"
+      >
+        <span className="material-symbols-outlined text-xl">more_vert</span>
+      </button>
+
+      {open && (
+        <div role="menu" className="absolute right-0 mt-1 w-48 bg-white rounded-xl border border-outline-variant/20 shadow-lg py-1 z-10">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); onEditar() }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
+          >
+            <span className="material-symbols-outlined text-base text-on-surface-variant">edit</span>
+            Editar
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setOpen(false); onCambiarEstado() }}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+              vendedor.activo ? 'text-red-600 hover:bg-red-50' : 'text-on-surface hover:bg-surface-container-low'
+            )}
+          >
+            <span className={cn('material-symbols-outlined text-base', vendedor.activo ? 'text-red-600' : 'text-on-surface-variant')}>
+              {vendedor.activo ? 'block' : 'check_circle'}
+            </span>
+            {vendedor.activo ? 'Suspender' : 'Reactivar'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { if (!puedeLiquidar) return; setOpen(false); onLiquidar() }}
+            disabled={!puedeLiquidar}
+            title={!puedeLiquidar ? 'No hay comisiones liquidables todavía' : undefined}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+              puedeLiquidar ? 'text-on-surface hover:bg-surface-container-low' : 'text-on-surface-variant opacity-50 cursor-not-allowed'
+            )}
+          >
+            <span className="material-symbols-outlined text-base text-on-surface-variant">payments</span>
+            Liquidar
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function AltaVendedorForm({ colegios, open, onClose, onSaved }: {
@@ -372,24 +461,12 @@ export default function VendedoresClient({ vendedoresIniciales, colegiosDisponib
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <button onClick={() => setEditando(v)} className="text-primary hover:underline text-sm font-medium">
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => { setCambiandoEstadoError(null); setCambiandoEstado(v) }}
-                      className={cn('hover:underline text-sm font-medium', v.activo ? 'text-red-600' : 'text-green-700')}
-                    >
-                      {v.activo ? 'Suspender' : 'Reactivar'}
-                    </button>
-                    <button
-                      onClick={() => setLiquidando(v)}
-                      disabled={v.comision_liquidable <= 0}
-                      className={cn('text-primary hover:underline text-sm font-medium', v.comision_liquidable <= 0 && 'opacity-40 cursor-not-allowed hover:no-underline')}
-                    >
-                      Liquidar
-                    </button>
-                  </div>
+                  <MenuAcciones
+                    vendedor={v}
+                    onEditar={() => setEditando(v)}
+                    onCambiarEstado={() => { setCambiandoEstadoError(null); setCambiandoEstado(v) }}
+                    onLiquidar={() => setLiquidando(v)}
+                  />
                 </td>
               </tr>
             ))}

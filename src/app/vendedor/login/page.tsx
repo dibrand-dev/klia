@@ -17,12 +17,18 @@ export default function VendedorLoginPage() {
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
+    // Mensaje único para credenciales inválidas y cuenta suspendida (Supabase
+    // devuelve el mismo error de credenciales para ambos casos, ya que una
+    // cuenta "baneada" rechaza el signInWithPassword) — no se diferencia a
+    // propósito, para no revelar si el email existe o si está suspendido.
+    const MENSAJE_GENERICO = 'No pudimos ingresar. Revisá tus datos o contactá a soporte en hola@klia.com.ar'
+
     if (authError || !user) {
       console.error('[vendedor/login] signInWithPassword error:', authError)
       if (authError?.status === 429 || authError?.code === 'over_request_rate_limit') {
         setError('Demasiados intentos de inicio de sesión. Esperá unos minutos y volvé a intentar.')
       } else {
-        setError('Email o contraseña incorrectos.')
+        setError(MENSAJE_GENERICO)
       }
       setLoading(false)
       return
@@ -32,7 +38,7 @@ export default function VendedorLoginPage() {
 
     if (resumenError) {
       await supabase.auth.signOut()
-      setError('No tenés acceso al panel de vendedores.')
+      setError(MENSAJE_GENERICO)
       setLoading(false)
       return
     }
