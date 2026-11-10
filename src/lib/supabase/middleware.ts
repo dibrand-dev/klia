@@ -26,6 +26,7 @@ const PUBLIC_ROUTES = [
   '/privacidad',
   '/colaboradora/activar',
   '/turno',
+  '/vendedor/login',
   // '/cuenta-bloqueada' NO va acá (antes sí estaba): tiene que pasar por la
   // Capa 1 para que una cuenta de paciente la redirija a /portal en vez de
   // poder verla (no tiene "estado_cuenta bloqueada" — ese concepto es
@@ -154,6 +155,19 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Capa 1 — misma lógica que la de paciente arriba, para cuentas de
+  // vendedor (panel de comisiones de colegios/vendedores). Igual que ahí,
+  // se decide solo por app_metadata (nunca user_metadata).
+  if (user?.app_metadata?.tipo_cuenta === 'vendedor') {
+    const permitido = pathname.startsWith('/vendedor') || pathname.startsWith('/auth/') || pathname === '/logout'
+    if (!permitido) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/vendedor'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+  }
+
   // /auth/* routes handle their own authentication internally
   if (pathname.startsWith('/auth/')) {
     return supabaseResponse
@@ -161,6 +175,19 @@ export async function updateSession(request: NextRequest) {
 
   // /ops routes have their own admin auth guard (requireAdminUser) — skip profile checks
   if (pathname.startsWith('/ops/') && !pathname.startsWith('/ops/login')) {
+    return supabaseResponse
+  }
+
+  // /vendedor routes (salvo login, ya público arriba) tienen su propio guard
+  // (requireVendedor) — a diferencia de /ops, acá sí chequeamos user en el
+  // middleware mismo: sin sesión, directo a /vendedor/login.
+  if (pathname === '/vendedor' || pathname.startsWith('/vendedor/')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/vendedor/login'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
     return supabaseResponse
   }
 
@@ -184,7 +211,7 @@ export async function updateSession(request: NextRequest) {
   // Lista permitida explícita de las rutas que SÍ necesitan este chequeo —
   // las que quedan afuera (api, ops, cuenta-bloqueada, auth) ya resuelven su
   // propia autenticación por su cuenta, arriba o en su propio código.
-  const RUTAS_CON_GUARD_PROPIO = ['/api/', '/ops/', '/cuenta-bloqueada']
+  const RUTAS_CON_GUARD_PROPIO = ['/api/', '/ops/', '/cuenta-bloqueada', '/vendedor/']
   const necesitaChequeoDePerfil = !isAuthRoute && !RUTAS_CON_GUARD_PROPIO.some((p) => pathname.startsWith(p))
 
   if (user && necesitaChequeoDePerfil) {
