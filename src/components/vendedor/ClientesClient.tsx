@@ -4,12 +4,11 @@ import { useMemo, useState } from 'react'
 import type { Database } from '@/types/database'
 import type { VendedorPerfil } from '@/lib/vendedor/auth'
 import VSlideOver from './VSlideOver'
-import { IconLink, IconMail, IconSearch, IconShare, IconWa, IconX, IconLock } from '@/app/vendedor/icons'
+import { IconMail, IconSearch, IconShare, IconWa, IconX, IconLock } from '@/app/vendedor/icons'
 import {
   money, fd, rel, iniciales, nombreCompleto, diasLabel, diasClase, colorAvatar,
   estadoCliente, ESTADO_LABEL, waUrl, mailUrl, type EstadoCliente,
 } from '@/app/vendedor/utils'
-import { useToast, copiarAlPortapapeles } from '@/app/vendedor/Toast'
 
 type Resumen = Database['public']['Functions']['vendedor_get_resumen']['Returns'][number]
 type Cliente = Database['public']['Functions']['vendedor_get_clientes']['Returns'][number]
@@ -59,7 +58,6 @@ function ContactoBtns({ c }: { c: Cliente }) {
 }
 
 export default function ClientesClient({ clientes, perfil, resumen, filtroInicial }: Props) {
-  const toast = useToast()
   const [filtro, setFiltro] = useState<EstadoCliente | 'todos'>((filtroInicial as EstadoCliente) ?? 'todos')
   const [busq, setBusq] = useState('')
   const [seleccionado, setSeleccionado] = useState<Cliente | null>(null)
@@ -83,7 +81,7 @@ export default function ClientesClient({ clientes, perfil, resumen, filtroInicia
     return (
       <>
         <Header perfil={perfil} />
-        <EmptyShare perfil={perfil} toast={toast} />
+        <EmptyShare />
       </>
     )
   }
@@ -187,19 +185,12 @@ function Header({ perfil }: { perfil: VendedorPerfil | null }) {
   )
 }
 
-function EmptyShare({ perfil, toast }: { perfil: VendedorPerfil | null; toast: (m: string) => void }) {
+function EmptyShare() {
   return (
     <div className="blank">
       <div className="ic"><IconShare width={23} height={23} stroke="var(--accent-ink)" strokeWidth={1.7} fill="none" /></div>
       <h3>Tu primer cliente está a un mensaje de distancia</h3>
-      <p>{perfil?.codigo ? <>Compartí tu código <em>{perfil.codigo}</em> o tu link de registro.</> : 'Compartí tu link de registro.'}</p>
-      {perfil?.link && (
-        <div className="acts">
-          <button type="button" className="btn primary lg" onClick={() => copiarAlPortapapeles(perfil.link!, toast, 'Link de registro copiado')}>
-            <IconLink width={14} height={14} stroke="white" strokeWidth={1.8} fill="none" />Copiar link de registro
-          </button>
-        </div>
-      )}
+      <p>Compartí tu código con los profesionales. Lo ingresan al configurar su cuenta (paso de onboarding) o en Ajustes &gt; Suscripción, y obtienen su descuento.</p>
     </div>
   )
 }

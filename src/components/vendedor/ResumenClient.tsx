@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { Database } from '@/types/database'
 import type { VendedorPerfil } from '@/lib/vendedor/auth'
-import { IconCheck, IconCopy, IconLink, IconMail, IconShare, IconWa } from '@/app/vendedor/icons'
+import { IconCheck, IconCopy, IconMail, IconShare, IconWa } from '@/app/vendedor/icons'
 import { money, fds, rel, iniciales, nombreCompleto, diasLabel, diasClase, waUrl, mailUrl } from '@/app/vendedor/utils'
 import { useToast, copiarAlPortapapeles } from '@/app/vendedor/Toast'
 
@@ -41,7 +41,7 @@ export default function ResumenClient({ resumen, clientes, perfil }: Props) {
     return (
       <>
         <Header perfil={perfil} nombre={nombre} toast={toast} />
-        <EmptyShare perfil={perfil} toast={toast} />
+        <EmptyShare />
       </>
     )
   }
@@ -148,43 +148,19 @@ function Header({ perfil, nombre, toast }: { perfil: VendedorPerfil | null; nomb
             </button>
           </span>
         )}
-        {perfil?.link && (
-          <button type="button" className="btn primary lg" onClick={() => copiarAlPortapapeles(perfil.link!, toast, 'Link de registro copiado')}>
-            <IconLink width={14} height={14} stroke="white" strokeWidth={1.8} fill="none" />Copiar link de registro
-          </button>
-        )}
       </div>
     </div>
   )
 }
 
-function EmptyShare({ perfil, toast }: { perfil: VendedorPerfil | null; toast: (m: string) => void }) {
-  const codigo = perfil?.codigo
-  const link = perfil?.link
-  const descuento = perfil?.descuentoPct
+function EmptyShare() {
   return (
     <div className="blank">
       <div className="ic"><IconShare width={23} height={23} stroke="var(--accent-ink)" strokeWidth={1.7} fill="none" /></div>
       <h3>Tu primer cliente está a un mensaje de distancia</h3>
-      <p>
-        {codigo ? <>Compartí tu código <em>{codigo}</em>.</> : 'Compartí tu link de registro.'}
-        {' '}{descuento != null && <>Quien se registre con él tiene <em>{descuento}% de descuento</em>, </>}
-        y vos ganás una comisión por lo que pague cada mes.
-      </p>
-      <div className="acts">
-        {link && (
-          <>
-            <button type="button" className="btn primary lg" onClick={() => copiarAlPortapapeles(link, toast, 'Link de registro copiado')}>
-              <IconLink width={14} height={14} stroke="white" strokeWidth={1.8} fill="none" />Copiar link de registro
-            </button>
-            <a className="btn wa lg" href={`https://wa.me/?text=${encodeURIComponent(`Te recomiendo KLIA para manejar tu agenda, cobros e historias clínicas. Registrate con mi link: ${link}`)}`} target="_blank" rel="noopener noreferrer">
-              <IconWa width={14} height={14} />Compartir por WhatsApp
-            </a>
-          </>
-        )}
-      </div>
+      <p>Compartí tu código con los profesionales. Lo ingresan al configurar su cuenta (paso de onboarding) o en Ajustes &gt; Suscripción, y obtienen su descuento.</p>
       <div className="steps">
-        <div><span className="n">1</span><span><b>Mandá tu link</b>Por WhatsApp, Instagram o email.</span></div>
+        <div><span className="n">1</span><span><b>Compartí tu código</b>Por WhatsApp, Instagram o email.</span></div>
         <div><span className="n">2</span><span><b>Prueban 21 días gratis</b>Vas a ver cuándo se registran y cuándo vence la prueba.</span></div>
         <div><span className="n">3</span><span><b>Cobrás tu comisión</b>Desde el primer pago, todos los meses.</span></div>
       </div>

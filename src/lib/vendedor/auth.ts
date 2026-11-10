@@ -12,7 +12,6 @@ export interface VendedorPerfil {
   apellido: string
   email: string
   codigo: string | null
-  link: string | null
   diasColchon: number | null
   descuentoPct: number | null
 }
@@ -51,12 +50,11 @@ function serviceClient() {
   )
 }
 
-// Datos propios del vendedor que ninguna RPC devuelve (código, link de
-// registro, días de colchón) — `vendedores` tiene RLS sin policies, así que
-// se leen con el service client, igual que en los endpoints de OPS. El
-// código nunca se guarda en `vendedores`: se deriva del código de
-// descuento más antiguo de su colegio, mismo criterio que usa
-// `ops_get_vendedores()` en la base.
+// Datos propios del vendedor que ninguna RPC devuelve (código, días de
+// colchón) — `vendedores` tiene RLS sin policies, así que se leen con el
+// service client, igual que en los endpoints de OPS. El código nunca se
+// guarda en `vendedores`: se deriva del código de descuento más antiguo de
+// su colegio, mismo criterio que usa `ops_get_vendedores()` en la base.
 export async function getPerfil(): Promise<VendedorPerfil | null> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -88,9 +86,6 @@ export async function getPerfil(): Promise<VendedorPerfil | null> {
     apellido: (user.user_metadata?.apellido as string | undefined) ?? '',
     email: user.email ?? '',
     codigo,
-    // No podemos confirmar si la landing (klia-landing, otro repo) lee este
-    // query param — es el criterio estándar (?ref=) hasta confirmarlo ahí.
-    link: codigo ? `https://www.klia.com.ar/registro?ref=${encodeURIComponent(codigo)}` : null,
     diasColchon: vendedor?.dias_colchon ?? null,
     descuentoPct,
   }
