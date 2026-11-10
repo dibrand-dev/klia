@@ -13,6 +13,11 @@ export const runtime = 'nodejs'
 
 const SEMANAS_ATRAS_MAX = 12
 
+type CeldaPlanOut =
+  | { cambiado: true }
+  | { libre: true }
+  | { cambiado: false; hora: string | null; nota: string | null; items: { tipo: string; nombre: string; cantidadGramos: number | null }[] }
+
 type ItemRow = {
   id: string
   tipo: string
@@ -226,6 +231,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       if (registro) {
         total++; hechas++
         const comidaHistorica = registro.plan_comida_id ? comidaPorId.get(registro.plan_comida_id) ?? null : null
+        // plan_comida_id null = registro libre (sin plan ese día), nunca "el
+        // plan cambió" — eso solo aplica cuando SÍ tenía un plan_comida_id
+        // pero esa fila de plan ya no existe (se editó/borró el plan).
+        const plan: CeldaPlanOut = comidaHistorica
+          ? { cambiado: false, hora: comidaHistorica.hora, nota: comidaHistorica.nota, items: itemsResueltosPorComida.get(comidaHistorica.id) ?? [] }
+          : registro.plan_comida_id
+            ? { cambiado: true }
+            : { libre: true }
         return {
           estado: 'registro' as const,
           registro: {
@@ -236,9 +249,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             fotoVersion: new Date(registro.updated_at).getTime(),
             comentarioProfesional: armarComentarioProfesional(registro, nombreAutor(registro.comentario_profesional_por)),
           },
-          plan: comidaHistorica
-            ? { cambiado: false as const, hora: comidaHistorica.hora, nota: comidaHistorica.nota, items: itemsResueltosPorComida.get(comidaHistorica.id) ?? [] }
-            : { cambiado: true as const },
+          plan,
         }
       }
 
