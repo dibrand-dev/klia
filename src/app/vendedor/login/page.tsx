@@ -2,12 +2,42 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { IconAlert, IconBack, IconEye, IconMail } from '../icons'
+
+const MENSAJE_GENERICO = 'No pudimos ingresar. Revisá tus datos o contactá a soporte en hola@klia.com.ar'
+
+type Vista = 'login' | 'recuperar' | 'enviado'
+
+function LgShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="lg-split">
+      <section className="lg-pane">
+        <div className="lg-in">
+          <img src="/logo.svg" alt="Klia" className="logo" />
+          {children}
+        </div>
+        <p className="lg-foot">© {new Date().getFullYear()} KLIA · <a href="https://www.klia.com.ar/privacidad" target="_blank" rel="noopener noreferrer">Privacidad</a></p>
+      </section>
+      <aside className="lg-art" aria-hidden="true">
+        <img src="/vendedor-login.jpg" alt="" />
+      </aside>
+    </div>
+  )
+}
 
 export default function VendedorLoginPage() {
+  const [vista, setVista] = useState<Vista>('login')
+  const [emailEnviado, setEmailEnviado] = useState('')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [recEmail, setRecEmail] = useState('')
+  const [recLoading, setRecLoading] = useState(false)
+  const [recError, setRecError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -21,8 +51,6 @@ export default function VendedorLoginPage() {
     // devuelve el mismo error de credenciales para ambos casos, ya que una
     // cuenta "baneada" rechaza el signInWithPassword) — no se diferencia a
     // propósito, para no revelar si el email existe o si está suspendido.
-    const MENSAJE_GENERICO = 'No pudimos ingresar. Revisá tus datos o contactá a soporte en hola@klia.com.ar'
-
     if (authError || !user) {
       console.error('[vendedor/login] signInWithPassword error:', authError)
       if (authError?.status === 429 || authError?.code === 'over_request_rate_limit') {
@@ -46,50 +74,94 @@ export default function VendedorLoginPage() {
     window.location.href = '/vendedor'
   }
 
-  return (
-    <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-md p-8">
-        <h1 className="text-xl font-bold text-[#001a48] mb-1">Panel de vendedores</h1>
-        <p className="text-sm text-slate-500 mb-6">Acceso exclusivo para vendedores de KLIA</p>
+  async function handleRecSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!recEmail.includes('@')) {
+      setRecError('Ingresá un email válido.')
+      return
+    }
+    setRecLoading(true)
+    setRecError(null)
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#001a48]"
-            />
+    await fetch('/api/vendedor/recuperar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: recEmail.trim() }),
+    }).catch(() => {})
+
+    setEmailEnviado(recEmail.trim())
+    setRecLoading(false)
+    setVista('enviado')
+  }
+
+  if (vista === 'enviado') {
+    return (
+      <LgShell>
+        <div className="lg-ok"><IconMail width={21} height={21} stroke="var(--ok)" strokeWidth={1.8} fill="none" /></div>
+        <h1>Revisá tu email</h1>
+        <p className="sub">Si <b>{emailEnviado}</b> está registrado con Acceso Comercial, te enviamos un link para crear una contraseña nueva. Vence en 60 minutos.</p>
+        <button type="button" className="btn primary lg-btn" onClick={() => setVista('login')}>Volver a ingresar</button>
+        <p className="lg-alt">¿No te llegó? Revisá spam o escribinos a <a href="mailto:hola@klia.com.ar">hola@klia.com.ar</a>.</p>
+      </LgShell>
+    )
+  }
+
+  if (vista === 'recuperar') {
+    return (
+      <LgShell>
+        <button type="button" className="lg-back" onClick={() => setVista('login')}>
+          <IconBack width={15} height={15} stroke="currentColor" strokeWidth={1.8} fill="none" />Volver
+        </button>
+        <h1>Recuperá tu contraseña</h1>
+        <p className="sub">Ingresá el email con el que entrás al panel y te mandamos un link para crear una nueva.</p>
+        <form onSubmit={handleRecSubmit} noValidate>
+          <div className={`af${recError ? ' err' : ''}`}>
+            <label htmlFor="rc-e">Email</label>
+            <input id="rc-e" type="email" autoComplete="email" placeholder="tu@email.com" value={recEmail} onChange={e => setRecEmail(e.target.value)} disabled={recLoading} />
+            {recError && <span className="ferr">{recError}</span>}
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#001a48]"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#001a48] text-white font-medium py-2.5 rounded-lg text-sm hover:bg-[#002d72] transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Ingresando...' : 'Ingresar'}
+          <button type="submit" className="btn primary lg-btn" disabled={recLoading}>
+            {recLoading ? <><span className="spin" />Enviando…</> : 'Enviar link'}
           </button>
         </form>
-      </div>
-    </div>
+      </LgShell>
+    )
+  }
+
+  return (
+    <LgShell>
+      <h1>Acceso Comercial</h1>
+      <p className="sub">Ingresá con tu email y contraseña para ver tus clientes y comisiones.</p>
+      {error && (
+        <div className="alert-box" role="alert">
+          <IconAlert width={16} height={16} stroke="currentColor" strokeWidth={1.8} fill="none" />
+          <div><b>{error}</b></div>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="af">
+          <label htmlFor="lg-e">Email</label>
+          <input id="lg-e" type="email" autoComplete="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} />
+        </div>
+        <div className="af">
+          <label htmlFor="lg-p">Contraseña</label>
+          <div className="iw">
+            <input
+              id="lg-p" className="pw" type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+              placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={loading}
+            />
+            <button type="button" className="eye" aria-label="Mostrar contraseña" onClick={() => setShowPassword(v => !v)}>
+              <IconEye width={15} height={15} stroke="var(--muted)" strokeWidth={1.7} fill="none" />
+            </button>
+          </div>
+        </div>
+        <div className="lg-row">
+          <button type="button" onClick={() => setVista('recuperar')}>Olvidé mi contraseña</button>
+        </div>
+        <button type="submit" className="btn primary lg-btn" disabled={loading}>
+          {loading ? <><span className="spin" />Ingresando…</> : 'Ingresar'}
+        </button>
+      </form>
+    </LgShell>
   )
 }

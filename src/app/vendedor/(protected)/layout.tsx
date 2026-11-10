@@ -1,6 +1,16 @@
-import { requireVendedor } from '@/lib/vendedor/auth'
+import { requireVendedor, getPerfil } from '@/lib/vendedor/auth'
+import VendedorShell from '@/components/vendedor/VendedorShell'
+import { ToastProvider } from '@/app/vendedor/Toast'
 
-export default async function VendedorLayout({ children }: { children: React.ReactNode }) {
+export default async function VendedorProtectedLayout({ children }: { children: React.ReactNode }) {
   await requireVendedor()
-  return <>{children}</>
+  const perfil = await getPerfil()
+
+  return (
+    <ToastProvider>
+      <VendedorShell nombre={perfil?.nombre ?? ''} apellido={perfil?.apellido ?? ''} email={perfil?.email ?? ''}>
+        {children}
+      </VendedorShell>
+    </ToastProvider>
+  )
 }

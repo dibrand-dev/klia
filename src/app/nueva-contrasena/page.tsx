@@ -52,7 +52,8 @@ export default function NuevaContrasenaPage() {
       const supabase = createClient()
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
-      router.push('/dashboard')
+      const { data: { user } } = await supabase.auth.getUser()
+      router.push(user?.app_metadata?.tipo_cuenta === 'vendedor' ? '/vendedor' : '/dashboard')
     } catch {
       setError('No se pudo actualizar la contraseña. El link puede haber expirado.')
       setLoading(false)
