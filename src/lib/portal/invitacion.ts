@@ -7,10 +7,18 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
 const LOGO_URL = 'https://app.klia.com.ar/logo-email.png'
 
 type ResultadoInvitacion =
-  | { ok: true }
+  | { ok: true; emailEnviado?: boolean }
   | { ok: false; status: number; error: string; message?: string }
 
 const EMAIL_YA_REGISTRADO = /already registered|already been registered|already exists/i
+
+// Para el console.error de un fallo de envío — nunca el email completo del
+// paciente en los logs.
+function enmascararEmail(email: string): string {
+  const [usuario, dominio] = email.split('@')
+  if (!dominio) return '***'
+  return `${usuario[0] ?? ''}***@${dominio}`
+}
 
 // ── Email provisorio ──────────────────────────────────────────────────────
 // Mail de invitación definitivo (diseño "Mail - Invitacion Portal.html"):
@@ -214,10 +222,13 @@ export async function crearInvitacionPaciente(params: {
         htmlContent: emailVinculoPortalProvisorio(nombreProfesional, nombrePaciente),
       })
     } catch (emailError) {
-      console.error('[portal/invitacion] Error enviando email de vínculo:', emailError)
+      // Nunca el link de activación ni el HTML del mail en el log — solo el
+      // destinatario enmascarado y el mensaje de error de Brevo.
+      console.error('[portal/invitacion] Error enviando email de vínculo:', enmascararEmail(email), (emailError as Error)?.message)
+      return { ok: true, emailEnviado: false }
     }
 
-    return { ok: true }
+    return { ok: true, emailEnviado: true }
   }
 
   // Caso nuevo: generateLink creó un usuario de Auth fresco.
@@ -253,10 +264,13 @@ export async function crearInvitacionPaciente(params: {
       htmlContent: emailInvitacionPaciente(nombreProfesional, paciente.nombre, linkData.properties.action_link, diasRetencion),
     })
   } catch (emailError) {
-    console.error('[portal/invitacion] Error enviando email:', emailError)
+    // Nunca el link de activación ni el HTML del mail en el log — solo el
+    // destinatario enmascarado y el mensaje de error de Brevo.
+    console.error('[portal/invitacion] Error enviando email:', enmascararEmail(email), (emailError as Error)?.message)
+    return { ok: true, emailEnviado: false }
   }
 
-  return { ok: true }
+  return { ok: true, emailEnviado: true }
 }
 
 // Reenviar: si hay un usuario de Auth huérfano (invitado, nunca activado, y

@@ -167,14 +167,18 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
     const email = acceso?.email
     const { ok, data: resultado } = await accion('invitar', 'POST')
     if (!ok) { toast(resultado?.message ?? 'No pudimos enviar la invitación.'); return }
-    toast(`Invitación enviada a ${email ?? ''}`)
+    toast(resultado?.emailEnviado === false
+      ? 'La invitación se creó pero no pudimos enviar el mail. Usá "Reenviar invitación" o verificá el email del paciente.'
+      : `Invitación enviada a ${email ?? ''}`)
     cargarAcceso()
   }
 
   async function reenviar() {
     const { ok, data: resultado } = await accion('reenviar', 'POST')
     if (!ok) { toast(resultado?.message ?? 'No pudimos reenviar la invitación.'); return }
-    toast(`Invitación reenviada a ${acceso?.email ?? ''}`)
+    toast(resultado?.emailEnviado === false
+      ? 'La invitación se creó pero no pudimos enviar el mail. Usá "Reenviar invitación" o verificá el email del paciente.'
+      : `Invitación reenviada a ${acceso?.email ?? ''}`)
     cargarAcceso()
   }
 

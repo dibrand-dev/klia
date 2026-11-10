@@ -28,5 +28,5 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: resultado.error, message: resultado.message }, { status: resultado.status })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailEnviado: resultado.emailEnviado ?? true })
 }
