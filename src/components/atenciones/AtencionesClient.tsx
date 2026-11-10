@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import ResumenIA from './ResumenIA'
+import AvatarPaciente from '@/components/pacientes/AvatarPaciente'
 import { estadoAutorizacion } from '@/lib/pacientes/estadoAutorizacion'
 
 type Paciente = {
@@ -14,6 +15,8 @@ type Paciente = {
   codigo_diagnostico: string | null
   modalidad_tratamiento: string | null
   autorizacion_vigencia_hasta: string | null
+  avatar_path: string | null
+  avatar_updated_at: string | null
 }
 
 type Turno = {
@@ -276,12 +279,15 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
                   {/* Paciente */}
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
+                      <AvatarPaciente
+                        pacienteId={p?.id ?? ''}
+                        avatarPath={p?.avatar_path ?? null}
+                        avatarUpdatedAt={p?.avatar_updated_at ?? null}
+                        iniciales={ini}
+                        alt={nombre}
                         className="w-9 h-9 rounded-[10px] flex-none grid place-items-center font-semibold text-[13px]"
                         style={{ background: av.bg, color: av.color }}
-                      >
-                        {ini}
-                      </div>
+                      />
                       <div className="min-w-0">
                         <p className="font-semibold text-on-surface text-[13.5px] truncate flex items-center gap-1.5">
                           {nombre}
@@ -404,6 +410,8 @@ export default function AtencionesClient({ turnos: turnosIniciales, hoyArgStr }:
           turnoFechaHora={slideOver.fecha_hora}
           modalidad={slideOver.modalidad}
           initialSummary={slideOver.ai_summary}
+          avatarPath={slideOver.paciente?.avatar_path}
+          avatarUpdatedAt={slideOver.paciente?.avatar_updated_at}
           onSummaryGuardado={registrarResumenGuardado}
           onClose={() => setSlideOver(null)}
         />

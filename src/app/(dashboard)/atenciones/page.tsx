@@ -44,6 +44,8 @@ export default async function AtencionesPage() {
     os_config_id: string | null
     modalidad_tratamiento: string | null
     autorizacion_vigencia_hasta: string | null
+    avatar_path: string | null
+    avatar_updated_at: string | null
   }>()
   if (efectivo.esColaborador) {
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
@@ -57,6 +59,8 @@ export default async function AtencionesPage() {
         os_config_id: p.os_config_id,
         modalidad_tratamiento: p.modalidad_tratamiento,
         autorizacion_vigencia_hasta: p.autorizacion_vigencia_hasta,
+        avatar_path: p.avatar_path,
+        avatar_updated_at: p.avatar_updated_at,
       })
     }
   }
@@ -83,7 +87,9 @@ export default async function AtencionesPage() {
         os_config_id,
         codigo_diagnostico,
         modalidad_tratamiento,
-        autorizacion_vigencia_hasta
+        autorizacion_vigencia_hasta,
+        avatar_path,
+        avatar_updated_at
       )
     `)
     .eq('terapeuta_id', efectivo.terapeutaId)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import AvatarPaciente from '@/components/pacientes/AvatarPaciente'
 
 function abrirNuevaNota(pacienteId: string, turnoId: string, pacienteNombre?: string, turnoFechaHora?: string) {
   window.dispatchEvent(new CustomEvent('openNuevaNotaClinica', { detail: { pacienteId, turnoId, pacienteNombre, turnoFechaHora } }))
@@ -21,6 +22,8 @@ type Props = {
   turnoFechaHora?: string
   modalidad: string
   initialSummary: string | null
+  avatarPath?: string | null
+  avatarUpdatedAt?: string | null
   onSummaryGuardado?: (turnoId: string, summary: string) => void
   onClose: () => void
 }
@@ -69,6 +72,8 @@ export default function ResumenIA({
   turnoFechaHora,
   modalidad,
   initialSummary,
+  avatarPath,
+  avatarUpdatedAt,
   onSummaryGuardado,
   onClose,
 }: Props) {
@@ -131,12 +136,15 @@ export default function ResumenIA({
           className="px-5 py-4 border-b border-gray-100 flex items-start gap-3"
           style={{ background: 'linear-gradient(180deg,#f0f4ff 0%,transparent 100%)' }}
         >
-          <div
+          <AvatarPaciente
+            pacienteId={pacienteId}
+            avatarPath={avatarPath ?? null}
+            avatarUpdatedAt={avatarUpdatedAt ?? null}
+            iniciales={initials}
+            alt={pacienteNombre}
             className="w-11 h-11 rounded-xl flex-none grid place-items-center font-semibold text-base"
             style={{ background: 'linear-gradient(145deg,#E3E9F6,#C9D3E9)', color: '#16389F' }}
-          >
-            {initials}
-          </div>
+          />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 text-[15px] leading-tight">{pacienteNombre}</p>
             <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-1.5 items-center">
