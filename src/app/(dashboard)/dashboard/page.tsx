@@ -18,13 +18,13 @@ export default async function DashboardPage() {
   // filtrar por activo a propósito: un turno de un paciente inactivo debe
   // seguir mostrando su nombre, igual que ya pasa para el profesional vía
   // el join embebido sin filtro.
-  const mapaPacientesColaborador = new Map<string, { nombre: string; apellido: string; os_config_id: string | null; activo: boolean }>()
+  const mapaPacientesColaborador = new Map<string, { nombre: string; apellido: string; os_config_id: string | null; activo: boolean; telefono: string | null }>()
   let todosPacientesColaborador: PacienteColaboradorRow[] = []
   if (efectivo.esColaborador) {
     const { data: todosPacientesRaw } = await supabase.rpc('get_pacientes_colaborador')
     todosPacientesColaborador = (todosPacientesRaw ?? []) as PacienteColaboradorRow[]
     for (const p of todosPacientesColaborador) {
-      mapaPacientesColaborador.set(p.id, { nombre: p.nombre, apellido: p.apellido, os_config_id: p.os_config_id, activo: p.activo })
+      mapaPacientesColaborador.set(p.id, { nombre: p.nombre, apellido: p.apellido, os_config_id: p.os_config_id, activo: p.activo, telefono: p.telefono })
     }
   }
 
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
 
     supabase
       .from('turnos')
-      .select('id, estado, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
+      .select('id, fecha_hora, estado, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, obra_social, os_config_id)')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioMesUTC.toISOString())
       .lt('fecha_hora', finMesUTC.toISOString()),
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
 
     supabase
       .from('turnos')
-      .select('id, pagado, paciente_id, paciente:pacientes(os_config_id)')
+      .select('id, fecha_hora, monto, moneda, pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .eq('pagado', false)
       .gte('fecha_hora', inicioMesAnteriorUTC.toISOString())
@@ -152,19 +152,19 @@ export default async function DashboardPage() {
   }
 
   // Fetch details of absent patients
-  let pacientesAusentesConFecha: { id: string; nombre: string; apellido: string; ultimaCita: string | null }[] = []
+  let pacientesAusentesConFecha: { id: string; nombre: string; apellido: string; ultimaCita: string | null; telefono: string | null }[] = []
   if (efectivo.esColaborador) {
     pacientesAusentesConFecha = pacientesAusentesIds
       .map((id) => {
         const p = mapaPacientesColaborador.get(id)
-        return p && p.activo ? { id, nombre: p.nombre, apellido: p.apellido, ultimaCita: ultimaCitaMap[id] ?? null } : null
+        return p && p.activo ? { id, nombre: p.nombre, apellido: p.apellido, ultimaCita: ultimaCitaMap[id] ?? null, telefono: p.telefono } : null
       })
       .filter((p): p is NonNullable<typeof p> => p !== null)
   } else {
     const { data: pacientesAusentesList } = pacientesAusentesIds.length > 0
       ? await supabase
           .from('pacientes')
-          .select('id, nombre, apellido')
+          .select('id, nombre, apellido, telefono')
           .eq('terapeuta_id', efectivo.terapeutaId)
           .eq('activo', true)
           .in('id', pacientesAusentesIds)
@@ -175,6 +175,7 @@ export default async function DashboardPage() {
       nombre: p.nombre,
       apellido: p.apellido,
       ultimaCita: ultimaCitaMap[p.id] ?? null,
+      telefono: p.telefono,
     }))
   }
 
@@ -207,13 +208,31 @@ export default async function DashboardPage() {
   }
   const ingresosPendientes = Object.values(ingresosPendientesPorMonedaMap).reduce((a, b) => a + b, 0)
 
-  // Check if previous month has unpaid OS sessions
-  const tieneSesionesAnteriorSinLiquidar = (turnosMesAnteriorSinPagar ?? []).some((t) => {
-    const osConfigId = efectivo.esColaborador
-      ? mapaPacientesColaborador.get(t.paciente_id)?.os_config_id ?? null
-      : (t.paciente as unknown as { os_config_id: string | null } | null)?.os_config_id ?? null
-    return osConfigId != null
-  })
+  // Previous month unpaid OS sessions — mismo filtro para el booleano de la
+  // alerta y para las filas del drill-down (nunca se recalcula distinto).
+  const mesAnteriorSinLiquidarFilas = (turnosMesAnteriorSinPagar ?? [])
+    .map((t) => {
+      const pacienteColaborador = efectivo.esColaborador ? mapaPacientesColaborador.get(t.paciente_id) : undefined
+      const osConfigId = efectivo.esColaborador
+        ? pacienteColaborador?.os_config_id ?? null
+        : (t.paciente as unknown as { os_config_id: string | null } | null)?.os_config_id ?? null
+      if (osConfigId == null) return null
+      const paciente = efectivo.esColaborador
+        ? (pacienteColaborador ? { nombre: pacienteColaborador.nombre, apellido: pacienteColaborador.apellido } : null)
+        : (t.paciente as unknown as { nombre: string; apellido: string } | null)
+      return {
+        id: t.id,
+        pacienteId: t.paciente_id,
+        fecha_hora: t.fecha_hora,
+        monto: t.monto,
+        moneda: t.moneda,
+        osNombre: osMap[osConfigId] ?? null,
+        paciente,
+      }
+    })
+    .filter((f): f is NonNullable<typeof f> => f !== null)
+
+  const tieneSesionesAnteriorSinLiquidar = mesAnteriorSinLiquidarFilas.length > 0
 
   let nombreTerapeuta = (profile as Profile | null)?.nombre ?? ''
   if (efectivo.esColaborador) {
@@ -226,9 +245,11 @@ export default async function DashboardPage() {
 
   const props = {
     nombreTerapeuta,
+    terapeutaId: efectivo.terapeutaId,
     hoyArgStr,
     turnosHoy: (turnosHoy ?? []).map((t) => ({
       id: t.id,
+      pacienteId: t.paciente_id,
       fecha_hora: t.fecha_hora,
       estado: t.estado,
       paciente: efectivo.esColaborador
@@ -242,9 +263,36 @@ export default async function DashboardPage() {
       hora: e.hora,
       estado: e.estado,
     })),
+    // Filas crudas del mes — para los drill-down de "Sesiones del mes" e
+    // "Ingresos del mes". Mismos campos/filtros que ya se usan arriba para
+    // calcular los números de las cards, nunca una query nueva.
+    turnosMes: (turnosMes ?? []).map((t) => {
+      const osConfigId = efectivo.esColaborador
+        ? mapaPacientesColaborador.get(t.paciente_id)?.os_config_id ?? null
+        : (t.paciente as unknown as { os_config_id: string | null } | null)?.os_config_id ?? null
+      return {
+        id: t.id,
+        pacienteId: t.paciente_id,
+        fecha_hora: t.fecha_hora,
+        estado: t.estado,
+        monto: t.monto,
+        moneda: (t as unknown as { moneda?: string }).moneda ?? 'ARS',
+        pagado: t.pagado,
+        origen: osConfigId && osMap[osConfigId] ? osMap[osConfigId] : 'Particular',
+        paciente: efectivo.esColaborador
+          ? mapaPacientesColaborador.get(t.paciente_id) ?? null
+          : (t.paciente as unknown as { nombre: string; apellido: string } | null),
+      }
+    }),
     totalPacientesActivos: efectivo.esColaborador
       ? todosPacientesColaborador.filter((p) => p.activo).length
       : pacientesActivosCount ?? 0,
+    // Solo para colaboradora: ya viene de get_pacientes_colaborador(), evita
+    // un join embebido a `pacientes` que RLS bloquea en silencio para ella.
+    // Para profesional queda undefined — ese caso hace fetch client-side.
+    pacientesColaborador: efectivo.esColaborador
+      ? todosPacientesColaborador.filter((p) => p.activo).map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, telefono: p.telefono }))
+      : undefined,
     pacientesAusentes: pacientesAusentesConFecha,
     sesionesRealizadasMes: (turnosMes ?? []).filter((t) => t.estado === 'realizado').length,
     sesionesPendientesMes: (turnosMes ?? []).filter((t) => t.estado === 'pendiente' || t.estado === 'confirmado').length,
@@ -255,12 +303,14 @@ export default async function DashboardPage() {
     ingresosPorOrigen: Object.entries(ingresosPorOrigenMap).map(([nombre, monto]) => ({ nombre, monto })),
     seriesVencen: (seriesVencen ?? []).map((s) => ({
       id: s.id,
+      pacienteId: s.paciente_id,
       fecha_fin: s.fecha_fin,
       paciente: efectivo.esColaborador
         ? mapaPacientesColaborador.get(s.paciente_id) ?? null
         : (s.paciente as unknown as { nombre: string; apellido: string } | null),
     })),
     tieneSesionesAnteriorSinLiquidar,
+    mesAnteriorSinLiquidarFilas,
     inicioSemanaStr,
     finSemanaStr,
   }
