@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 type PacienteTurno = { nombre: string; apellido: string; email: string | null; telefono: string | null; whatsapp_opt_in: boolean }
-type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null; plan: string | null; estado_cuenta: string | null; trial_inicio: string | null }
+type TerapeutaTurno = { nombre: string; apellido: string; especialidad: string | null; plan: string | null; estado_cuenta: string | null; trial_inicio: string | null; recordatorio_turno_activo: boolean | null }
 type TurnoRecordatorio = {
   id: string
   fecha_hora: string
@@ -266,7 +266,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, fecha_hora, duracion_min, modalidad, meet_link, token_accion, terapeuta_id, paciente_id, recordatorio_whatsapp_enviado,
       paciente:pacientes(nombre, apellido, email, telefono, whatsapp_opt_in),
-      terapeuta:profiles(nombre, apellido, especialidad, plan, estado_cuenta, trial_inicio)
+      terapeuta:profiles(nombre, apellido, especialidad, plan, estado_cuenta, trial_inicio, recordatorio_turno_activo)
     `)
     .gte('fecha_hora', desde.toISOString())
     .lte('fecha_hora', hasta.toISOString())
@@ -295,6 +295,15 @@ export async function GET(req: NextRequest) {
   const cupoCache = new Map<string, number>()
 
   for (const turno of (turnos ?? []) as unknown as TurnoRecordatorio[]) {
+    // Ajuste global del profesional — null/undefined se trata como true
+    // (comportamiento de siempre). Si está en false, se saltea el turno
+    // entero antes de tocar cualquier flag/cupo/fila, por los dos canales.
+    if (turno.terapeuta?.recordatorio_turno_activo === false) {
+      omitidos++
+      omitidosWhatsapp++
+      continue
+    }
+
     const rMail = await procesarMail(supabase, turno, APP_URL)
     if (rMail.resultado === 'enviado') enviados++
     else if (rMail.resultado === 'fallido') { fallidos++; if (rMail.error) errores.push(rMail.error) }

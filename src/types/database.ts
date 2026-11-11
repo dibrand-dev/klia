@@ -64,6 +64,7 @@ export type Database = {
           onboarding_skipped: boolean
           onboarding_max_step_reached: number
           aviso_deuda_timing: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
+          recordatorio_turno_activo: boolean
           tipo_cuenta: string | null
           transferencia_banco: string | null
           transferencia_alias: string | null
@@ -135,6 +136,7 @@ export type Database = {
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
           aviso_deuda_timing?: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
+          recordatorio_turno_activo?: boolean
           tipo_cuenta?: string | null
           transferencia_banco?: string | null
           transferencia_alias?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           onboarding_skipped?: boolean
           onboarding_max_step_reached?: number
           aviso_deuda_timing?: 'nunca' | '24h' | '48h' | '72h' | '7dias' | 'fin_mes'
+          recordatorio_turno_activo?: boolean
           tipo_cuenta?: string | null
           transferencia_banco?: string | null
           transferencia_alias?: string | null

@@ -302,6 +302,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [avisoDeudaLoading, setAvisoDeudaLoading] = useState(false)
   const [avisoDeudaSaved, setAvisoDeudaSaved] = useState(false)
 
+  // Recordatorio de turno al paciente state
+  const [recordatorioTurnoActivo, setRecordatorioTurnoActivo] = useState<boolean>(
+    (profile as Record<string, unknown>).recordatorio_turno_activo as boolean ?? true
+  )
+  const [recordatorioTurnoLoading, setRecordatorioTurnoLoading] = useState(false)
+
   // Política de cobros state
   const [cobrar, setCobrar] = useState(profile.cobrar_inasistencias ?? false)
   const [cobrarGuardando, setCobrarGuardando] = useState(false)
@@ -499,6 +505,16 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setAvisoDeudaLoading(false)
     setAvisoDeudaSaved(true)
     setTimeout(() => setAvisoDeudaSaved(false), 2000)
+  }
+
+  // ── Recordatorio de turno al paciente — toggle ──────────────────────
+  async function handleRecordatorioTurnoToggle() {
+    const nuevo = !recordatorioTurnoActivo
+    setRecordatorioTurnoActivo(nuevo)
+    setRecordatorioTurnoLoading(true)
+    const supabase = createClient()
+    await supabase.from('profiles').update({ recordatorio_turno_activo: nuevo }).eq('id', profile.id)
+    setRecordatorioTurnoLoading(false)
   }
 
   // ── Política toggle ────────────────────────────────────────────────
@@ -1386,6 +1402,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   Guardado
                 </span>
               )}
+              <ToggleRow
+                name="Recordatorio de turno al paciente"
+                desc="Si lo desactivás, tus pacientes no reciben recordatorio de turno por ningún canal (email ni WhatsApp). No afecta el aviso de pago."
+                on={recordatorioTurnoActivo}
+                onChange={handleRecordatorioTurnoToggle}
+                disabled={recordatorioTurnoLoading}
+              />
             </section>
           )}
 
