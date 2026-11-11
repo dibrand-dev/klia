@@ -49,6 +49,7 @@ export default function StickyWidgetAntropometria({ pacienteId, peso, altura, ed
 
   useEffect(() => {
     let cancelado = false
+    if (!pacienteId) { setLoadingUltimo(false); return }
     async function fetchUltimo() {
       setLoadingUltimo(true)
       const supabase = createClient()

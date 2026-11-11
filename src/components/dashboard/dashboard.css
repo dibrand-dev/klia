@@ -69,7 +69,7 @@
 .db-k-lbl { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--muted-2); text-transform: uppercase; letter-spacing: .06em; }
 .db-k-lbl .db-ic { margin-left: auto; width: 13px; height: 13px; color: var(--muted-3); }
 .db-kpi:hover .db-k-lbl .db-ic { color: var(--ink-2); }
-.db-k-val { font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+.db-k-val { overflow: hidden; text-overflow: ellipsis; font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
 .db-k-val small { font-size: 14px; font-weight: 600; color: var(--muted); }
 .db-k-val2 { font-size: 15px; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .db-k-sub { font-size: 12.5px; color: var(--muted); }
@@ -77,7 +77,7 @@
 .db-k-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; margin-top: 2px; }
 .db-k-bar i { display: block; height: 100%; background: var(--ok); border-radius: 3px; }
 .db-k-foot { display: flex; align-items: flex-end; gap: 10px; margin-top: auto; padding-top: 6px; border-top: 1px dashed var(--border); }
-.db-delta { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; min-width: 0; padding-top: 6px; }
+.db-delta { white-space: nowrap; display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; min-width: 0; padding-top: 6px; }
 .db-delta b { font-weight: 700; display: inline-flex; align-items: center; gap: 2px; }
 .db-delta.good b { color: var(--ok); } .db-delta.bad b { color: var(--danger); } .db-delta.flat b { color: var(--muted); }
 .db-delta .db-ic { width: 12px; height: 12px; }

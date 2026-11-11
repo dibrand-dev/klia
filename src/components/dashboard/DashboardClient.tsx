@@ -61,6 +61,13 @@ function money(n: number, moneda = 'ARS'): string {
   const sym = moneda === 'ARS' ? '$' : moneda === 'USD' ? 'U$S' : '€'
   return `${sym} ${nf(n)}`
 }
+// Montos de las KPI cards: sin centavos y compactos desde 10 M, para que
+// nunca se salgan de la card (los listados siguen mostrando centavos).
+function moneyKpi(n: number, moneda = 'ARS'): string {
+  const sym = moneda === 'ARS' ? '$' : moneda === 'USD' ? 'U$S' : '€'
+  if (Math.abs(n) >= 1e7) return `${sym} ${(n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`
+  return `${sym} ${Math.round(n).toLocaleString('es-AR')}`
+}
 function niceMax(v: number): number {
   const exp = Math.pow(10, Math.floor(Math.log10(v)))
   const m = v / exp
@@ -482,14 +489,14 @@ export default function DashboardClient({
             <>
               <button className="db-kpi" onClick={() => setDrilldown('cobrado')}>
                 <span className="db-k-lbl">Cobrado<DbIcon name="chevR" /></span>
-                <span className="db-k-val">{money(arsActual?.cobrado ?? 0)}</span>
+                <span className="db-k-val">{moneyKpi(arsActual?.cobrado ?? 0)}</span>
                 {actual?.montos && Object.entries(actual.montos).filter(([m]) => m !== 'ARS').map(([m, v]) => (
-                  <span key={m} className="db-k-val2">{money(v.cobrado, m)}</span>
+                  <span key={m} className="db-k-val2">{moneyKpi(v.cobrado, m)}</span>
                 ))}
                 <span className="db-k-bar" role="img" aria-label="porcentaje cobrado">
                   <i style={{ width: `${arsActual && arsActual.valor ? Math.round((arsActual.cobrado / arsActual.valor) * 100) : 0}%` }} />
                 </span>
-                <span className="db-k-sub"><b>{arsActual && arsActual.valor ? Math.round((arsActual.cobrado / arsActual.valor) * 100) : 0}%</b> de {money(arsActual?.valor ?? 0)} en sesiones realizadas</span>
+                <span className="db-k-sub"><b>{arsActual && arsActual.valor ? Math.round((arsActual.cobrado / arsActual.valor) * 100) : 0}%</b> de {moneyKpi(arsActual?.valor ?? 0)} en sesiones realizadas</span>
                 <div className="db-k-foot">
                   <DeltaBadge d={calcDelta(arsActual?.cobrado ?? 0, arsComparado?.cobrado, true, true)} />
                   <Sparkline data={spark.map((s) => s.cobrado?.ARS ?? 0)} />
@@ -498,11 +505,11 @@ export default function DashboardClient({
 
               <button className="db-kpi" onClick={() => setDrilldown('porcobrar')}>
                 <span className="db-k-lbl">Por cobrar<DbIcon name="chevR" /></span>
-                <span className="db-k-val">{money(arsActual?.por_cobrar ?? 0)}</span>
+                <span className="db-k-val">{moneyKpi(arsActual?.por_cobrar ?? 0)}</span>
                 {actual?.montos && Object.entries(actual.montos).filter(([m]) => m !== 'ARS' && v_pc(actual.montos![m])).map(([m, v]) => (
-                  <span key={m} className="db-k-val2">{money(v.por_cobrar, m)}</span>
+                  <span key={m} className="db-k-val2">{moneyKpi(v.por_cobrar, m)}</span>
                 ))}
-                <span className="db-k-sub">Pacientes <b>{money(arsActual?.por_cobrar_particular ?? 0)}</b> · Obras sociales <b>{money(arsActual?.por_cobrar_os ?? 0)}</b></span>
+                <span className="db-k-sub">Pacientes <b>{moneyKpi(arsActual?.por_cobrar_particular ?? 0)}</b> · Obras sociales <b>{moneyKpi(arsActual?.por_cobrar_os ?? 0)}</b></span>
                 <div className="db-k-foot">
                   <DeltaBadge d={calcDelta(arsActual?.por_cobrar ?? 0, arsComparado?.por_cobrar, false, true)} />
                   <Sparkline data={spark.map((s) => s.por_cobrar?.ARS ?? 0)} />
@@ -514,7 +521,7 @@ export default function DashboardClient({
           <button className="db-kpi" onClick={() => setDrilldown('atendidos')}>
             <span className="db-k-lbl">Pacientes atendidos<DbIcon name="chevR" /></span>
             <span className="db-k-val">{actual?.atendidos ?? 0}</span>
-            <span className="db-k-sub"><b>+{actual?.nuevos ?? 0}</b> nuevos en el período</span>
+            <span className="db-k-sub"><b>+{actual?.nuevos ?? 0}</b> pacientes nuevos cargados</span>
             <div className="db-k-foot">
               <DeltaBadge d={calcDelta(actual?.atendidos ?? 0, comparado?.atendidos, true)} />
               <Sparkline data={spark.map((s) => s.atendidos)} />
@@ -583,7 +590,7 @@ export default function DashboardClient({
                 <div className="db-ch-legend">
                   <span><i className="db-sw c" />Cobrado</span>
                   <span><i className="db-sw pc" />Por cobrar</span>
-                  <span><i className="db-sw sel" />Mes actual</span>
+                  <span><i className="db-sw sel" />Mes del período</span>
                 </div>
               )}
 
