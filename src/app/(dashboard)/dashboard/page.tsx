@@ -15,6 +15,29 @@ export const metadata = { title: 'Dashboard — KLIA' }
 
 const PRESETS: PeriodoPreset[] = ['hoy', 'semana', 'mes', 'mesant', '3m', 'anio']
 
+type PeriodoTurnoRaw = {
+  id: string; fecha_hora: string; estado: string; monto: number | null; moneda: string | null
+  pagado: boolean; estado_pago: string | null; monto_pagado: number | null; paciente_id: string
+  paciente: unknown
+}
+type DeudaGlobal = { totalCount: number; porMoneda: Record<string, { total: number; count: number }>; top: { pacienteId: string; nombre: string; apellido: string; saldo: number; moneda: string; n: number; masAntigua: string }[] }
+type OsSinLiquidarGlobal = { totalCount: number; porMoneda: Record<string, number>; meses: { mesKey: string; filas: { osNombre: string; n: number; monto: number; moneda: string }[] }[] }
+
+// PostgREST corta en 1000 filas por request: pagina hasta traer todo.
+async function fetchTodos<T>(
+  q: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
+): Promise<{ data: T[] }> {
+  const PAGE = 1000
+  const out: T[] = []
+  for (let from = 0; from < 50 * PAGE; from += PAGE) {
+    const { data } = await q(from, from + PAGE - 1)
+    const rows = (data ?? []) as T[]
+    out.push(...rows)
+    if (rows.length < PAGE) break
+  }
+  return { data: out }
+}
+
 type SearchParams = { [key: string]: string | string[] | undefined }
 
 export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
@@ -60,11 +83,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const finHoyUTC = new Date(inicioHoyUTC.getTime() + 24 * 60 * 60 * 1000)
   const inicioPeriodoUTC = new Date(`${periodo.desde}T03:00:00.000Z`)
   const finPeriodoUTC = new Date(new Date(`${periodo.hasta}T03:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000)
-  const anioArg = hoyArg.getUTCFullYear()
-  const mesArg = hoyArg.getUTCMonth()
-  const inicioMesActualUTC = new Date(Date.UTC(anioArg, mesArg, 1, 3, 0, 0))
   const treintaDiasStr = new Date(hoyArg.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const dosSemanasUTC = new Date(inicioHoyUTC.getTime() - 14 * 24 * 60 * 60 * 1000)
 
   const [
     { data: profile },
@@ -74,8 +93,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     { data: turnosHoy },
     { data: entrevistasHoy },
     { data: periodoTurnosRaw },
-    { data: ultimosTurnos },
-    { data: deudaTurnosRaw },
+    { data: sinVenirRaw },
+    { data: deudaRaw },
     { data: osSinLiquidarRaw },
     { data: seriesVencen },
     { data: obrasSociales },
@@ -105,40 +124,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       .eq('fecha', hoyArgStr)
       .neq('estado', 'cancelada'),
 
-    supabase
+    fetchTodos<PeriodoTurnoRaw>((from, to) => supabase
       .from('turnos')
       .select('id, fecha_hora, estado, monto, moneda, pagado, estado_pago, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .gte('fecha_hora', inicioPeriodoUTC.toISOString())
-      .lt('fecha_hora', finPeriodoUTC.toISOString()),
+      .lt('fecha_hora', finPeriodoUTC.toISOString())
+      .order('fecha_hora').order('id')
+      .range(from, to)),
 
-    supabase
-      .from('turnos')
-      .select('paciente_id, fecha_hora')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-      .eq('estado', 'realizado')
-      .order('fecha_hora', { ascending: false }),
-
-    // Deuda GLOBAL de pacientes particulares (sin filtro de fecha — mismo
-    // criterio que /cobros: estado realizado/no_asistio, no bonificado,
-    // con saldo real vía monto_pagado, nunca solo `pagado`).
-    supabase
-      .from('turnos')
-      .select('id, fecha_hora, monto, moneda, pagado, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-      .in('estado', ['realizado', 'no_asistio'])
-      .in('estado_pago', ['pendiente', 'pago_parcial'])
-      .lte('fecha_hora', ahora.toISOString()),
-
-    // OS sin liquidar de TODOS los meses anteriores (no sólo el mes
-    // pasado) — se agrupa por mes dinámicamente en el cliente.
-    supabase
-      .from('turnos')
-      .select('id, fecha_hora, monto, moneda, pagado, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
-      .eq('terapeuta_id', efectivo.terapeutaId)
-      .in('estado', ['realizado', 'no_asistio'])
-      .in('estado_pago', ['pendiente', 'pago_parcial'])
-      .lt('fecha_hora', inicioMesActualUTC.toISOString()),
+    supabase.rpc('dashboard_sin_venir'),
+    supabase.rpc('dashboard_deuda'),
+    supabase.rpc('dashboard_os_sin_liquidar'),
 
     supabase
       .from('turnos_recurrentes')
@@ -207,91 +204,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     }
   })
 
-  // Pacientes sin venir 2+ semanas (misma lógica de stage 1, sin cambios)
-  const ultimaCitaMap: Record<string, string> = {}
-  for (const t of ultimosTurnos ?? []) {
-    if (!ultimaCitaMap[t.paciente_id]) ultimaCitaMap[t.paciente_id] = t.fecha_hora
-  }
-  const pacientesAusentesIds: string[] = []
-  for (const [pacienteId, ultimaCita] of Object.entries(ultimaCitaMap)) {
-    if (new Date(ultimaCita) < dosSemanasUTC) pacientesAusentesIds.push(pacienteId)
-  }
-  let pacientesSinVenir: { id: string; nombre: string; apellido: string; ultimaCita: string | null; telefono: string | null }[] = []
-  if (efectivo.esColaborador) {
-    pacientesSinVenir = pacientesAusentesIds
-      .map((id) => {
-        const p = mapaPacientesColaborador.get(id)
-        return p && p.activo ? { id, nombre: p.nombre, apellido: p.apellido, ultimaCita: ultimaCitaMap[id] ?? null, telefono: p.telefono } : null
-      })
-      .filter((p): p is NonNullable<typeof p> => p !== null)
-  } else {
-    const { data: lista } = pacientesAusentesIds.length > 0
-      ? await supabase.from('pacientes').select('id, nombre, apellido, telefono').eq('terapeuta_id', efectivo.terapeutaId).eq('activo', true).in('id', pacientesAusentesIds)
-      : { data: [] }
-    pacientesSinVenir = (lista ?? []).map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, ultimaCita: ultimaCitaMap[p.id] ?? null, telefono: p.telefono }))
-  }
-
-  // Deuda global de pacientes particulares
-  const deudaPorPaciente = new Map<string, { nombre: string; apellido: string; saldo: number; moneda: string; n: number; masAntigua: string }>()
-  const deudaPorMoneda: Record<string, { total: number; count: number }> = {}
-  for (const t of deudaTurnosRaw ?? []) {
-    const paciente = resolverPaciente(t.paciente_id, t.paciente as unknown as { nombre: string; apellido: string; os_config_id: string | null } | null)
-    if (!paciente || paciente.os_config_id || t.pagado) continue // sólo particulares con deuda real
-    const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
-    if (saldo <= 0) continue
-    const moneda = t.moneda ?? 'ARS'
-    if (!deudaPorMoneda[moneda]) deudaPorMoneda[moneda] = { total: 0, count: 0 }
-    deudaPorMoneda[moneda].total += saldo
-    deudaPorMoneda[moneda].count++
-    const prev = deudaPorPaciente.get(t.paciente_id)
-    if (!prev) {
-      deudaPorPaciente.set(t.paciente_id, { nombre: paciente.nombre, apellido: paciente.apellido, saldo, moneda, n: 1, masAntigua: t.fecha_hora })
-    } else {
-      prev.saldo += saldo
-      prev.n++
-      if (t.fecha_hora < prev.masAntigua) prev.masAntigua = t.fecha_hora
-    }
-  }
+  // Sin venir, deuda y OS sin liquidar vienen agregados desde RPC (sin tope de
+  // 1000 filas; la RPC ya resuelve colaborador/ve_cobros). Defensa en
+  // profundidad: sin permiso de cobros nunca viajan montos al cliente.
+  const pacientesSinVenir = (sinVenirRaw ?? []) as { id: string; nombre: string; apellido: string; ultimaCita: string | null; telefono: string | null }[]
   const deuda = veCobros
-    ? {
-        porMoneda: deudaPorMoneda,
-        totalCount: deudaPorPaciente.size,
-        top: Array.from(deudaPorPaciente.entries())
-          .map(([pacienteId, d]) => ({ pacienteId, ...d }))
-          .sort((a, b) => b.saldo - a.saldo),
-      }
+    ? (deudaRaw ?? { totalCount: 0, porMoneda: {}, top: [] }) as DeudaGlobal
     : { porMoneda: {}, totalCount: 0, top: [] }
-
-  // OS sin liquidar — todos los meses anteriores, agrupados dinámicamente
-  const osPorMes = new Map<string, Map<string, { osNombre: string; n: number; monto: number; moneda: string }>>()
-  const osTotalPorMoneda: Record<string, number> = {}
-  let osTotalCount = 0
-  for (const t of osSinLiquidarRaw ?? []) {
-    const paciente = resolverPaciente(t.paciente_id, t.paciente as unknown as { nombre: string; apellido: string; os_config_id: string | null } | null)
-    if (!paciente?.os_config_id || t.pagado) continue
-    const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
-    if (saldo <= 0) continue
-    const moneda = t.moneda ?? 'ARS'
-    const mesKey = new Date(new Date(t.fecha_hora).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 7) // YYYY-MM en ART
-    const osNombre = osMap[paciente.os_config_id] ?? 'Obra social'
-    if (!osPorMes.has(mesKey)) osPorMes.set(mesKey, new Map())
-    const grupoMes = osPorMes.get(mesKey)!
-    const clave = `${osNombre}__${moneda}`
-    if (!grupoMes.has(clave)) grupoMes.set(clave, { osNombre, n: 0, monto: 0, moneda })
-    const fila = grupoMes.get(clave)!
-    fila.n++
-    fila.monto += saldo
-    osTotalPorMoneda[moneda] = (osTotalPorMoneda[moneda] ?? 0) + saldo
-    osTotalCount++
-  }
   const osSinLiquidar = veCobros
-    ? {
-        totalCount: osTotalCount,
-        porMoneda: osTotalPorMoneda,
-        meses: Array.from(osPorMes.entries())
-          .sort((a, b) => b[0].localeCompare(a[0]))
-          .map(([mesKey, filas]) => ({ mesKey, filas: Array.from(filas.values()) })),
-      }
+    ? (osSinLiquidarRaw ?? { totalCount: 0, porMoneda: {}, meses: [] }) as OsSinLiquidarGlobal
     : { totalCount: 0, porMoneda: {}, meses: [] }
 
   const seriesVencenProps = (seriesVencen ?? []).map((s) => ({

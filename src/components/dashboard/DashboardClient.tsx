@@ -329,7 +329,7 @@ export default function DashboardClient({
         heading: moneda === 'ARS' ? 'Pesos' : moneda === 'USD' ? 'Dólares' : moneda,
         totalNode: money(deuda.porMoneda[moneda].total, moneda),
         rows: deuda.top.filter((d) => d.moneda === moneda).map((d) => ({
-          id: d.pacienteId,
+          id: `${d.pacienteId}-${d.moneda}`,
           avatarText: iniciales(d.nombre, d.apellido),
           avatarVariant: avatarVariant(d.nombre + d.apellido),
           primary: `${d.nombre} ${d.apellido}`,
@@ -679,7 +679,7 @@ export default function DashboardClient({
                   </div>
                   <ul className="db-att-l">
                     {deuda.top.slice(0, 3).map((d) => (
-                      <li key={d.pacienteId}>
+                      <li key={`${d.pacienteId}-${d.moneda}`}>
                         <span className={`db-av a${avatarVariant(d.nombre + d.apellido)}`} aria-hidden="true">{iniciales(d.nombre, d.apellido)}</span>
                         <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}><Link href={`/pacientes/${d.pacienteId}`} className="db-nm-lnk">{d.nombre} {d.apellido}</Link></span><span className="db-sc">{d.n} sesión{d.n !== 1 ? 'es' : ''} · desde {fechaCorta(d.masAntigua)}</span></span>
                         <span className="db-kv danger">{money(d.saldo, d.moneda)}</span>
