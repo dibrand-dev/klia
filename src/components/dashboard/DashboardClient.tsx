@@ -61,11 +61,18 @@ function money(n: number, moneda = 'ARS'): string {
   const sym = moneda === 'ARS' ? '$' : moneda === 'USD' ? 'U$S' : '€'
   return `${sym} ${nf(n)}`
 }
+function niceMax(v: number): number {
+  const exp = Math.pow(10, Math.floor(Math.log10(v)))
+  const m = v / exp
+  const nice = m <= 1 ? 1 : m <= 2 ? 2 : m <= 4 ? 4 : m <= 8 ? 8 : 10
+  return nice * exp
+}
 function axisLabel(n: number, moneda: string): string {
-  if (moneda !== 'ARS') return `${moneda === 'USD' ? 'U$S' : '€'} ${n.toLocaleString('es-AR')}`
-  if (n >= 1e6) return `$ ${(n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`
-  if (n >= 1e3) return `$ ${Math.round(n / 1e3)} mil`
-  return '$ 0'
+  const sym = moneda === 'ARS' ? '$' : moneda === 'USD' ? 'U$S' : '€'
+  if (n === 0) return `${sym} 0`
+  if (n >= 1e6) return `${sym} ${(n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`
+  if (n >= 1e3) return `${sym} ${(n / 1e3).toLocaleString('es-AR', { maximumFractionDigits: 1 })} mil`
+  return `${sym} ${Math.round(n).toLocaleString('es-AR')}`
 }
 function fechaCorta(iso: string): string {
   return format(parseISO(iso), 'd MMM', { locale: es })
@@ -543,7 +550,7 @@ export default function DashboardClient({
                   return (
                     <li key={t.id} className={t.id === proximoTurnoId ? 'is-next' : ''}>
                       <span className="db-tm">{horaDesde(t.fecha_hora)}</span>
-                      <span className="db-nm">{t.paciente ? `${t.paciente.apellido}, ${t.paciente.nombre}` : '—'}</span>
+                      <span className="db-nm">{t.paciente ? <Link href={`/pacientes/${t.pacienteId}`} className="db-nm-lnk">{`${t.paciente.apellido}, ${t.paciente.nombre}`}</Link> : '—'}</span>
                       <span className={`db-st ${t.estado}`}><DbIcon name={st.icon} />{st.label}</span>
                     </li>
                   )
@@ -589,7 +596,7 @@ export default function DashboardClient({
                   porCobrar: m.montos[moneda]?.por_cobrar ?? 0,
                 }))
                 if (!bars.some((b) => b.cobrado + b.porCobrar > 0)) return null
-                const mx = Math.max(1, ...bars.map((b) => b.cobrado + b.porCobrar)) * 1.15
+                const mx = niceMax(Math.max(1, ...bars.map((b) => b.cobrado + b.porCobrar)) * 1.05)
 
                 if (tabla) {
                   return (
@@ -674,7 +681,7 @@ export default function DashboardClient({
                     {deuda.top.slice(0, 3).map((d) => (
                       <li key={d.pacienteId}>
                         <span className={`db-av a${avatarVariant(d.nombre + d.apellido)}`} aria-hidden="true">{iniciales(d.nombre, d.apellido)}</span>
-                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}>{d.nombre} {d.apellido}</span><span className="db-sc">{d.n} sesión{d.n !== 1 ? 'es' : ''} · desde {fechaCorta(d.masAntigua)}</span></span>
+                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}><Link href={`/pacientes/${d.pacienteId}`} className="db-nm-lnk">{d.nombre} {d.apellido}</Link></span><span className="db-sc">{d.n} sesión{d.n !== 1 ? 'es' : ''} · desde {fechaCorta(d.masAntigua)}</span></span>
                         <span className="db-kv danger">{money(d.saldo, d.moneda)}</span>
                         <span className="db-acts"><Link href={`/pacientes/${d.pacienteId}`} className="db-ib" title="Abrir ficha"><DbIcon name="file" /></Link></span>
                       </li>
@@ -723,7 +730,7 @@ export default function DashboardClient({
                     {[...seriesVencen].sort((a, b) => a.fecha_fin.localeCompare(b.fecha_fin)).slice(0, 3).map((s) => (
                       <li key={s.id}>
                         <span className={`db-av a${s.paciente ? avatarVariant(s.paciente.nombre + s.paciente.apellido) : 1}`} aria-hidden="true">{s.paciente ? iniciales(s.paciente.nombre, s.paciente.apellido) : '—'}</span>
-                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}>{s.paciente ? `${s.paciente.nombre} ${s.paciente.apellido}` : '—'}</span></span>
+                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}>{s.paciente ? <Link href={`/pacientes/${s.pacienteId}`} className="db-nm-lnk">{`${s.paciente.nombre} ${s.paciente.apellido}`}</Link> : '—'}</span></span>
                         <span className="db-kv">{fechaCorta(s.fecha_fin)}</span>
                         <span />
                       </li>
@@ -746,7 +753,7 @@ export default function DashboardClient({
                     {[...pacientesSinVenir].sort((a, b) => diasDesde(b.ultimaCita ?? hoyArgStr) - diasDesde(a.ultimaCita ?? hoyArgStr)).slice(0, 3).map((p) => (
                       <li key={p.id}>
                         <span className={`db-av a${avatarVariant(p.nombre + p.apellido)}`} aria-hidden="true">{iniciales(p.nombre, p.apellido)}</span>
-                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}>{p.nombre} {p.apellido}</span><span className="db-sc">{p.ultimaCita ? `Última: ${fechaCorta(p.ultimaCita)}` : 'Sin sesión'}</span></span>
+                        <span style={{ minWidth: 0 }}><span className="db-nm" style={{ display: 'block' }}><Link href={`/pacientes/${p.id}`} className="db-nm-lnk">{p.nombre} {p.apellido}</Link></span><span className="db-sc">{p.ultimaCita ? `Última: ${fechaCorta(p.ultimaCita)}` : 'Sin sesión'}</span></span>
                         <span className="db-kv">{p.ultimaCita ? `${diasDesde(p.ultimaCita)} días` : '—'}</span>
                         <span className="db-acts"><WaButton telefono={p.telefono} /><Link href={`/pacientes/${p.id}`} className="db-ib" title="Abrir ficha"><DbIcon name="file" /></Link></span>
                       </li>
