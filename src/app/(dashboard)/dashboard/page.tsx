@@ -124,7 +124,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     // con saldo real vía monto_pagado, nunca solo `pagado`).
     supabase
       .from('turnos')
-      .select('id, fecha_hora, monto, moneda, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
+      .select('id, fecha_hora, monto, moneda, pagado, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .in('estado', ['realizado', 'no_asistio'])
       .in('estado_pago', ['pendiente', 'pago_parcial'])
@@ -134,7 +134,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     // pasado) — se agrupa por mes dinámicamente en el cliente.
     supabase
       .from('turnos')
-      .select('id, fecha_hora, monto, moneda, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
+      .select('id, fecha_hora, monto, moneda, pagado, monto_pagado, paciente_id, paciente:pacientes(nombre, apellido, os_config_id)')
       .eq('terapeuta_id', efectivo.terapeutaId)
       .in('estado', ['realizado', 'no_asistio'])
       .in('estado_pago', ['pendiente', 'pago_parcial'])
@@ -196,10 +196,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       pacienteId: t.paciente_id,
       fecha_hora: t.fecha_hora,
       estado: t.estado,
-      monto: t.monto,
+      // Sin permiso de cobros los montos nunca viajan al cliente (el
+      // payload RSC es visible aunque la UI los oculte).
+      monto: veCobros ? t.monto : null,
       moneda: t.moneda ?? 'ARS',
-      pagado: t.pagado,
-      montoPagado: t.monto_pagado ?? 0,
+      pagado: veCobros ? t.pagado : false,
+      montoPagado: veCobros ? (t.monto_pagado ?? 0) : 0,
       origen: paciente?.os_config_id && osMap[paciente.os_config_id] ? osMap[paciente.os_config_id] : 'Particular',
       paciente: paciente ? { nombre: paciente.nombre, apellido: paciente.apellido } : null,
     }
@@ -234,7 +236,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const deudaPorMoneda: Record<string, { total: number; count: number }> = {}
   for (const t of deudaTurnosRaw ?? []) {
     const paciente = resolverPaciente(t.paciente_id, t.paciente as unknown as { nombre: string; apellido: string; os_config_id: string | null } | null)
-    if (!paciente || paciente.os_config_id) continue // sólo particulares
+    if (!paciente || paciente.os_config_id || t.pagado) continue // sólo particulares con deuda real
     const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
     if (saldo <= 0) continue
     const moneda = t.moneda ?? 'ARS'
@@ -250,13 +252,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
       if (t.fecha_hora < prev.masAntigua) prev.masAntigua = t.fecha_hora
     }
   }
-  const deuda = {
-    porMoneda: deudaPorMoneda,
-    totalCount: deudaPorPaciente.size,
-    top: Array.from(deudaPorPaciente.entries())
-      .map(([pacienteId, d]) => ({ pacienteId, ...d }))
-      .sort((a, b) => b.saldo - a.saldo),
-  }
+  const deuda = veCobros
+    ? {
+        porMoneda: deudaPorMoneda,
+        totalCount: deudaPorPaciente.size,
+        top: Array.from(deudaPorPaciente.entries())
+          .map(([pacienteId, d]) => ({ pacienteId, ...d }))
+          .sort((a, b) => b.saldo - a.saldo),
+      }
+    : { porMoneda: {}, totalCount: 0, top: [] }
 
   // OS sin liquidar — todos los meses anteriores, agrupados dinámicamente
   const osPorMes = new Map<string, Map<string, { osNombre: string; n: number; monto: number; moneda: string }>>()
@@ -264,7 +268,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   let osTotalCount = 0
   for (const t of osSinLiquidarRaw ?? []) {
     const paciente = resolverPaciente(t.paciente_id, t.paciente as unknown as { nombre: string; apellido: string; os_config_id: string | null } | null)
-    if (!paciente?.os_config_id) continue
+    if (!paciente?.os_config_id || t.pagado) continue
     const saldo = Math.max(0, (t.monto ?? 0) - (t.monto_pagado ?? 0))
     if (saldo <= 0) continue
     const moneda = t.moneda ?? 'ARS'
@@ -280,13 +284,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     osTotalPorMoneda[moneda] = (osTotalPorMoneda[moneda] ?? 0) + saldo
     osTotalCount++
   }
-  const osSinLiquidar = {
-    totalCount: osTotalCount,
-    porMoneda: osTotalPorMoneda,
-    meses: Array.from(osPorMes.entries())
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([mesKey, filas]) => ({ mesKey, filas: Array.from(filas.values()) })),
-  }
+  const osSinLiquidar = veCobros
+    ? {
+        totalCount: osTotalCount,
+        porMoneda: osTotalPorMoneda,
+        meses: Array.from(osPorMes.entries())
+          .sort((a, b) => b[0].localeCompare(a[0]))
+          .map(([mesKey, filas]) => ({ mesKey, filas: Array.from(filas.values()) })),
+      }
+    : { totalCount: 0, porMoneda: {}, meses: [] }
 
   const seriesVencenProps = (seriesVencen ?? []).map((s) => ({
     id: s.id,

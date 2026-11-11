@@ -115,11 +115,13 @@ export function resolverComparacion(
   rango: RangoFechas,
   hoyArgStr: string,
 ): RangoFechas & { label: string } {
-  if (cmp === 'yoy') {
-    return { desde: shiftYears(rango.desde, -1), hasta: shiftYears(rango.hasta, -1), label: 'Mismo período del año anterior' }
-  }
-
   const finTranscurrido = clampStr(rango.hasta, hoyArgStr)
+
+  // Mismo tramo ya transcurrido (igual que 'prev'): "Este mes" al día 10
+  // compara 1..10 del mes del año anterior, no el mes completo.
+  if (cmp === 'yoy') {
+    return { desde: shiftYears(rango.desde, -1), hasta: shiftYears(finTranscurrido, -1), label: 'Mismo período del año anterior' }
+  }
   const diasTranscurridos = diffDays(rango.desde, finTranscurrido) + 1
 
   let cmpDesde: string
