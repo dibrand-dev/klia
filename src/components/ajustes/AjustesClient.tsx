@@ -135,6 +135,7 @@ const ICONS: Record<string, React.ReactNode> = {
   colaboradoras:   icnSvg(<><circle cx="9" cy="8" r="3"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M17 8a3 3 0 1 0 0-6"/><path d="M22 20a6 6 0 0 0-5-6"/></>),
   recetas:         icnSvg(<><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></>),
   'tipos-turno':   icnSvg(<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7"/></>),
+  recordatorios:   icnSvg(<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>),
 }
 
 // ── Toggle switch ──────────────────────────────────────────────────────
@@ -720,6 +721,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     { id: 'tipos-turno', label: 'Tipos de turno' },
     { id: 'cobros-pagos', label: 'Cobros y pagos' },
     { id: 'transferencia', label: 'Transferencia bancaria' },
+    { id: 'recordatorios', label: 'Recordatorios' },
     ...(mostrarAvisoDeuda ? [{ id: 'aviso-deuda', label: 'Aviso de deuda' }] : []),
     { id: 'politica', label: 'Política de cobros' },
     { id: 'feriados', label: 'Feriados' },
@@ -1371,6 +1373,24 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             </form>
           </section>
 
+          {/* ═══ RECORDATORIOS ═══ */}
+          <section className={`ajustes-sec${activeSection !== 'recordatorios' ? ' hidden md:block' : ''}`} id="recordatorios" style={secStyle}>
+            <div style={secHdrStyle}>
+              <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.recordatorios}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Recordatorios</h2>
+                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Controlá qué avisos reciben tus pacientes antes de su turno.</p>
+              </div>
+            </div>
+            <ToggleRow
+              name="Recordatorio de turno al paciente"
+              desc="Si lo desactivás, tus pacientes no reciben recordatorio de turno por ningún canal (email ni WhatsApp). No afecta el aviso de pago."
+              on={recordatorioTurnoActivo}
+              onChange={handleRecordatorioTurnoToggle}
+              disabled={recordatorioTurnoLoading}
+            />
+          </section>
+
           {mostrarAvisoDeuda && (
             <section className={`ajustes-sec${activeSection !== 'aviso-deuda' ? ' hidden md:block' : ''}`} id="aviso-deuda" style={secStyle}>
               <div style={secHdrStyle}>
@@ -1402,13 +1422,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   Guardado
                 </span>
               )}
-              <ToggleRow
-                name="Recordatorio de turno al paciente"
-                desc="Si lo desactivás, tus pacientes no reciben recordatorio de turno por ningún canal (email ni WhatsApp). No afecta el aviso de pago."
-                on={recordatorioTurnoActivo}
-                onChange={handleRecordatorioTurnoToggle}
-                disabled={recordatorioTurnoLoading}
-              />
             </section>
           )}
 
