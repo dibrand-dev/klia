@@ -467,10 +467,13 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-10_
+_Actualizado el 2026-11-11_
 
 ```
-2de2017 feat: agregar especialidad Cosmetología
-57118bd docs: CLAUDE.md - commits del dia 2026-11-09
-a38907f fix: cookie de sesión con Domain=.klia.com.ar en la app (login volvía a /login sin error)
+a6b6933 feat: foto del paciente en Atenciones del día y en el resumen IA
+5f1c522 fix: avisar a la profesional cuando falla el envío del mail de invitación al portal
+6ea13d8 feat: registro de comidas del portal sin plan alimentario
+07cd42f docs: CLAUDE.md - panel de vendedores en producción
+e450e88 fix: quitar link de registro del panel de vendedores
+c60d26b docs: CLAUDE.md - commits del dia 2026-11-10
 ```
