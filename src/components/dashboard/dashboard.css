@@ -161,7 +161,7 @@
 .db-bar .db-pc + .db-c { border-radius: 0; }
 .db-bar .db-c:first-child { border-radius: 4px 4px 0 0; }
 .db-bar.zero { height: 2px; background: var(--surface-3); }
-.db-ch-x { display: flex; gap: 8px; margin: 6px 0 0 50px; }
+.db-ch-x { display: flex; gap: 8px; margin: 6px 0 0 64px; }
 .db-ch-x div { flex: 1; min-width: 0; text-align: center; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .db-ch-x div.sel { color: var(--ink); font-weight: 600; }
 .db-ch-x div.cmp { color: var(--ink-2); }
@@ -285,7 +285,7 @@
   .db-hoy-next { margin: 12px 12px 4px; grid-template-columns: auto 1fr; }
   .db-hoy-next .btn { grid-column: 1/-1; grid-row: auto; justify-content: center; margin-top: 8px; }
   .db-ag { padding: 4px 4px 8px; }
-  .db-ch { padding: 10px 12px 12px; } .db-ch-plot { margin-left: 40px; height: 150px; } .db-ch-x { margin-left: 40px; }
+  .db-ch { padding: 10px 12px 12px; } .db-ch-plot { margin-left: 58px; height: 150px; } .db-ch-x { margin-left: 58px; } .db-ch-grid div span { font-size: 10px; right: calc(100% + 6px); }
   .db-ch-legend { padding: 12px 12px 0; }
   .db-att-l li { grid-template-columns: 32px minmax(0, 1fr) auto; }
   .db-att-l li .db-acts { grid-column: 2/-1; }
