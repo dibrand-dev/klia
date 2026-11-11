@@ -254,6 +254,7 @@
 .db-so-sec-h span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 1px; }
 .db-so-rows { list-style: none; margin: 0; padding: 0 12px; }
 .db-so-rows li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 9px 8px; border-radius: 8px; }
+.db-so-rows li.db-no-av { grid-template-columns: minmax(0, 1fr) auto auto; }
 .db-so-rows li:hover { background: var(--surface-2); }
 .db-so-rows li + li { border-top: 1px solid var(--surface-3); }
 .db-so-rows .db-nm { font-weight: 600; font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -291,5 +292,7 @@
   .db-onb { grid-template-columns: auto 1fr; } .db-onb .db-acts { grid-column: 1/-1; }
   .db-so { width: 100%; }
   .db-so-rows li { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .db-so-rows li.db-no-av { grid-template-columns: minmax(0, 1fr) auto; }
   .db-so-rows li .db-acts { grid-column: 2/-1; }
+  .db-so-rows li.db-no-av .db-acts { grid-column: 1/-1; }
 }

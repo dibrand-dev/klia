@@ -82,9 +82,9 @@ function Row({ row }: { row: DrilldownRow }) {
     </>
   )
   if (row.href) {
-    return <li><Link href={row.href} style={{ display: 'contents' }}>{contenido}</Link></li>
+    return <li className={row.avatarText ? undefined : 'db-no-av'}><Link href={row.href} style={{ display: 'contents' }}>{contenido}</Link></li>
   }
-  return <li>{contenido}</li>
+  return <li className={row.avatarText ? undefined : 'db-no-av'}>{contenido}</li>
 }
 
 export default function DashboardDrilldownSlide({ open, onClose, title, subtitle, sections, filtro, footActions, emptyMessage }: Props) {
