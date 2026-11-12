@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { serviceClient } from '@/lib/supabase/service'
 import { comidaConOwnership } from '@/lib/nutricion/planes-alimentarios-ownership'
+import { intentarGenerarImagen } from '@/lib/food-images'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +66,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (error) {
     console.error('[plan-comidas/[id]/items POST] DB error:', error)
     return NextResponse.json({ error: 'Error al agregar el item' }, { status: 500 })
+  }
+
+  // Ver nota en plan-comida-items/[id]/route.ts — after() no existe en
+  // Next 14.2.35, fire-and-forget sin await como fallback temporal.
+  if (tipo === 'alimento' && alimentoId) {
+    void intentarGenerarImagen(alimentoId)
   }
 
   return NextResponse.json({ item })

@@ -2534,16 +2534,25 @@ export type Database = {
           fuente: string
           nombre: string
           grupo: string
+          image_url: string | null
+          image_status: 'pending' | 'generating' | 'ready' | 'failed'
+          image_updated_at: string | null
         }
         Insert: {
           id?: string
           fuente: string
           nombre: string
           grupo: string
+          image_url?: string | null
+          image_status?: 'pending' | 'generating' | 'ready' | 'failed'
+          image_updated_at?: string | null
         }
         Update: {
           nombre?: string
           grupo?: string
+          image_url?: string | null
+          image_status?: 'pending' | 'generating' | 'ready' | 'failed'
+          image_updated_at?: string | null
         }
         Relationships: []
       }

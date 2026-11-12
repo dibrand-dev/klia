@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { serviceClient } from '@/lib/supabase/service'
 import { itemConOwnership } from '@/lib/nutricion/planes-alimentarios-ownership'
+import { intentarGenerarImagen } from '@/lib/food-images'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (error) {
     console.error('[plan-comida-items/[id] PUT] DB error:', error)
     return NextResponse.json({ error: 'Error al editar el item' }, { status: 500 })
+  }
+
+  // Alimento sin imagen asignado a un plan — debería dispararse con after()
+  // de next/server, pero el proyecto está en Next 14.2.35 y esa función no
+  // existe hasta Next 15 (confirmado en runtime, no la exporta next/server
+  // acá). Fire-and-forget sin await como fallback: no bloquea la respuesta,
+  // pero a diferencia de after() no está garantizado que el runtime de
+  // Vercel deje terminar la promesa tras cerrarse la response. El reclamo
+  // atómico adentro evita duplicar trabajo si ya está generándose o ya
+  // tiene imagen — pendiente de decisión del equipo (ver resumen).
+  if (tipo === 'alimento' && alimentoId) {
+    void intentarGenerarImagen(alimentoId)
   }
 
   return NextResponse.json({ item: itemActualizado })
