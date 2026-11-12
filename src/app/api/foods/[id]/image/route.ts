@@ -5,6 +5,7 @@ import { intentarGenerarImagen } from '@/lib/food-images'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 // `vademecum_alimentos` es catálogo compartido (no por terapeuta) — alcanza
 // con exigir cualquier usuario autenticado, no getEffectiveTerapeutaIdServer.

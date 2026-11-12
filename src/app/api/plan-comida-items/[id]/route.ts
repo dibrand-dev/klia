@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { serviceClient } from '@/lib/supabase/service'
@@ -60,16 +61,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Error al editar el item' }, { status: 500 })
   }
 
-  // Alimento sin imagen asignado a un plan — debería dispararse con after()
-  // de next/server, pero el proyecto está en Next 14.2.35 y esa función no
-  // existe hasta Next 15 (confirmado en runtime, no la exporta next/server
-  // acá). Fire-and-forget sin await como fallback: no bloquea la respuesta,
-  // pero a diferencia de after() no está garantizado que el runtime de
-  // Vercel deje terminar la promesa tras cerrarse la response. El reclamo
+  // Alimento sin imagen asignado a un plan — next/server no tiene after()
+  // en Next 14.2.35 (recién en Next 15), así que el disparo en segundo
+  // plano va con waitUntil de @vercel/functions: a diferencia de un
+  // fire-and-forget sin await, el runtime de Vercel garantiza que la
+  // promesa termine aunque la response ya se haya cerrado. El reclamo
   // atómico adentro evita duplicar trabajo si ya está generándose o ya
-  // tiene imagen — pendiente de decisión del equipo (ver resumen).
+  // tiene imagen.
   if (tipo === 'alimento' && alimentoId) {
-    void intentarGenerarImagen(alimentoId)
+    waitUntil(intentarGenerarImagen(alimentoId))
   }
 
   return NextResponse.json({ item: itemActualizado })

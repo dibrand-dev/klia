@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { serviceClient } from '@/lib/supabase/service'
@@ -69,9 +70,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
 
   // Ver nota en plan-comida-items/[id]/route.ts — after() no existe en
-  // Next 14.2.35, fire-and-forget sin await como fallback temporal.
+  // Next 14.2.35, waitUntil de @vercel/functions como reemplazo.
   if (tipo === 'alimento' && alimentoId) {
-    void intentarGenerarImagen(alimentoId)
+    waitUntil(intentarGenerarImagen(alimentoId))
   }
 
   return NextResponse.json({ item })
