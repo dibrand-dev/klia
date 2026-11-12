@@ -467,13 +467,14 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-11_
+_Actualizado el 2026-11-12_
 
 ```
-a6b6933 feat: foto del paciente en Atenciones del día y en el resumen IA
-5f1c522 fix: avisar a la profesional cuando falla el envío del mail de invitación al portal
-6ea13d8 feat: registro de comidas del portal sin plan alimentario
-07cd42f docs: CLAUDE.md - panel de vendedores en producción
-e450e88 fix: quitar link de registro del panel de vendedores
-c60d26b docs: CLAUDE.md - commits del dia 2026-11-10
+8b761af fix: mover el toggle de recordatorio de turno a una sección propia visible en todos los planes (KL1-T38)
+5986a8f feat: ajuste para desactivar el recordatorio de turno al paciente (KL1-T38)
+da29a96 fix: margen del eje Y del gráfico de ingresos en mobile y alineación de meses
+d42d9bf fix: montos de las KPI sin centavos y compactos, leyenda y textos del dashboard, y fetch de antropometría sin paciente
+c5a0be8 feat: deuda, OS sin liquidar y sin venir del dashboard vía RPC (sin tope de 1000 filas) y paginado del período
+356a5bd fix: eje de monedas del gráfico de ingresos y nombres de paciente clickeables en el dashboard
+9952c78 fix: filas del SlideOver del dashboard sin avatar usaban la columna de 32px para el nombre
 ```
