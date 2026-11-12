@@ -199,10 +199,14 @@ body { background: var(--surface-3); }
 .pp-pmeal .pp-meal-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .pp-pmeal .pp-meal-hd b { font-size: 15px; font-weight: 600; }
 .pp-pmeal .pp-meal-hd span { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.pp-items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
-.pp-items li { position: relative; padding-left: 16px; font-size: 14px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
-.pp-items li::before { content: ""; position: absolute; left: 2px; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: var(--muted-3); }
-.pp-items li b { font-weight: 600; color: var(--ink); }
+/* miniaturas: 56 px / r12 — mismo layout y miniatura que el link público (fuente de 200 px) */
+.pp-items { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; }
+.pp-items li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--surface-3); }
+.pp-items li:first-child { padding-top: 2px; border-top: 0; }
+.pp-items li:last-child { padding-bottom: 0; }
+.pp-items .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; color: var(--ink); }
+.pp-items .free .nm { font-weight: 500; }
+.pp-items .rs { display: block; font-size: 13px; line-height: 1.45; color: var(--muted); margin-top: 2px; text-wrap: pretty; }
 .pp-ptip { margin: 9px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
 
 /* sheet (desde abajo) */

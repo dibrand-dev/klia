@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PlanComidaItem } from '@/types/database'
 import { useVademecumAlimentos, type AlimentoVademecum } from '@/lib/hooks/useVademecumAlimentos'
+import FoodThumb from '@/components/nutricion/FoodThumb'
+import './plan-comida-block.css'
 
 export type ComidaConItems = {
   id: string
@@ -422,7 +424,8 @@ function ItemRow({
 
   if (item.tipo === 'texto_libre') {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: readOnly ? 'minmax(0,1fr)' : 'minmax(0,1fr) 28px', gap: 8, alignItems: 'center' }}>
+      <div className={`pcb-row free ${readOnly ? 'ro' : 'ed'}`}>
+        <FoodThumb size={readOnly ? 48 : 36} src={null} />
         <input
           value={textoLibre}
           onChange={(e) => setTextoLibre(e.target.value)}
@@ -443,7 +446,8 @@ function ItemRow({
     : <><b style={{ color: 'var(--ink-2, #1F2937)', fontWeight: 500 }}>{Math.round(val)}</b>{unit}</>
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: readOnly ? 'minmax(0,1fr) 84px auto' : 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
+    <div className={`pcb-row ${readOnly ? 'ro' : 'ed'}`}>
+      <FoodThumb size={readOnly ? 48 : 36} src={alimento?.imageUrl ?? null} />
       <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input
@@ -455,6 +459,7 @@ function ItemRow({
           placeholder="Buscar alimento…"
           autoComplete="off"
           aria-label="Alimento"
+          title={alimento?.nombre ?? ''}
           style={{ ...inpStyle, paddingLeft: 32, textOverflow: 'ellipsis', ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
         {!readOnly && dropOpen && (
@@ -579,7 +584,8 @@ function DraftAlimentoRow({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px auto 28px', gap: 8, alignItems: 'center' }}>
+    <div className="pcb-row ed">
+      <FoodThumb size={36} src={null} />
       <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   // Modo batch: reconstruir macros de alimentos ya elegidos (al cargar un plan
   // existente), sin límite de 40 ni búsqueda por nombre.
-  let query = db.from('vademecum_alimentos').select('id, fuente, nombre, grupo')
+  let query = db.from('vademecum_alimentos').select('id, fuente, nombre, grupo, image_url')
 
   if (idsParam) {
     const ids = idsParam.split(',').map((s) => s.trim()).filter(Boolean)
@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
       fuente: a.fuente,
       nombre: a.nombre,
       grupo: a.grupo,
+      imageUrl: a.image_url ?? null,
       kcalPor100g: macros.ENERC_KCAL ?? null,
       proteinasPor100g: macros.PROTCNT ?? null,
       grasasPor100g: macros.FAT ?? null,

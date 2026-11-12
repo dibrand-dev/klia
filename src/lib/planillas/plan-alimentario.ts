@@ -9,6 +9,7 @@ export interface ItemComida {
   tipo: string // 'alimento' | 'texto_libre'
   nombre: string // ya resuelto: contenido_texto, o nombre del alimento del Vademécum
   cantidadGramos: number | null
+  imageUrl: string | null // miniatura (Plan Alimentario, link público/portal) — el PDF no la usa
 }
 
 export interface ComidaPlan {
