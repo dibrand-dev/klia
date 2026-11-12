@@ -31,7 +31,8 @@ export function construirPromptAlimento(nombre: string, fuente: string): string 
   return (
     `Fotografía gastronómica minimalista de "${base}" como ingrediente individual. ` +
     'Vista cenital o ligeramente angulada, luz natural suave, fondo blanco o neutro limpio, enfoque nítido, relación de aspecto 1:1. ' +
-    'Mostrá únicamente el alimento pedido: sin acompañamientos, sin cubiertos, sin texto ni marcas de agua.' +
+    'Mostrá únicamente el alimento pedido: sin acompañamientos, sin cubiertos, sin texto ni marcas de agua. ' +
+    'Alimento centrado ocupando aprox. el 70% del cuadro, con margen alrededor, composición simple de un solo elemento, sin detalles finos.' +
     reglasMarca
   )
 }
@@ -57,8 +58,8 @@ export async function generarImagenAlimento(alimento: { id: string; nombre: stri
 
   const original = Buffer.from(imagen.data, 'base64')
   const webp = await sharp(original)
-    .resize(400, 400, { fit: 'cover' })
-    .webp({ quality: 80 })
+    .resize(200, 200, { fit: 'cover' })
+    .webp({ quality: 75 })
     .toBuffer()
 
   const blob = await put(`vademecum/${alimento.id}.webp`, webp, {
