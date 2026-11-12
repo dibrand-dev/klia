@@ -26,7 +26,7 @@ export default function FoodImage({ alimentoId, imageUrl, imageStatus, alt, size
       .then((res) => res.json())
       .then((data) => {
         if (data?.image_url) setUrl(data.image_url)
-        if (data?.image_status) setStatus(data.image_status)
+        if (data?.status) setStatus(data.status)
       })
       .catch(() => {
         // Sin reintento — si falla la llamada, queda 'pending' y el próximo
