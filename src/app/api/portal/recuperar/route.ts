@@ -3,6 +3,7 @@ import { serviceClient } from '@/lib/supabase/service'
 import { enviarEmail } from '@/lib/brevo'
 import { emailRecuperacionContrasena } from '@/lib/email-templates'
 import { resolverBaseUrl } from '@/lib/urls'
+import { normalizarEmail, escaparIlike } from '@/lib/pacientes/duplicados'
 
 export const runtime = 'nodejs'
 
@@ -22,14 +23,14 @@ function sleep(ms: number) {
 export async function POST(req: NextRequest) {
   const inicio = Date.now()
   const body = await req.json().catch(() => null) as { email?: string } | null
-  const email = body?.email?.trim()
+  const email = normalizarEmail(body?.email)
 
   if (email) {
     const db = serviceClient()
     const { data: acceso } = await db
       .from('paciente_accesos')
       .select('auth_user_id, pacientes(nombre)')
-      .eq('email', email)
+      .ilike('email', escaparIlike(email))
       .not('auth_user_id', 'is', null)
       .limit(1)
       .maybeSingle()

@@ -45,7 +45,7 @@ export default function PortalLoginPage() {
 
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
 
     if (error) {
       setLoginError('El email o la contraseña no son correctos.')
@@ -89,7 +89,7 @@ export default function PortalLoginPage() {
           <form onSubmit={handleSubmit} noValidate>
             <div className={`pp-af${loginError ? ' err' : ''}`}>
               <label htmlFor="l-em">Email</label>
-              <input id="l-em" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input id="l-em" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className={`pp-af${loginError ? ' err' : ''}`} style={{ marginBottom: 4 }}>
               <label htmlFor="l-pw">Contraseña</label>
@@ -121,7 +121,7 @@ export default function PortalLoginPage() {
             <form onSubmit={enviarRecuperacion}>
               <div className="pp-af">
                 <label htmlFor="f-em">Email</label>
-                <input id="f-em" type="email" autoComplete="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+                <input id="f-em" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
               </div>
               <button type="submit" className="pp-pb pri full" disabled={sending}>{sending ? 'Enviando...' : 'Enviarme el link'}</button>
             </form>
