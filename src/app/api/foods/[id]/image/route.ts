@@ -19,5 +19,5 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const db = serviceClient()
   const { data } = await db.from('vademecum_alimentos').select('image_url, image_status').eq('id', params.id).maybeSingle()
 
-  return NextResponse.json({ ok: true, image_url: data?.image_url ?? null, image_status: data?.image_status ?? 'pending' })
+  return NextResponse.json({ status: data?.image_status ?? 'pending', image_url: data?.image_url ?? null })
 }
