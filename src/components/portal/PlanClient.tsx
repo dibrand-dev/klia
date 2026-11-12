@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { gramosDesdeMacro } from '@/lib/nutricion/calculos'
 import { hoyFechaAR } from '@/lib/tz'
 import { diaSemanaKey, formatCorto } from '@/lib/portal/semana'
+import FoodThumb from '@/components/nutricion/FoodThumb'
 
 const IconCheck = <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'var(--ok)', strokeWidth: 2.2, fill: 'none' }}><path d="M20 6L9 17l-5-5" /></svg>
 const IconDoc = <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, stroke: 'var(--accent-ink)', strokeWidth: 1.7, fill: 'none' }}><path d="M6 3h9l4 4v14H6z" /><path d="M15 3v4h4M9 12h7M9 16h5" /></svg>
@@ -18,7 +19,7 @@ const MACRO_DEFS: { key: 'carbohidratos' | 'proteinas' | 'grasas'; nombre: strin
   { key: 'grasas', nombre: 'Grasas', kcalPorGramo: 9 },
 ]
 
-type Item = { tipo: string; nombre: string; cantidadGramos: number | null }
+type Item = { tipo: string; nombre: string; cantidadGramos: number | null; imageUrl: string | null }
 type Comida = { diaSemana: string; tipoComida: string; hora: string | null; nota: string | null; items: Item[] }
 type PlanData = {
   noPlan: boolean
@@ -151,7 +152,13 @@ export default function PlanClient() {
               <ul className="pp-items">
                 {items.length === 0 && <li>Sin ítems cargados.</li>}
                 {items.map((item, i) => (
-                  <li key={i}><b>{item.nombre}</b>{item.cantidadGramos != null ? ` — ${item.cantidadGramos} g` : ''}</li>
+                  <li key={i} className={item.tipo === 'alimento' ? undefined : 'free'}>
+                    <FoodThumb size={56} src={item.imageUrl} />
+                    <div>
+                      <span className="nm" title={item.nombre}>{item.nombre}</span>
+                      {item.tipo === 'alimento' && item.cantidadGramos != null && <span className="rs">{item.cantidadGramos} g</span>}
+                    </div>
+                  </li>
                 ))}
               </ul>
               {c.nota && <p className="pp-ptip">{c.nota}</p>}

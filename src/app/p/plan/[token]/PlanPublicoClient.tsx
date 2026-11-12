@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
+import FoodThumb from '@/components/nutricion/FoodThumb'
 import './plan-publico.css'
 
 const DIAS_VALUE = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 const DIAS_LABEL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const DIAS_CORTO = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-type ItemPublico = { tipo: string; nombre: string; cantidadGramos: number | null }
+type ItemPublico = { tipo: string; nombre: string; cantidadGramos: number | null; imageUrl: string | null }
 type ComidaPublica = { diaSemana: string; tipoComida: string; hora: string | null; nota: string | null; items: ItemPublico[] }
 
 interface RedesSociales {
@@ -275,7 +276,13 @@ export default function PlanPublicoClient(props: PlanPublicoProps) {
                       <div>
                         <ul className="items">
                           {c.items.map((it, ii) => (
-                            <li key={ii}>{it.tipo === 'alimento' ? <><b>{it.nombre}</b>{it.cantidadGramos != null ? ` — ${it.cantidadGramos} g` : ''}</> : it.nombre}</li>
+                            <li key={ii} className={it.tipo === 'alimento' ? undefined : 'free'}>
+                              <FoodThumb size={56} src={it.imageUrl} />
+                              <div>
+                                <span className="nm" title={it.nombre}>{it.nombre}</span>
+                                {it.tipo === 'alimento' && it.cantidadGramos != null && <span className="rs">{it.cantidadGramos} g</span>}
+                              </div>
+                            </li>
                           ))}
                         </ul>
                         {c.nota && (

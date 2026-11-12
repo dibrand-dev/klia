@@ -114,21 +114,22 @@ export async function obtenerDatosPlanAlimentario(
       if (item.tipo === 'alimento' && item.alimento_id) alimentoIds.add(String(item.alimento_id))
     }
   }
-  const nombrePorAlimentoId = new Map<string, string>()
+  const alimentoPorId = new Map<string, { nombre: string; imageUrl: string | null }>()
   if (alimentoIds.size > 0) {
     const { data: alimentos } = await db
       .from('vademecum_alimentos')
-      .select('id, nombre')
+      .select('id, nombre, image_url')
       .in('id', Array.from(alimentoIds))
-    for (const a of alimentos ?? []) nombrePorAlimentoId.set(String(a.id), a.nombre)
+    for (const a of alimentos ?? []) alimentoPorId.set(String(a.id), { nombre: a.nombre, imageUrl: a.image_url })
   }
 
   const comidas: ComidaPlan[] = [...comidasRaw].sort(compararComidas).map((comida) => {
     const items: ItemComida[] = [...(comida.plan_comida_items ?? [])].sort(compararItems).map((item) => {
+      const alimento = item.tipo === 'alimento' && item.alimento_id ? alimentoPorId.get(String(item.alimento_id)) : undefined
       const nombre = item.tipo === 'alimento' && item.alimento_id
-        ? (nombrePorAlimentoId.get(String(item.alimento_id)) ?? 'Alimento sin nombre cargado')
+        ? (alimento?.nombre ?? 'Alimento sin nombre cargado')
         : (item.contenido_texto ?? '')
-      return { tipo: item.tipo, nombre, cantidadGramos: item.cantidad_gramos }
+      return { tipo: item.tipo, nombre, cantidadGramos: item.cantidad_gramos, imageUrl: alimento?.imageUrl ?? null }
     })
     return {
       diaSemana: comida.dia_semana,

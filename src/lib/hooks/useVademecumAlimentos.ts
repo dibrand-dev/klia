@@ -7,6 +7,7 @@ export interface AlimentoVademecum {
   fuente: string
   nombre: string
   grupo: string
+  imageUrl: string | null
   kcalPor100g: number | null
   proteinasPor100g: number | null
   grasasPor100g: number | null
