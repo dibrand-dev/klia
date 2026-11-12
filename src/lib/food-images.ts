@@ -71,6 +71,16 @@ export class GeneracionImagenError extends Error {}
 // Siempre pasa por sharp antes de subir — nunca se sube el Base64 original
 // de Gemini (tamaño/formato no controlados, puede no ser siquiera webp).
 export async function generarImagenAlimento(alimento: { id: string; nombre: string; fuente: string }, overrides: OverridesPrompt = {}): Promise<string> {
+  // Antes de llamar a Gemini — así una variable mal configurada no gasta la
+  // generación. El store de Blob de alimentos (klia-alimentos, público) usa
+  // su propio token, FOOD_IMAGES_READ_WRITE_TOKEN — nunca BLOB_READ_WRITE_TOKEN,
+  // que es del store privado del portal del paciente (no tocar, ver avatar.ts
+  // y los endpoints de portal/registros, portal/fotos y cron/portal-retencion).
+  const token = process.env.FOOD_IMAGES_READ_WRITE_TOKEN
+  if (!token) {
+    throw new GeneracionImagenError('Falta FOOD_IMAGES_READ_WRITE_TOKEN en el entorno')
+  }
+
   const ai = clienteGemini()
   const prompt = construirPromptAlimento(alimento.nombre, alimento.fuente, overrides)
 
@@ -95,6 +105,7 @@ export async function generarImagenAlimento(alimento: { id: string; nombre: stri
     access: 'public',
     addRandomSuffix: true,
     contentType: 'image/webp',
+    token,
   })
 
   return blob.url
