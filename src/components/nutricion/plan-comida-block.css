@@ -4,11 +4,13 @@
    inline style (PlanComidaBlock.tsx no tenía CSS propio hasta esta miniatura). */
 .pcb-row { display: grid; gap: 8px; align-items: center; }
 .pcb-row.ro { grid-template-columns: 48px minmax(0,1fr) 84px auto; }
-.pcb-row.ro.free { grid-template-columns: 48px minmax(0,1fr); }
+.pcb-row.ro.free { grid-template-columns: 48px minmax(0,1fr) auto; }
 .pcb-row.ed { grid-template-columns: 36px minmax(0,1fr) 84px auto 28px; }
 .pcb-row.ed.free { grid-template-columns: 36px minmax(0,1fr) 28px; }
+.pcb-none { font-size: 11.5px; color: var(--muted-3, #AEB5C0); white-space: nowrap; }
 @media (max-width: 720px) {
   .pcb-row.ro { grid-template-columns: 44px minmax(0,1fr) 84px auto; }
   .pcb-row.ro.free { grid-template-columns: 44px minmax(0,1fr); }
   .pcb-row.ro .fimg { --s: 44px; --r: 8px; }
+  .pcb-row.ro.free .pcb-none { display: none; }
 }
