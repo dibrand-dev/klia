@@ -78,12 +78,15 @@ export async function generarImagenAlimento(alimento: { id: string; nombre: stri
 export async function intentarGenerarImagen(alimentoId: string): Promise<void> {
   const db = serviceClient()
 
+  // Re-reclamable si quedó colgado en 'generating' por más de 10 minutos
+  // (proceso caído a mitad de camino, nunca llegó a 'ready' ni a 'failed').
+  const haceDiezMinutos = new Date(Date.now() - 10 * 60 * 1000).toISOString()
   const { data: reclamado, error: errorReclamo } = await db
     .from('vademecum_alimentos')
-    .update({ image_status: 'generating' })
+    .update({ image_status: 'generating', image_updated_at: new Date().toISOString() })
     .eq('id', alimentoId)
     .is('image_url', null)
-    .eq('image_status', 'pending')
+    .or(`image_status.eq.pending,and(image_status.eq.generating,image_updated_at.lt.${haceDiezMinutos})`)
     .select('id, nombre, fuente')
     .maybeSingle()
 
