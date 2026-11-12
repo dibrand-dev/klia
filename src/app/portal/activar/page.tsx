@@ -108,6 +108,8 @@ function PortalActivarContent() {
                 ? 'Esta invitación ya fue utilizada o venció. Pedile a tu profesional que te la reenvíe.'
                 : 'Este link ya no es válido o ya fue usado. Pedile a tu profesional que te lo reenvíe.'}
             </p>
+            <p className="pp-lead">Si ya activaste tu cuenta, ingresá con tu email y contraseña.</p>
+            <button type="button" className="pp-pb pri full" onClick={() => router.push('/portal/login')}>Ir a iniciar sesión</button>
           </div>
         </main>
       </div>
