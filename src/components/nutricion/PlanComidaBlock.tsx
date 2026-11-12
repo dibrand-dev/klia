@@ -435,6 +435,7 @@ function ItemRow({
           aria-label="Texto libre"
           style={{ ...inpStyle, ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
+        {readOnly && <span className="pcb-none">Texto libre · sin macros</span>}
         {!readOnly && <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>}
       </div>
     )
