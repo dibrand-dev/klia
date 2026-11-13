@@ -72,6 +72,60 @@ async function jsonOrNull(res: Response) {
   try { return await res.json() } catch { return null }
 }
 
+// Mismo hl() del diseño: resalta solo la primera ocurrencia, case-insensitive,
+// substring simple (no regex de palabras). Armado con nodos React, sin HTML.
+function resaltar(nombre: string, query: string): React.ReactNode {
+  const q = query.trim()
+  if (!q) return nombre
+  const i = nombre.toLowerCase().indexOf(q.toLowerCase())
+  if (i < 0) return nombre
+  return <>{nombre.slice(0, i)}<mark>{nombre.slice(i, i + q.length)}</mark>{nombre.slice(i + q.length)}</>
+}
+
+// Dropdown del buscador de alimentos — variante A (con miniatura), compartido
+// por ItemRow y DraftAlimentoRow.
+function FoodSearchDropdown({
+  resultados, buscando, query, onElegir,
+}: {
+  resultados: AlimentoVademecum[]
+  buscando: boolean
+  query: string
+  onElegir: (a: AlimentoVademecum) => void
+}) {
+  if (buscando) {
+    return <div className="fdrop thumbs"><div className="st">Buscando…</div></div>
+  }
+  if (resultados.length === 0) {
+    return (
+      <div className="fdrop thumbs">
+        <div className="st">Sin resultados{query ? ` para «${query}»` : ''}. Podés cargarlo como texto libre.</div>
+      </div>
+    )
+  }
+  const hayTermino = query.trim() !== ''
+  let ultimoGrupo: string | null = null
+  return (
+    <div className="fdrop thumbs">
+      {resultados.map((a) => {
+        const mostrarHeader = !hayTermino && a.grupo !== ultimoGrupo
+        if (mostrarHeader) ultimoGrupo = a.grupo
+        return (
+          <div key={a.id}>
+            {mostrarHeader && <div className="gl">{a.grupo}</div>}
+            <button type="button" className="opt" title={a.nombre} onMouseDown={(e) => { e.preventDefault(); onElegir(a) }}>
+              <FoodThumb size={40} src={a.imageUrl} />
+              <span className="tx">
+                <span className="n">{resaltar(a.nombre, query)}</span>
+                <span className="sub">{a.grupo} · <i>{a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal / 100 g` : 's/d'}</i></span>
+              </span>
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function PlanComidaBlock({
   comida, modo, diasSemana, diaActual, macrosPorAlimento, onRegistrarAlimento, onChanged, readOnly = false,
 }: Props) {
@@ -464,48 +518,7 @@ function ItemRow({
           style={{ ...inpStyle, paddingLeft: 32, textOverflow: 'ellipsis', ...(readOnly ? { pointerEvents: 'none', borderColor: 'transparent', background: 'transparent', color: 'var(--ink-2, #1F2937)' } : {}) }}
         />
         {!readOnly && dropOpen && (
-          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
-            {buscando && (
-              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Buscando…</div>
-            )}
-            {!buscando && resultados.length === 0 && (
-              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>
-                Sin resultados{busquedaAlimento ? ` para «${busquedaAlimento}»` : ''}. Podés cargarlo como texto libre.
-              </div>
-            )}
-            {!buscando && (() => {
-              const hayTermino = busquedaAlimento.trim() !== ''
-              let ultimoGrupo: string | null = null
-              return resultados.map((a) => {
-                const mostrarHeader = !hayTermino && a.grupo !== ultimoGrupo
-                if (mostrarHeader) ultimoGrupo = a.grupo
-                return (
-                  <div key={a.id}>
-                    {mostrarHeader && (
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '8px 9px 3px' }}>
-                        {a.grupo}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); elegirAlimento(a) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', font: 'inherit', padding: '7px 9px', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                    >
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
-                      {hayTermino && (
-                        <span style={{ fontSize: 11, color: 'var(--muted-2, #8A93A1)', flexShrink: 0 }}>{a.grupo}</span>
-                      )}
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>
-                        {a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal/100g` : 's/d'}
-                      </span>
-                    </button>
-                  </div>
-                )
-              })
-            })()}
-          </div>
+          <FoodSearchDropdown resultados={resultados} buscando={buscando} query={busquedaAlimento} onElegir={elegirAlimento} />
         )}
       </div>
       <div style={{ position: 'relative' }}>
@@ -602,48 +615,7 @@ function DraftAlimentoRow({
           style={{ ...inpStyle, paddingLeft: 32, textOverflow: 'ellipsis' }}
         />
         {dropOpen && (
-          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, minWidth: 300, background: 'var(--surface, #fff)', border: '1px solid var(--border-strong, #D6DAE1)', borderRadius: 'var(--r-md, 8px)', boxShadow: 'var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08))', zIndex: 25, maxHeight: 268, overflow: 'auto', padding: 4 }}>
-            {buscando && (
-              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>Buscando…</div>
-            )}
-            {!buscando && resultados.length === 0 && (
-              <div style={{ padding: '12px 10px', fontSize: 12.5, color: 'var(--muted-2, #8A93A1)' }}>
-                Sin resultados{busqueda ? ` para «${busqueda}»` : ''}. Podés cargarlo como texto libre.
-              </div>
-            )}
-            {!buscando && (() => {
-              const hayTermino = busqueda.trim() !== ''
-              let ultimoGrupo: string | null = null
-              return resultados.map((a) => {
-                const mostrarHeader = !hayTermino && a.grupo !== ultimoGrupo
-                if (mostrarHeader) ultimoGrupo = a.grupo
-                return (
-                  <div key={a.id}>
-                    {mostrarHeader && (
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--muted-3, #AEB5C0)', padding: '8px 9px 3px' }}>
-                        {a.grupo}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); elegir(a) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: 'transparent', textAlign: 'left', font: 'inherit', padding: '7px 9px', borderRadius: 'var(--r-sm, 6px)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2, #F6F7F9)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                    >
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: 'var(--ink, #0B1220)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.nombre}</span>
-                      {hayTermino && (
-                        <span style={{ fontSize: 11, color: 'var(--muted-2, #8A93A1)', flexShrink: 0 }}>{a.grupo}</span>
-                      )}
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, color: 'var(--muted-3, #AEB5C0)', flexShrink: 0 }}>
-                        {a.kcalPor100g != null ? `${Math.round(a.kcalPor100g)} kcal/100g` : 's/d'}
-                      </span>
-                    </button>
-                  </div>
-                )
-              })
-            })()}
-          </div>
+          <FoodSearchDropdown resultados={resultados} buscando={buscando} query={busqueda} onElegir={elegir} />
         )}
       </div>
       <div style={{ position: 'relative' }}>
