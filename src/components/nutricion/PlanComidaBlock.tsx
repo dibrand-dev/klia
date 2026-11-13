@@ -273,7 +273,7 @@ export default function PlanComidaBlock({
   }
 
   return (
-    <div style={{ background: 'var(--surface, #fff)', border: '1px solid var(--border, #E7E9EE)', borderRadius: 'var(--r-lg, 12px)', boxShadow: 'var(--shadow-sm, 0 1px 2px rgba(16,24,40,.04))' }}>
+    <div className="pcb-card" style={{ background: 'var(--surface, #fff)', border: '1px solid var(--border, #E7E9EE)', borderRadius: 'var(--r-lg, 12px)', boxShadow: 'var(--shadow-sm, 0 1px 2px rgba(16,24,40,.04))' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 12px 11px 14px' }}>
         <button type="button" onClick={() => setColapsado((c) => !c)} title="Contraer" style={ibtnStyle}>
           {ICON.chev(!colapsado)}
@@ -503,7 +503,7 @@ function ItemRow({
   return (
     <div className={`pcb-row ${readOnly ? 'ro' : 'ed'}`}>
       <FoodThumb size={readOnly ? 48 : 36} src={alimento?.imageUrl ?? null} />
-      <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
+      <div ref={wrapRef} className="pcb-search" style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input
           value={busquedaAlimento}
@@ -521,7 +521,7 @@ function ItemRow({
           <FoodSearchDropdown resultados={resultados} buscando={buscando} query={busquedaAlimento} onElegir={elegirAlimento} />
         )}
       </div>
-      <div style={{ position: 'relative' }}>
+      <div className="pcb-qty" style={{ position: 'relative' }}>
         <input
           type="number" min={0} step={5}
           value={cantidad}
@@ -534,16 +534,16 @@ function ItemRow({
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', pointerEvents: 'none' }}>g</span>
       </div>
       {v ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', whiteSpace: 'nowrap' }}>
+        <div className="pcb-mac" style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5, color: 'var(--muted, #5B6472)', whiteSpace: 'nowrap' }}>
           {v.kcal == null ? <span style={{ color: 'var(--muted-3, #AEB5C0)' }}>s/d kcal</span> : <span style={{ color: 'var(--ink, #0B1220)', fontWeight: 500 }}>{Math.round(v.kcal)} kcal</span>}
           <span>P {cell(v.prot, 'g')}</span>
           <span>G {cell(v.gra, 'g')}</span>
           <span>HC {cell(v.cho, 'g')}</span>
         </div>
       ) : (
-        <div style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
+        <div className="pcb-mac" style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
       )}
-      {!readOnly && <button type="button" onClick={onEliminar} title="Quitar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>}
+      {!readOnly && <button type="button" onClick={onEliminar} title="Quitar" className="pcb-del" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>}
     </div>
   )
 }
@@ -600,7 +600,7 @@ function DraftAlimentoRow({
   return (
     <div className="pcb-row ed">
       <FoodThumb size={36} src={null} />
-      <div ref={wrapRef} style={{ position: 'relative', minWidth: 0 }}>
+      <div ref={wrapRef} className="pcb-search" style={{ position: 'relative', minWidth: 0 }}>
         {ICON.mag}
         <input
           value={busqueda}
@@ -618,7 +618,7 @@ function DraftAlimentoRow({
           <FoodSearchDropdown resultados={resultados} buscando={buscando} query={busqueda} onElegir={elegir} />
         )}
       </div>
-      <div style={{ position: 'relative' }}>
+      <div className="pcb-qty" style={{ position: 'relative' }}>
         <input
           type="number" min={0} step={5}
           value={cantidad}
@@ -629,8 +629,8 @@ function DraftAlimentoRow({
         />
         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--muted-2, #8A93A1)', pointerEvents: 'none' }}>g</span>
       </div>
-      <div style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
-      <button type="button" onClick={onCancelar} title="Cancelar" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
+      <div className="pcb-mac" style={{ color: 'var(--muted-3, #AEB5C0)', fontSize: 11.5, whiteSpace: 'nowrap' }}>Elegí un alimento para calcular</div>
+      <button type="button" onClick={onCancelar} title="Cancelar" className="pcb-del" style={{ ...ibtnStyle, color: 'var(--danger, #B42318)' }}>{ICON.x}</button>
     </div>
   )
 }
