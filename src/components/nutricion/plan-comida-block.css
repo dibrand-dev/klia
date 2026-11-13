@@ -2,6 +2,7 @@
    FoodThumb según el modo (ficha/readOnly: 48 px, 44 en mobile ≤720 · editor:
    36 px fijo, misma altura que el input). El resto de la fila sigue en
    inline style (PlanComidaBlock.tsx no tenía CSS propio hasta esta miniatura). */
+.pcb-card { container-type: inline-size; }
 .pcb-row { display: grid; gap: 8px; align-items: center; }
 .pcb-row.ro { grid-template-columns: 48px minmax(0,1fr) 84px auto; }
 .pcb-row.ro.free { grid-template-columns: 48px minmax(0,1fr) auto; }
@@ -15,10 +16,35 @@
   .pcb-row.ro.free .pcb-none { display: none; }
 }
 
+/* Reorg de la fila de alimento del editor cuando la card no tiene ancho para
+   mostrar buscador + cantidad + macros en una sola línea sin apretar el
+   buscador. Umbral calculado (no @media de viewport — la card puede ser
+   angosta aunque el viewport sea grande, p. ej. con panel lateral):
+   36 (thumb) + 84 (qty) + 28 (botón) + 32 (4 gaps×8) + 140 (buscador útil
+   mínimo) + 220 (ancho real medido de "137 kcal · P 12g G 4g HC 20g" en
+   JetBrains Mono, con margen) = 540px de fila + 24px de padding propio de
+   la card (12px + 12px) = 564px. Mismo patrón de 2 filas que
+   diseno/"Plan Alimentario - Editor con miniaturas.html" (.item a ≤860px:
+   grid-template-areas "t f q x" / ". m m m"), adaptado a nuestras clases. */
+@container (max-width: 564px) {
+  .pcb-row.ed:not(.free) {
+    grid-template-columns: 36px minmax(0,1fr) 84px 28px;
+    grid-template-areas: "th se qt db" ". mc mc mc";
+    row-gap: 5px;
+  }
+  .pcb-row.ed:not(.free) > .fimg { grid-area: th; }
+  .pcb-row.ed:not(.free) > .pcb-search { grid-area: se; }
+  .pcb-row.ed:not(.free) > .pcb-qty { grid-area: qt; }
+  .pcb-row.ed:not(.free) > .pcb-mac { grid-area: mc; }
+  .pcb-row.ed:not(.free) > .pcb-del { grid-area: db; }
+}
+
 /* Buscador de alimentos del editor — variante A (con miniatura), ported de
-   diseno/fimg.css ".fdrop.thumbs". left:0 + min-width:340 en desktop; en
-   mobile se fuerza right:0 + min-width:0 para no desbordar la pantalla. */
-.fdrop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 25; background: var(--surface, #fff); border: 1px solid var(--border-strong, #D6DAE1); border-radius: var(--r-md, 8px); box-shadow: var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08)); overflow: auto; padding: 4px; max-height: 340px; min-width: 340px; }
+   diseno/fimg.css ".fdrop.thumbs". Ancla al wrapRef (position:relative) con
+   ancho propio que nunca depende del ancho del ancestro ni del contenido
+   (nombre más largo): piso de 340px, techo de 480px o el viewport menos
+   32px de margen, lo que sea menor. */
+.fdrop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 25; background: var(--surface, #fff); border: 1px solid var(--border-strong, #D6DAE1); border-radius: var(--r-md, 8px); box-shadow: var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08)); overflow: auto; padding: 4px; max-height: 340px; width: max(100%, 340px); max-width: min(480px, calc(100vw - 32px)); }
 .fdrop .gl { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-3, #AEB5C0); padding: 8px 9px 3px; }
 .fdrop .st { padding: 12px 10px; font-size: 12.5px; color: var(--muted-2, #8A93A1); }
 .fdrop .opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 6px 9px; border-radius: var(--r-sm, 6px); border: none; background: transparent; text-align: left; font: inherit; cursor: pointer; }
@@ -28,6 +54,3 @@
 .fdrop .opt .sub { font-size: 11.5px; line-height: 1.3; color: var(--muted-2, #8A93A1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fdrop .opt .sub i { font-style: normal; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted-3, #AEB5C0); }
 .fdrop mark { background: var(--accent-soft, #E6ECFD); color: var(--accent-ink, #1F4FD9); border-radius: 2px; }
-@media (max-width: 720px) {
-  .fdrop { right: 0; min-width: 0; }
-}
