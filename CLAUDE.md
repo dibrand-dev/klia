@@ -467,14 +467,19 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-12_
+_Actualizado el 2026-11-13_
 
 ```
-8b761af fix: mover el toggle de recordatorio de turno a una sección propia visible en todos los planes (KL1-T38)
-5986a8f feat: ajuste para desactivar el recordatorio de turno al paciente (KL1-T38)
-da29a96 fix: margen del eje Y del gráfico de ingresos en mobile y alineación de meses
-d42d9bf fix: montos de las KPI sin centavos y compactos, leyenda y textos del dashboard, y fetch de antropometría sin paciente
-c5a0be8 feat: deuda, OS sin liquidar y sin venir del dashboard vía RPC (sin tope de 1000 filas) y paginado del período
-356a5bd fix: eje de monedas del gráfico de ingresos y nombres de paciente clickeables en el dashboard
-9952c78 fix: filas del SlideOver del dashboard sin avatar usaban la columna de 32px para el nombre
+d639e76 fix: ancho y anclaje del dropdown del buscador de alimentos
+d1b6912 wip: fix ancho/anclaje del dropdown del buscador — pendiente desborde mobile
+328ebee feat: miniaturas en buscador de alimentos (variante A)
+37d2b2f feat: label "Texto libre · sin macros" en fila de texto libre de la Ficha
+5cb87d8 feat: miniaturas de alimentos en el plan alimentario
+99997fe fix: imágenes de alimentos usan el store público klia-alimentos
+007e298 feat: nombre_visual y presentación por tipo en el prompt de imágenes de alimentos
+6f30109 fix: POST /api/foods/[id]/image devuelve {status, image_url}
+7daeb4f fix: waitUntil en vez de fire-and-forget para generar imágenes en segundo plano, re-reclamo tras 10 min y maxDuration en el endpoint
+897bfc1 fix: imágenes de alimentos a 200x200/calidad 75 y ajuste de composición en el prompt
+bf1197f feat: imágenes de alimentos generadas con Gemini y guardadas en Vercel Blob (WIP, sin UI)
+f8b1677 docs: CLAUDE.md - commits del dia 2026-11-12
 ```
