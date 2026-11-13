@@ -37,13 +37,23 @@
   .pcb-row.ed:not(.free) > .pcb-qty { grid-area: qt; }
   .pcb-row.ed:not(.free) > .pcb-mac { grid-area: mc; }
   .pcb-row.ed:not(.free) > .pcb-del { grid-area: db; }
+  /* El dropdown "cuelga" del ancho real de la fila angosta en vez de un
+     ancho propio: left:-44px (36 thumb + 8 gap) y right:-128px (8 gap + 84
+     qty + 8 gap + 28 botón) lo extienden desde .pcb-search hasta calzar
+     exacto con los bordes izq./der. de la fila — medido con el harness
+     real (offsetIzq:44, offsetDer:128), no copiado del mockup. Como el
+     span de la fila nunca excede el ancho de la card (es una columna de su
+     propio grid), el dropdown tampoco empuja a la derecha. min-width:0
+     para que mande el span real aunque sea <340px, igual que el mockup. */
+  .pcb-row.ed:not(.free) .fdrop { left: -44px; right: -128px; width: auto; max-width: none; min-width: 0; }
 }
 
 /* Buscador de alimentos del editor — variante A (con miniatura), ported de
    diseno/fimg.css ".fdrop.thumbs". Ancla al wrapRef (position:relative) con
    ancho propio que nunca depende del ancho del ancestro ni del contenido
    (nombre más largo): piso de 340px, techo de 480px o el viewport menos
-   32px de margen, lo que sea menor. */
+   32px de margen, lo que sea menor. Solo aplica en card ancha (sin reorg) —
+   en el @container angosto de arriba se pisa con offsets fijos. */
 .fdrop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 25; background: var(--surface, #fff); border: 1px solid var(--border-strong, #D6DAE1); border-radius: var(--r-md, 8px); box-shadow: var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08)); overflow: auto; padding: 4px; max-height: 340px; width: max(100%, 340px); max-width: min(480px, calc(100vw - 32px)); }
 .fdrop .gl { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-3, #AEB5C0); padding: 8px 9px 3px; }
 .fdrop .st { padding: 12px 10px; font-size: 12.5px; color: var(--muted-2, #8A93A1); }
