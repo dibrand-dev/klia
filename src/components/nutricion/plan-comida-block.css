@@ -14,3 +14,20 @@
   .pcb-row.ro .fimg { --s: 44px; --r: 8px; }
   .pcb-row.ro.free .pcb-none { display: none; }
 }
+
+/* Buscador de alimentos del editor — variante A (con miniatura), ported de
+   diseno/fimg.css ".fdrop.thumbs". left:0 + min-width:340 en desktop; en
+   mobile se fuerza right:0 + min-width:0 para no desbordar la pantalla. */
+.fdrop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 25; background: var(--surface, #fff); border: 1px solid var(--border-strong, #D6DAE1); border-radius: var(--r-md, 8px); box-shadow: var(--shadow-lg, 0 8px 24px rgba(16,24,40,.08)); overflow: auto; padding: 4px; max-height: 340px; min-width: 340px; }
+.fdrop .gl { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-3, #AEB5C0); padding: 8px 9px 3px; }
+.fdrop .st { padding: 12px 10px; font-size: 12.5px; color: var(--muted-2, #8A93A1); }
+.fdrop .opt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 6px 9px; border-radius: var(--r-sm, 6px); border: none; background: transparent; text-align: left; font: inherit; cursor: pointer; }
+.fdrop .opt:hover, .fdrop .opt.cur { background: var(--surface-2, #F6F7F9); }
+.fdrop .opt .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fdrop .opt .n { font-size: 13.5px; line-height: 1.3; color: var(--ink, #0B1220); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fdrop .opt .sub { font-size: 11.5px; line-height: 1.3; color: var(--muted-2, #8A93A1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fdrop .opt .sub i { font-style: normal; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted-3, #AEB5C0); }
+.fdrop mark { background: var(--accent-soft, #E6ECFD); color: var(--accent-ink, #1F4FD9); border-radius: 2px; }
+@media (max-width: 720px) {
+  .fdrop { right: 0; min-width: 0; }
+}
