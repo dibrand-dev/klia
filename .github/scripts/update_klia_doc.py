@@ -415,10 +415,10 @@ Disponible en: todos los planes (solo para profesionales con especialidad "Nutri
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 QUÉ HACE
-Pestaña clínica propia en la ficha del paciente para nutricionistas: registro de antropometría (peso, altura, cintura, cadera, pliegues cutáneos, % grasa/músculo) con cálculo automático de IMC y gasto energético basal (Mifflin-St Jeor o Harris-Benedict), gráfico de evolución, menú semanal por día y comida, y distribución de macronutrientes con reparto automático de gramos según las calorías objetivo.
+Pestaña clínica propia en la ficha del paciente para nutricionistas: registro de antropometría (peso, altura, cintura, cadera, pliegues cutáneos, % grasa/músculo) con cálculo automático de IMC y gasto energético basal (Mifflin-St Jeor o Harris-Benedict), gráfico de evolución, menú semanal por día y comida, y distribución de macronutrientes con reparto automático de gramos según las calorías objetivo. Cada alimento del plan se muestra con una imagen ilustrativa generada con IA (estilo uniforme) en la ficha, el editor, el buscador de alimentos, el link público del plan y la sección Mi plan del portal del paciente.
 
 PROBLEMA QUE RESUELVE
-Los nutricionistas suelen llevar esta información en planillas de Excel separadas de la ficha del paciente, sin evolución visual ni cálculos automáticos.
+Los nutricionistas suelen llevar esta información en planillas de Excel separadas de la ficha del paciente, sin evolución visual ni cálculos automáticos. Los planes de texto puro son difíciles de seguir; las imágenes facilitan el reconocimiento de cada alimento al armar el plan y a los pacientes al seguirlo.
 
 DIFERENCIADOR
 Es una herramienta clínica específica para la especialidad, no un campo genérico — no está en los competidores generalistas del mercado.
