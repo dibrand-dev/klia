@@ -477,19 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-13_
+_Actualizado el 2026-11-14_
 
 ```
-d639e76 fix: ancho y anclaje del dropdown del buscador de alimentos
-d1b6912 wip: fix ancho/anclaje del dropdown del buscador — pendiente desborde mobile
-328ebee feat: miniaturas en buscador de alimentos (variante A)
-37d2b2f feat: label "Texto libre · sin macros" en fila de texto libre de la Ficha
-5cb87d8 feat: miniaturas de alimentos en el plan alimentario
-99997fe fix: imágenes de alimentos usan el store público klia-alimentos
-007e298 feat: nombre_visual y presentación por tipo en el prompt de imágenes de alimentos
-6f30109 fix: POST /api/foods/[id]/image devuelve {status, image_url}
-7daeb4f fix: waitUntil en vez de fire-and-forget para generar imágenes en segundo plano, re-reclamo tras 10 min y maxDuration en el endpoint
-897bfc1 fix: imágenes de alimentos a 200x200/calidad 75 y ajuste de composición en el prompt
-bf1197f feat: imágenes de alimentos generadas con Gemini y guardadas en Vercel Blob (WIP, sin UI)
-f8b1677 docs: CLAUDE.md - commits del dia 2026-11-12
+bf40521 docs: documentar imágenes de alimentos con Gemini en CLAUDE.md y base de conocimiento
+dd2167d docs: CLAUDE.md - commits del dia 2026-11-13
 ```
