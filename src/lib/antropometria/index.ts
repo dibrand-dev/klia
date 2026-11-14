@@ -1,0 +1,4 @@
+export * from './calculos'
+export * from './constantes'
+export * from './textos-somatotipo'
+export * from './tabla-cintura-cadera'
