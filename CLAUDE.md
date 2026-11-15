@@ -477,9 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-14_
+_Actualizado el 2026-11-15_
 
 ```
-bf40521 docs: documentar imágenes de alimentos con Gemini en CLAUDE.md y base de conocimiento
-dd2167d docs: CLAUDE.md - commits del dia 2026-11-13
+031341b feat: librería de cálculo de antropometría ISAK con textos de somatotipo y tabla cintura/cadera
+dfe9128 docs: CLAUDE.md - commits del dia 2026-11-14
 ```
