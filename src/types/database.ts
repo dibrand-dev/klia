@@ -1229,6 +1229,7 @@ export type Database = {
           diametro_humero: number | null
           diametro_biestiloideo: number | null
           diametro_femur: number | null
+          metodo_otro: string | null
         }
         Insert: {
           id?: string
@@ -1265,6 +1266,7 @@ export type Database = {
           diametro_humero?: number | null
           diametro_biestiloideo?: number | null
           diametro_femur?: number | null
+          metodo_otro?: string | null
         }
         Update: {
           id?: string
@@ -1301,6 +1303,7 @@ export type Database = {
           diametro_humero?: number | null
           diametro_biestiloideo?: number | null
           diametro_femur?: number | null
+          metodo_otro?: string | null
         }
         Relationships: [
           {

@@ -805,7 +805,14 @@ export default function PacienteDetalle({
   }
 
   if (activeTab === 'composicion') {
-    return <>{autorizacionBanner}<TabComposicionCorporal pacienteId={paciente.id} /></>
+    return <>{autorizacionBanner}<TabComposicionCorporal
+      pacienteId={paciente.id}
+      pacienteNombre={paciente.nombre}
+      pacienteApellido={paciente.apellido}
+      pacienteGenero={paciente.genero}
+      pacienteFechaNacimiento={paciente.fecha_nacimiento}
+    /></>
+
   }
 
   if (activeTab === 'plan-alimentario') {
