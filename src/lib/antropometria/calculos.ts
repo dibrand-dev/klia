@@ -20,7 +20,7 @@ export interface Medidas {
   humero?: N; biestiloideo?: N; femur?: N
 }
 
-export interface Paciente { sexo: Sexo; edad: number }
+export interface Paciente { sexo: Sexo | null; edad: number }
 
 export interface Tejidos {
   adiposo: number | null; muscular: number | null; oseo: number | null; residual: number | null
@@ -125,7 +125,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
       const z6 = (s6 * k - 116.41) / 34.79
       adiposo = (z6 * 5.85 + 25.6) * (h / TALLA_PHANTOM) ** 3
     }
-    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null) {
+    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null && pac.sexo !== null) {
       const sexo = pac.sexo === 'M' ? 1 : 0
       muscular =
         (h / 100) * (0.00744 * cBrazo ** 2 + 0.00088 * cMuslo ** 2 + 0.00441 * cPierna ** 2) +
@@ -137,7 +137,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     const residual = masa !== null && adiposo !== null && muscular !== null && oseo !== null ? masa - (adiposo + muscular + oseo) : null
     tejidos = { adiposo, muscular, oseo, residual }
     req('adiposo', [['talla', h], ...(s6 === null ? ([['Σ6 pliegues', null]] as [string, number | null][]) : [])])
-    req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan]])
+    req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan], ['sexo', pac.sexo === null ? null : 1]])
     req('oseo', [['talla', h], ['diámetro biestiloideo', bie], ['diámetro fémur', fem]])
     req('residual', [['masa', masa]])
   }
@@ -194,7 +194,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     indices: {
       adiposoMuscular: adiMus,
       musculoOseo: musOseo,
-      musculoOseoCategoria: mo !== null ? categoriaMusculoOseo(mo, pac.sexo, rangos) : null,
+      musculoOseoCategoria: mo !== null && pac.sexo !== null ? categoriaMusculoOseo(mo, pac.sexo, rangos) : null,
       cormico: redondear(cormico, 2),
       manouvrier,
       envergaduraRelativa: envRel,

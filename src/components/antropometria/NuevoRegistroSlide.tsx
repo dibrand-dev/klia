@@ -166,10 +166,9 @@ export default function NuevoRegistroSlide({
 
   if (!open) return null
 
-  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx
+  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx. Nunca se asume 'M': sin género cargado, sexo queda null.
   const edad = pacienteFechaNacimiento ? differenceInYears(new Date(), parseISO(pacienteFechaNacimiento)) : 30
-  // calcular() no admite sexo nulo; sin dato, se asume 'M' (no afecta IMC/somatotipo, solo músculo-óseo y corte cintura/cadera)
-  const sexo: PacienteCalculo['sexo'] = pacienteGenero === 'F' ? 'F' : 'M'
+  const sexo: PacienteCalculo['sexo'] = pacienteGenero === 'M' || pacienteGenero === 'F' ? pacienteGenero : null
   const paciente: PacienteCalculo = { sexo, edad }
 
   const medidas = medidasDesdeVals(vals)
@@ -328,7 +327,7 @@ export default function NuevoRegistroSlide({
               <div className="nr-meta">
                 <span>{pacienteNombre} {pacienteApellido}</span>
                 <span className="dot" />
-                <span>{sexo} · {edad} años</span>
+                <span>{sexo ?? 'Sexo no cargado'} · {edad} años</span>
                 {previo && (
                   <>
                     <span className="dot" />

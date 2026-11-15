@@ -89,6 +89,21 @@ test('categorías: músculo/óseo por sexo y límites de las 5 zonas', () => {
   assert.equal(categoriaMusculoOseo(2.34, 'M'), 'Bajo')
 })
 
+test('sexo null: no asume M — IMC/Σ6/Σ8/somatotipo se calculan igual, músculo-óseo queda null', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: null, edad: c.pac.edad })
+  cerca(r.salud.imc, c.esp.imc, 0.05, 'IMC con sexo null')
+  cerca(r.sumatorias.s6, c.esp.s6, 0.01, 'Σ6 con sexo null')
+  cerca(r.sumatorias.s8, c.esp.s8, 0.01, 'Σ8 con sexo null')
+  cerca(r.somatotipo.endo, c.esp.endo, 0.01, 'endo con sexo null')
+  cerca(r.somatotipo.meso, c.esp.meso, 0.01, 'meso con sexo null')
+  cerca(r.somatotipo.ecto, c.esp.ecto, 0.01, 'ecto con sexo null')
+  assert.equal(r.tejidos?.muscular, null)
+  assert.equal(r.indices.musculoOseo, null)
+  assert.equal(r.indices.musculoOseoCategoria, null)
+  assert.ok(r.faltan.muscular?.includes('sexo'))
+})
+
 test('proporciones: categorías', () => {
   assert.equal(categoriaCormico(0.5), 'braquicórmico')
   assert.equal(categoriaCormico(0.52), 'metricórmico')
