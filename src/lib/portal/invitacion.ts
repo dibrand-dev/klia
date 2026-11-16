@@ -1,6 +1,6 @@
 import { serviceClient } from '@/lib/supabase/service'
 import { enviarEmail } from '@/lib/brevo'
-import { puedeUsarPortal } from '@/lib/portal/acceso'
+import { puedeUsarPortal, tieneAccesoActivadoAlgunaVez } from '@/lib/portal/acceso'
 import { diasRetencionPorPlan } from '@/lib/portal/retencion'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klia.com.ar'
@@ -158,26 +158,72 @@ a:hover{color:#16389F}
 </html>`
 }
 
-// A PROPÓSITO no usa baseTemplate/cta de email-templates.ts (ese catálogo es
-// el diseño "real" de KLIA) — esto es un placeholder hasta tener el diseño
-// del portal del paciente para el caso de "vínculo" (email ya tenía cuenta
-// de paciente por otro profesional). Tabla con bgcolor (no solo CSS, varios
-// clientes de correo lo ignoran) + link en texto plano debajo como respaldo.
-function emailBoton(texto: string, url: string): string {
-  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr>
-    <td bgcolor="#001a48" style="background-color:#001a48;border-radius:8px;">
-      <a href="${url}" target="_blank" style="display:inline-block;padding:12px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">${texto}</a>
-    </td>
-  </tr></table>
-  <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#5B6472;margin-top:16px;">Si el botón no funciona, copiá y pegá este link en tu navegador:<br>${url}</p>`
-}
-
-function emailVinculoPortalProvisorio(nombreProfesional: string, nombrePaciente: string): string {
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#0B1220;max-width:480px;">
-    <p>Hola ${nombrePaciente || ''},</p>
-    <p>${nombreProfesional} también te agregó en KLIA. Ya tenés una cuenta del portal de pacientes creada con este mismo email — iniciá sesión con tu contraseña habitual para verlo.</p>
-    ${emailBoton('Ir al portal', `${appUrl}/portal/login`)}
-  </div>`
+// Mail de vínculo (mismo diseño/helpers que emailInvitacionPaciente):
+// reemplaza el placeholder anterior. Se manda cuando un profesional invita a
+// un paciente cuyo email ya tiene una cuenta OPERATIVA del portal (con
+// contraseña creada) por otro profesional — nunca hay que crear otra
+// contraseña, solo ingresar con la de siempre. nombrePaciente es el primer
+// nombre solamente (nombre y apellido son columnas separadas en `pacientes`).
+function emailVinculoPortal(nombreProfesional: string, nombrePaciente: string): string {
+  const loginUrl = `${appUrl}/portal/login`
+  const nombre = nombrePaciente || 'paciente'
+  return `<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${nombreProfesional} te dio acceso a su portal de pacientes</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse}
+img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;display:block}
+a{color:#1F4FD9}
+a:hover{color:#16389F}
+@media only screen and (max-width:620px){.container{width:100%!important}.px{padding-left:24px!important;padding-right:24px!important}.h1{font-size:22px!important;line-height:28px!important}}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F1F3F6;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F1F3F6;">Ya tenés una cuenta con este email — ingresá con tu contraseña de siempre.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#F1F3F6" style="background-color:#F1F3F6;">
+<tr><td align="center" style="padding:32px 12px;">
+<!--[if mso]><table role="presentation" width="560" border="0" cellspacing="0" cellpadding="0"><tr><td><![endif]-->
+<table role="presentation" class="container" width="560" border="0" cellspacing="0" cellpadding="0" style="width:560px;max-width:560px;">
+<tr><td style="padding:0 4px 18px 4px;"><img src="${LOGO_URL}" width="92" alt="KLIA" style="width:92px;height:auto;"></td></tr>
+<tr><td bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #E7E9EE;border-radius:12px;">
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+<tr><td class="px" style="padding:36px 40px 8px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5B6472;">Nutrición · Portal del paciente</p>
+<h1 class="h1" style="margin:0 0 18px 0;font-size:24px;line-height:30px;font-weight:700;color:#0B1220;">${nombreProfesional} te dio acceso a su portal de pacientes</h1>
+<p style="margin:0 0 14px 0;font-size:16px;line-height:24px;color:#1F2937;">Hola, ${nombre}:</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1F2937;">${nombreProfesional} te sumó a su portal de pacientes en KLIA. Como ya tenés una cuenta con este mismo email, no tenés que crear otra: ingresá con tu contraseña de siempre.</p>
+</td></tr>
+<tr><td align="center" class="px" style="padding:0 40px 28px 40px;">
+<table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
+<tr><td align="center" bgcolor="#0B1220" style="background-color:#0B1220;border-radius:8px;">
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${loginUrl}" style="height:50px;v-text-anchor:middle;width:240px;" arcsize="16%" stroke="f" fillcolor="#0B1220"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Ir al portal</center></v:roundrect><![endif]-->
+<!--[if !mso]><!--><a href="${loginUrl}" target="_blank" style="display:inline-block;background-color:#0B1220;border:1px solid #0B1220;border-radius:8px;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;mso-hide:all;"><span style="color:#FFFFFF;">Ir al portal</span></a><!--<![endif]-->
+</td></tr>
+</table>
+</td></tr>
+<tr><td class="px" style="padding:0 40px 30px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#5B6472;">Para volver a entrar más adelante, usá siempre este link:</p>
+<p style="margin:0 0 20px 0;font-size:13px;line-height:20px;word-break:break-all;"><a href="${loginUrl}" target="_blank" style="color:#1F4FD9;text-decoration:underline;">https://app.klia.com.ar/portal/login</a></p>
+<p style="margin:0;font-size:13px;line-height:20px;color:#1F2937;">¿No recordás tu contraseña? En esa pantalla elegí «Olvidé mi contraseña».</p>
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5B6472;">Recibiste este mail porque ${nombreProfesional} te registró como paciente en KLIA. Si no la conocés, podés ignorar este mensaje.</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>`
 }
 
 // Pone app_metadata.tipo_cuenta='paciente' en el usuario de Auth. A
@@ -216,6 +262,21 @@ export async function crearInvitacionPaciente(params: {
     return { ok: false, status: 400, error: 'sin_email', message: 'El paciente no tiene un email cargado.' }
   }
 
+  // Nunca degradar un acceso ya activo (ver caso Natalia Crespin): si este
+  // paciente para este profesional ya activó su cuenta, cortar acá, antes de
+  // tocar Auth o mandar cualquier mail. Esto también cubre, por construcción,
+  // los dos upserts de abajo: nunca se llega a ellos con un acceso 'activo'.
+  const { data: accesoActual } = await db
+    .from('paciente_accesos')
+    .select('estado')
+    .eq('paciente_id', pacienteId)
+    .eq('terapeuta_id', terapeutaId)
+    .maybeSingle()
+
+  if (accesoActual?.estado === 'activo') {
+    return { ok: false, status: 409, error: 'ya_activo', message: 'El paciente ya activó su cuenta del portal.' }
+  }
+
   const habilitado = await puedeUsarPortal(db, terapeutaId)
   if (!habilitado) {
     return { ok: false, status: 403, error: 'portal_no_habilitado', message: 'Tu plan no incluye el portal del paciente.' }
@@ -226,7 +287,7 @@ export async function crearInvitacionPaciente(params: {
   const email = paciente.email
   const nombrePaciente = `${paciente.nombre} ${paciente.apellido}`.trim()
 
-  const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+  const generarInvite = () => db.auth.admin.generateLink({
     type: 'invite',
     email,
     options: {
@@ -234,6 +295,8 @@ export async function crearInvitacionPaciente(params: {
       redirectTo: `${appUrl}/portal/activar`,
     },
   })
+
+  let { data: linkData, error: linkError } = await generarInvite()
 
   if (linkError) {
     if (!EMAIL_YA_REGISTRADO.test(linkError.message)) {
@@ -268,39 +331,94 @@ export async function crearInvitacionPaciente(params: {
       }
     }
 
-    await marcarAppMetadataPaciente(db, accesoExistente.auth_user_id)
+    const authUserId = accesoExistente.auth_user_id
+    await marcarAppMetadataPaciente(db, authUserId)
 
-    const { error: upsertError } = await db.from('paciente_accesos').upsert({
-      paciente_id: pacienteId,
-      terapeuta_id: terapeutaId,
-      auth_user_id: accesoExistente.auth_user_id,
-      email,
-      estado: 'invitado',
-    }, { onConflict: 'paciente_id' })
+    const yaTieneContrasena = await tieneAccesoActivadoAlgunaVez(db, authUserId)
 
-    if (upsertError) {
-      console.error('[portal/invitacion] Error vinculando acceso existente:', upsertError)
-      return { ok: false, status: 500, error: 'Error al vincular la cuenta' }
+    if (yaTieneContrasena) {
+      // Vínculo: la cuenta ya es operativa (tiene contraseña) por otro
+      // profesional. Nunca generar otra contraseña — solo vincular este
+      // paciente_id y avisar que ya puede entrar con la de siempre. El
+      // upsert de abajo nunca pisa un 'activo' porque ya cortamos arriba si
+      // accesoActual.estado === 'activo' para este paciente_id puntual.
+      const { error: upsertError } = await db.from('paciente_accesos').upsert({
+        paciente_id: pacienteId,
+        terapeuta_id: terapeutaId,
+        auth_user_id: authUserId,
+        email,
+        estado: 'invitado',
+      }, { onConflict: 'paciente_id' })
+
+      if (upsertError) {
+        console.error('[portal/invitacion] Error vinculando acceso existente:', upsertError)
+        return { ok: false, status: 500, error: 'Error al vincular la cuenta' }
+      }
+
+      try {
+        await enviarEmail({
+          destinatario: email,
+          nombreDestinatario: nombrePaciente || email,
+          asunto: `${nombreProfesional} te dio acceso a su portal de pacientes`,
+          htmlContent: emailVinculoPortal(nombreProfesional, paciente.nombre),
+        })
+      } catch (emailError) {
+        // Nunca el link de activación ni el HTML del mail en el log — solo el
+        // destinatario enmascarado y el mensaje de error de Brevo.
+        console.error('[portal/invitacion] Error enviando email de vínculo:', enmascararEmail(email), (emailError as Error)?.message)
+        return { ok: true, emailEnviado: false }
+      }
+
+      return { ok: true, emailEnviado: true }
     }
 
-    try {
-      await enviarEmail({
-        destinatario: email,
-        nombreDestinatario: nombrePaciente || email,
-        asunto: `${nombreProfesional} te agregó en KLIA`,
-        htmlContent: emailVinculoPortalProvisorio(nombreProfesional, nombrePaciente),
-      })
-    } catch (emailError) {
-      // Nunca el link de activación ni el HTML del mail en el log — solo el
-      // destinatario enmascarado y el mensaje de error de Brevo.
-      console.error('[portal/invitacion] Error enviando email de vínculo:', enmascararEmail(email), (emailError as Error)?.message)
-      return { ok: true, emailEnviado: false }
+    // Sin contraseña: es un usuario de Auth huérfano/pendiente de alguna
+    // invitación que nunca se activó (de este mismo profesional en un
+    // intento anterior, o de otro). No corresponde mandar el mail de
+    // vínculo (no hay nada "de siempre" con lo que entrar) — hay que
+    // regenerar un link de activación normal.
+    const { count: otrosAccesos } = await db
+      .from('paciente_accesos')
+      .select('paciente_id', { count: 'exact', head: true })
+      .eq('auth_user_id', authUserId)
+      .neq('paciente_id', pacienteId)
+
+    if (otrosAccesos) {
+      // No se puede borrar (otro profesional tiene una invitación pendiente
+      // sobre el mismo usuario de Auth) y generateLink({type:'invite'}) va a
+      // seguir fallando con "already registered" mientras ese usuario exista
+      // — no hay forma de generar un invite fresco sin afectar esa otra
+      // invitación. Reportar en vez de reintentar a ciegas (reintentar acá
+      // haría loop infinito: ver diagnóstico de la tarea).
+      return {
+        ok: false, status: 409, error: 'vinculo_no_viable',
+        message: 'Ese email ya tiene una invitación pendiente de otro profesional que todavía no se activó. Pedile que la active primero, o contactá a soporte.',
+      }
     }
 
-    return { ok: true, emailEnviado: true }
+    // Huérfano real (nadie más lo referencia): se borra y se reintenta UNA
+    // sola vez — mismo criterio de limpieza que reenviarInvitacionPaciente.
+    try { await db.auth.admin.deleteUser(authUserId) } catch (deleteError) {
+      console.error('[portal/invitacion] Error eliminando usuario huérfano:', deleteError)
+    }
+
+    const retry = await generarInvite()
+
+    if (retry.error || !retry.data) {
+      console.error('[portal/invitacion] Error regenerando invite tras borrar huérfano:', retry.error)
+      return { ok: false, status: 500, error: 'Error al generar la invitación' }
+    }
+
+    linkData = retry.data
   }
 
-  // Caso nuevo: generateLink creó un usuario de Auth fresco.
+  if (!linkData?.user || !linkData.properties) {
+    console.error('[portal/invitacion] linkData incompleto sin error — estado inesperado')
+    return { ok: false, status: 500, error: 'Error al generar la invitación' }
+  }
+
+  // Caso nuevo: generateLink creó un usuario de Auth fresco (de entrada, o
+  // tras borrar un huérfano sin referencias y reintentar arriba).
   const metadataOk = await marcarAppMetadataPaciente(db, linkData.user.id)
   if (!metadataOk) {
     try { await db.auth.admin.deleteUser(linkData.user.id) } catch (rollbackError) {

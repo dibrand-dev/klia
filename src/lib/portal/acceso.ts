@@ -33,6 +33,29 @@ export interface AccesoPaciente {
   terapeutaId: string
 }
 
+// Señal de "esta cuenta de Auth ya creó una contraseña alguna vez" — la
+// contraseña se setea recién en la activación (ver /api/portal/activar), así
+// que basta con que CUALQUIER paciente_accesos del usuario tenga activado_at
+// no nulo, sin importar el estado actual de esa fila (sigue valiendo aunque
+// ese acceso puntual haya sido degradado de nuevo a 'invitado'). Única fuente
+// para decidir: (a) si una invitación nueva debe mandar el mail de vínculo
+// en vez de generar una contraseña nueva, y (b) si /portal/activar debe
+// mostrar el modo "aceptar invitación" (sin campos de contraseña).
+export async function tieneAccesoActivadoAlgunaVez(
+  supabase: SupabaseClient,
+  authUserId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('paciente_accesos')
+    .select('paciente_id')
+    .eq('auth_user_id', authUserId)
+    .not('activado_at', 'is', null)
+    .limit(1)
+    .maybeSingle()
+
+  return !!data
+}
+
 // Accesos 'activo' del usuario de portal, filtrados a los que su profesional
 // TODAVÍA tiene habilitado el portal en este momento — el plan/estado de
 // cuenta del profesional puede haber cambiado después de que el paciente

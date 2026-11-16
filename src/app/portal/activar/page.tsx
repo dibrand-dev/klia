@@ -29,7 +29,7 @@ function PortalActivarContent() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [sesionValida, setSesionValida] = useState(false)
 
-  const [info, setInfo] = useState<{ profesionalNombre: string; especialidad: string | null; pacienteEmail: string; diasRetencion: number | null } | null>(null)
+  const [info, setInfo] = useState<{ profesionalNombre: string; especialidad: string | null; pacienteEmail: string; diasRetencion: number | null; modoAceptar: boolean } | null>(null)
 
   const [password, setPassword] = useState('')
   const [confirmarPassword, setConfirmarPassword] = useState('')
@@ -68,16 +68,21 @@ function PortalActivarContent() {
     e.preventDefault()
     setError(null)
 
-    if (!passwordRequisitos(password, confirmarPassword).every((r) => r.ok) || !aceptaConsentimiento) return
+    const modoAceptar = info?.modoAceptar ?? false
+
+    if (!aceptaConsentimiento) return
+    if (!modoAceptar && !passwordRequisitos(password, confirmarPassword).every((r) => r.ok)) return
 
     setLoading(true)
-    const supabase = createClient()
 
-    const { error: updateError } = await supabase.auth.updateUser({ password })
-    if (updateError) {
-      setError('No pudimos activar tu cuenta. Intentá de nuevo.')
-      setLoading(false)
-      return
+    if (!modoAceptar) {
+      const supabase = createClient()
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      if (updateError) {
+        setError('No pudimos activar tu cuenta. Intentá de nuevo.')
+        setLoading(false)
+        return
+      }
     }
 
     const activarRes = await fetch('/api/portal/activar', { method: 'POST' })
@@ -110,7 +115,10 @@ function PortalActivarContent() {
   }
 
   const diasRetencion = info?.diasRetencion ?? 60
-  const puedeEnviar = passwordRequisitos(password, confirmarPassword).every((r) => r.ok) && aceptaConsentimiento
+  const modoAceptar = info?.modoAceptar ?? false
+  const puedeEnviar = modoAceptar
+    ? aceptaConsentimiento
+    : passwordRequisitos(password, confirmarPassword).every((r) => r.ok) && aceptaConsentimiento
 
   return (
     <div className="pp-shell auth-mode">
@@ -125,8 +133,17 @@ function PortalActivarContent() {
             </div>
           )}
 
-          <h1>Activá tu cuenta</h1>
-          <p className="pp-lead">{info?.profesionalNombre ?? 'Tu profesional'} te invitó a su portal de pacientes. Desde acá vas a ver tu plan alimentario y registrar tus comidas con una foto.</p>
+          {modoAceptar ? (
+            <>
+              <h1>Aceptá la invitación</h1>
+              <p className="pp-lead">{info?.profesionalNombre ?? 'Tu profesional'} te invitó a su portal de pacientes. Ya tenés cuenta con este email, no hace falta crear otra contraseña.</p>
+            </>
+          ) : (
+            <>
+              <h1>Activá tu cuenta</h1>
+              <p className="pp-lead">{info?.profesionalNombre ?? 'Tu profesional'} te invitó a su portal de pacientes. Desde acá vas a ver tu plan alimentario y registrar tus comidas con una foto.</p>
+            </>
+          )}
 
           <div className="pp-af">
             <label htmlFor="a-em">Email</label>
@@ -134,9 +151,13 @@ function PortalActivarContent() {
           </div>
 
           <form onSubmit={handleActivar}>
-            <PasswordField id="a-p1" label="Contraseña" autoComplete="new-password" value={password} onChange={setPassword} />
-            <PasswordField id="a-p2" label="Confirmar contraseña" autoComplete="new-password" value={confirmarPassword} onChange={setConfirmarPassword} />
-            <PasswordRequirementsList a={password} b={confirmarPassword} />
+            {!modoAceptar && (
+              <>
+                <PasswordField id="a-p1" label="Contraseña" autoComplete="new-password" value={password} onChange={setPassword} />
+                <PasswordField id="a-p2" label="Confirmar contraseña" autoComplete="new-password" value={confirmarPassword} onChange={setConfirmarPassword} />
+                <PasswordRequirementsList a={password} b={confirmarPassword} />
+              </>
+            )}
 
             <label className="pp-ck">
               <input type="checkbox" checked={aceptaConsentimiento} onChange={(e) => setAceptaConsentimiento(e.target.checked)} />
@@ -146,9 +167,13 @@ function PortalActivarContent() {
 
             {error && <p style={{ color: 'var(--danger)', fontSize: 13.5, marginTop: -8, marginBottom: 16 }}>{error}</p>}
 
-            <button type="submit" className="pp-pb pri full" disabled={!puedeEnviar || loading}>{loading ? 'Creando...' : 'Crear mi cuenta'}</button>
+            <button type="submit" className="pp-pb pri full" disabled={!puedeEnviar || loading}>
+              {modoAceptar ? (loading ? 'Aceptando...' : 'Aceptar invitación') : (loading ? 'Creando...' : 'Crear mi cuenta')}
+            </button>
           </form>
-          <p className="pp-alt">¿Ya tenés cuenta? <button className="pp-lnk" onClick={() => router.push('/portal/login')}>Ingresá</button></p>
+          {!modoAceptar && (
+            <p className="pp-alt">¿Ya tenés cuenta? <button className="pp-lnk" onClick={() => router.push('/portal/login')}>Ingresá</button></p>
+          )}
         </div>
       </main>
     </div>

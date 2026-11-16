@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
-import { puedeUsarPortal } from '@/lib/portal/acceso'
+import { puedeUsarPortal, tieneAccesoActivadoAlgunaVez } from '@/lib/portal/acceso'
 import { emailCuentaActivada, enmascararEmail } from '@/lib/portal/invitacion'
 import { enviarEmail } from '@/lib/brevo'
 
@@ -48,6 +48,12 @@ export async function POST() {
     )
   }
 
+  // Modo "aceptar invitación" (cuenta ya operativa, sin crear otra
+  // contraseña) — mismo criterio que /api/portal/invitacion-info, calculado
+  // ANTES del UPDATE de abajo: una vez activado este acceso, activado_at ya
+  // no distingue "esto es lo primero que activa" de "ya tenía otra cuenta".
+  const modoAceptar = await tieneAccesoActivadoAlgunaVez(db, user.id)
+
   const ahora = new Date().toISOString()
   const { error: updateError } = await db
     .from('paciente_accesos')
@@ -62,8 +68,9 @@ export async function POST() {
 
   // Mail "Tu cuenta está lista" — solo tras la activación real, nunca bloquea ni revierte el UPDATE de arriba.
   // Idempotente de por sí: una segunda llamada con un acceso ya 'activo' no llega hasta acá (corta antes, en el 404 de "sin_invitacion").
+  // En modo aceptar nunca se manda: no se creó ninguna contraseña nueva, ya tenía cuenta operativa.
   const accesoPrincipal = accesos.find((a) => idsActivables.includes(a.paciente_id))
-  if (accesoPrincipal && user.email) {
+  if (!modoAceptar && accesoPrincipal && user.email) {
     try {
       const [{ data: paciente }, { data: profile }] = await Promise.all([
         db.from('pacientes').select('nombre, apellido').eq('id', accesoPrincipal.paciente_id).maybeSingle(),
