@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { IconAlert, IconBack, IconEye, IconMail } from '../icons'
+import '@/components/auth/auth-split.css'
 
 const MENSAJE_GENERICO = 'No pudimos ingresar. Revisá tus datos o contactá a soporte en hola@klia.com.ar'
 

@@ -171,6 +171,11 @@ body { background: var(--surface-3); }
 .pp-auth .pp-lead { margin: 0 0 22px; font-size: 14.5px; line-height: 1.55; color: var(--muted); text-wrap: pretty; }
 .pp-auth .pp-alt { text-align: center; margin-top: 10px; font-size: 14px; color: var(--muted); }
 
+/* login con pantalla dividida (.lg-in, ver src/components/auth/auth-split.css) —
+   mismos valores que .sub en vendedor/login, para que el párrafo bajo el
+   título quede idéntico entre los dos logins. */
+.lg-in .pp-lead { margin: 6px 0 26px; font-size: 14px; color: var(--muted); line-height: 1.5; text-wrap: pretty; }
+
 /* plan */
 .pp-ph1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
 .pp-sub { margin: 3px 0 0; font-size: 14px; color: var(--muted); }

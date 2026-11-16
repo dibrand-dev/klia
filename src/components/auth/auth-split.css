@@ -1,0 +1,30 @@
+/* ============================================================
+   KLIA — login con pantalla dividida (formulario izq. / imagen der.)
+   Compartido entre src/app/vendedor/login/page.tsx y
+   src/app/portal/login/page.tsx. Extraído tal cual de vendedor.css
+   (reglas lg-*) — cualquier cambio acá afecta a los dos logins.
+   ============================================================ */
+.lg-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); background: var(--surface); }
+.lg-pane { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 32px 24px; min-height: 100vh; }
+.lg-in { width: 100%; max-width: 380px; margin: auto 0; }
+.lg-in .logo { height: 30px; display: block; margin-bottom: 40px; }
+.lg-in h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.025em; line-height: 1.2; }
+.lg-in .sub { margin: 6px 0 26px; font-size: 14px; color: var(--muted); line-height: 1.5; text-wrap: pretty; }
+.lg-in .sub b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.lg-art { position: relative; background: var(--surface-2); border-left: 1px solid var(--border); min-height: 100vh; overflow: hidden; }
+.lg-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 80%; }
+.lg-art.top img { object-position: 50% 30%; }
+.lg-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); margin: -16px 0 18px; background: none; border: none; padding: 0; cursor: pointer; }
+.lg-back:hover { color: var(--ink); text-decoration: none; }
+.lg-back svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.lg-ok { width: 44px; height: 44px; border-radius: 12px; background: var(--ok-soft); display: grid; place-items: center; margin-bottom: 18px; }
+.lg-ok svg { width: 21px; height: 21px; stroke: var(--ok); stroke-width: 1.8; fill: none; }
+.lg-alt { margin: 16px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
+.lg-row { display: flex; justify-content: flex-end; margin: -4px 0 18px; }
+.lg-row a { font-size: 13px; font-weight: 500; background: none; border: none; padding: 0; cursor: pointer; }
+.lg-btn { width: 100%; justify-content: center; padding: 11px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 600; height: 42px; }
+.lg-btn:disabled { opacity: .75; cursor: default; }
+.lg-foot { margin: 24px 0 0; font-size: 12px; color: var(--muted-2); }
+.lg-foot a { color: var(--muted); }
+@media (max-width: 960px) { .lg-split { grid-template-columns: 1fr; } .lg-art { display: none; } }
+@media (max-width: 720px) { .lg-pane { padding: 28px 20px 20px; justify-content: flex-start; } .lg-in { margin: 0; } .lg-in .logo { margin-bottom: 32px; } .lg-btn { height: 44px; } }

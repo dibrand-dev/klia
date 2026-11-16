@@ -2,9 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import '@/components/portal/portal.css'
+import '@/components/auth/auth-split.css'
+
+function LoginShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="lg-split">
+      <section className="lg-pane">
+        <div className="lg-in">
+          <img src="/logo.svg" alt="Klia" className="logo" />
+          {children}
+        </div>
+        <p className="lg-foot">© {new Date().getFullYear()} KLIA · <a href="https://www.klia.com.ar/privacidad" target="_blank" rel="noopener noreferrer">Privacidad</a></p>
+      </section>
+      <aside className="lg-art top" aria-hidden="true">
+        <img src="/portal-login.jpg" alt="" />
+      </aside>
+    </div>
+  )
+}
 
 const IconAlert = <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', strokeWidth: 1.8, fill: 'none' }}><path d="M12 3l10 18H2z" /><path d="M12 10v5M12 18h.01" /></svg>
 const IconX = <svg viewBox="0 0 24 24" style={{ width: 17, height: 17, stroke: 'var(--ink-2)', strokeWidth: 1.8, fill: 'none' }}><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -75,31 +92,26 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="pp-shell auth-mode">
-      <main className="pp-main" style={{ padding: 0 }}>
-        <div className="pp-auth">
-          <Image src="/logo.svg" alt="KLIA" width={92} height={24} className="pp-auth-logo" style={{ height: 24, width: 'auto' }} />
-          <h1>Ingresá a tu portal</h1>
-          <p className="pp-lead">Tu plan alimentario y el registro de tus comidas, en un solo lugar.</p>
+    <LoginShell>
+      <h1>Ingresá a tu portal</h1>
+      <p className="pp-lead">Gestioná todo lo que necesitás con tu profesional, desde un solo lugar.</p>
 
-          {loginError && (
-            <div className="pp-note danger" style={{ margin: '0 0 16px' }} role="alert">{IconAlert}<span>{loginError}</span></div>
-          )}
+      {loginError && (
+        <div className="pp-note danger" style={{ margin: '0 0 16px' }} role="alert">{IconAlert}<span>{loginError}</span></div>
+      )}
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className={`pp-af${loginError ? ' err' : ''}`}>
-              <label htmlFor="l-em">Email</label>
-              <input id="l-em" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className={`pp-af${loginError ? ' err' : ''}`} style={{ marginBottom: 4 }}>
-              <label htmlFor="l-pw">Contraseña</label>
-              <input className="pw" id="l-pw" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <button ref={olvideBtnRef} type="button" className="pp-lnk" style={{ marginBottom: 14 }} onClick={abrirOlvide}>Olvidé mi contraseña</button>
-            <button type="submit" className="pp-pb pri full" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</button>
-          </form>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className={`pp-af${loginError ? ' err' : ''}`}>
+          <label htmlFor="l-em">Email</label>
+          <input id="l-em" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
-      </main>
+        <div className={`pp-af${loginError ? ' err' : ''}`} style={{ marginBottom: 4 }}>
+          <label htmlFor="l-pw">Contraseña</label>
+          <input className="pw" id="l-pw" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <button ref={olvideBtnRef} type="button" className="pp-lnk" style={{ marginBottom: 14 }} onClick={abrirOlvide}>Olvidé mi contraseña</button>
+        <button type="submit" className="pp-pb pri full" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar'}</button>
+      </form>
 
       <div className={`pp-scrim${sheetOpen ? ' open' : ''}`} onClick={() => setSheetOpen(false)} />
       <section className={`pp-sheet${sheetOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-labelledby="forgot-t">
@@ -128,6 +140,6 @@ export default function PortalLoginPage() {
           )}
         </div>
       </section>
-    </div>
+    </LoginShell>
   )
 }

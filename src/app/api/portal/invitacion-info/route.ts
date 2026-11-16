@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
 import { diasRetencionPorPlan } from '@/lib/portal/retencion'
+import { tieneAccesoActivadoAlgunaVez } from '@/lib/portal/acceso'
 
 export const runtime = 'nodejs'
 
@@ -36,10 +37,15 @@ export async function GET() {
 
   const diasRetencion = await diasRetencionPorPlan(db, profile?.plan ?? null)
 
+  // Modo "aceptar invitación" (sin crear otra contraseña): lo decide el
+  // server, nunca un query param — ver tieneAccesoActivadoAlgunaVez.
+  const modoAceptar = await tieneAccesoActivadoAlgunaVez(db, user.id)
+
   return NextResponse.json({
     profesionalNombre: [profile?.nombre, profile?.apellido].filter(Boolean).join(' ') || 'Tu profesional',
     especialidad: profile?.especialidad ?? null,
     pacienteEmail: acceso.email,
     diasRetencion,
+    modoAceptar,
   })
 }

@@ -33,7 +33,21 @@ export default async function PortalLayout({ children }: { children: React.React
     .eq('estado', 'activo')
     .limit(1)
 
-  if (!accesos || accesos.length === 0) redirect('/portal/login')
+  if (!accesos || accesos.length === 0) {
+    // Sin acceso activo: si hay una invitación pendiente, a /portal/activar
+    // (ahí resuelve si corresponde pedir contraseña o solo aceptar) — nunca
+    // de vuelta a /portal/login con una sesión ya logueada, que es loop
+    // (login empuja a /portal, acá no encuentra 'activo' y rebota a login).
+    const { data: invitados } = await db
+      .from('paciente_accesos')
+      .select('paciente_id')
+      .eq('auth_user_id', user.id)
+      .eq('estado', 'invitado')
+      .limit(1)
+
+    if (invitados && invitados.length > 0) redirect('/portal/activar')
+    redirect('/portal/login')
+  }
 
   // El diseño asume un único profesional — accesoPrincipal ya filtra por
   // puedeUsarPortal y devuelve el más reciente entre los habilitados (o
