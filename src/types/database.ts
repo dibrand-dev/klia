@@ -76,6 +76,8 @@ export type Database = {
           linkedin_url: string | null
           created_at: string
           updated_at: string
+          antropometria_certificacion: string | null
+          antropometria_activa: boolean | null
         }
         Insert: {
           id: string
@@ -148,6 +150,8 @@ export type Database = {
           linkedin_url?: string | null
           created_at?: string
           updated_at?: string
+          antropometria_certificacion?: string | null
+          antropometria_activa?: boolean | null
         }
         Update: {
           id?: string
@@ -220,6 +224,8 @@ export type Database = {
           linkedin_url?: string | null
           created_at?: string
           updated_at?: string
+          antropometria_certificacion?: string | null
+          antropometria_activa?: boolean | null
         }
         Relationships: []
       }
@@ -1209,6 +1215,21 @@ export type Database = {
           notas: string | null
           created_at: string
           updated_at: string
+          metodo_medicion: string
+          perfil_medicion: string
+          talla_sentado: number | null
+          envergadura: number | null
+          pliegue_biceps: number | null
+          pliegue_cresta_iliaca: number | null
+          pliegue_supraespinal: number | null
+          pliegue_muslo: number | null
+          pliegue_pantorrilla: number | null
+          perimetro_brazo_contraido: number | null
+          perimetro_muslo_medio: number | null
+          diametro_humero: number | null
+          diametro_biestiloideo: number | null
+          diametro_femur: number | null
+          metodo_otro: string | null
         }
         Insert: {
           id?: string
@@ -1231,6 +1252,21 @@ export type Database = {
           notas?: string | null
           created_at?: string
           updated_at?: string
+          metodo_medicion?: string
+          perfil_medicion?: string
+          talla_sentado?: number | null
+          envergadura?: number | null
+          pliegue_biceps?: number | null
+          pliegue_cresta_iliaca?: number | null
+          pliegue_supraespinal?: number | null
+          pliegue_muslo?: number | null
+          pliegue_pantorrilla?: number | null
+          perimetro_brazo_contraido?: number | null
+          perimetro_muslo_medio?: number | null
+          diametro_humero?: number | null
+          diametro_biestiloideo?: number | null
+          diametro_femur?: number | null
+          metodo_otro?: string | null
         }
         Update: {
           id?: string
@@ -1253,6 +1289,21 @@ export type Database = {
           notas?: string | null
           created_at?: string
           updated_at?: string
+          metodo_medicion?: string
+          perfil_medicion?: string
+          talla_sentado?: number | null
+          envergadura?: number | null
+          pliegue_biceps?: number | null
+          pliegue_cresta_iliaca?: number | null
+          pliegue_supraespinal?: number | null
+          pliegue_muslo?: number | null
+          pliegue_pantorrilla?: number | null
+          perimetro_brazo_contraido?: number | null
+          perimetro_muslo_medio?: number | null
+          diametro_humero?: number | null
+          diametro_biestiloideo?: number | null
+          diametro_femur?: number | null
+          metodo_otro?: string | null
         }
         Relationships: [
           {
@@ -1263,6 +1314,77 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      antropometria_compartidos: {
+        Row: {
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          token: string
+          creado_en: string
+          vence_en: string | null
+          revocado_en: string | null
+          enviado_a: string | null
+          enviado_en: string | null
+        }
+        Insert: {
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          token: string
+          creado_en?: string
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Update: {
+          vence_en?: string | null
+          revocado_en?: string | null
+          enviado_a?: string | null
+          enviado_en?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'antropometria_compartidos_paciente_id_fkey'
+            columns: ['paciente_id']
+            isOneToOne: false
+            referencedRelation: 'pacientes'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      antropometria_rangos: {
+        Row: {
+          id: string
+          clave: string
+          sexo: string | null
+          desde: number | null
+          hasta: number | null
+          etiqueta: string
+          orden: number
+          creado_en: string
+        }
+        Insert: {
+          id?: string
+          clave: string
+          sexo?: string | null
+          desde?: number | null
+          hasta?: number | null
+          etiqueta: string
+          orden?: number
+          creado_en?: string
+        }
+        Update: {
+          clave?: string
+          sexo?: string | null
+          desde?: number | null
+          hasta?: number | null
+          etiqueta?: string
+          orden?: number
+          creado_en?: string
+        }
+        Relationships: []
       }
       // Tabla creada en producción desde 2026-08-10 (migración SQL manual en el
       // dashboard de Supabase, fuera de este repo — mismo patrón que otras tablas
@@ -2924,6 +3046,8 @@ export type Plan = Database['public']['Tables']['planes']['Row']
 export type RegistroAntropometrico = Database['public']['Tables']['registros_antropometricos']['Row']
 export type RegistroRefraccion = Database['public']['Tables']['registros_refraccion']['Row']
 export type RegistroPIO = Database['public']['Tables']['registros_pio']['Row']
+export type AntropometriaCompartido = Database['public']['Tables']['antropometria_compartidos']['Row']
+export type AntropometriaRango = Database['public']['Tables']['antropometria_rangos']['Row']
 export type RegistroEspecialidad = Database['public']['Tables']['registros_especialidad']['Row']
 export type EmailLog = Database['public']['Tables']['email_log']['Row']
 export type Colegio = Database['public']['Tables']['colegios']['Row']

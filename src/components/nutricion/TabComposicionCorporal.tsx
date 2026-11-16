@@ -7,7 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import type { RegistroAntropometrico, DistribucionMacros } from '@/types/database'
-import RegistroAntropometricoEditSlide from './RegistroAntropometricoEditSlide'
+import NuevoRegistroSlide from '@/components/antropometria/NuevoRegistroSlide'
 import SlideOverMacros from './SlideOverMacros'
 import { gramosDesdeMacro } from '@/lib/nutricion/calculos'
 
@@ -43,13 +43,24 @@ const cardStyle: React.CSSProperties = {
   padding: 20,
 }
 
-export default function TabComposicionCorporal({ pacienteId }: { pacienteId: string }) {
+interface Props {
+  pacienteId: string
+  pacienteNombre: string
+  pacienteApellido: string
+  pacienteGenero: string | null
+  pacienteFechaNacimiento: string | null
+}
+
+export default function TabComposicionCorporal({
+  pacienteId, pacienteNombre, pacienteApellido, pacienteGenero, pacienteFechaNacimiento,
+}: Props) {
   const router = useRouter()
   const [rango, setRango] = useState<Rango>('6m')
   const [registros, setRegistros] = useState<RegistroAntropometrico[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [editando, setEditando] = useState<RegistroAntropometrico | null>(null)
+  const [nuevoAbierto, setNuevoAbierto] = useState(false)
 
   const [macrosOpen, setMacrosOpen] = useState(false)
   const [macrosPreview, setMacrosPreview] = useState<DistribucionMacros | null>(null)
@@ -110,22 +121,27 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
       {/* Header + selector de rango */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-on-surface">Antropometría</h2>
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2, #F6F7F9)', borderRadius: 999, padding: 3 }}>
-          {(Object.keys(RANGO_LABELS) as Rango[]).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRango(r)}
-              style={{
-                fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                background: rango === r ? 'var(--surface, #fff)' : 'transparent',
-                color: rango === r ? 'var(--ink, #0B1220)' : 'var(--muted, #8A93A1)',
-                boxShadow: rango === r ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-              }}
-            >
-              {RANGO_LABELS[r]}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2, #F6F7F9)', borderRadius: 999, padding: 3 }}>
+            {(Object.keys(RANGO_LABELS) as Rango[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRango(r)}
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                  background: rango === r ? 'var(--surface, #fff)' : 'transparent',
+                  color: rango === r ? 'var(--ink, #0B1220)' : 'var(--muted, #8A93A1)',
+                  boxShadow: rango === r ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
+                }}
+              >
+                {RANGO_LABELS[r]}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setNuevoAbierto(true)}>
+            Nuevo registro
+          </button>
         </div>
       </div>
 
@@ -265,10 +281,15 @@ export default function TabComposicionCorporal({ pacienteId }: { pacienteId: str
           </button>
       </div>
 
-      <RegistroAntropometricoEditSlide
+      <NuevoRegistroSlide
+        open={nuevoAbierto || !!editando}
+        onClose={() => { setNuevoAbierto(false); setEditando(null) }}
+        pacienteId={pacienteId}
+        pacienteNombre={pacienteNombre}
+        pacienteApellido={pacienteApellido}
+        pacienteGenero={pacienteGenero}
+        pacienteFechaNacimiento={pacienteFechaNacimiento}
         registro={editando}
-        open={!!editando}
-        onClose={() => setEditando(null)}
       />
 
       <SlideOverMacros

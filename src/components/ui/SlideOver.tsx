@@ -10,7 +10,7 @@ interface SlideOverProps {
   subtitle?: string
   subtitleCapitalize?: boolean
   children: React.ReactNode
-  width?: 'narrow' | 'compact' | 'sm' | 'md' | 'lg' | 'xl' | 'nota'
+  width?: 'narrow' | 'compact' | 'sm' | 'md' | 'lg' | 'xl' | 'nota' | '560'
   header?: React.ReactNode
   footer?: React.ReactNode
   noPadding?: boolean
@@ -24,6 +24,7 @@ const WIDTH_MAP = {
   lg: 'sm:max-w-2xl',
   xl: 'sm:max-w-[760px]',
   nota: 'sm:max-w-[620px]',
+  '560': 'sm:max-w-[560px]',
 }
 
 export default function SlideOver({
@@ -51,7 +52,7 @@ export default function SlideOver({
       <div
         className={cn(
           'fixed inset-y-0 right-0 z-50 flex flex-col bg-white w-full transition-transform duration-300',
-          width === 'nota' ? 'shadow-[var(--shadow-lg)]' : 'shadow-xl',
+          width === 'nota' || width === '560' ? 'shadow-[var(--shadow-lg)]' : 'shadow-xl',
           WIDTH_MAP[width],
           open ? 'translate-x-0' : 'translate-x-full',
         )}
