@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { PasswordField, PasswordRequirementsList, passwordRequisitos } from '@/components/portal/password'
@@ -26,8 +26,6 @@ export default function PortalActivarPage() {
 
 function PortalActivarContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const inviteExpired = searchParams.get('error') === 'invite_expired'
   const [checkingSession, setCheckingSession] = useState(true)
   const [sesionValida, setSesionValida] = useState(false)
 
@@ -103,12 +101,7 @@ function PortalActivarContent() {
         <main className="pp-main" style={{ padding: 0 }}>
           <div className="pp-auth">
             <h1>Link no válido</h1>
-            <p className="pp-lead">
-              {inviteExpired
-                ? 'Esta invitación ya fue utilizada o venció. Pedile a tu profesional que te la reenvíe.'
-                : 'Este link ya no es válido o ya fue usado. Pedile a tu profesional que te lo reenvíe.'}
-            </p>
-            <p className="pp-lead">Si ya activaste tu cuenta, ingresá con tu email y contraseña.</p>
+            <p className="pp-lead">Este link ya se usó. Si ya activaste tu cuenta, ingresá desde https://app.klia.com.ar/portal/login con tu email y contraseña.</p>
             <button type="button" className="pp-pb pri full" onClick={() => router.push('/portal/login')}>Ir a iniciar sesión</button>
           </div>
         </main>

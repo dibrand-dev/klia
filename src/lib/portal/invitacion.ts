@@ -14,7 +14,7 @@ const EMAIL_YA_REGISTRADO = /already registered|already been registered|already 
 
 // Para el console.error de un fallo de envío — nunca el email completo del
 // paciente en los logs.
-function enmascararEmail(email: string): string {
+export function enmascararEmail(email: string): string {
   const [usuario, dominio] = email.split('@')
   if (!dominio) return '***'
   return `${usuario[0] ?? ''}***@${dominio}`
@@ -61,7 +61,7 @@ a:hover{color:#16389F}
 <p style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5B6472;">Nutrición · Portal del paciente</p>
 <h1 class="h1" style="margin:0 0 18px 0;font-size:24px;line-height:30px;font-weight:700;color:#0B1220;">${nombreProfesional} te invitó a su portal de pacientes</h1>
 <p style="margin:0 0 14px 0;font-size:16px;line-height:24px;color:#1F2937;">Hola, ${nombrePaciente}:</p>
-<p style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1F2937;">Desde el portal vas a poder ver tu plan alimentario y registrar con una foto lo que comés en cada comida. Activá tu cuenta y creá tu contraseña para empezar.</p>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1F2937;">Desde el portal vas a poder ver tu plan alimentario y registrar con una foto lo que comés en cada comida. Activá tu cuenta y creá tu contraseña para empezar. Este botón se usa una sola vez.</p>
 </td></tr>
 <tr><td align="center" class="px" style="padding:0 40px 28px 40px;">
 <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
@@ -75,12 +75,81 @@ a:hover{color:#16389F}
 <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#5B6472;">Si el botón no funciona, copiá y pegá este link en tu navegador:</p>
 <p style="margin:0;font-size:13px;line-height:20px;word-break:break-all;"><a href="${actionLink}" target="_blank" style="color:#1F4FD9;text-decoration:underline;">${actionLink}</a></p>
 </td></tr>
+<tr><td class="px" style="padding:0 40px 18px 40px;">
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F6F7F9" style="background-color:#F6F7F9;border:1px solid #E7E9EE;border-radius:8px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#1F2937;">Para volver a entrar más adelante, ingresá siempre desde <a href="${appUrl}/portal/login" target="_blank" style="color:#1F4FD9;text-decoration:underline;">${appUrl}/portal/login</a> con tu email y la contraseña que elijas. Guardá este link.</td></tr></table>
+</td></tr>
 <tr><td class="px" style="padding:0 40px 34px 40px;">
 <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td bgcolor="#F6F7F9" style="background-color:#F6F7F9;border:1px solid #E7E9EE;border-radius:8px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#1F2937;">Tus fotos y comentarios son visibles solo para tu profesional. Se conservan ${dias} días y luego se eliminan.</td></tr></table>
 </td></tr>
 </table>
 </td></tr>
 <tr><td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5B6472;">Recibiste este mail porque ${nombreProfesional} te registró como paciente en KLIA. Si no la conocés, podés ignorar este mensaje.</td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>`
+}
+
+// Mail post-activación (mismo diseño/helpers que emailInvitacionPaciente):
+// el link de invitación es de un solo uso, así que a partir de acá el
+// paciente tiene que volver a entrar siempre por /portal/login. Se envía
+// una sola vez, desde /api/portal/activar justo después del UPDATE a
+// estado 'activo' (ver ese route para la idempotencia).
+export function emailCuentaActivada(nombreProfesional: string, nombrePaciente: string): string {
+  const loginUrl = `${appUrl}/portal/login`
+  const nombre = nombrePaciente || 'paciente'
+  return `<!DOCTYPE html>
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Tu cuenta de KLIA está lista</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+<style>
+body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
+table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse}
+img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;display:block}
+a{color:#1F4FD9}
+a:hover{color:#16389F}
+@media only screen and (max-width:620px){.container{width:100%!important}.px{padding-left:24px!important;padding-right:24px!important}.h1{font-size:22px!important;line-height:28px!important}}
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F1F3F6;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F1F3F6;">Tu cuenta quedó activada. Guardá este link para volver a entrar.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#F1F3F6" style="background-color:#F1F3F6;">
+<tr><td align="center" style="padding:32px 12px;">
+<!--[if mso]><table role="presentation" width="560" border="0" cellspacing="0" cellpadding="0"><tr><td><![endif]-->
+<table role="presentation" class="container" width="560" border="0" cellspacing="0" cellpadding="0" style="width:560px;max-width:560px;">
+<tr><td style="padding:0 4px 18px 4px;"><img src="${LOGO_URL}" width="92" alt="KLIA" style="width:92px;height:auto;"></td></tr>
+<tr><td bgcolor="#FFFFFF" style="background-color:#FFFFFF;border:1px solid #E7E9EE;border-radius:12px;">
+<table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+<tr><td class="px" style="padding:36px 40px 8px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5B6472;">Nutrición · Portal del paciente</p>
+<h1 class="h1" style="margin:0 0 18px 0;font-size:24px;line-height:30px;font-weight:700;color:#0B1220;">Tu cuenta de KLIA está lista</h1>
+<p style="margin:0 0 28px 0;font-size:16px;line-height:24px;color:#1F2937;">Hola, ${nombre}: tu cuenta quedó activada. Para ingresar siempre usá este link:</p>
+</td></tr>
+<tr><td align="center" class="px" style="padding:0 40px 28px 40px;">
+<table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
+<tr><td align="center" bgcolor="#0B1220" style="background-color:#0B1220;border-radius:8px;">
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${loginUrl}" style="height:50px;v-text-anchor:middle;width:240px;" arcsize="16%" stroke="f" fillcolor="#0B1220"><w:anchorlock/><center style="color:#FFFFFF;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Ir al portal</center></v:roundrect><![endif]-->
+<!--[if !mso]><!--><a href="${loginUrl}" target="_blank" style="display:inline-block;background-color:#0B1220;border:1px solid #0B1220;border-radius:8px;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;mso-hide:all;"><span style="color:#FFFFFF;">Ir al portal</span></a><!--<![endif]-->
+</td></tr>
+</table>
+</td></tr>
+<tr><td class="px" style="padding:0 40px 30px 40px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#5B6472;">Si el botón no funciona, copiá y pegá este link en tu navegador:</p>
+<p style="margin:0 0 20px 0;font-size:13px;line-height:20px;word-break:break-all;"><a href="${loginUrl}" target="_blank" style="color:#1F4FD9;text-decoration:underline;">${loginUrl}</a></p>
+<p style="margin:0;font-size:13px;line-height:20px;color:#1F2937;">Ingresás con tu email y la contraseña que creaste. Si la olvidás, usá «Olvidé mi contraseña» en esa misma pantalla.</p>
+</td></tr>
+</table>
+</td></tr>
+<tr><td style="padding:20px 8px 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#5B6472;">Recibiste este mail porque activaste tu cuenta del portal de pacientes de ${nombreProfesional} en KLIA. Si no fuiste vos, contactá a tu profesional.</td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>

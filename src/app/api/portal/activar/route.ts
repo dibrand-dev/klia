@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { serviceClient } from '@/lib/supabase/service'
 import { puedeUsarPortal } from '@/lib/portal/acceso'
+import { emailCuentaActivada, enmascararEmail } from '@/lib/portal/invitacion'
+import { enviarEmail } from '@/lib/brevo'
 
 export const runtime = 'nodejs'
 
@@ -56,6 +58,28 @@ export async function POST() {
   if (updateError) {
     console.error('[portal/activar] Error activando:', updateError)
     return NextResponse.json({ error: 'Error al activar la cuenta' }, { status: 500 })
+  }
+
+  // Mail "Tu cuenta está lista" — solo tras la activación real, nunca bloquea ni revierte el UPDATE de arriba.
+  // Idempotente de por sí: una segunda llamada con un acceso ya 'activo' no llega hasta acá (corta antes, en el 404 de "sin_invitacion").
+  const accesoPrincipal = accesos.find((a) => idsActivables.includes(a.paciente_id))
+  if (accesoPrincipal && user.email) {
+    try {
+      const [{ data: paciente }, { data: profile }] = await Promise.all([
+        db.from('pacientes').select('nombre, apellido').eq('id', accesoPrincipal.paciente_id).maybeSingle(),
+        db.from('profiles').select('nombre, apellido').eq('id', accesoPrincipal.terapeuta_id).maybeSingle(),
+      ])
+      const nombrePaciente = paciente ? `${paciente.nombre} ${paciente.apellido}`.trim() : ''
+      const nombreProfesional = profile ? [profile.nombre, profile.apellido].filter(Boolean).join(' ') || 'Tu profesional' : 'Tu profesional'
+      await enviarEmail({
+        destinatario: user.email,
+        nombreDestinatario: nombrePaciente || user.email,
+        asunto: 'Tu cuenta de KLIA está lista',
+        htmlContent: emailCuentaActivada(nombreProfesional, nombrePaciente),
+      })
+    } catch (emailError) {
+      console.error('[portal/activar] Error enviando email de cuenta activada:', enmascararEmail(user.email), (emailError as Error)?.message)
+    }
   }
 
   return NextResponse.json({ ok: true })
