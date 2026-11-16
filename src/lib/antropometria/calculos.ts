@@ -20,7 +20,7 @@ export interface Medidas {
   humero?: N; biestiloideo?: N; femur?: N
 }
 
-export interface Paciente { sexo: Sexo | null; edad: number }
+export interface Paciente { sexo: Sexo | null; edad: number | null }
 
 export interface Tejidos {
   adiposo: number | null; muscular: number | null; oseo: number | null; residual: number | null
@@ -97,7 +97,8 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
   const bR = num(m.brazoRelajado), bC = num(m.brazoContraido), cin = num(m.cintura), cad = num(m.cadera)
   const mM = num(m.musloMedio), pie = num(m.pierna)
   const hum = num(m.humero), bie = num(m.biestiloideo), fem = num(m.femur)
-  const esAdulto = pac.edad >= EDAD_ADULTO
+  const edad = num(pac.edad)
+  const esAdulto = edad !== null && edad >= EDAD_ADULTO
   const faltan: Record<string, string[]> = {}
   const req = (clave: string, pares: [string, number | null][]) => {
     const f = pares.filter(([, v]) => v === null).map(([n]) => n)
@@ -125,11 +126,11 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
       const z6 = (s6 * k - 116.41) / 34.79
       adiposo = (z6 * 5.85 + 25.6) * (h / TALLA_PHANTOM) ** 3
     }
-    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null && pac.sexo !== null) {
+    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null && pac.sexo !== null && edad !== null) {
       const sexo = pac.sexo === 'M' ? 1 : 0
       muscular =
         (h / 100) * (0.00744 * cBrazo ** 2 + 0.00088 * cMuslo ** 2 + 0.00441 * cPierna ** 2) +
-        2.4 * sexo - 0.048 * pac.edad + 7.8
+        2.4 * sexo - 0.048 * edad + 7.8
     }
     if (h !== null && bie !== null && fem !== null) {
       oseo = 3.02 * ((h / 100) ** 2 * (bie / 100) * (fem / 100) * 400) ** 0.712
@@ -140,6 +141,12 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan], ['sexo', pac.sexo === null ? null : 1]])
     req('oseo', [['talla', h], ['diámetro biestiloideo', bie], ['diámetro fémur', fem]])
     req('residual', [['masa', masa]])
+  } else if (edad === null) {
+    // Edad desconocida (no un menor legítimo): no se puede determinar si corresponde calcular tejidos.
+    req('adiposo', [['edad', null]])
+    req('muscular', [['edad', null]])
+    req('oseo', [['edad', null]])
+    req('residual', [['edad', null]])
   }
 
   // Somatotipo Heath-Carter

@@ -104,6 +104,36 @@ test('sexo null: no asume M — IMC/Σ6/Σ8/somatotipo se calculan igual, múscu
   assert.ok(r.faltan.muscular?.includes('sexo'))
 })
 
+test('edad null: no asume adulto — IMC/Σ6/Σ8/somatotipo se calculan igual, tejidos queda null con \'edad\' en faltan', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: c.pac.sexo, edad: null })
+  cerca(r.salud.imc, c.esp.imc, 0.05, 'IMC con edad null')
+  cerca(r.sumatorias.s6, c.esp.s6, 0.01, 'Σ6 con edad null')
+  cerca(r.sumatorias.s8, c.esp.s8, 0.01, 'Σ8 con edad null')
+  cerca(r.somatotipo.endo, c.esp.endo, 0.01, 'endo con edad null')
+  cerca(r.somatotipo.meso, c.esp.meso, 0.01, 'meso con edad null')
+  cerca(r.somatotipo.ecto, c.esp.ecto, 0.01, 'ecto con edad null')
+  assert.equal(r.esAdulto, false)
+  assert.equal(r.tejidos, null)
+  assert.equal(r.indices.musculoOseo, null)
+  assert.equal(r.indices.musculoOseoCategoria, null)
+  assert.ok(r.faltan.adiposo?.includes('edad'))
+  assert.ok(r.faltan.muscular?.includes('edad'))
+  assert.ok(r.faltan.oseo?.includes('edad'))
+  assert.ok(r.faltan.residual?.includes('edad'))
+})
+
+test('menor de edad legítimo (edad conocida, < 20): sin tejidos, pero sin \'faltan\' espurio', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: c.pac.sexo, edad: 15 })
+  assert.equal(r.esAdulto, false)
+  assert.equal(r.tejidos, null)
+  assert.equal(r.faltan.adiposo, undefined)
+  assert.equal(r.faltan.muscular, undefined)
+  assert.equal(r.faltan.oseo, undefined)
+  assert.equal(r.faltan.residual, undefined)
+})
+
 test('proporciones: categorías', () => {
   assert.equal(categoriaCormico(0.5), 'braquicórmico')
   assert.equal(categoriaCormico(0.52), 'metricórmico')

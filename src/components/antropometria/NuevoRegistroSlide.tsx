@@ -123,6 +123,7 @@ export default function NuevoRegistroSlide({
     basicas: true, pliegues: true, perimetros: true, diametros: true,
   })
   const [resBarAbierta, setResBarAbierta] = useState(false)
+  const [ultimoRegistro, setUltimoRegistro] = useState<RegistroAntropometrico | null>(null)
   const [previo, setPrevio] = useState<RegistroAntropometrico | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,11 +147,11 @@ export default function NuevoRegistroSlide({
     setError(null)
   }, [open, registro])
 
-  // Registro previo (para la comparación "Previo" y el punto gris de la somatocarta)
+  // "Último registro" del header: el más reciente del paciente, sin importar la fecha elegida en el formulario.
   useEffect(() => {
-    if (!open) { setPrevio(null); return }
+    if (!open) { setUltimoRegistro(null); return }
     let cancelado = false
-    async function fetchPrevio() {
+    async function fetchUltimo() {
       const supabase = createClient()
       const { data } = await supabase
         .from('registros_antropometricos')
@@ -160,19 +161,43 @@ export default function NuevoRegistroSlide({
         .limit(registro ? 2 : 1)
       if (cancelado) return
       const filas = (data ?? []) as RegistroAntropometrico[]
-      const otro = filas.find((r) => r.id !== registro?.id) ?? null
-      setPrevio(otro)
+      setUltimoRegistro(filas.find((r) => r.id !== registro?.id) ?? null)
     }
-    fetchPrevio()
+    fetchUltimo()
     return () => { cancelado = true }
   }, [open, pacienteId, registro])
 
+  // "Previo" de las tarjetas de comparación: el último registro con fecha estrictamente anterior
+  // a la fecha elegida en el formulario (se recalcula si el usuario la cambia).
+  useEffect(() => {
+    if (!open) { setPrevio(null); return }
+    let cancelado = false
+    async function fetchPrevio() {
+      const supabase = createClient()
+      let query = supabase
+        .from('registros_antropometricos')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .lt('fecha', fecha)
+        .order('fecha', { ascending: false })
+        .limit(1)
+      if (registro?.id) query = query.neq('id', registro.id)
+      const { data } = await query.maybeSingle()
+      if (cancelado) return
+      setPrevio((data as RegistroAntropometrico | null) ?? null)
+    }
+    fetchPrevio()
+    return () => { cancelado = true }
+  }, [open, pacienteId, registro, fecha])
+
   if (!open) return null
 
-  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx. Nunca se asume 'M': sin género cargado, sexo queda null.
-  const edad = pacienteFechaNacimiento ? differenceInYears(new Date(), parseISO(pacienteFechaNacimiento)) : 30
+  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx. Nunca se asume un valor por defecto:
+  // sin fecha de nacimiento, edad queda null; sin género cargado, sexo queda null.
+  const edad = pacienteFechaNacimiento ? differenceInYears(new Date(), parseISO(pacienteFechaNacimiento)) : null
   const sexo: PacienteCalculo['sexo'] = pacienteGenero === 'M' || pacienteGenero === 'F' ? pacienteGenero : null
   const paciente: PacienteCalculo = { sexo, edad }
+  const textoSexoEdad = edad == null ? (sexo ?? 'Sexo no cargado') : `${sexo ?? 'Sexo no cargado'} · ${edad} años`
 
   const medidas = medidasDesdeVals(vals)
   const resultado = calcular(medidas, paciente)
@@ -199,7 +224,7 @@ export default function NuevoRegistroSlide({
 
   function cerrarConToast() {
     const n = Object.values(vals).filter((v) => numDesde(v) != null).length
-    setToastMsg(n ? `Registro guardado · ${n} medidas` : 'Registro guardado sin medidas')
+    setToastMsg(n === 0 ? 'Registro guardado sin medidas' : n === 1 ? 'Registro guardado · 1 medida' : `Registro guardado · ${n} medidas`)
     setTimeout(() => {
       router.refresh()
       onClose()
@@ -348,8 +373,8 @@ export default function NuevoRegistroSlide({
               <div className="nr-name">{esEdicion ? 'Editar registro antropométrico' : 'Nuevo registro antropométrico'}</div>
               <div className="nr-meta">
                 <span>{pacienteNombre} {pacienteApellido}</span>
-                <span>{sexo ?? 'Sexo no cargado'} · {edad} años</span>
-                {previo && <span>Último registro {previo.fecha.split('-').reverse().join('/')}</span>}
+                <span>{textoSexoEdad}</span>
+                {ultimoRegistro && <span>Último registro {ultimoRegistro.fecha.split('-').reverse().join('/')}</span>}
               </div>
             </div>
             <button type="button" className="nr-close" aria-label="Cerrar" onClick={onClose}>
