@@ -19,8 +19,11 @@
 }
 .nr-h-info { flex: 1; min-width: 0; }
 .nr-name { font-size: 16px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); }
-.nr-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.nr-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted-3); }
+.nr-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; flex-wrap: wrap; }
+.nr-meta > span + span::before {
+  content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%;
+  background: var(--muted-3); margin: 0 6px;
+}
 .nr-close {
   width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent;
   background: transparent; display: grid; place-items: center; cursor: pointer; flex: none;
@@ -125,3 +128,13 @@
 .nr-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
 .nr-btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
 .nr-btn.primary:hover { background: #000; }
+
+.nr-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
+  background: var(--ink); color: #fff; font-size: 13px; font-weight: 500;
+  padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow-lg);
+  opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 200;
+  display: flex; gap: 8px; align-items: center;
+}
+.nr-toast.on { opacity: 1; transform: translate(-50%, 0); }
+.nr-toast svg { width: 15px; height: 15px; stroke: #fff; stroke-width: 2; fill: none; }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { differenceInYears, parseISO } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
+import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import SlideOver from '@/components/ui/SlideOver'
 import {
   calcular, fmt, somatochart,
@@ -112,6 +113,7 @@ export default function NuevoRegistroSlide({
 }: Props) {
   const router = useRouter()
   const esEdicion = !!registro
+  const { terapeutaId } = useEffectiveTerapeutaId()
 
   const [metodo, setMetodo] = useState<Metodo>('isak')
   const [fecha, setFecha] = useState(hoy())
@@ -124,6 +126,7 @@ export default function NuevoRegistroSlide({
   const [previo, setPrevio] = useState<RegistroAntropometrico | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
 
   // Reinicia el formulario cada vez que se abre (alta o edición de otro registro)
   useEffect(() => {
@@ -194,7 +197,21 @@ export default function NuevoRegistroSlide({
     return [n, s.items.length]
   }
 
+  function cerrarConToast() {
+    const n = Object.values(vals).filter((v) => numDesde(v) != null).length
+    setToastMsg(n ? `Registro guardado · ${n} medidas` : 'Registro guardado sin medidas')
+    setTimeout(() => {
+      router.refresh()
+      onClose()
+    }, 900)
+  }
+
   async function handleGuardar() {
+    if (!esEdicion && !terapeutaId) {
+      setError('No se pudo identificar al profesional. Recargá la página e intentá de nuevo.')
+      return
+    }
+
     setLoading(true)
     setError(null)
     const supabase = createClient()
@@ -221,17 +238,22 @@ export default function NuevoRegistroSlide({
         .from('registros_antropometricos')
         .update(payload as never)
         .eq('id', registro.id)
-      if (dbError) { setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return }
+      if (dbError) {
+        console.error('[NuevoRegistroSlide] error al actualizar registro antropométrico', dbError.code, dbError.message, dbError)
+        setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
+      }
     } else {
       const { error: dbError } = await supabase
         .from('registros_antropometricos')
-        .insert({ ...payload, paciente_id: pacienteId, turno_id: null } as never)
-      if (dbError) { setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return }
+        .insert({ ...payload, terapeuta_id: terapeutaId, paciente_id: pacienteId, turno_id: null } as never)
+      if (dbError) {
+        console.error('[NuevoRegistroSlide] error al insertar registro antropométrico', dbError.code, dbError.message, dbError)
+        setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
+      }
     }
 
     setLoading(false)
-    router.refresh()
-    onClose()
+    cerrarConToast()
   }
 
   const n6 = 6 - (resultado.faltan.s6?.length ?? 0)
@@ -326,14 +348,8 @@ export default function NuevoRegistroSlide({
               <div className="nr-name">{esEdicion ? 'Editar registro antropométrico' : 'Nuevo registro antropométrico'}</div>
               <div className="nr-meta">
                 <span>{pacienteNombre} {pacienteApellido}</span>
-                <span className="dot" />
                 <span>{sexo ?? 'Sexo no cargado'} · {edad} años</span>
-                {previo && (
-                  <>
-                    <span className="dot" />
-                    <span>Último registro {previo.fecha.split('-').reverse().join('/')}</span>
-                  </>
-                )}
+                {previo && <span>Último registro {previo.fecha.split('-').reverse().join('/')}</span>}
               </div>
             </div>
             <button type="button" className="nr-close" aria-label="Cerrar" onClick={onClose}>
@@ -461,6 +477,11 @@ export default function NuevoRegistroSlide({
       <aside className="nr-res-side" style={{ right: 560 }} aria-label="Resultados calculados">
         {tarjetas}
       </aside>
+
+      <div className={`nr-toast${toastMsg ? ' on' : ''}`}>
+        <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth={2} fill="none" /></svg>
+        <span>{toastMsg}</span>
+      </div>
     </>
   )
 }

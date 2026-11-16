@@ -100,7 +100,7 @@ export default function TabComposicionCorporal({
     }
     fetchRegistros()
     return () => { cancelado = true }
-  }, [pacienteId, rango])
+  }, [pacienteId, rango, nuevoAbierto, editando])
 
   const chartData = useMemo(() => {
     return [...registros]
