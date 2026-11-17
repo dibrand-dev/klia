@@ -477,11 +477,10 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-16_
+_Actualizado el 2026-11-17_
 
 ```
-7b94c84 fix: no asumir sexo M en nuevo registro antropométrico sin género cargado
-76fdbf1 feat: SlideOver nuevo registro antropométrico ISAK (crear y editar)
-13dc8b0 chore: migración 022 de antropometría ISAK y tipos
-5d6170a docs: CLAUDE.md - commits del dia 2026-11-15
+6eb424a chore: imagen optimizada para el login del portal del paciente
+e3b7da9 fix: edad sin default, Previo por fecha y pluralización del toast en registro antropométrico
+da1dd14 fix: INSERT de registro antropométrico con terapeuta_id, refresco de tabla y header en mobile
 ```
