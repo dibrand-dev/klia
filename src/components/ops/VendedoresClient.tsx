@@ -21,11 +21,12 @@ function moneda(n: number): string {
 // Menú de 3 puntos por fila — mismo patrón de PacienteHeader.tsx (botón +
 // popover anclado, cierre por click afuera/Esc), pero con las clases
 // Tailwind/variables del resto de OPS en vez del CSS propio de esa pantalla.
-function MenuAcciones({ vendedor, onEditar, onCambiarEstado, onLiquidar }: {
+function MenuAcciones({ vendedor, onEditar, onCambiarEstado, onLiquidar, onReenviar }: {
   vendedor: VendedorOps
   onEditar: () => void
   onCambiarEstado: () => void
   onLiquidar: () => void
+  onReenviar: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -72,6 +73,20 @@ function MenuAcciones({ vendedor, onEditar, onCambiarEstado, onLiquidar }: {
           >
             <span className="material-symbols-outlined text-base text-on-surface-variant">edit</span>
             Editar
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { if (!vendedor.activo) return; setOpen(false); onReenviar() }}
+            disabled={!vendedor.activo}
+            title={!vendedor.activo ? 'Reactivá al vendedor primero' : undefined}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors',
+              vendedor.activo ? 'text-on-surface hover:bg-surface-container-low' : 'text-on-surface-variant opacity-50 cursor-not-allowed'
+            )}
+          >
+            <span className="material-symbols-outlined text-base text-on-surface-variant">forward_to_inbox</span>
+            Reenviar invitación
           </button>
           <button
             type="button"
@@ -385,6 +400,7 @@ export default function VendedoresClient({ vendedoresIniciales, colegiosDisponib
   const [liquidando, setLiquidando] = useState<VendedorOps | null>(null)
   const [editando, setEditando] = useState<VendedorOps | null>(null)
   const [cambiandoEstado, setCambiandoEstado] = useState<VendedorOps | null>(null)
+  const [avisoReenvio, setAvisoReenvio] = useState<{ ok: boolean; texto: string } | null>(null)
   const [cambiandoEstadoLoading, setCambiandoEstadoLoading] = useState(false)
   const [cambiandoEstadoError, setCambiandoEstadoError] = useState<string | null>(null)
 
@@ -393,6 +409,15 @@ export default function VendedoresClient({ vendedoresIniciales, colegiosDisponib
     setLiquidando(null)
     setEditando(null)
     router.refresh()
+  }
+
+  async function reenviarInvitacion(v: VendedorOps) {
+    setAvisoReenvio(null)
+    const res = await fetch(`/api/ops/vendedores/${v.id}/reenviar-invitacion`, { method: 'POST' })
+    const json = await res.json().catch(() => ({}))
+    setAvisoReenvio(res.ok
+      ? { ok: true, texto: `Invitación reenviada a ${v.email}.` }
+      : { ok: false, texto: json.error ?? 'No se pudo reenviar la invitación.' })
   }
 
   async function confirmarCambioEstado() {
@@ -427,7 +452,13 @@ export default function VendedoresClient({ vendedoresIniciales, colegiosDisponib
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden">
+      {avisoReenvio && (
+        <div className={cn('mb-3 px-4 py-2 rounded-xl text-sm', avisoReenvio.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')}>
+          {avisoReenvio.texto}
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-outline-variant/20 text-left text-on-surface-variant">
@@ -466,6 +497,7 @@ export default function VendedoresClient({ vendedoresIniciales, colegiosDisponib
                     onEditar={() => setEditando(v)}
                     onCambiarEstado={() => { setCambiandoEstadoError(null); setCambiandoEstado(v) }}
                     onLiquidar={() => setLiquidando(v)}
+                    onReenviar={() => reenviarInvitacion(v)}
                   />
                 </td>
               </tr>
