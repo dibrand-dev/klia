@@ -65,6 +65,26 @@ export default function TabComposicionCorporal({
   const [macrosOpen, setMacrosOpen] = useState(false)
   const [macrosPreview, setMacrosPreview] = useState<DistribucionMacros | null>(null)
   const [loadingWidgets, setLoadingWidgets] = useState(true)
+  const [tieneIsak, setTieneIsak] = useState(false)
+
+  // Independiente del rango de fecha de la tabla/gráfico: el botón "Ver informe" tiene
+  // que aparecer si existe algún registro ISAK, sin importar cuándo fue.
+  useEffect(() => {
+    let cancelado = false
+    async function fetchTieneIsak() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('registros_antropometricos')
+        .select('id')
+        .eq('paciente_id', pacienteId)
+        .eq('metodo_medicion', 'isak')
+        .limit(1)
+      if (cancelado) return
+      setTieneIsak((data ?? []).length > 0)
+    }
+    fetchTieneIsak()
+    return () => { cancelado = true }
+  }, [pacienteId, nuevoAbierto, editando])
 
   useEffect(() => {
     let cancelado = false
@@ -139,6 +159,17 @@ export default function TabComposicionCorporal({
               </button>
             ))}
           </div>
+          {tieneIsak && (
+            <a
+              href={`/pacientes/${pacienteId}/antropometria/informe`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+              style={{ fontSize: 13, textDecoration: 'none' }}
+            >
+              Ver informe
+            </a>
+          )}
           <button type="button" className="btn-secondary" style={{ fontSize: 13 }} onClick={() => setNuevoAbierto(true)}>
             Nuevo registro
           </button>

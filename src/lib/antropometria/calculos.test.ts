@@ -1,7 +1,7 @@
 // Tests de oro: 4 informes reales de ISAKMetry (spec §8). Corre con: npx tsx --test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, redondear, zPhantom, type Medidas, type Paciente } from './calculos'
+import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, zResidual, redondear, zPhantom, type Medidas, type Paciente } from './calculos'
 
 interface Caso {
   nombre: string; pac: Paciente; m: Medidas
@@ -195,4 +195,57 @@ test('Z-score Phantom: talla del phantom da Z = (v − p)/s', () => {
 test('redondear', () => {
   assert.equal(redondear(1.005, 2), 1.01)
   assert.equal(redondear(null), null)
+})
+
+test('categoriaCormico: cortes exactos de la nutricionista (< 0,51 / 0,51–0,53 inclusive / > 0,53)', () => {
+  assert.equal(categoriaCormico(0.5), 'braquicórmico')
+  assert.equal(categoriaCormico(0.509), 'braquicórmico')
+  assert.equal(categoriaCormico(0.51), 'metricórmico') // límite inferior inclusive
+  assert.equal(categoriaCormico(0.53), 'metricórmico') // límite superior inclusive
+  assert.equal(categoriaCormico(0.531), 'macrocórmico')
+})
+
+test('categoriaConicidad: cortes por sexo, null sin sexo o sin valor', () => {
+  assert.equal(categoriaConicidad('M', 1.2), 'normal')
+  assert.equal(categoriaConicidad('M', 1.25), 'riesgo') // límite inclusive del lado "riesgo"
+  assert.equal(categoriaConicidad('F', 1.1), 'normal')
+  assert.equal(categoriaConicidad('F', 1.18), 'riesgo')
+  assert.equal(categoriaConicidad(null, 1.3), null)
+  assert.equal(categoriaConicidad('M', null), null)
+})
+
+test('zResidual: Z-score Phantom del residual usa talla sentado, no talla', () => {
+  cerca(zResidual(16.41 + 1.9, 89.92), 1, 1e-9, 'Z residual')
+  assert.equal(zResidual(null, 89.92), null)
+  assert.equal(zResidual(10, null), null)
+})
+
+test('tejidosZ: null en menores y cuando falta edad; calculado en adultos con todos los datos', () => {
+  const c = CASOS[0]
+  const adulto = calcular(c.m, c.pac)
+  assert.ok(adulto.tejidosZ)
+  assert.notEqual(adulto.tejidosZ!.adiposo, null)
+  assert.notEqual(adulto.tejidosZ!.muscular, null)
+  assert.notEqual(adulto.tejidosZ!.oseo, null)
+  assert.notEqual(adulto.tejidosZ!.residual, null)
+
+  const menor = calcular(c.m, { sexo: c.pac.sexo, edad: 15 })
+  assert.equal(menor.tejidosZ, null)
+
+  const sinEdad = calcular(c.m, { sexo: c.pac.sexo, edad: null })
+  assert.equal(sinEdad.tejidosZ, null)
+})
+
+test('tejidosZ: sin sexo, muscular y residual quedan null pero adiposo/óseo (y sus Z) se calculan igual', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: null, edad: c.pac.edad })
+  assert.equal(r.tejidos!.muscular, null)
+  assert.equal(r.tejidos!.residual, null)
+  assert.notEqual(r.tejidos!.adiposo, null)
+  assert.notEqual(r.tejidos!.oseo, null)
+  assert.ok(r.tejidosZ)
+  assert.equal(r.tejidosZ!.muscular, null)
+  assert.equal(r.tejidosZ!.residual, null)
+  assert.notEqual(r.tejidosZ!.adiposo, null)
+  assert.notEqual(r.tejidosZ!.oseo, null)
 })

@@ -1,7 +1,7 @@
 // Tests mínimos de graficos.ts. Corre con: npx tsx --test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fmt, sgn, fecha, somatochart } from './graficos'
+import { fmt, sgn, fecha, somatochart, pie } from './graficos'
 
 test('fmt formatea en es-AR', () => {
   assert.equal(fmt(5.59), '5,6')
@@ -42,4 +42,16 @@ test('somatochart sin puntos no rompe', () => {
   const svg = somatochart([])
   assert.ok(svg.startsWith('<svg'))
   assert.ok(svg.includes('</svg>'))
+})
+
+test('pie genera un SVG válido con una porción por tejido', () => {
+  const svg = pie([{ v: 25, c: '#A65A06' }, { v: 25, c: '#1F4FD9' }, { v: 10, c: '#1F2937' }, { v: 10, c: '#AEB5C0' }], 150)
+  assert.ok(svg.startsWith('<svg'))
+  assert.ok(svg.includes('</svg>'))
+  assert.equal((svg.match(/<path/g) ?? []).length, 4)
+})
+
+test('pie con una sola porción dibuja el círculo completo sin romper', () => {
+  const svg = pie([{ v: 100, c: '#000' }])
+  assert.ok(svg.includes('<path'))
 })

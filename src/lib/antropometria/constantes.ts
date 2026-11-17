@@ -2,11 +2,12 @@
 // Las constantes Phantom (p, s, d) fueron validadas numéricamente contra 4 informes
 // reales de ISAKMetry (75/75 valores), pero no tienen cita formal. Ver spec §4.
 
-/** Talla del Phantom (cm). */
+/** Talla del Phantom (cm) y su desvío estándar — para el Z-score de la talla misma. */
 export const TALLA_PHANTOM = 170.18
+export const TALLA_PHANTOM_SD = 6.29
 
 export type VariablePhantom =
-  | 'masa' | 'tallaSentado'
+  | 'masa' | 'tallaSentado' | 'envergadura'
   | 'triceps' | 'subescapular' | 'biceps' | 'crestaIliaca' | 'supraespinal'
   | 'abdominal' | 'muslo' | 'pantorrilla'
   | 'brazoRelajado' | 'brazoContraido' | 'cintura' | 'cadera' | 'musloMedio' | 'pierna'
@@ -18,6 +19,9 @@ export type VariablePhantom =
 export const PHANTOM: Record<VariablePhantom, readonly [number, number, number]> = {
   masa: [64.58, 8.6, 3],
   tallaSentado: [89.92, 4.5, 1],
+  // Faltaba en la librería (solo se usaba para talla sentado y diámetros): se agrega
+  // para el Z-score de envergadura en la tabla "Medidas básicas" del informe profesional.
+  envergadura: [172.35, 7.41, 1],
   triceps: [15.4, 4.47, 1],
   subescapular: [17.2, 5.07, 1],
   biceps: [8.0, 2.0, 1],
@@ -60,5 +64,10 @@ export const CORTES_SALUD = {
   cinturaTalla: 0.5,
   conicidad: 1.4,
 }
+
+// PENDIENTE VALIDACIÓN (nutricionista): cortes de conicidad por sexo, del diseño del informe
+// profesional (no validados aún contra bibliografía propia). No reemplazan a CORTES_SALUD.conicidad
+// (genérico, 1.4) — nada fuera de esta librería lo usa para clasificar hoy, así que no se tocó.
+export const CORTES_CONICIDAD_POR_SEXO: Record<Sexo, number> = { M: 1.25, F: 1.18 }
 
 export const EDAD_ADULTO = 18

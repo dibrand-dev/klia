@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import SlideOver from '@/components/ui/SlideOver'
 import {
-  calcular, fmt, somatochart,
+  calcular, fmt, somatochart, medidasDesdeRegistro,
   type Medidas, type Paciente as PacienteCalculo,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
@@ -202,7 +202,7 @@ export default function NuevoRegistroSlide({
   const medidas = medidasDesdeVals(vals)
   const resultado = calcular(medidas, paciente)
 
-  const medidasPrevio = previo ? medidasDesdeVals(valsDesdeRegistro(previo)) : null
+  const medidasPrevio = previo ? medidasDesdeRegistro(previo) : null
   const resultadoPrevio = medidasPrevio ? calcular(medidasPrevio, paciente) : null
 
   function iniciales(): string {

@@ -1,5 +1,7 @@
 export * from './calculos'
 export * from './constantes'
 export * from './textos-somatotipo'
+export * from './textos-proporcionalidad'
 export * from './tabla-cintura-cadera'
 export * from './graficos'
+export * from './mapeo-registro'

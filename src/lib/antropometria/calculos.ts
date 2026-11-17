@@ -3,9 +3,13 @@
 // Si falta un dato, el indicador dependiente es null y `faltan` dice qué falta.
 
 import {
-  CATEGORIAS_MUSCULO_OSEO, CORTES_SALUD, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM,
+  CATEGORIAS_MUSCULO_OSEO, CORTES_CONICIDAD_POR_SEXO, CORTES_SALUD, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM, TALLA_PHANTOM_SD,
   type CategoriaMusculoOseo, type Sexo, type VariablePhantom,
 } from './constantes'
+
+/** Talla sentado del Phantom (cm) y constantes de Kerr para el residual (base: talla sentado, no talla). */
+const TALLA_SENTADO_PHANTOM = 89.92
+const PHANTOM_RESIDUAL: readonly [number, number] = [16.41, 1.9]
 
 type N = number | null | undefined
 
@@ -31,6 +35,8 @@ export interface Resultado {
   sumatorias: { s6: number | null; s8: number | null }
   corregidos: { brazo: number | null; muslo: number | null; pierna: number | null }
   tejidos: Tejidos | null // null en menores
+  /** Z-scores Phantom de cada tejido (Kerr). El residual usa la talla sentado como base, no la talla. */
+  tejidosZ: Tejidos | null
   indices: {
     adiposoMuscular: number | null
     musculoOseo: number | null
@@ -59,12 +65,32 @@ const todos = (...v: (number | null)[]): boolean => v.every((x) => x !== null)
 export const redondear = (v: number | null, dec = 2): number | null =>
   v === null ? null : Math.round((v + Number.EPSILON) * 10 ** dec) / 10 ** dec
 
+/** Z-score Phantom de la talla misma (no usa razón de talla, a diferencia de zPhantom). */
+export function zTalla(valor: N): number | null {
+  const v = num(valor)
+  return v === null ? null : (v - TALLA_PHANTOM) / TALLA_PHANTOM_SD
+}
+
 /** Z-score Phantom. null si falta el valor o la talla. */
 export function zPhantom(variable: VariablePhantom, valor: N, talla: N): number | null {
   const v = num(valor), h = num(talla)
   if (v === null || h === null || h <= 0) return null
   const [p, s, d] = PHANTOM[variable]
   return (v * (TALLA_PHANTOM / h) ** d - p) / s
+}
+
+/** Z-score Phantom del tejido residual (Kerr). Base: talla sentado, no talla (a diferencia de adiposo/muscular/óseo). */
+export function zResidual(residual: N, tallaSentado: N): number | null {
+  const v = num(residual), s = num(tallaSentado)
+  if (v === null || s === null || s <= 0) return null
+  const [p, sd] = PHANTOM_RESIDUAL
+  return (v * (TALLA_SENTADO_PHANTOM / s) ** 3 - p) / sd
+}
+
+/** Categoría de conicidad, por sexo (PENDIENTE VALIDACIÓN — ver constantes.ts). Sin sexo, null. */
+export function categoriaConicidad(sexo: Sexo | null, valor: number | null): 'normal' | 'riesgo' | null {
+  if (sexo === null || valor === null) return null
+  return valor < CORTES_CONICIDAD_POR_SEXO[sexo] ? 'normal' : 'riesgo'
 }
 
 export function categoriaMusculoOseo(
@@ -120,6 +146,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
 
   // Composición tisular: solo adultos
   let tejidos: Tejidos | null = null
+  let tejidosZ: Tejidos | null = null
   if (esAdulto) {
     let adiposo: number | null = null, muscular: number | null = null, oseo: number | null = null
     if (s6 !== null && h !== null && k !== null) {
@@ -137,6 +164,12 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     }
     const residual = masa !== null && adiposo !== null && muscular !== null && oseo !== null ? masa - (adiposo + muscular + oseo) : null
     tejidos = { adiposo, muscular, oseo, residual }
+    tejidosZ = {
+      adiposo: zPhantom('adiposo', adiposo, h),
+      muscular: zPhantom('muscular', muscular, h),
+      oseo: zPhantom('oseo', oseo, h),
+      residual: zResidual(residual, sent),
+    }
     req('adiposo', [['talla', h], ...(s6 === null ? ([['Σ6 pliegues', null]] as [string, number | null][]) : [])])
     req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan], ['sexo', pac.sexo === null ? null : 1]])
     req('oseo', [['talla', h], ['diámetro biestiloideo', bie], ['diámetro fémur', fem]])
@@ -198,6 +231,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     sumatorias: { s6, s8 },
     corregidos: { brazo: cBrazo, muslo: cMuslo, pierna: cPierna },
     tejidos,
+    tejidosZ,
     indices: {
       adiposoMuscular: adiMus,
       musculoOseo: musOseo,

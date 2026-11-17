@@ -23,6 +23,22 @@ export function fecha(iso: string): string {
   return `${d}/${m}/${y}`
 }
 
+export interface PorcionTorta { v: number; c: string }
+
+/** Torta SVG de distribución por tejido (P2 del informe). `v` en cualquier unidad; se normaliza al total. */
+export function pie(parts: PorcionTorta[], size = 150): string {
+  const r = size / 2, R = r - 1
+  let a = -Math.PI / 2
+  let s = `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Distribución por tejido">`
+  const tot = parts.reduce((t, p) => t + p.v, 0)
+  parts.forEach((p) => {
+    const da = (p.v / tot) * Math.PI * 2, b = a + da, l = da > Math.PI ? 1 : 0
+    s += `<path d="M${r} ${r} L${(r + R * Math.cos(a)).toFixed(2)} ${(r + R * Math.sin(a)).toFixed(2)} A${R} ${R} 0 ${l} 1 ${(r + R * Math.cos(b)).toFixed(2)} ${(r + R * Math.sin(b)).toFixed(2)}Z" fill="${p.c}" stroke="#fff" stroke-width="1.5"/>`
+    a = b
+  })
+  return s + '</svg>'
+}
+
 export interface PuntoSomatocarta {
   x: number
   y: number
