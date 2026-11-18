@@ -46,6 +46,8 @@ export interface PuntoSomatocarta {
   tag?: string
 }
 
+export interface EtiquetasSomatocarta { endo?: string; meso?: string; ecto?: string }
+
 export interface OpcionesSomatocarta {
   ink?: string
   muted?: string
@@ -55,7 +57,8 @@ export interface OpcionesSomatocarta {
   old?: string
   font?: string
   w?: number
-  labels?: boolean
+  /** false oculta las etiquetas; un objeto las reemplaza (ej. "ENDOMORFIA" para el informe del paciente). Default: true, con "ENDOMORFO"/"MESOMORFO"/"ECTOMORFO". */
+  labels?: boolean | EtiquetasSomatocarta
 }
 
 /**
@@ -96,11 +99,13 @@ export function somatochart(
     ([a, b]) => { s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c.line}" stroke-width="1" stroke-dasharray="3 3"/>` },
   )
   s += `<circle cx="${O[0]}" cy="${O[1]}" r="1.6" fill="${c.muted}"/>`
-  if (c.labels) {
+  if (c.labels !== false) {
+    const etiquetas = typeof c.labels === 'object' ? c.labels : {}
+    const txtMeso = etiquetas.meso ?? 'MESOMORFO', txtEndo = etiquetas.endo ?? 'ENDOMORFO', txtEcto = etiquetas.ecto ?? 'ECTOMORFO'
     const fs = Math.max(8, k * 0.62)
-    s += `<text x="${M[0]}" y="${M[1] - 8}" text-anchor="middle" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">MESOMORFO</text>`
-    s += `<text x="${E[0] - 2}" y="${Math.min(H - 3, E[1] + k * 3.6)}" text-anchor="start" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">ENDOMORFO</text>`
-    s += `<text x="${C[0] + 2}" y="${Math.min(H - 3, C[1] + k * 3.6)}" text-anchor="end" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">ECTOMORFO</text>`
+    s += `<text x="${M[0]}" y="${M[1] - 8}" text-anchor="middle" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">${txtMeso}</text>`
+    s += `<text x="${E[0] - 2}" y="${Math.min(H - 3, E[1] + k * 3.6)}" text-anchor="start" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">${txtEndo}</text>`
+    s += `<text x="${C[0] + 2}" y="${Math.min(H - 3, C[1] + k * 3.6)}" text-anchor="end" font-size="${fs}" font-weight="600" letter-spacing=".06em" fill="${c.muted}">${txtEcto}</text>`
   }
   const v = pts.filter((p): p is PuntoSomatocarta => !!p && p.x != null && p.y != null)
   if (v.length > 1) {

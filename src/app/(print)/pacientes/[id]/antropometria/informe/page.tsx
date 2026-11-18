@@ -421,9 +421,14 @@ export default async function InformeAntropometriaPage({
 
   // ---------- P4: Proporcionalidad ósea ----------
   {
+    // Córmico y envergadura relativa: `calcular()` ya devuelve `indices.cormico`/`envergaduraRelativa`
+    // redondeados a 2 decimales (ver calculos.ts) — clasificar sobre ellos ya es clasificar sobre el
+    // valor mostrado, sin cambios acá. Manouvrier es la excepción (ver más abajo).
     const filas = [
       { l: 'Índice córmico', f: 'Talla sentado / talla', a: R.indices.cormico, p: RP?.indices.cormico ?? null, d: 2, texto: R.indices.cormico != null ? TEXTOS_CORMICO[categoriaCormico(R.indices.cormico)] : null, ref: REFERENCIA_CORMICO, fuente: FUENTES.cormico },
-      { l: 'Índice de Manouvrier', f: '(Talla − talla sentado) / talla sentado × 100', a: R.indices.manouvrier, p: RP?.indices.manouvrier ?? null, d: 0, texto: R.indices.manouvrier != null ? TEXTOS_MANOUVRIER[categoriaManouvrier(R.indices.manouvrier)] : null, ref: REFERENCIA_MANOUVRIER, fuente: FUENTES.manouvrier },
+      // Manouvrier: calcular() devuelve el valor crudo (no redondea, a diferencia de córmico/envergadura);
+      // se clasifica sobre el valor redondeado que se muestra (Math.round, igual que el diseño), no el crudo.
+      { l: 'Índice de Manouvrier', f: '(Talla − talla sentado) / talla sentado × 100', a: R.indices.manouvrier, p: RP?.indices.manouvrier ?? null, d: 0, texto: R.indices.manouvrier != null ? TEXTOS_MANOUVRIER[categoriaManouvrier(Math.round(R.indices.manouvrier))] : null, ref: REFERENCIA_MANOUVRIER, fuente: FUENTES.manouvrier },
       { l: 'Envergadura relativa', f: 'Envergadura / talla', a: R.indices.envergaduraRelativa, p: RP?.indices.envergaduraRelativa ?? null, d: 2, texto: R.indices.envergaduraRelativa != null ? TEXTOS_ENVERGADURA[categoriaEnvergadura(R.indices.envergaduraRelativa)] : null, ref: REFERENCIA_ENVERGADURA, fuente: null as string | null },
     ]
     PAGINAS.push({

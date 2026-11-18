@@ -55,3 +55,39 @@ test('pie con una sola porción dibuja el círculo completo sin romper', () => {
   const svg = pie([{ v: 100, c: '#000' }])
   assert.ok(svg.includes('<path'))
 })
+
+test('somatochart: etiquetas por defecto (sin pasar labels)', () => {
+  const svg = somatochart([])
+  assert.ok(svg.includes('MESOMORFO'))
+  assert.ok(svg.includes('ENDOMORFO'))
+  assert.ok(svg.includes('ECTOMORFO'))
+})
+
+test('somatochart: labels:false oculta las etiquetas', () => {
+  const svg = somatochart([], { labels: false })
+  assert.ok(!svg.includes('MESOMORFO'))
+  assert.ok(!svg.includes('ENDOMORFO'))
+  assert.ok(!svg.includes('ECTOMORFO'))
+})
+
+test('somatochart: labels como objeto reemplaza el texto, sin .replace() sobre el SVG', () => {
+  const svg = somatochart([], { labels: { endo: 'ENDOMORFIA', meso: 'MESOMORFIA', ecto: 'ECTOMORFIA' } })
+  assert.ok(svg.includes('MESOMORFIA'))
+  assert.ok(svg.includes('ENDOMORFIA'))
+  assert.ok(svg.includes('ECTOMORFIA'))
+  assert.ok(!svg.includes('MESOMORFO<'))
+  assert.ok(!svg.includes('ENDOMORFO<'))
+  assert.ok(!svg.includes('ECTOMORFO<'))
+})
+
+test('somatochart: labels como objeto parcial usa el default para las claves faltantes', () => {
+  const svg = somatochart([], { labels: { meso: 'MESOMORFIA' } })
+  assert.ok(svg.includes('MESOMORFIA'))
+  assert.ok(svg.includes('ENDOMORFO'))
+  assert.ok(svg.includes('ECTOMORFO'))
+})
+
+test('somatochart: labels:true (compat) sigue mostrando las etiquetas default', () => {
+  const svg = somatochart([], { labels: true })
+  assert.ok(svg.includes('MESOMORFO'))
+})

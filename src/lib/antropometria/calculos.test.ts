@@ -144,6 +144,26 @@ test('proporciones: categorías', () => {
   assert.equal(categoriaManouvrier(98), 'miembros inferiores largos')
 })
 
+test('córmico: el valor mostrado (calcular() ya lo redondea a 2 decimales) y la categoría no se contradicen al cruzar un corte', () => {
+  // talla sentado 101 / talla 200 = 0,505 crudo → redondea a 0,51, que cruza el
+  // corte de 0,51 (braquicórmico < 0,51 ≤ metricórmico): con el valor crudo
+  // (0,505 < 0,51) sería braquicórmico; con el redondeado que se muestra ("0,51")
+  // tiene que ser metricórmico — es lo que calcular() ya devuelve.
+  const r = calcular({ tallaSentado: 101, talla: 200 }, { sexo: 'M', edad: 30 })
+  assert.equal(r.indices.cormico, 0.51)
+  assert.equal(categoriaCormico(r.indices.cormico as number), 'metricórmico')
+})
+
+test('Manouvrier: clasificar sobre el valor redondeado que se muestra (Math.round), no el crudo', () => {
+  // talla sentado 100 / talla 184,6 → (184,6-100)/100*100 = 84,6 crudo (< 85 → "cortos"),
+  // pero redondea a 85 (lo que se muestra) → "medios". Mismo criterio que el call site
+  // del informe profesional (page.tsx), que ahora redondea antes de clasificar.
+  const r = calcular({ tallaSentado: 100, talla: 184.6 }, { sexo: 'M', edad: 30 })
+  assert.ok(Math.abs((r.indices.manouvrier as number) - 84.6) < 0.01)
+  assert.equal(categoriaManouvrier(r.indices.manouvrier as number), 'miembros inferiores cortos') // sobre el crudo: distinto
+  assert.equal(categoriaManouvrier(Math.round(r.indices.manouvrier as number)), 'miembros inferiores medios') // sobre el redondeado mostrado: correcto
+})
+
 test('envergadura relativa redondeada a 2 decimales', () => {
   const r = calcular(CASOS[0].m, CASOS[0].pac) // 164,5/166 = 0,991 → 0,99
   assert.equal(r.indices.envergaduraRelativa, 0.99)
