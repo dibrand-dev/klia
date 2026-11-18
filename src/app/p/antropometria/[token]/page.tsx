@@ -12,6 +12,8 @@ import {
   type Paciente as PacienteCalculo, type Sexo,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import BotonImprimir from './BotonImprimir'
 import './informe-publico.css'
 
@@ -301,7 +303,7 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
   const hayMasDeUnPrevio = hasP && registros.length > 2
 
   return (
-    <div className="ap-root">
+    <div className={`ap-root ${GeistSans.variable} ${GeistMono.variable}`}>
       <div className="sheet">
         <header className="top pad">
           <div className="who">
