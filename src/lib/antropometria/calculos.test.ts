@@ -1,7 +1,7 @@
 // Tests de oro: 4 informes reales de ISAKMetry (spec §8). Corre con: npx tsx --test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, zResidual, redondear, zPhantom, type Medidas, type Paciente } from './calculos'
+import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, zResidual, redondear, zPhantom, lecturaSomatotipo, type Medidas, type Paciente } from './calculos'
 import { RANGOS_MUSCULO_OSEO, CATEGORIAS_MUSCULO_OSEO } from './constantes'
 import { fmt } from './graficos'
 
@@ -275,4 +275,20 @@ test('escala músculo/óseo: las etiquetas (2 decimales, misma fuente que clasif
 
   // Caso de la nutricionista: 2,79 en mujer cae en "Alto" (tramo "2,78–2,96").
   assert.equal(categoriaMusculoOseo(2.79, 'F'), 'Alto')
+})
+
+// PENDIENTE CONFIRMACIÓN (nutricionista): lecturaSomatotipo ahora redondea a 0,5 antes de
+// clasificar. Revertir junto con el cambio en calculos.ts si no se aprueba.
+test('lecturaSomatotipo: clasifica redondeando a 0,5 (convención Heath-Carter), no el valor crudo', () => {
+  // 2,9 redondea a 3,0 (no a 2,5): con el valor crudo daba 'bajo' (v<3), con el
+  // redondeo pasa a 'moderado' — es justamente el caso que motivó el cambio.
+  assert.equal(lecturaSomatotipo(2.9), 'moderado')
+  assert.equal(lecturaSomatotipo(2.4), 'bajo') // redondea a 2,5 → bajo (límite inclusive)
+  assert.equal(lecturaSomatotipo(2.5), 'bajo')
+  assert.equal(lecturaSomatotipo(2.75), 'moderado') // redondea a 3,0 → moderado
+  assert.equal(lecturaSomatotipo(5.0), 'moderado')
+  assert.equal(lecturaSomatotipo(5.3), 'alto') // redondea a 5,5 → alto
+  assert.equal(lecturaSomatotipo(7.0), 'alto')
+  assert.equal(lecturaSomatotipo(7.3), 'muy alto') // redondea a 7,5 → muy alto
+  assert.equal(lecturaSomatotipo(7.5), 'muy alto')
 })

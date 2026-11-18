@@ -111,9 +111,12 @@ export const categoriaManouvrier = (v: number) =>
 export const categoriaEnvergadura = (v: number) =>
   v < 1 ? 'menor a la talla' : v > 1 ? 'mayor a la talla' : 'igual a la talla'
 
+// PENDIENTE CONFIRMACIÓN (nutricionista): clasifica redondeando a 0,5 (convención
+// Heath-Carter), no sobre el valor crudo — revertir este commit si no se aprueba.
 /** Lectura de un componente del somatotipo (Carter y Heath). */
 export function lecturaSomatotipo(v: number): 'bajo' | 'moderado' | 'alto' | 'muy alto' {
-  return v < 3 ? 'bajo' : v < 5.5 ? 'moderado' : v < 7.5 ? 'alto' : 'muy alto'
+  const r = Math.round(v * 2) / 2
+  return r <= 2.5 ? 'bajo' : r <= 5 ? 'moderado' : r <= 7 ? 'alto' : 'muy alto'
 }
 
 export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO): Resultado {
