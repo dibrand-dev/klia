@@ -36,3 +36,42 @@ const ETIQUETAS_CATEGORIA_CINTURA_CADERA: Record<string, string> = {
 export function etiquetaCategoriaCinturaCadera(categoria: string): string {
   return ETIQUETAS_CATEGORIA_CINTURA_CADERA[categoria] ?? categoria
 }
+
+export interface PorcentajesTejidos { adiposo: number; muscular: number; oseo: number }
+
+/**
+ * % de cada tejido sobre la suma de los tres (adiposo+muscular+óseo) — mismo criterio
+ * que la torta de distribución (ya normalizada sobre esa suma, nunca sobre la masa
+ * corporal). `null` si falta algún tejido o la suma es 0. Redondea a `dec` decimales
+ * (default 1, igual que el resto del informe) y corrige el mayor de los tres para que
+ * la suma de los redondeados sea siempre exactamente 100 (nunca 99 ni 101 por arrastre
+ * de redondeo).
+ */
+export function porcentajesTejidos(
+  tejidos: { adiposo: number | null; muscular: number | null; oseo: number | null },
+  dec = 1,
+): PorcentajesTejidos | null {
+  const { adiposo, muscular, oseo } = tejidos
+  if (adiposo === null || muscular === null || oseo === null) return null
+  const suma = adiposo + muscular + oseo
+  if (suma <= 0) return null
+
+  const factor = 10 ** dec
+  const crudo = {
+    adiposo: (adiposo / suma) * 100,
+    muscular: (muscular / suma) * 100,
+    oseo: (oseo / suma) * 100,
+  }
+  const redondeado = {
+    adiposo: Math.round((crudo.adiposo + Number.EPSILON) * factor) / factor,
+    muscular: Math.round((crudo.muscular + Number.EPSILON) * factor) / factor,
+    oseo: Math.round((crudo.oseo + Number.EPSILON) * factor) / factor,
+  }
+  const total = Math.round((redondeado.adiposo + redondeado.muscular + redondeado.oseo) * factor) / factor
+  const diferencia = Math.round((100 - total) * factor) / factor
+  if (diferencia === 0) return redondeado
+
+  const mayor = (['adiposo', 'muscular', 'oseo'] as const).reduce((m, k) => (crudo[k] > crudo[m] ? k : m), 'adiposo' as const)
+  redondeado[mayor] = Math.round((redondeado[mayor] + diferencia) * factor) / factor
+  return redondeado
+}

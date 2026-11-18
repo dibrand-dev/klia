@@ -9,7 +9,7 @@ import {
   CATEGORIAS_MUSCULO_OSEO, RANGOS_MUSCULO_OSEO, CORTES_SALUD, CORTES_CONICIDAD_POR_SEXO,
   TEXTOS_SOMATOTIPO, ACLARACION_ESCALA_SOMATOTIPO,
   TEXTOS_CORMICO, TEXTOS_MANOUVRIER, TEXTOS_ENVERGADURA, REFERENCIA_CORMICO, REFERENCIA_MANOUVRIER, REFERENCIA_ENVERGADURA,
-  FUENTES,
+  FUENTES, porcentajesTejidos,
   type Paciente as PacienteCalculo, type Sexo, type Medidas, type VariablePhantom,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
@@ -271,7 +271,8 @@ export default async function InformeAntropometriaPage({
     ) : (
       <div className="isak-info">No se puede graficar la distribución: faltan tejidos por calcular.{avisoSexo && <span className="isak-falta">{avisoSexo}</span>}</div>
     )
-    const prevMasa = prev?.peso ?? null
+    const pctAct = porcentajesTejidos(tejidos)
+    const pctPrev = RP?.tejidos ? porcentajesTejidos(RP.tejidos) : null
     const barras = (
       <div className="isak-bars">
         {TEJIDOS_DEF.map((t) => {
@@ -280,8 +281,8 @@ export default async function InformeAntropometriaPage({
             <div className="isak-br" key={t.clave}>
               <span>{t.label}</span>
               <div className="isak-tr">
-                <div className="isak-ln">{a == null ? <span>— Actual</span> : <><span className="isak-track"><i style={{ width: `${masa ? (a / masa) * 100 : 0}%` }} /></span>{fmt(a, 2)} kg</>}</div>
-                {hasP && <div className="isak-ln p">{p == null ? <span>—</span> : <><span className="isak-track"><i style={{ width: `${prevMasa ? (p / prevMasa) * 100 : 0}%` }} /></span>{fmt(p, 2)} kg</>}</div>}
+                <div className="isak-ln">{a == null ? <span>— Actual</span> : <><span className="isak-track isak-track--sin-riel"><i style={{ width: `${pctAct ? pctAct[t.clave] : 0}%` }} /></span>{fmt(a, 2)} kg</>}</div>
+                {hasP && <div className="isak-ln p">{p == null ? <span>—</span> : <><span className="isak-track isak-track--sin-riel"><i style={{ width: `${pctPrev ? pctPrev[t.clave] : 0}%` }} /></span>{fmt(p, 2)} kg</>}</div>}
               </div>
             </div>
           )

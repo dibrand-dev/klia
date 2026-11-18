@@ -71,6 +71,11 @@
 .isak-br .isak-track { position: relative; flex: 1; height: 9px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .isak-br .isak-track i { position: absolute; inset: 0; height: 100%; border-radius: 2px; background: var(--ink); display: block; }
 .isak-br .isak-ln.p .isak-track i { background: var(--muted-3); }
+/* Barras de "Fraccionamiento tisular" (P2): sin el riel gris — ya no representan % de la
+   masa corporal (donde el riel tenía sentido como techo), sino % normalizado sobre la suma
+   de los 3 tejidos. No toca .isak-track base, que sigue usando la sección de "Distribución
+   adiposo/muscular" (P3) con su riel de siempre. */
+.isak-br .isak-track--sin-riel { background: none; }
 .isak-aviso { border: 1px solid var(--border-strong); border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--ink-2); background: var(--warn-soft); }
 .isak-aviso b { color: var(--ink); }
 .isak-info { border: 1px solid var(--border); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--muted); background: var(--surface-2); }

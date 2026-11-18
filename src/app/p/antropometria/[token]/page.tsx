@@ -8,7 +8,7 @@ import {
   lecturaSomatotipo, categoriaCormico, categoriaManouvrier, categoriaEnvergadura, categoriaCinturaCadera,
   CORTES_CONICIDAD_POR_SEXO, CORTE_OMS_CINTURA_CADERA, TABLA_CINTURA_CADERA,
   TEXTOS_SOMATOTIPO, TEXTOS_CORMICO, TEXTOS_MANOUVRIER, TEXTOS_ENVERGADURA, FUENTES,
-  compararIgual, urlSocialSegura, etiquetaCategoriaCinturaCadera,
+  compararIgual, urlSocialSegura, etiquetaCategoriaCinturaCadera, porcentajesTejidos,
   type Paciente as PacienteCalculo, type Sexo,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
@@ -185,20 +185,17 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
   let tisSec: React.ReactNode = null
   if (!esMenorConocido) {
     if (showTis && tejidos && tejidos.adiposo != null && tejidos.muscular != null && tejidos.oseo != null) {
-      const masa = medidasCur.masa as number
-      const pc = (v: number) => Math.round((v / masa) * 100)
-      const pA = pc(tejidos.adiposo), pM = pc(tejidos.muscular), pO = pc(tejidos.oseo)
+      const pct = porcentajesTejidos(tejidos, 0)!
       const prevTej = RP?.tejidos
       tisSec = (
         <section className="blk keep pad">
           <h2>Fraccionamiento tisular</h2>
-          <p className="sub">De tus {fmt(masa, 1)} kg, así se reparten el tejido adiposo, el muscular y el óseo.</p>
+          <p className="sub">Proporción entre el tejido adiposo, el muscular y el óseo.</p>
           <div className="comp">
-            <div className="mbar" role="img" aria-label={`Adiposo ${pA}%, muscular ${pM}%, óseo ${pO}%`}>
-              <span style={{ width: `${pA}%`, background: '#3F519E' }}>{pA} %</span>
-              <span style={{ width: `${pM}%`, background: '#7D8AC4' }}>{pM} %</span>
-              <span className="dk" style={{ width: `${pO}%`, background: '#C6CCE5' }}>{pO} %</span>
-              <span className="dk" style={{ flex: 1, background: '#EEF0F6' }} />
+            <div className="mbar" role="img" aria-label={`Adiposo ${pct.adiposo}%, muscular ${pct.muscular}%, óseo ${pct.oseo}%`}>
+              <span style={{ width: `${pct.adiposo}%`, background: '#3F519E' }}>{pct.adiposo} %</span>
+              <span style={{ width: `${pct.muscular}%`, background: '#7D8AC4' }}>{pct.muscular} %</span>
+              <span className="dk" style={{ width: `${pct.oseo}%`, background: '#C6CCE5' }}>{pct.oseo} %</span>
             </div>
             <div className="mlist">
               <div className="m"><span className="sw" style={{ background: '#3F519E' }} /><div className="nm2">Adiposo<small>Reserva de energía del cuerpo. Una parte es necesaria; el exceso, sobre todo en el abdomen, es el que conviene bajar.</small></div><span className="gr">{fmt(tejidos.adiposo, 1)} kg{hasP && prevTej?.adiposo != null && <small>{sgn(tejidos.adiposo - prevTej.adiposo, 1)} kg</small>}</span></div>
