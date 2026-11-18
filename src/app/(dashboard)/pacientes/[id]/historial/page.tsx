@@ -16,7 +16,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
   if (!efectivo) redirect('/login')
   if (efectivo.esColaborador) redirect(`/pacientes/${params.id}`)
 
-  const [{ data: paciente }, { data: notas }, { data: turnos }, { data: profile }] = await Promise.all([
+  const [{ data: paciente }, { data: notas }, { data: turnos }, { data: profile }, { data: registrosAntropometricos }] = await Promise.all([
     supabase
       .from('pacientes')
       .select('*')
@@ -42,12 +42,23 @@ export default async function HistorialPage({ params }: { params: { id: string }
       .select('especialidad')
       .eq('id', efectivo.terapeutaId)
       .single(),
+    // Por paciente_id, no por turno_id IN (...) — evita un IN con una lista larga de ids
+    // en la URL. La unión con turnos (por turno_id) y el cálculo de la medición anterior
+    // se hacen en memoria en HistorialList.
+    supabase
+      .from('registros_antropometricos')
+      .select('id, turno_id, fecha, created_at, peso, pliegue_tricipital, pliegue_subescapular, pliegue_supraespinal, pliegue_abdominal, pliegue_muslo, pliegue_pantorrilla')
+      .eq('paciente_id', params.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .order('fecha', { ascending: true })
+      .order('created_at', { ascending: true }),
   ])
 
   if (!paciente) notFound()
 
   const turnosList = turnos || []
   const notasList = notas || []
+  const registrosList = registrosAntropometricos || []
   const now = new Date()
   const sesionesRealizadas = turnosList.filter((t) => t.estado === 'realizado').length
   const proximaSesion = turnosList.find((t) => new Date(t.fecha_hora) >= now && t.estado !== 'cancelado' && t.estado !== 'no_asistio') || null
@@ -65,6 +76,13 @@ export default async function HistorialPage({ params }: { params: { id: string }
   }
 
   const totalNotas = notasList.length
+
+  // Turnos con medición (por turno_id) que no tienen ninguna nota propia — son las
+  // entradas "solo medición" que HistorialList va a mostrar igual, sin nota.
+  const turnoIdsConNota = new Set(notasList.map((n) => n.turno_id).filter((id): id is string => !!id))
+  const turnoIdsSet = new Set(turnosList.map((t) => t.id))
+  const hayMedicionSolaSinNota = registrosList.some((r) => r.turno_id && turnoIdsSet.has(r.turno_id) && !turnoIdsConNota.has(r.turno_id))
+  const hayAlgunaEntrada = totalNotas > 0 || hayMedicionSolaSinNota
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 md:px-7 pt-6 md:pt-8 pb-20">
@@ -89,7 +107,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
         </div>
       )}
 
-      {totalNotas === 0 ? (
+      {!hayAlgunaEntrada ? (
         <div className="mt-6 border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest p-10 text-center">
           <div className="w-14 h-14 rounded-xl bg-surface-container flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: 28 }}>clinical_notes</span>
@@ -99,7 +117,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
           <CrearPrimeraNotaButton pacienteId={params.id} />
         </div>
       ) : (
-        <HistorialList notas={notasList} turnos={turnosList} pacienteId={params.id} proximaSesion={proximaSesion} />
+        <HistorialList notas={notasList} turnos={turnosList} registrosAntropometricos={registrosList} pacienteId={params.id} proximaSesion={proximaSesion} />
       )}
     </div>
   )
