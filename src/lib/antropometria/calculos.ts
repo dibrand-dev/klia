@@ -87,7 +87,7 @@ export function zResidual(residual: N, tallaSentado: N): number | null {
   return (v * (TALLA_SENTADO_PHANTOM / s) ** 3 - p) / sd
 }
 
-/** Categoría de conicidad, por sexo (PENDIENTE VALIDACIÓN — ver constantes.ts). Sin sexo, null. */
+/** Categoría de conicidad, por sexo (cortes aprobados por la nutricionista el 17/11/2026 — ver constantes.ts). Sin sexo, null. */
 export function categoriaConicidad(sexo: Sexo | null, valor: number | null): 'normal' | 'riesgo' | null {
   if (sexo === null || valor === null) return null
   return valor < CORTES_CONICIDAD_POR_SEXO[sexo] ? 'normal' : 'riesgo'

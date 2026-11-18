@@ -8,6 +8,7 @@ import {
   CATEGORIAS_MUSCULO_OSEO, RANGOS_MUSCULO_OSEO, CORTES_SALUD, CORTES_CONICIDAD_POR_SEXO,
   TEXTOS_SOMATOTIPO, ACLARACION_ESCALA_SOMATOTIPO,
   TEXTOS_CORMICO, TEXTOS_MANOUVRIER, TEXTOS_ENVERGADURA, REFERENCIA_CORMICO, REFERENCIA_MANOUVRIER, REFERENCIA_ENVERGADURA,
+  FUENTES,
   type Paciente as PacienteCalculo, type Sexo, type Medidas, type VariablePhantom,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
@@ -291,6 +292,7 @@ export default async function InformeAntropometriaPage({
       body: (
         <>
           {tabla}
+          <p className="isak-note">Fuente: Adiposo, {FUENTES.tejidoAdiposo} · Muscular, {FUENTES.tejidoMuscular} · Óseo, {FUENTES.tejidoOseo}</p>
           <div className="isak-grid2">
             <div className="isak-box"><div className="isak-bt">Distribución por tejido<span>% del peso, actual</span></div>{pieBody}</div>
             <div className="isak-box">
@@ -353,6 +355,7 @@ export default async function InformeAntropometriaPage({
                 </div>
                 <div className="isak-lbs">{CATEGORIAS_MUSCULO_OSEO.map((c, i) => <div key={c} className={i === ci ? 'on' : ''}><b>{c}</b>{seg[i]}</div>)}</div>
               </div>
+              {FUENTES.musculoOseo && <p className="isak-note">Fuente: {FUENTES.musculoOseo}</p>}
             </div>
           </div>
         )
@@ -419,9 +422,9 @@ export default async function InformeAntropometriaPage({
   // ---------- P4: Proporcionalidad ósea ----------
   {
     const filas = [
-      { l: 'Índice córmico', f: 'Talla sentado / talla', a: R.indices.cormico, p: RP?.indices.cormico ?? null, d: 2, texto: R.indices.cormico != null ? TEXTOS_CORMICO[categoriaCormico(R.indices.cormico)] : null, ref: REFERENCIA_CORMICO },
-      { l: 'Índice de Manouvrier', f: '(Talla − talla sentado) / talla sentado × 100', a: R.indices.manouvrier, p: RP?.indices.manouvrier ?? null, d: 0, texto: R.indices.manouvrier != null ? TEXTOS_MANOUVRIER[categoriaManouvrier(R.indices.manouvrier)] : null, ref: REFERENCIA_MANOUVRIER },
-      { l: 'Envergadura relativa', f: 'Envergadura / talla', a: R.indices.envergaduraRelativa, p: RP?.indices.envergaduraRelativa ?? null, d: 2, texto: R.indices.envergaduraRelativa != null ? TEXTOS_ENVERGADURA[categoriaEnvergadura(R.indices.envergaduraRelativa)] : null, ref: REFERENCIA_ENVERGADURA },
+      { l: 'Índice córmico', f: 'Talla sentado / talla', a: R.indices.cormico, p: RP?.indices.cormico ?? null, d: 2, texto: R.indices.cormico != null ? TEXTOS_CORMICO[categoriaCormico(R.indices.cormico)] : null, ref: REFERENCIA_CORMICO, fuente: FUENTES.cormico },
+      { l: 'Índice de Manouvrier', f: '(Talla − talla sentado) / talla sentado × 100', a: R.indices.manouvrier, p: RP?.indices.manouvrier ?? null, d: 0, texto: R.indices.manouvrier != null ? TEXTOS_MANOUVRIER[categoriaManouvrier(R.indices.manouvrier)] : null, ref: REFERENCIA_MANOUVRIER, fuente: FUENTES.manouvrier },
+      { l: 'Envergadura relativa', f: 'Envergadura / talla', a: R.indices.envergaduraRelativa, p: RP?.indices.envergaduraRelativa ?? null, d: 2, texto: R.indices.envergaduraRelativa != null ? TEXTOS_ENVERGADURA[categoriaEnvergadura(R.indices.envergaduraRelativa)] : null, ref: REFERENCIA_ENVERGADURA, fuente: null as string | null },
     ]
     PAGINAS.push({
       titulo: 'Proporcionalidad ósea', subtitulo: 'Relación entre segmentos corporales',
@@ -443,7 +446,7 @@ export default async function InformeAntropometriaPage({
           <div className="isak-box">
             <div className="isak-bt">Referencias</div>
             {filas.map((fl) => (
-              <p className="isak-note" style={{ margin: '3px 0' }} key={fl.l}><b style={{ color: 'var(--ink-2)' }}>{fl.l}:</b> {fl.ref}</p>
+              <p className="isak-note" style={{ margin: '3px 0' }} key={fl.l}><b style={{ color: 'var(--ink-2)' }}>{fl.l}:</b> {fl.ref}{fl.fuente && ` · Fuente: ${fl.fuente}`}</p>
             ))}
           </div>
         </>
@@ -508,6 +511,7 @@ export default async function InformeAntropometriaPage({
               {tablaComp}
               {tablaXY}
               <p className="isak-note">Somatotipo antropométrico de Heath-Carter. Lectura: bajo 0,5–2,5 · moderado 3–5 · alto 5,5–7 · muy alto ≥ 7,5. {ACLARACION_ESCALA_SOMATOTIPO}</p>
+              <p className="isak-note">Fuente: {FUENTES.somatotipo}</p>
               {R.somatotipo.x == null && <div className="isak-info" style={{ marginTop: 8 }}>El punto actual no se grafica hasta completar las medidas de mesomorfia.</div>}
             </div>
             <div className="isak-box">
@@ -583,6 +587,7 @@ export default async function InformeAntropometriaPage({
               ))}
             </tbody>
           </table>
+          <p className="isak-note">Fuente: IMC, {FUENTES.imc} · Cintura/cadera, {FUENTES.cinturaCaderaOms} · Conicidad, {FUENTES.conicidad}</p>
           <p className="isak-foot-note">Los índices de salud son orientativos, no reemplazan la evaluación clínica.</p>
         </>
       ),

@@ -65,9 +65,9 @@ export const CORTES_SALUD = {
   conicidad: 1.4,
 }
 
-// PENDIENTE VALIDACIÓN (nutricionista): cortes de conicidad por sexo, del diseño del informe
-// profesional (no validados aún contra bibliografía propia). No reemplazan a CORTES_SALUD.conicidad
-// (genérico, 1.4) — nada fuera de esta librería lo usa para clasificar hoy, así que no se tocó.
+// Aprobado por la nutricionista el 17/11/2026: cortes de conicidad por sexo, del diseño del
+// informe profesional. No reemplazan a CORTES_SALUD.conicidad (genérico, 1.4) — nada fuera de
+// esta librería lo usa para clasificar hoy, así que no se tocó.
 export const CORTES_CONICIDAD_POR_SEXO: Record<Sexo, number> = { M: 1.25, F: 1.18 }
 
 export const EDAD_ADULTO = 18

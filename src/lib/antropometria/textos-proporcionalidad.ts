@@ -1,4 +1,4 @@
-// PENDIENTE VALIDACIÓN (nutricionista): etiquetas y descripciones de P4 (proporcionalidad
+// Aprobado por la nutricionista el 17/11/2026: etiquetas y descripciones de P4 (proporcionalidad
 // ósea), portadas del diseño del informe profesional (cormCat/manuCat/envCat de
 // isak-data.js). Las funciones de categoría (categoriaCormico/categoriaManouvrier/
 // categoriaEnvergadura, en calculos.ts) siguen siendo la fuente de la clasificación —
