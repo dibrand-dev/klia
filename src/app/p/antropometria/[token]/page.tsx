@@ -395,7 +395,7 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
                   )
                 })}
               </div>
-              <p className="snote"><b>Son valores de una escala, no porcentajes ni kilos.</b>{!esMenorConocido && ' Niveles: bajo 0,5–2,5 · moderado 3–5 · alto 5,5–7 · muy alto 7,5 o más.'}</p>
+              <p className="snote"><b>Son valores de una escala, no porcentajes ni kilos.</b>{!esMenorConocido && ' Niveles: bajo hasta 2,5 · moderado hasta 4,5 · alto hasta 6,5 · muy alto hasta 8,5 · extremadamente alto más de 8,5.'}</p>
             </div>
             <div>
               <div dangerouslySetInnerHTML={{ __html: somatochart(puntos, {

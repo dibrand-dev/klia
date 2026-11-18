@@ -70,4 +70,7 @@ export const CORTES_SALUD = {
 // esta librería lo usa para clasificar hoy, así que no se tocó.
 export const CORTES_CONICIDAD_POR_SEXO: Record<Sexo, number> = { M: 1.25, F: 1.18 }
 
+// Tabla provista por la nutricionista, 18/11/2026; reemplaza los cortes anteriores.
+export const CORTES_SOMATOTIPO = { bajo: 2.5, moderado: 4.5, alto: 6.5, muyAlto: 8.5 } as const
+
 export const EDAD_ADULTO = 18

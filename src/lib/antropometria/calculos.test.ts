@@ -297,18 +297,15 @@ test('escala músculo/óseo: las etiquetas (2 decimales, misma fuente que clasif
   assert.equal(categoriaMusculoOseo(2.79, 'F'), 'Alto')
 })
 
-// PENDIENTE CONFIRMACIÓN (nutricionista): lecturaSomatotipo ahora redondea a 0,5 antes de
-// clasificar. Revertir junto con el cambio en calculos.ts si no se aprueba.
-test('lecturaSomatotipo: clasifica redondeando a 0,5 (convención Heath-Carter), no el valor crudo', () => {
-  // 2,9 redondea a 3,0 (no a 2,5): con el valor crudo daba 'bajo' (v<3), con el
-  // redondeo pasa a 'moderado' — es justamente el caso que motivó el cambio.
-  assert.equal(lecturaSomatotipo(2.9), 'moderado')
-  assert.equal(lecturaSomatotipo(2.4), 'bajo') // redondea a 2,5 → bajo (límite inclusive)
+test('lecturaSomatotipo: clasifica redondeando a 1 decimal (half-up), 5 niveles según tabla de la nutricionista (18/11/2026)', () => {
+  assert.equal(lecturaSomatotipo(2.92), 'moderado')
   assert.equal(lecturaSomatotipo(2.5), 'bajo')
-  assert.equal(lecturaSomatotipo(2.75), 'moderado') // redondea a 3,0 → moderado
-  assert.equal(lecturaSomatotipo(5.0), 'moderado')
-  assert.equal(lecturaSomatotipo(5.3), 'alto') // redondea a 5,5 → alto
-  assert.equal(lecturaSomatotipo(7.0), 'alto')
-  assert.equal(lecturaSomatotipo(7.3), 'muy alto') // redondea a 7,5 → muy alto
-  assert.equal(lecturaSomatotipo(7.5), 'muy alto')
+  assert.equal(lecturaSomatotipo(2.54), 'bajo')
+  assert.equal(lecturaSomatotipo(2.55), 'moderado')
+  assert.equal(lecturaSomatotipo(4.5), 'moderado')
+  assert.equal(lecturaSomatotipo(4.55), 'alto')
+  assert.equal(lecturaSomatotipo(6.5), 'alto')
+  assert.equal(lecturaSomatotipo(8.5), 'muy alto')
+  assert.equal(lecturaSomatotipo(8.55), 'extremadamente alto')
+  assert.equal(lecturaSomatotipo(0.1), 'bajo')
 })

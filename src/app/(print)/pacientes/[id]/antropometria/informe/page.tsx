@@ -515,7 +515,7 @@ export default async function InformeAntropometriaPage({
             <div>
               {tablaComp}
               {tablaXY}
-              <p className="isak-note">Somatotipo antropométrico de Heath-Carter. Lectura: bajo 0,5–2,5 · moderado 3–5 · alto 5,5–7 · muy alto ≥ 7,5. {ACLARACION_ESCALA_SOMATOTIPO}</p>
+              <p className="isak-note">Somatotipo antropométrico de Heath-Carter. Lectura: bajo hasta 2,5 · moderado hasta 4,5 · alto hasta 6,5 · muy alto hasta 8,5 · extremadamente alto más de 8,5. {ACLARACION_ESCALA_SOMATOTIPO}</p>
               <p className="isak-note">Fuente: {FUENTES.somatotipo}</p>
               {R.somatotipo.x == null && <div className="isak-info" style={{ marginTop: 8 }}>El punto actual no se grafica hasta completar las medidas de mesomorfia.</div>}
             </div>

@@ -3,7 +3,7 @@
 // Si falta un dato, el indicador dependiente es null y `faltan` dice qué falta.
 
 import {
-  CATEGORIAS_MUSCULO_OSEO, CORTES_CONICIDAD_POR_SEXO, CORTES_SALUD, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM, TALLA_PHANTOM_SD,
+  CATEGORIAS_MUSCULO_OSEO, CORTES_CONICIDAD_POR_SEXO, CORTES_SALUD, CORTES_SOMATOTIPO, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM, TALLA_PHANTOM_SD,
   type CategoriaMusculoOseo, type Sexo, type VariablePhantom,
 } from './constantes'
 
@@ -111,12 +111,15 @@ export const categoriaManouvrier = (v: number) =>
 export const categoriaEnvergadura = (v: number) =>
   v < 1 ? 'menor a la talla' : v > 1 ? 'mayor a la talla' : 'igual a la talla'
 
-// PENDIENTE CONFIRMACIÓN (nutricionista): clasifica redondeando a 0,5 (convención
-// Heath-Carter), no sobre el valor crudo — revertir este commit si no se aprueba.
-/** Lectura de un componente del somatotipo (Carter y Heath). */
-export function lecturaSomatotipo(v: number): 'bajo' | 'moderado' | 'alto' | 'muy alto' {
-  const r = Math.round(v * 2) / 2
-  return r <= 2.5 ? 'bajo' : r <= 5 ? 'moderado' : r <= 7 ? 'alto' : 'muy alto'
+/** Lectura de un componente del somatotipo (Carter y Heath). Clasifica sobre el valor
+ * redondeado a 1 decimal (half-up), no el crudo. Cortes: ver CORTES_SOMATOTIPO. */
+export function lecturaSomatotipo(v: number): 'bajo' | 'moderado' | 'alto' | 'muy alto' | 'extremadamente alto' {
+  const r = Math.round((v + Number.EPSILON) * 10) / 10
+  return r <= CORTES_SOMATOTIPO.bajo ? 'bajo'
+    : r <= CORTES_SOMATOTIPO.moderado ? 'moderado'
+      : r <= CORTES_SOMATOTIPO.alto ? 'alto'
+        : r <= CORTES_SOMATOTIPO.muyAlto ? 'muy alto'
+          : 'extremadamente alto'
 }
 
 export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO): Resultado {

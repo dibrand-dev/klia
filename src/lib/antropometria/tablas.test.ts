@@ -96,7 +96,7 @@ test('tabla cintura/cadera cubre las 5 décadas para ambos sexos', () => {
 
 test('todas las claves de textos del somatotipo existen y no están vacías', () => {
   const componentes: ComponenteSomatotipo[] = ['endo', 'meso', 'ecto']
-  const niveles: NivelSomatotipo[] = ['bajo', 'moderado', 'alto', 'muy alto']
+  const niveles: NivelSomatotipo[] = ['bajo', 'moderado', 'alto', 'muy alto', 'extremadamente alto']
   for (const c of componentes) {
     assert.ok(TEXTOS_SOMATOTIPO[c], `falta el componente ${c}`)
     for (const n of niveles) {
