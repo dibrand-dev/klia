@@ -18,6 +18,7 @@ import './informe-publico.css'
 export const metadata: Metadata = {
   title: 'Tu evaluación antropométrica',
   robots: { index: false, follow: false },
+  referrer: 'no-referrer',
 }
 export const dynamic = 'force-dynamic'
 
@@ -59,9 +60,13 @@ function mes(iso: string): string { return MES[Number(iso.split('-')[1]) - 1] }
 function largo(iso: string): string { const [y, m, d] = iso.split('-'); return `${+d} de ${MES[Number(m) - 1]} de ${y}` }
 function formatMatricula(tipo: string | null, matricula: string | null, provincia: string | null): string {
   if (!matricula) return ''
-  if (tipo === 'provincial') return `MP ${matricula}${provincia ? ` (${provincia})` : ''}`
-  if (tipo === 'nacional') return `MN ${matricula}`
-  return matricula
+  const m = matricula.trim()
+  if (tipo === 'provincial') {
+    const base = m.toUpperCase().startsWith('MP') ? m : `MP ${m}`
+    return `${base}${provincia ? ` (${provincia})` : ''}`
+  }
+  if (tipo === 'nacional') return m.toUpperCase().startsWith('MN') ? m : `MN ${m}`
+  return m
 }
 function iniciales(nombre: string, apellido: string): string {
   return `${nombre[0] ?? ''}${apellido[0] ?? ''}`.toUpperCase()
@@ -73,6 +78,14 @@ function telefonoWhatsappValido(telefono: string | null): string | null {
   const numero = parsePhoneNumberFromString(telefono, 'AR')
   if (!numero || !numero.isValid()) return null
   return numero.number
+}
+/** Formato internacional legible para mostrar (no para el link de wa.me). Si no es un
+ * número válido, se muestra tal cual está guardado. */
+function telefonoDisplay(telefono: string | null): string | null {
+  if (!telefono) return null
+  const numero = parsePhoneNumberFromString(telefono, 'AR')
+  if (!numero || !numero.isValid()) return telefono
+  return numero.formatInternational()
 }
 function dtxt(d: number, u: string, dec: number, pm: string): React.ReactNode {
   const r = Number(d.toFixed(dec))
@@ -455,7 +468,7 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
             </dl>
             <dl>
               {profile.telefono && (
-                <div><dt>Teléfono / WhatsApp</dt><dd><a href={telefonoE164 ? `https://wa.me/${telefonoE164.replace('+', '')}` : undefined}>{profile.telefono}</a></dd></div>
+                <div><dt>Teléfono / WhatsApp</dt><dd><a href={telefonoE164 ? `https://wa.me/${telefonoE164.replace('+', '')}` : undefined}>{telefonoDisplay(profile.telefono)}</a></dd></div>
               )}
               {profile.email && <div><dt>Email</dt><dd><a href={`mailto:${profile.email}`}>{profile.email}</a></dd></div>}
             </dl>
