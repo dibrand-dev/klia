@@ -25,6 +25,8 @@ interface RegistroAntropoResumen {
   peso: number | null
   pliegue_tricipital: number | null
   pliegue_subescapular: number | null
+  pliegue_biceps: number | null
+  pliegue_cresta_iliaca: number | null
   pliegue_supraespinal: number | null
   pliegue_abdominal: number | null
   pliegue_muslo: number | null

@@ -47,7 +47,7 @@ export default async function HistorialPage({ params }: { params: { id: string }
     // se hacen en memoria en HistorialList.
     supabase
       .from('registros_antropometricos')
-      .select('id, turno_id, fecha, created_at, peso, pliegue_tricipital, pliegue_subescapular, pliegue_supraespinal, pliegue_abdominal, pliegue_muslo, pliegue_pantorrilla')
+      .select('id, turno_id, fecha, created_at, peso, pliegue_tricipital, pliegue_subescapular, pliegue_biceps, pliegue_cresta_iliaca, pliegue_supraespinal, pliegue_abdominal, pliegue_muslo, pliegue_pantorrilla')
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', efectivo.terapeutaId)
       .order('fecha', { ascending: true })
