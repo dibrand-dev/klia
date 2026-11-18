@@ -2,6 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, zResidual, redondear, zPhantom, type Medidas, type Paciente } from './calculos'
+import { RANGOS_MUSCULO_OSEO, CATEGORIAS_MUSCULO_OSEO } from './constantes'
+import { fmt } from './graficos'
 
 interface Caso {
   nombre: string; pac: Paciente; m: Medidas
@@ -248,4 +250,29 @@ test('tejidosZ: sin sexo, muscular y residual quedan null pero adiposo/óseo (y 
   assert.equal(r.tejidosZ!.residual, null)
   assert.notEqual(r.tejidosZ!.adiposo, null)
   assert.notEqual(r.tejidosZ!.oseo, null)
+})
+
+test('escala músculo/óseo: las etiquetas (2 decimales, misma fuente que clasifica) coinciden con categoriaMusculoOseo en los bordes de ambos sexos', () => {
+  // Reproduce el armado de etiquetas de la página 3 del informe, a partir de RANGOS_MUSCULO_OSEO
+  // (la misma fuente que usa categoriaMusculoOseo) — nunca copias hardcodeadas.
+  const etiquetas = (sexo: 'M' | 'F') => {
+    const r = RANGOS_MUSCULO_OSEO[sexo]
+    return [`< ${fmt(r[0], 2)}`, `${fmt(r[0], 2)}–${fmt(r[1], 2)}`, `${fmt(r[1], 2)}–${fmt(r[2], 2)}`, `${fmt(r[2], 2)}–${fmt(r[3], 2)}`, `> ${fmt(r[3], 2)}`]
+  }
+
+  assert.deepEqual(etiquetas('F'), ['< 2,01', '2,01–2,11', '2,11–2,78', '2,78–2,96', '> 2,96'])
+  assert.deepEqual(etiquetas('M'), ['< 2,34', '2,34–2,44', '2,44–3,11', '3,11–3,29', '> 3,29'])
+
+  // Cada borde exacto cae en la categoría que indica su propia etiqueta (el límite inferior
+  // de un tramo pertenece a ese tramo, no al anterior — mismo criterio que categoriaMusculoOseo).
+  for (const sexo of ['F', 'M'] as const) {
+    const r = RANGOS_MUSCULO_OSEO[sexo]
+    assert.equal(categoriaMusculoOseo(r[0], sexo), CATEGORIAS_MUSCULO_OSEO[1], `${sexo}: borde inferior del tramo 2`)
+    assert.equal(categoriaMusculoOseo(r[1], sexo), CATEGORIAS_MUSCULO_OSEO[2], `${sexo}: borde inferior del tramo 3`)
+    assert.equal(categoriaMusculoOseo(r[2], sexo), CATEGORIAS_MUSCULO_OSEO[3], `${sexo}: borde inferior del tramo 4`)
+    assert.equal(categoriaMusculoOseo(r[3], sexo), CATEGORIAS_MUSCULO_OSEO[4], `${sexo}: borde inferior del tramo 5`)
+  }
+
+  // Caso de la nutricionista: 2,79 en mujer cae en "Alto" (tramo "2,78–2,96").
+  assert.equal(categoriaMusculoOseo(2.79, 'F'), 'Alto')
 })

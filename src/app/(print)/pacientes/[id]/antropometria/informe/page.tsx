@@ -198,12 +198,12 @@ export default async function InformeAntropometriaPage({
   // ---------- P2: Composición corporal ----------
   if (esMenorConocido) {
     PAGINAS.push({
-      titulo: 'Composición corporal', subtitulo: 'Modelo de 5 componentes (Kerr)',
+      titulo: 'Composición corporal', subtitulo: 'Fraccionamiento tisular',
       body: <div className="isak-aviso"><b>Paciente menor de 18 años.</b> La composición tisular (Kerr) está validada en adultos y no se calcula ni se muestra en menores.</div>,
     })
   } else if (edadDesconocida) {
     PAGINAS.push({
-      titulo: 'Composición corporal', subtitulo: 'Modelo de 5 componentes (Kerr)',
+      titulo: 'Composición corporal', subtitulo: 'Fraccionamiento tisular',
       body: <div className="isak-info">Cargá la fecha de nacimiento del paciente para ver este índice.</div>,
     })
   } else {
@@ -288,7 +288,7 @@ export default async function InformeAntropometriaPage({
       </div>
     )
     PAGINAS.push({
-      titulo: 'Composición corporal', subtitulo: 'Modelo de 5 componentes (Kerr)',
+      titulo: 'Composición corporal', subtitulo: 'Fraccionamiento tisular',
       body: (
         <>
           {tabla}
@@ -338,7 +338,7 @@ export default async function InformeAntropometriaPage({
         const lo = rangos[0] - 0.5, hi = rangos[3] + 0.5
         const edges = [lo, ...rangos, hi]
         const segPos = mo == null || ci < 0 ? 0 : (ci + (Math.min(Math.max(mo, edges[ci]), edges[ci + 1]) - edges[ci]) / (edges[ci + 1] - edges[ci])) * 20
-        const seg = [`< ${fmt(rangos[0])}`, `${fmt(rangos[0])}–${fmt(rangos[1])}`, `${fmt(rangos[1])}–${fmt(rangos[2])}`, `${fmt(rangos[2])}–${fmt(rangos[3])}`, `≥ ${fmt(rangos[3])}`]
+        const seg = [`< ${fmt(rangos[0], 2)}`, `${fmt(rangos[0], 2)}–${fmt(rangos[1], 2)}`, `${fmt(rangos[1], 2)}–${fmt(rangos[2], 2)}`, `${fmt(rangos[2], 2)}–${fmt(rangos[3], 2)}`, `> ${fmt(rangos[3], 2)}`]
         seccionIndices = (
           <div className="isak-grid2">
             <div className="isak-box">
