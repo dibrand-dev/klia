@@ -5,7 +5,6 @@ import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaI
 import {
   calcular, fmt, sgn, fecha as fmtFecha, somatochart, pie, medidasDesdeRegistro, zPhantom, zTalla,
   categoriaCormico, categoriaManouvrier, categoriaEnvergadura, categoriaConicidad, lecturaSomatotipo,
-  distribucionAdiposoMuscular,
   CATEGORIAS_MUSCULO_OSEO, RANGOS_MUSCULO_OSEO, CORTES_SALUD, CORTES_CONICIDAD_POR_SEXO,
   TEXTOS_SOMATOTIPO, ACLARACION_ESCALA_SOMATOTIPO,
   TEXTOS_CORMICO, TEXTOS_MANOUVRIER, TEXTOS_ENVERGADURA, REFERENCIA_CORMICO, REFERENCIA_MANOUVRIER, REFERENCIA_ENVERGADURA,
@@ -409,64 +408,6 @@ export default async function InformeAntropometriaPage({
         <p className="isak-note">Perímetro corregido = perímetro − π × pliegue (cm) del mismo segmento.</p>
       </>
     )
-    const medidasPrev = prev ? medidasDesdeRegistro(prev) : null
-    const distAct = distribucionAdiposoMuscular({
-      triceps: medidasCur.triceps, subescapular: medidasCur.subescapular, supraespinal: medidasCur.supraespinal,
-      abdominal: medidasCur.abdominal, muslo: medidasCur.muslo, pantorrilla: medidasCur.pantorrilla,
-      brazoCorregido: R.corregidos.brazo, musloCorregido: R.corregidos.muslo, piernaCorregida: R.corregidos.pierna,
-    })
-    const distPrev = medidasPrev && RP ? distribucionAdiposoMuscular({
-      triceps: medidasPrev.triceps, subescapular: medidasPrev.subescapular, supraespinal: medidasPrev.supraespinal,
-      abdominal: medidasPrev.abdominal, muslo: medidasPrev.muslo, pantorrilla: medidasPrev.pantorrilla,
-      brazoCorregido: RP.corregidos.brazo, musloCorregido: RP.corregidos.muslo, piernaCorregida: RP.corregidos.pierna,
-    }) : null
-    const filasAdiposo: { k: 'superior' | 'central' | 'inferior'; l: string }[] = [
-      { k: 'superior', l: 'Superior' }, { k: 'central', l: 'Central' }, { k: 'inferior', l: 'Inferior' },
-    ]
-    const filasMuscular: { k: 'brazo' | 'muslo' | 'pierna'; l: string }[] = [
-      { k: 'brazo', l: 'Brazo' }, { k: 'muslo', l: 'Muslo' }, { k: 'pierna', l: 'Pierna' },
-    ]
-    const barraDistribucion = <T extends string,>(
-      filas: { k: T; l: string }[], grupo: Record<T, number | null>, grupoPrev: Record<T, number | null> | null | undefined,
-    ) => {
-      return (
-        <div className="isak-bars">
-          {filas.map((f) => {
-            const v = grupo[f.k], pv = grupoPrev?.[f.k] ?? null
-            return (
-              <div className="isak-br" key={f.k}>
-                <span>{f.l}</span>
-                <div className="isak-tr">
-                  <div className="isak-ln">
-                    <span className="isak-track"><i style={{ width: `${v ?? 0}%` }} /></span>
-                    {fmt(v, 2)} %{hasP && v != null && pv != null && <small>{sgn(v - pv, 2)} pp</small>}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )
-    }
-    const bloqueDistribucion = (
-      <div>
-        <h3 className="isak-sub">Distribución adiposo / muscular</h3>
-        <div className="isak-grid2">
-          <div className="isak-box">
-            <div className="isak-bt">Tejido adiposo</div>
-            {distAct.adiposo ? barraDistribucion(filasAdiposo, distAct.adiposo, distPrev?.adiposo) : (
-              <div className="isak-info">Faltan pliegues por cargar (tríceps, subescapular, supraespinal, abdominal, muslo o pantorrilla).</div>
-            )}
-          </div>
-          <div className="isak-box">
-            <div className="isak-bt">Tejido muscular</div>
-            {distAct.muscular ? barraDistribucion(filasMuscular, distAct.muscular, distPrev?.muscular) : (
-              <div className="isak-info">Faltan perímetros corregidos por calcular (brazo, muslo o pierna).</div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
     PAGINAS.push({
       titulo: 'Índices', subtitulo: 'Relaciones entre tejidos, adiposidad y muscularidad',
       body: (
@@ -474,7 +415,6 @@ export default async function InformeAntropometriaPage({
           {seccionIndices}
           <div><h3 className="isak-sub">Adiposidad</h3>{sumT}</div>
           <div><h3 className="isak-sub">Muscularidad</h3>{musT}</div>
-          {bloqueDistribucion}
         </>
       ),
     })
