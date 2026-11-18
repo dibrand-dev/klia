@@ -7,10 +7,6 @@ import {
   type CategoriaMusculoOseo, type Sexo, type VariablePhantom,
 } from './constantes'
 
-/** Talla sentado del Phantom (cm) y constantes de Kerr para el residual (base: talla sentado, no talla). */
-const TALLA_SENTADO_PHANTOM = 89.92
-const PHANTOM_RESIDUAL: readonly [number, number] = [16.41, 1.9]
-
 type N = number | null | undefined
 
 export interface Medidas {
@@ -27,7 +23,7 @@ export interface Medidas {
 export interface Paciente { sexo: Sexo | null; edad: number | null }
 
 export interface Tejidos {
-  adiposo: number | null; muscular: number | null; oseo: number | null; residual: number | null
+  adiposo: number | null; muscular: number | null; oseo: number | null
 }
 
 export interface Resultado {
@@ -35,7 +31,7 @@ export interface Resultado {
   sumatorias: { s6: number | null; s8: number | null }
   corregidos: { brazo: number | null; muslo: number | null; pierna: number | null }
   tejidos: Tejidos | null // null en menores
-  /** Z-scores Phantom de cada tejido (Kerr). El residual usa la talla sentado como base, no la talla. */
+  /** Z-scores Phantom de cada tejido (Kerr). */
   tejidosZ: Tejidos | null
   indices: {
     adiposoMuscular: number | null
@@ -77,14 +73,6 @@ export function zPhantom(variable: VariablePhantom, valor: N, talla: N): number 
   if (v === null || h === null || h <= 0) return null
   const [p, s, d] = PHANTOM[variable]
   return (v * (TALLA_PHANTOM / h) ** d - p) / s
-}
-
-/** Z-score Phantom del tejido residual (Kerr). Base: talla sentado, no talla (a diferencia de adiposo/muscular/óseo). */
-export function zResidual(residual: N, tallaSentado: N): number | null {
-  const v = num(residual), s = num(tallaSentado)
-  if (v === null || s === null || s <= 0) return null
-  const [p, sd] = PHANTOM_RESIDUAL
-  return (v * (TALLA_SENTADO_PHANTOM / s) ** 3 - p) / sd
 }
 
 /** Categoría de conicidad, por sexo (cortes aprobados por la nutricionista el 17/11/2026 — ver constantes.ts). Sin sexo, null. */
@@ -168,24 +156,20 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     if (h !== null && bie !== null && fem !== null) {
       oseo = 3.02 * ((h / 100) ** 2 * (bie / 100) * (fem / 100) * 400) ** 0.712
     }
-    const residual = masa !== null && adiposo !== null && muscular !== null && oseo !== null ? masa - (adiposo + muscular + oseo) : null
-    tejidos = { adiposo, muscular, oseo, residual }
+    tejidos = { adiposo, muscular, oseo }
     tejidosZ = {
       adiposo: zPhantom('adiposo', adiposo, h),
       muscular: zPhantom('muscular', muscular, h),
       oseo: zPhantom('oseo', oseo, h),
-      residual: zResidual(residual, sent),
     }
     req('adiposo', [['talla', h], ...(s6 === null ? ([['Σ6 pliegues', null]] as [string, number | null][]) : [])])
     req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan], ['sexo', pac.sexo === null ? null : 1]])
     req('oseo', [['talla', h], ['diámetro biestiloideo', bie], ['diámetro fémur', fem]])
-    req('residual', [['masa', masa]])
   } else if (edad === null) {
     // Edad desconocida (no un menor legítimo): no se puede determinar si corresponde calcular tejidos.
     req('adiposo', [['edad', null]])
     req('muscular', [['edad', null]])
     req('oseo', [['edad', null]])
-    req('residual', [['edad', null]])
   }
 
   // Somatotipo Heath-Carter

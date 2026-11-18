@@ -56,7 +56,6 @@ const TEJIDOS_DEF = [
   { clave: 'adiposo' as const, label: 'Adiposo', colorVar: 'var(--warn)', colorHex: '#A65A06' },
   { clave: 'muscular' as const, label: 'Muscular', colorVar: 'var(--accent)', colorHex: '#1F4FD9' },
   { clave: 'oseo' as const, label: 'Óseo', colorVar: 'var(--ink-2)', colorHex: '#1F2937' },
-  { clave: 'residual' as const, label: 'Residual', colorVar: 'var(--muted-3)', colorHex: '#AEB5C0' },
 ]
 
 function avisoFaltante(sexo: Sexo | null, edad: number | null, necesita: { sexo?: boolean; edad?: boolean }): string | null {
@@ -230,7 +229,7 @@ export default async function InformeAntropometriaPage({
               <tr key={t.clave}>
                 <td>{t.label}</td>
                 <td className={`n${a == null ? ' miss' : ''}`}>
-                  {a == null ? <>—{avisoSexo && (t.clave === 'muscular' || t.clave === 'residual') && <span className="isak-falta">{avisoSexo}</span>}</> : fmt(a, 2)}
+                  {a == null ? <>—{avisoSexo && t.clave === 'muscular' && <span className="isak-falta">{avisoSexo}</span>}</> : fmt(a, 2)}
                 </td>
                 {hasP && (
                   <>
@@ -252,25 +251,26 @@ export default async function InformeAntropometriaPage({
                 <td className="n">{masa == null || prev!.peso == null ? '—' : sgn(masa - prev!.peso, 2)}</td>
               </>
             )}
-            <td className="n">100 %</td>
+            <td className="n"></td>
             <td className="n"></td>
           </tr>
         </tbody>
       </table>
     )
-    const maxKg = Math.max(...TEJIDOS_DEF.map((t) => Math.max(tejidos[t.clave] ?? 0, RP?.tejidos?.[t.clave] ?? 0)))
+    const sumaTejidos = okAll ? TEJIDOS_DEF.reduce((t, c) => t + (tejidos[c.clave] as number), 0) : null
     const pieBody = okAll ? (
       <div className="isak-comp">
         <div dangerouslySetInnerHTML={{ __html: pie(TEJIDOS_DEF.map((t) => ({ v: tejidos[t.clave] as number, c: t.colorHex })), 150) }} />
         <div className="isak-leg">
           {TEJIDOS_DEF.map((t) => (
-            <div key={t.clave}><i style={{ background: t.colorVar }} /><span>{t.label}</span><b>{fmt(((tejidos[t.clave] as number) / (masa as number)) * 100, 1)} %</b></div>
+            <div key={t.clave}><i style={{ background: t.colorVar }} /><span>{t.label}</span><b>{fmt(((tejidos[t.clave] as number) / (sumaTejidos as number)) * 100, 1)} %</b></div>
           ))}
         </div>
       </div>
     ) : (
       <div className="isak-info">No se puede graficar la distribución: faltan tejidos por calcular.{avisoSexo && <span className="isak-falta">{avisoSexo}</span>}</div>
     )
+    const prevMasa = prev?.peso ?? null
     const barras = (
       <div className="isak-bars">
         {TEJIDOS_DEF.map((t) => {
@@ -279,8 +279,8 @@ export default async function InformeAntropometriaPage({
             <div className="isak-br" key={t.clave}>
               <span>{t.label}</span>
               <div className="isak-tr">
-                <div className="isak-ln">{a == null ? <span>— Actual</span> : <><i style={{ width: `${maxKg ? (a / maxKg) * 78 : 0}%` }} />{fmt(a, 2)} kg</>}</div>
-                {hasP && <div className="isak-ln p"><i style={{ width: `${maxKg && p != null ? (p / maxKg) * 78 : 0}%` }} />{p == null ? '—' : `${fmt(p, 2)} kg`}</div>}
+                <div className="isak-ln">{a == null ? <span>— Actual</span> : <><span className="isak-track"><i style={{ width: `${masa ? (a / masa) * 100 : 0}%` }} /></span>{fmt(a, 2)} kg</>}</div>
+                {hasP && <div className="isak-ln p">{p == null ? <span>—</span> : <><span className="isak-track"><i style={{ width: `${prevMasa ? (p / prevMasa) * 100 : 0}%` }} /></span>{fmt(p, 2)} kg</>}</div>}
               </div>
             </div>
           )
@@ -294,7 +294,7 @@ export default async function InformeAntropometriaPage({
           {tabla}
           <p className="isak-note">Fuente: Adiposo, {FUENTES.tejidoAdiposo} · Muscular, {FUENTES.tejidoMuscular} · Óseo, {FUENTES.tejidoOseo}</p>
           <div className="isak-grid2">
-            <div className="isak-box"><div className="isak-bt">Distribución por tejido<span>% del peso, actual</span></div>{pieBody}</div>
+            <div className="isak-box"><div className="isak-bt">Distribución relativa de los tres tejidos</div>{pieBody}</div>
             <div className="isak-box">
               <div className="isak-bt">Actual vs previo<span>kg</span></div>
               {barras}

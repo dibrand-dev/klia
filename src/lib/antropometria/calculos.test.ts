@@ -1,7 +1,7 @@
 // Tests de oro: 4 informes reales de ISAKMetry (spec §8). Corre con: npx tsx --test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, zResidual, redondear, zPhantom, lecturaSomatotipo, type Medidas, type Paciente } from './calculos'
+import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, redondear, zPhantom, lecturaSomatotipo, type Medidas, type Paciente } from './calculos'
 import { RANGOS_MUSCULO_OSEO, CATEGORIAS_MUSCULO_OSEO } from './constantes'
 import { fmt } from './graficos'
 
@@ -71,12 +71,6 @@ for (const c of CASOS) {
   })
 }
 
-test('residual = masa − (adiposo + muscular + óseo)', () => {
-  const c = CASOS[0]
-  const r = calcular(c.m, c.pac)
-  cerca(r.tejidos!.residual, 69.7 - (24.95 + 25.03 + 9.64), 0.03, 'residual Agustín')
-})
-
 test('categorías: músculo/óseo por sexo y límites de las 5 zonas', () => {
   assert.equal(calcular(CASOS[0].m, CASOS[0].pac).indices.musculoOseoCategoria, 'Medio') // M 2,60
   assert.equal(calcular(CASOS[1].m, CASOS[1].pac).indices.musculoOseoCategoria, 'Medio') // F 2,36
@@ -122,7 +116,6 @@ test('edad null: no asume adulto — IMC/Σ6/Σ8/somatotipo se calculan igual, t
   assert.ok(r.faltan.adiposo?.includes('edad'))
   assert.ok(r.faltan.muscular?.includes('edad'))
   assert.ok(r.faltan.oseo?.includes('edad'))
-  assert.ok(r.faltan.residual?.includes('edad'))
 })
 
 test('menor de edad legítimo (edad conocida, < 20): sin tejidos, pero sin \'faltan\' espurio', () => {
@@ -133,7 +126,6 @@ test('menor de edad legítimo (edad conocida, < 20): sin tejidos, pero sin \'fal
   assert.equal(r.faltan.adiposo, undefined)
   assert.equal(r.faltan.muscular, undefined)
   assert.equal(r.faltan.oseo, undefined)
-  assert.equal(r.faltan.residual, undefined)
 })
 
 test('proporciones: categorías', () => {
@@ -175,7 +167,6 @@ test('datos faltantes: no inventa valores y dice qué falta', () => {
   const c = CASOS[0]
   const r = calcular({ ...c.m, femur: null }, c.pac)
   assert.equal(r.tejidos!.oseo, null)
-  assert.equal(r.tejidos!.residual, null)
   assert.equal(r.indices.musculoOseo, null)
   assert.equal(r.somatotipo.meso, null)
   assert.equal(r.somatotipo.y, null)
@@ -236,12 +227,6 @@ test('categoriaConicidad: cortes por sexo, null sin sexo o sin valor', () => {
   assert.equal(categoriaConicidad('M', null), null)
 })
 
-test('zResidual: Z-score Phantom del residual usa talla sentado, no talla', () => {
-  cerca(zResidual(16.41 + 1.9, 89.92), 1, 1e-9, 'Z residual')
-  assert.equal(zResidual(null, 89.92), null)
-  assert.equal(zResidual(10, null), null)
-})
-
 test('tejidosZ: null en menores y cuando falta edad; calculado en adultos con todos los datos', () => {
   const c = CASOS[0]
   const adulto = calcular(c.m, c.pac)
@@ -249,7 +234,6 @@ test('tejidosZ: null en menores y cuando falta edad; calculado en adultos con to
   assert.notEqual(adulto.tejidosZ!.adiposo, null)
   assert.notEqual(adulto.tejidosZ!.muscular, null)
   assert.notEqual(adulto.tejidosZ!.oseo, null)
-  assert.notEqual(adulto.tejidosZ!.residual, null)
 
   const menor = calcular(c.m, { sexo: c.pac.sexo, edad: 15 })
   assert.equal(menor.tejidosZ, null)
@@ -258,16 +242,14 @@ test('tejidosZ: null en menores y cuando falta edad; calculado en adultos con to
   assert.equal(sinEdad.tejidosZ, null)
 })
 
-test('tejidosZ: sin sexo, muscular y residual quedan null pero adiposo/óseo (y sus Z) se calculan igual', () => {
+test('tejidosZ: sin sexo, muscular queda null pero adiposo/óseo (y sus Z) se calculan igual', () => {
   const c = CASOS[0]
   const r = calcular(c.m, { sexo: null, edad: c.pac.edad })
   assert.equal(r.tejidos!.muscular, null)
-  assert.equal(r.tejidos!.residual, null)
   assert.notEqual(r.tejidos!.adiposo, null)
   assert.notEqual(r.tejidos!.oseo, null)
   assert.ok(r.tejidosZ)
   assert.equal(r.tejidosZ!.muscular, null)
-  assert.equal(r.tejidosZ!.residual, null)
   assert.notEqual(r.tejidosZ!.adiposo, null)
   assert.notEqual(r.tejidosZ!.oseo, null)
 })

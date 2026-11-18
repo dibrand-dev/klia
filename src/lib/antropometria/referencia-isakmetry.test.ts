@@ -73,7 +73,7 @@ test('ISAKMetry: tejidos (kg y Z-score)', () => {
   cerca(r.tejidosZ!.muscular, 0.47, TOL_Z, 'Z muscular')
   cerca(r.tejidos!.oseo, 9.64, TOL_VALOR, 'óseo kg')
   cerca(r.tejidosZ!.oseo, -0.07, TOL_Z, 'Z óseo')
-  // El residual (4º tejido) no figura en el reporte de referencia: no se testea.
+  // ISAK nivel 1 no usa el modelo de 5 componentes: no hay tejido residual que testear.
 })
 
 test('ISAKMetry: perímetros corregidos (valor y Z-score)', () => {

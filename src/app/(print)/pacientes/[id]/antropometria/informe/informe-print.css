@@ -68,8 +68,9 @@
 .isak-br { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: center; font-size: 8.5pt; }
 .isak-br .isak-tr { display: flex; flex-direction: column; gap: 3px; }
 .isak-br .isak-ln { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-size: 8pt; color: var(--muted); }
-.isak-br .isak-ln i { height: 9px; border-radius: 2px; background: var(--ink); display: inline-block; }
-.isak-br .isak-ln.p i { background: var(--muted-3); }
+.isak-br .isak-track { position: relative; flex: 1; height: 9px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.isak-br .isak-track i { position: absolute; inset: 0; height: 100%; border-radius: 2px; background: var(--ink); display: block; }
+.isak-br .isak-ln.p .isak-track i { background: var(--muted-3); }
 .isak-aviso { border: 1px solid var(--border-strong); border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--ink-2); background: var(--warn-soft); }
 .isak-aviso b { color: var(--ink); }
 .isak-info { border: 1px solid var(--border); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--muted); background: var(--surface-2); }

@@ -171,27 +171,26 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
   // ---------- Fraccionamiento tisular ----------
   let tisSec: React.ReactNode = null
   if (!esMenorConocido) {
-    if (showTis && tejidos && tejidos.adiposo != null && tejidos.muscular != null && tejidos.oseo != null && tejidos.residual != null) {
+    if (showTis && tejidos && tejidos.adiposo != null && tejidos.muscular != null && tejidos.oseo != null) {
       const masa = medidasCur.masa as number
       const pc = (v: number) => Math.round((v / masa) * 100)
-      const pA = pc(tejidos.adiposo), pM = pc(tejidos.muscular), pO = pc(tejidos.oseo), pR = 100 - pA - pM - pO
+      const pA = pc(tejidos.adiposo), pM = pc(tejidos.muscular), pO = pc(tejidos.oseo)
       const prevTej = RP?.tejidos
       tisSec = (
         <section className="blk keep pad">
           <h2>Fraccionamiento tisular</h2>
-          <p className="sub">De tus {fmt(masa, 1)} kg, así se reparten el tejido adiposo, el muscular y el óseo. El resto es el residual: órganos, agua y otros tejidos.</p>
+          <p className="sub">De tus {fmt(masa, 1)} kg, así se reparten el tejido adiposo, el muscular y el óseo.</p>
           <div className="comp">
-            <div className="mbar" role="img" aria-label={`Adiposo ${pA}%, muscular ${pM}%, óseo ${pO}%, residual ${pR}%`}>
+            <div className="mbar" role="img" aria-label={`Adiposo ${pA}%, muscular ${pM}%, óseo ${pO}%`}>
               <span style={{ width: `${pA}%`, background: '#3F519E' }}>{pA} %</span>
               <span style={{ width: `${pM}%`, background: '#7D8AC4' }}>{pM} %</span>
               <span className="dk" style={{ width: `${pO}%`, background: '#C6CCE5' }}>{pO} %</span>
-              <span className="dk" style={{ flex: 1, background: '#EEF0F6' }}>{pR} %</span>
+              <span className="dk" style={{ flex: 1, background: '#EEF0F6' }} />
             </div>
             <div className="mlist">
               <div className="m"><span className="sw" style={{ background: '#3F519E' }} /><div className="nm2">Adiposo<small>Reserva de energía del cuerpo. Una parte es necesaria; el exceso, sobre todo en el abdomen, es el que conviene bajar.</small></div><span className="gr">{fmt(tejidos.adiposo, 1)} kg{hasP && prevTej?.adiposo != null && <small>{sgn(tejidos.adiposo - prevTej.adiposo, 1)} kg</small>}</span></div>
               <div className="m"><span className="sw" style={{ background: '#7D8AC4' }} /><div className="nm2">Muscular<small>Te da fuerza y movimiento, y gasta energía aun en reposo. Conviene mantenerlo o aumentarlo.</small></div><span className="gr">{fmt(tejidos.muscular, 1)} kg{hasP && prevTej?.muscular != null && <small>{sgn(tejidos.muscular - prevTej.muscular, 1)} kg</small>}</span></div>
               <div className="m"><span className="sw" style={{ background: '#C6CCE5' }} /><div className="nm2">Óseo<small>Es la estructura de tu cuerpo. En adultos casi no cambia entre controles.</small></div><span className="gr">{fmt(tejidos.oseo, 1)} kg{hasP && prevTej?.oseo != null && <small>{sgn(tejidos.oseo - prevTej.oseo, 1)} kg</small>}</span></div>
-              <div className="m"><span className="sw" style={{ background: '#EEF0F6' }} /><div className="nm2">Residual<small>Órganos, agua y otros tejidos.</small></div><span className="gr">{fmt(tejidos.residual, 1)} kg{hasP && prevTej?.residual != null && <small>{sgn(tejidos.residual - prevTej.residual, 1)} kg</small>}</span></div>
             </div>
           </div>
           <p className="src">Fuente: Adiposo, {FUENTES.tejidoAdiposo} · Muscular, {FUENTES.tejidoMuscular} · Óseo, {FUENTES.tejidoOseo}</p>
@@ -204,7 +203,7 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
           <div className="hlt">
             <div style={{ gridColumn: '1/-1' }}>
               <div className="h miss wide">
-                <div className="row"><span className="nm">Adiposo, muscular, óseo y residual</span></div>
+                <div className="row"><span className="nm">Falta: Adiposo, muscular y óseo</span></div>
                 <p>{MISS_ICON}<span>{sexo ? FALTA.edad : FALTA.sexo}</span></p>
               </div>
             </div>
