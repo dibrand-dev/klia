@@ -3,13 +3,36 @@
 import { usePathname } from 'next/navigation'
 import Script from 'next/script'
 
-// Páginas públicas con token de paciente (datos de salud/plan en la URL/contenido):
-// nunca cargan Pixel ni GTM. El resto de las rutas públicas (booking, pagar, landing) sigue igual.
-const RUTAS_SIN_TRACKING = ['/p/antropometria', '/p/plan']
+// Allowlist: Pixel/GTM cargan SOLO en estas rutas (adquisición/conversión). Todo lo
+// autenticado (pacientes, agenda, atenciones, cobros, ajustes, informes, /ops, /vendedor,
+// /portal, etc.) queda afuera por default — no hace falta listarlo.
+//
+// '/' y '/registro' son redirects server-side a la landing (klia-landing, otro repo): nunca
+// pintan <body> en el navegador, así que no hay nada que trackear acá aunque se incluyeran.
+// '/login' en producción es el mismo caso (solo renderiza form propio en staging) y
+// '/recuperar'/'/nueva-contrasena' son utilidades para usuarios existentes, no funnel de
+// adquisición — no se encontró necesidad de atribución para ninguna de las tres, quedan afuera.
+const RUTAS_PERMITIDAS = [
+  '/bienvenida', // dispara fbq('track', 'CompleteRegistration') en BienvenidaClient.tsx
+  '/p', // booking público (/p/[slug]) — excepto antropometría/plan, ver RUTAS_EXCLUIDAS
+  '/pagar', // pago de sesión particular (link enviado al paciente)
+]
+
+// Dentro de /p: antropometría y plan llevan datos de salud/plan del paciente en la
+// URL/contenido — nunca tracking, aunque /p esté en la allowlist de arriba.
+const RUTAS_EXCLUIDAS = ['/p/antropometria', '/p/plan']
+
+/** Coincidencia por segmento completo: pathname === ruta, o ruta es un segmento padre
+ * completo de pathname. Nunca por prefijo suelto (p. ej. '/p' no matchea '/pagar'). */
+function coincideSegmento(pathname: string, ruta: string): boolean {
+  return pathname === ruta || pathname.startsWith(`${ruta}/`)
+}
 
 export function TrackingScripts() {
   const pathname = usePathname()
-  if (RUTAS_SIN_TRACKING.some((r) => pathname?.startsWith(r))) return null
+  if (!pathname) return null
+  if (RUTAS_EXCLUIDAS.some((r) => coincideSegmento(pathname, r))) return null
+  if (!RUTAS_PERMITIDAS.some((r) => coincideSegmento(pathname, r))) return null
 
   return (
     <>
