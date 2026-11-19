@@ -49,6 +49,21 @@ export function nombreEsReservado(nombre: string, terminologia: 'sesion' | 'cons
   return n === normalizar(palabraTerminologia)
 }
 
+// Etiqueta a mostrar para el tipo de turno de un turno puntual: el nombre del
+// tipo propio si tiene uno asignado, o la terminología configurable del
+// profesional ("Sesión"/"Consulta") si usa el tipo por defecto. Mismo patrón
+// que ya usaba TurnoDetalleModal.tsx inline — extraído para no duplicarlo.
+export function labelTipoTurno(
+  tipoTurnoId: string | null,
+  tiposTurno: { id: string; nombre: string }[],
+  terminologia: 'sesion' | 'consulta' | null | undefined,
+): string {
+  if (tipoTurnoId) {
+    return tiposTurno.find((t) => t.id === tipoTurnoId)?.nombre ?? 'Tipo propio'
+  }
+  return getTerminologia(terminologia).Sesion
+}
+
 export interface ValidacionError {
   error: string
 }

@@ -6,6 +6,7 @@ import { calcularPIOCorregida, calcularEquivalenteEsferico } from '@/lib/oftalmo
 import { clasificarTA } from '@/lib/clinica-medica/calculos'
 import { severidadPHQ9, severidadGAD7 } from '@/lib/psicologia/calculos'
 import { descripcionCie10 } from '@/lib/cie10/server'
+import { labelTipoTurno } from '@/lib/tipos-turno'
 
 // ─── Formato numérico es-AR (coma decimal, signo "−" tipográfico) ──────────
 function fmt(n: number, decimales: number): string {
@@ -146,7 +147,9 @@ const MODALIDAD_LABEL: Record<string, string> = {
 
 function horaDeNota(nota: { hora_nota: string | null; created_at: string }): string {
   const iso = nota.hora_nota ?? nota.created_at
-  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+  // hour12: false — si no, es-AR devuelve "10:50 a. m." y la página le agrega
+  // " h" encima, quedando "10:50 a. m. h".
+  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
 function edadA(fechaReferenciaISO: string, fechaNacimientoISO: string | null): number | null {
@@ -305,6 +308,8 @@ export const TITULO_MODULO: Record<string, string> = {
 
 interface Params {
   especialidadProfesional: string | null
+  terminologia: 'sesion' | 'consulta' | null | undefined
+  tiposTurno: { id: string; nombre: string }[]
   paciente: Paciente
   notas: NotaClinica[]
   turnos: TurnoRow[]
@@ -319,7 +324,7 @@ interface Params {
 // notas_clinicas y las 4 tablas de módulo, y arma el view-model ya
 // formateado para el render (KL1-T40).
 export function armarHistorialParaImprimir(params: Params): HistorialParaImprimir {
-  const { especialidadProfesional, paciente, notas, turnos, registrosAntropometricos, registrosPio, registrosRefraccion, registrosEspecialidad } = params
+  const { especialidadProfesional, terminologia, tiposTurno, paciente, notas, turnos, registrosAntropometricos, registrosPio, registrosRefraccion, registrosEspecialidad } = params
 
   const notasOrdenadas = [...notas]
     .filter((n) => !n.borrador)
@@ -371,7 +376,7 @@ export function armarHistorialParaImprimir(params: Params): HistorialParaImprimi
       id: nota.id,
       fecha: nota.fecha,
       horaLabel: horaDeNota(nota),
-      tipoTurnoLabel: turno?.tipo_turno ?? null,
+      tipoTurnoLabel: turno ? labelTipoTurno(turno.tipo_turno_id ?? null, tiposTurno, terminologia) : null,
       modalidadLabel: turno ? MODALIDAD_LABEL[turno.modalidad] ?? null : null,
       contenidoHtml: nota.contenido,
       modulo,

@@ -20,6 +20,7 @@ import { validarConflictoHorario } from '@/lib/agenda/validarConflictoHorario'
 import ConflictosPanel from './ConflictosPanel'
 import TipoTurnoPicker, { type TipoTurnoPick } from '@/components/tipos-turno/TipoTurnoPicker'
 import '@/components/tipos-turno/tipos-turno.css'
+import { labelTipoTurno } from '@/lib/tipos-turno'
 import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { getTerminologia } from '@/hooks/useTerminologia'
 import { mensajeErrorTurno } from '@/lib/errores-turno'
@@ -970,7 +971,7 @@ export default function TurnoDetalleModal({ turno, open = true, onClose, onTurno
               <rect x="3" y="4" width="18" height="17" rx="2" strokeWidth={2} />
               <path strokeLinecap="round" d="M8 2v4M16 2v4M3 10h18M8 14h4M8 17h7" strokeWidth={2} />
             </svg>
-            <span>{turno.tipo_turno_id ? (tiposTurno.find((x) => x.id === turno.tipo_turno_id)?.nombre ?? 'Tipo propio') : t.Sesion}</span>
+            <span>{labelTipoTurno(turno.tipo_turno_id ?? null, tiposTurno, terminologia)}</span>
             {turno.tipo_turno_id && <span className="tt-tag2">Tipo propio</span>}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-700">

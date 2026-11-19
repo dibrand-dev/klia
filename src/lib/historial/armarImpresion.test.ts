@@ -42,7 +42,7 @@ function registro(over: Partial<RegistroAntropometrico> = {}): RegistroAntropome
 test('registro legacy (básico): sin cambios — ningún campo ISAK, metodo no es isak', () => {
   const r = registro()
   const res = armarHistorialParaImprimir({
-    especialidadProfesional: 'Nutrición', paciente,
+    especialidadProfesional: 'Nutrición', terminologia: 'sesion', tiposTurno: [], paciente,
     notas: [nota()], turnos: [turno()], registrosAntropometricos: [r],
     registrosPio: [], registrosRefraccion: [], registrosEspecialidad: [],
   })
@@ -63,7 +63,7 @@ test('registro ISAK completo: Σ6/Σ8 calculados con calcular() de la librería,
     pliegue_supraespinal: 8, pliegue_abdominal: 20, pliegue_muslo: 18, pliegue_pantorrilla: 12,
   })
   const res = armarHistorialParaImprimir({
-    especialidadProfesional: 'Nutrición', paciente,
+    especialidadProfesional: 'Nutrición', terminologia: 'sesion', tiposTurno: [], paciente,
     notas: [nota()], turnos: [turno()], registrosAntropometricos: [r],
     registrosPio: [], registrosRefraccion: [], registrosEspecialidad: [],
   })
@@ -84,7 +84,7 @@ test('registro ISAK parcial: falta un pliegue (cresta ilíaca) → Σ8 null, Σ6
     pliegue_supraespinal: 8, pliegue_abdominal: 20, pliegue_muslo: 18, pliegue_pantorrilla: 12,
   })
   const res = armarHistorialParaImprimir({
-    especialidadProfesional: 'Nutrición', paciente,
+    especialidadProfesional: 'Nutrición', terminologia: 'sesion', tiposTurno: [], paciente,
     notas: [nota()], turnos: [turno()], registrosAntropometricos: [r],
     registrosPio: [], registrosRefraccion: [], registrosEspecialidad: [],
   })

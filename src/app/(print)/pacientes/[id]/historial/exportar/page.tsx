@@ -59,10 +59,10 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
 
   if (!paciente) notFound()
 
-  const [{ data: profile }, { data: notasData }, { data: turnosData }, { data: antroData }, { data: pioData }, { data: refraccionData }, { data: especialidadData }] = await Promise.all([
+  const [{ data: profile }, { data: notasData }, { data: turnosData }, { data: antroData }, { data: pioData }, { data: refraccionData }, { data: especialidadData }, { data: tiposTurnoData }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, domicilio_consultorio, localidad_consultorio, provincia_consultorio')
+      .select('nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, domicilio_consultorio, localidad_consultorio, provincia_consultorio, terminologia')
       .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
@@ -96,10 +96,16 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
       .select('*')
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', efectivo.terapeutaId),
+    supabase
+      .from('tipos_turno')
+      .select('id, nombre')
+      .eq('terapeuta_id', efectivo.terapeutaId),
   ])
 
   const historial = armarHistorialParaImprimir({
     especialidadProfesional: profile?.especialidad ?? null,
+    terminologia: profile?.terminologia ?? null,
+    tiposTurno: tiposTurnoData ?? [],
     paciente,
     notas: notasData ?? [],
     turnos: turnosData ?? [],
@@ -110,8 +116,12 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
   })
 
   const ahoraAR = zonedDateArgentina(new Date().toISOString())
-  const matriculaFormateada = profile?.matricula
-    ? `${profile.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${profile.matricula}${profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
+  // profiles.matricula se guarda siempre sin prefijo (ver AjustesClient.tsx, que lo arma
+  // recién en la UI) — este strip es solo defensivo por si algún dato viejo lo tuviera
+  // (mismo patrón que src/app/api/planillas/pami/route.ts).
+  const matriculaLimpia = profile?.matricula?.replace(/^(MN|MP)\s*/i, '') ?? ''
+  const matriculaFormateada = matriculaLimpia
+    ? `${profile?.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${matriculaLimpia}${profile?.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
     : null
   const direccionConsultorio = [profile?.domicilio_consultorio, profile?.localidad_consultorio, profile?.provincia_consultorio]
     .filter((v): v is string => !!v && v.trim() !== '')
