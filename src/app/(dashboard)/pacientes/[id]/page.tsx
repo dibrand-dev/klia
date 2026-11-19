@@ -71,7 +71,7 @@ export default async function PacienteDetallePage({
   const [{ data: profile }, turnosRes, notasRes, medicacionesRes, profOSRes, { data: turnoRecurrente }, { data: googleTokens }, { data: osValidadasData }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, direccion, localidad, provincia, email, telefono, firma_sello_url, plan, estado_cuenta')
+      .select('cobrar_inasistencias, nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, direccion, localidad, provincia, email, telefono, firma_sello_url, plan, estado_cuenta, antropometria_activa')
       .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
@@ -157,13 +157,17 @@ export default async function PacienteDetallePage({
     ? await puedeUsarPortal(supabase, efectivo.terapeutaId)
     : false
 
+  // Antropometría es la única de las tres (Antropometría/Plan Alimentario/Hábitos) que
+  // además depende de este toggle explícito del profesional, no solo de la especialidad.
+  const antropometriaActiva = profile?.antropometria_activa ?? (profile?.especialidad === 'Nutrición')
+
   const tab: PacienteTabKey =
     searchParams.tab === 'datos' ||
     searchParams.tab === 'historial' ||
     searchParams.tab === 'informes' ||
     (searchParams.tab === 'archivos' && tieneDrive) ||
     searchParams.tab === 'admision' ||
-    searchParams.tab === 'composicion' ||
+    (searchParams.tab === 'composicion' && antropometriaActiva) ||
     searchParams.tab === 'plan-alimentario' ||
     searchParams.tab === 'habitos' ||
     searchParams.tab === 'refraccion' ||
@@ -201,6 +205,7 @@ export default async function PacienteDetallePage({
         especialidad={profile?.especialidad}
         esColaborador={efectivo.esColaborador}
         puedeUsarPortal={habilitaRegistro}
+        antropometriaActiva={antropometriaActiva}
       />
       <PacienteDetalle
         paciente={paciente}
