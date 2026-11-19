@@ -26,13 +26,15 @@
 .hc-lb { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .hc-pac b { display: block; font-size: 11pt; font-weight: 600; }
 
-.hc-sec { margin: 26px 0 10px; font-size: 10pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid var(--ink); }
+.hc-sec { margin: 26px 0 10px; font-size: 10pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid var(--ink); break-after: avoid; page-break-after: avoid; }
 .hc-sec:first-of-type { margin-top: 0; }
 
-/* Nota */
-.hc-nota { break-inside: avoid; page-break-inside: avoid; padding: 14px 0 16px; border-bottom: 1px solid var(--border-strong); }
+/* Nota — la entrada puede cortarse entre páginas (para que la página 1 se
+   llene desde el primer registro); solo sus sub-bloques chicos (encabezado +
+   primera línea, filas de KPIs, filas de tabla) se protegen de un corte feo. */
+.hc-nota { break-inside: auto; page-break-inside: auto; padding: 14px 0 16px; border-bottom: 1px solid var(--border-strong); }
 .hc-nota:last-of-type { border-bottom: 0; }
-.hc-nh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; }
+.hc-nh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 6px; break-after: avoid; page-break-after: avoid; }
 .hc-nh .hc-fe { font-size: 12pt; font-weight: 700; }
 .hc-nh .hc-meta { font-size: 10pt; color: var(--ink-2); }
 .hc-tx { font-size: 11pt; color: var(--ink); orphans: 3; widows: 3; }
@@ -41,23 +43,26 @@
 .hc-tx li { margin: 1px 0; }
 .hc-tx strong { font-weight: 700; }
 
-/* Bloque de módulo */
-.hc-mod { margin-top: 10px; border: 1px solid var(--border-strong); border-radius: 6px; break-inside: avoid; page-break-inside: avoid; }
-.hc-mod > .hc-mt { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-strong); border-radius: 6px 6px 0 0; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+/* Bloque de módulo — el contenedor ya no evita el corte (si no, toda la
+   entrada se iba entera a la página siguiente); solo sus filas chicas
+   (KPIs, filas de tabla) lo evitan. */
+.hc-mod { margin-top: 8px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.hc-mod > .hc-mt { display: flex; justify-content: space-between; gap: 12px; padding: 5px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-strong); border-radius: 6px 6px 0 0; font-size: 8.5pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; break-after: avoid; page-break-after: avoid; }
 .hc-mod > .hc-mt span { font-weight: 500; color: var(--muted); letter-spacing: .04em; }
-.hc-mb2 { padding: 8px 10px 10px; display: grid; gap: 8px; }
-.hc-kv { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; border: 1px solid var(--border); border-radius: 4px; }
+.hc-mb2 { padding: 6px 10px 8px; display: grid; gap: 6px; }
+.hc-kv { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; border: 1px solid var(--border); border-radius: 4px; break-inside: avoid; page-break-inside: avoid; }
 .hc-kv.c4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
 .hc-kv.c3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .hc-kv.c2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
 .hc-kv.c1 { grid-template-columns: minmax(0,1fr); }
-.hc-kv div { padding: 5px 8px; border-left: 1px solid var(--border); }
+.hc-kv div { padding: 4px 8px; border-left: 1px solid var(--border); }
 .hc-kv div:first-child { border-left: 0; }
 .hc-kv b { display: block; font-size: 10.5pt; font-weight: 600; font-variant-numeric: tabular-nums; }
 .hc-kv b small { font-size: 8.5pt; font-weight: 500; color: var(--ink-2); }
 .hc-st { font-size: 8.5pt; font-weight: 600; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 3px; }
 .hc-mod table { width: 100%; border-collapse: collapse; font-size: 10pt; font-variant-numeric: tabular-nums; }
-.hc-mod th, .hc-mod td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+.hc-mod tr { break-inside: avoid; page-break-inside: avoid; }
+.hc-mod th, .hc-mod td { border: 1px solid var(--border); padding: 3px 8px; text-align: left; vertical-align: top; }
 .hc-mod thead th { font-size: 8pt; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: #fff; }
 .hc-mod tbody th { font-weight: 700; width: 44px; }
 .hc-mod td.n { text-align: right; }
