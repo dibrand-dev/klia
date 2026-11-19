@@ -477,14 +477,24 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-18_
+_Actualizado el 2026-11-19_
 
 ```
-1bb503d fix: portal paciente — no degradar acceso activo, aceptación de invitación para cuenta existente, mail de vínculo y login con pantalla dividida
-335e8cb feat: portal paciente — aclarar cómo volver a ingresar (mail de invitación, mail de cuenta activada y pantalla de link usado)
-e3593f4 fix: portal paciente — recuperar tolerante a mayúsculas, inputs de email móviles y salida clara en link de activación usado
-f6f2693 test: validación de calcular() contra reporte real de ISAKMetry
-090e635 feat: informe profesional de antropometría ISAK (6 páginas, imprimible)
-b1925cd fix: menú de acciones de vendedores OPS no se corta + reenviar invitación
-69a876b docs: CLAUDE.md - commits del dia 2026-11-17
+84d3223 feat: asociar medición antropométrica al turno del día
+a624ac1 fix: suma de 8 pliegues en el bloque de antropometría del historial
+e3b7380 feat: bloque de antropometría dentro de la sesión del historial
+7b8689b fix: tipografía del informe público según diseño (Geist)
+e4058d3 chore: quitar distribución adiposo/muscular del informe profesional (decisión de producto)
+39206d3 fix: botón imprimir según diseño y barras de fraccionamiento tisular sin pista vacía
+bec9d3e feat: distribución adiposo/muscular en el informe profesional de antropometría
+95e0eaa fix: tracking solo en rutas públicas de marketing y conversión
+8d7cb36 fix: sin tracking en páginas públicas con token de paciente y matrícula/teléfono en informe del paciente
+193b889 fix: quitar tejido residual de los informes de antropometría ISAK 1
+8d66112 feat: niveles del somatotipo según tabla de la nutricionista (5 niveles, redondeo a 1 decimal)
+ab2d7e7 feat: informe público de antropometría para el paciente y SlideOver Compartir
+86b01e9 feat: etiquetas parametrizables en somatocarta, clasificación sobre valor mostrado y helpers de comparación y URLs
+30e6bbe feat: somatotipo clasifica con redondeo a 0,5 (pendiente confirmación)
+dafb054 fix: ISAK 1 es fraccionamiento tisular y escala músculo/óseo con cortes exactos
+568de71 feat: fuente de cada referencia en el informe profesional
+5a45f04 docs: CLAUDE.md - commits del dia 2026-11-18
 ```
