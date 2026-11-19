@@ -573,7 +573,7 @@ export default async function InformeAntropometriaPage({
       { l: 'IMC', u: 'kg/m²', a: R.salud.imc, p: RP?.salud.imc ?? null, d: 1, ref: esMenorConocido ? '—' : '18,5 – 24,9', interp: imcInterp },
       { l: 'Cintura / cadera', u: '', a: R.salud.cinturaCadera, p: RP?.salud.cinturaCadera ?? null, d: 2, ref: iccC != null ? `< ${fmt(iccC, 2)} (${sexo === 'M' ? 'hombres' : 'mujeres'})` : avisoSexo, interp: iccC != null ? cutText(R.salud.cinturaCadera, iccC) : avisoSexo },
       { l: 'Cintura / talla', u: '', a: R.salud.cinturaTalla, p: RP?.salud.cinturaTalla ?? null, d: 2, ref: '< 0,50', interp: cutText(R.salud.cinturaTalla, CORTES_SALUD.cinturaTalla) },
-      { l: 'Índice de conicidad', u: '', a: R.salud.conicidad, p: RP?.salud.conicidad ?? null, d: 2, ref: conC != null ? `< ${fmt(conC, 2)} (${sexo === 'M' ? 'hombres' : 'mujeres'})` : avisoSexo, interp: conC != null ? (catConicidad === 'normal' ? 'Por debajo del punto de corte de riesgo cardiometabólico.' : 'En o por encima del punto de corte de riesgo cardiometabólico.') : avisoSexo },
+      { l: 'Índice de conicidad', u: '', a: R.salud.conicidad, p: RP?.salud.conicidad ?? null, d: 2, ref: conC != null ? `< ${fmt(conC, 2)} (${sexo === 'M' ? 'hombres' : 'mujeres'})` : avisoSexo, interp: conC != null ? (catConicidad === 'normal' ? 'Por debajo del punto de corte de riesgo coronario.' : 'En o por encima del punto de corte de riesgo coronario.') : avisoSexo },
     ]
     PAGINAS.push({
       titulo: 'Índices de salud', subtitulo: 'Indicadores de riesgo',

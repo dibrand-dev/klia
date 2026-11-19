@@ -11,9 +11,9 @@ export const FUENTES: Record<ClaveFuente, string | null> = {
   tejidoMuscular: 'Lee (2000)',
   tejidoOseo: 'Rocha (1974)',
   somatotipo: 'Heath-Carter',
-  // Los cortes por sexo (M 1,25 / F 1,18) tienen autor sin confirmar: no citarlo hasta
-  // que la nutricionista lo confirme — solo se cita la fórmula del índice.
-  conicidad: 'Fórmula: Valdez (1991)',
+  // Decisión cerrada con la nutricionista: los cortes por sexo (M 1,25 / F 1,18) son de
+  // Pitanga y Lessa (2004) — riesgo coronario en adultos de Salvador, Brasil.
+  conicidad: 'Fórmula: Valdez (1991) · Cortes: Pitanga y Lessa (2004)',
   imc: 'OMS',
   cinturaCaderaOms: 'OMS (F <0,85, M <0,90)',
   // PENDIENTE: autor a confirmar con la nutricionista

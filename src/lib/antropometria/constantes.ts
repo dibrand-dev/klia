@@ -58,16 +58,15 @@ export const RANGOS_MUSCULO_OSEO: Record<Sexo, readonly [number, number, number,
   M: [2.34, 2.44, 3.11, 3.29],
 }
 
-/** Cortes de salud (OMS para cintura/cadera). Conicidad <1,40: sin validar (de ISAKMetry). */
+/** Cortes de salud (OMS para cintura/cadera). */
 export const CORTES_SALUD = {
   cinturaCadera: { F: 0.85, M: 0.9 } as Record<Sexo, number>,
   cinturaTalla: 0.5,
-  conicidad: 1.4,
 }
 
-// Aprobado por la nutricionista el 17/11/2026: cortes de conicidad por sexo, del diseño del
-// informe profesional. No reemplazan a CORTES_SALUD.conicidad (genérico, 1.4) — nada fuera de
-// esta librería lo usa para clasificar hoy, así que no se tocó.
+// Decisión cerrada con la nutricionista: cortes de conicidad por sexo, de Pitanga y Lessa
+// (2004) — riesgo coronario en adultos de Salvador, Brasil (la fórmula del índice es de
+// Valdez 1991). Ver fuentes.ts.
 export const CORTES_CONICIDAD_POR_SEXO: Record<Sexo, number> = { M: 1.25, F: 1.18 }
 
 // Tabla provista por la nutricionista, 18/11/2026; reemplaza los cortes anteriores.
