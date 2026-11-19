@@ -4,10 +4,6 @@
    hace falta un :root paralelo (mismo criterio que historial-print.css). */
 
 .isak-root { margin: 0; background: #E9EBEF; font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; font-size: 10pt; line-height: 1.45; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.isak-toolbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; }
-.isak-toolbar a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; font-weight: 600; }
-.isak-toolbar a svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
-.isak-sp { flex: 1; }
 .isak-pages { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px 16px 56px; overflow-x: auto; }
 
 .isak-page { width: 210mm; height: 297mm; flex: none; background: #fff; padding: 11mm 13mm 9mm; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(11,18,32,.08), 0 8px 24px rgba(11,18,32,.06); overflow: hidden; }
@@ -90,7 +86,6 @@
 
 @media print {
   .isak-root { background: #fff; }
-  .isak-toolbar { display: none !important; }
   .isak-pages { padding: 0; gap: 0; overflow: visible; }
   .isak-page { box-shadow: none; break-after: page; page-break-after: always; }
   .isak-page:last-child { break-after: auto; }

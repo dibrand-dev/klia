@@ -6,7 +6,7 @@ import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaI
 import { zonedDateArgentina } from '@/lib/timezone'
 import { armarHistorialParaImprimir, fmt, fmtDioptria, TITULO_MODULO, type BloqueModulo } from '@/lib/historial/armarImpresion'
 import { codigoPaciente } from '@/lib/pacientes/codigo'
-import ImprimirButton from './ImprimirButton'
+import BarraImprimir from '@/app/(print)/BarraImprimir'
 import './historial-print.css'
 
 export const dynamic = 'force-dynamic'
@@ -146,10 +146,10 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
           @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 8.5pt 'Inter', sans-serif; color: #5B6472; }
         }
       ` }} />
-      <div className="hc-toolbar">
-        <ImprimirButton />
-        <span>A4 · incluye pie con número de página</span>
-      </div>
+      <BarraImprimir
+        linkFicha={{ href: `/pacientes/${params.id}`, label: `Ficha de ${paciente.nombre} ${paciente.apellido}` }}
+        leyenda="A4 · incluye pie con número de página"
+      />
       <main className="hc-sheet">
         <header className="hc-mb">
           <div>

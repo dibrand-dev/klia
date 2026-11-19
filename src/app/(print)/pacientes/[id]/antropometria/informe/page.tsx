@@ -12,7 +12,7 @@ import {
   type Paciente as PacienteCalculo, type Sexo, type Medidas, type VariablePhantom,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
-import ImprimirButton from '../../historial/exportar/ImprimirButton'
+import BarraImprimir from '@/app/(print)/BarraImprimir'
 import './informe-print.css'
 
 export const metadata = { title: 'Informe antropométrico — KLIA', robots: { index: false, follow: false } }
@@ -605,14 +605,7 @@ export default async function InformeAntropometriaPage({
 
   return (
     <div className="isak-root">
-      <div className="isak-toolbar">
-        <a href={`/pacientes/${params.id}`}>
-          <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth={1.8} fill="none" /></svg>
-          Ficha de {paciente.nombre} {paciente.apellido}
-        </a>
-        <span className="isak-sp" />
-        <ImprimirButton />
-      </div>
+      <BarraImprimir linkFicha={{ href: `/pacientes/${params.id}`, label: `Ficha de ${paciente.nombre} ${paciente.apellido}` }} />
       <main className="isak-pages">
         {PAGINAS.map((p, i) => (
           <section className="isak-page" key={p.titulo}>
