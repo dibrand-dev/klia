@@ -259,6 +259,58 @@ function BloqueNutricionRender({ b }: { b: import('@/lib/historial/armarImpresio
           <Celda label="Índice cintura/cadera" valor={b.indiceCinturaCadera != null ? fmt(b.indiceCinturaCadera, 2) : null} />
         </div>
       )}
+      <BloqueIsakRender b={b} />
+    </>
+  )
+}
+
+const HAY_CAMPO_ISAK = (b: import('@/lib/historial/armarImpresion').BloqueNutricion): boolean =>
+  b.pliegueBiceps != null || b.pliegueCrestaIliaca != null || b.pliegueSupraespinal != null ||
+  b.pliegueMuslo != null || b.plieguePantorrilla != null || b.perimetroBrazoContraido != null ||
+  b.perimetroMusloMedio != null || b.diametroHumero != null || b.diametroBiestiloideo != null ||
+  b.diametroFemur != null || b.tallaSentado != null || b.envergadura != null || b.s6 != null || b.s8 != null
+
+function BloqueIsakRender({ b }: { b: import('@/lib/historial/armarImpresion').BloqueNutricion }) {
+  if (b.metodo !== 'isak' && !HAY_CAMPO_ISAK(b)) return null
+  return (
+    <>
+      {b.metodo === 'isak' && <p className="hc-st">Método: ISAK</p>}
+      {(b.pliegueBiceps != null || b.pliegueCrestaIliaca != null || b.pliegueSupraespinal != null || b.pliegueMuslo != null || b.plieguePantorrilla != null) && (
+        <table>
+          <thead><tr><th>Bíceps</th><th>Cresta ilíaca</th><th>Supraespinal</th><th>Muslo</th><th>Pantorrilla</th></tr></thead>
+          <tbody>
+            <tr>
+              <td className="n">{b.pliegueBiceps != null ? `${fmt(b.pliegueBiceps, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueCrestaIliaca != null ? `${fmt(b.pliegueCrestaIliaca, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueSupraespinal != null ? `${fmt(b.pliegueSupraespinal, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueMuslo != null ? `${fmt(b.pliegueMuslo, 0)} mm` : '—'}</td>
+              <td className="n">{b.plieguePantorrilla != null ? `${fmt(b.plieguePantorrilla, 0)} mm` : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {(b.perimetroBrazoContraido != null || b.perimetroMusloMedio != null || b.diametroHumero != null || b.diametroBiestiloideo != null || b.diametroFemur != null) && (
+        <table>
+          <thead><tr><th>Perím. brazo contraído</th><th>Perím. muslo medio</th><th>Diám. húmero</th><th>Diám. biestiloideo</th><th>Diám. fémur</th></tr></thead>
+          <tbody>
+            <tr>
+              <td className="n">{b.perimetroBrazoContraido != null ? `${fmt(b.perimetroBrazoContraido, 1)} cm` : '—'}</td>
+              <td className="n">{b.perimetroMusloMedio != null ? `${fmt(b.perimetroMusloMedio, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroHumero != null ? `${fmt(b.diametroHumero, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroBiestiloideo != null ? `${fmt(b.diametroBiestiloideo, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroFemur != null ? `${fmt(b.diametroFemur, 1)} cm` : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {(b.tallaSentado != null || b.envergadura != null || b.s6 != null || b.s8 != null) && (
+        <div className="hc-kv c3">
+          <Celda label="Talla sentado" valor={b.tallaSentado != null ? fmt(b.tallaSentado, 1) : null} unidad="cm" />
+          <Celda label="Envergadura" valor={b.envergadura != null ? fmt(b.envergadura, 1) : null} unidad="cm" />
+          <Celda label="Σ6 pliegues" valor={b.s6 != null ? fmt(b.s6, 1) : null} unidad="mm" />
+          <Celda label="Σ8 pliegues" valor={b.s8 != null ? fmt(b.s8, 1) : null} unidad="mm" />
+        </div>
+      )}
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { parseISO, differenceInYears } from 'date-fns'
 import type { NotaClinica, TurnoRow, Paciente, RegistroAntropometrico, RegistroPIO, RegistroRefraccion, RegistroEspecialidad } from '@/types/database'
 import { calcularIMC, clasificarIMC, calcularGEB } from '@/lib/nutricion/calculos'
+import { calcular, medidasDesdeRegistro } from '@/lib/antropometria'
 import { calcularPIOCorregida, calcularEquivalenteEsferico } from '@/lib/oftalmologia/calculos'
 import { clasificarTA } from '@/lib/clinica-medica/calculos'
 import { severidadPHQ9, severidadGAD7 } from '@/lib/psicologia/calculos'
@@ -43,6 +44,23 @@ export interface BloqueNutricion {
   imc: { valor: number; label: string } | null
   geb: number | null
   indiceCinturaCadera: number | null
+  /** ISAK (perfil restringido) — además de los campos de arriba, nunca en vez de. Todo
+   * opcional: solo se completa lo que no es null; nunca se calcula con datos faltantes. */
+  metodo?: 'basico' | 'isak' | 'otro'
+  pliegueBiceps?: number | null
+  pliegueCrestaIliaca?: number | null
+  pliegueSupraespinal?: number | null
+  pliegueMuslo?: number | null
+  plieguePantorrilla?: number | null
+  perimetroBrazoContraido?: number | null
+  perimetroMusloMedio?: number | null
+  diametroHumero?: number | null
+  diametroBiestiloideo?: number | null
+  diametroFemur?: number | null
+  tallaSentado?: number | null
+  envergadura?: number | null
+  s6?: number | null
+  s8?: number | null
 }
 
 export interface BloqueOftalmologia {
@@ -146,6 +164,9 @@ function armarBloqueNutricion(r: RegistroAntropometrico, paciente: Paciente): Bl
   const edad = edadA(r.fecha, paciente.fecha_nacimiento)
   const geb = sexo != null && edad != null ? calcularGEB(r.peso, r.altura, edad, sexo, 'mifflin') : null
   const indiceCC = r.cintura && r.cadera ? r.cintura / r.cadera : null
+  // Σ6/Σ8 con la misma función que usa el bloque de antropometría del Historial — nunca
+  // se reimplementa la suma. calcular() ya devuelve null si falta algún pliegue.
+  const sumatorias = calcular(medidasDesdeRegistro(r), { sexo: null, edad: null }).sumatorias
   return {
     peso: r.peso, altura: r.altura, cintura: r.cintura, cadera: r.cadera,
     porcentajeGrasa: r.porcentaje_grasa, porcentajeMusculo: r.porcentaje_musculo,
@@ -155,6 +176,21 @@ function armarBloqueNutricion(r: RegistroAntropometrico, paciente: Paciente): Bl
     imc: imcValor != null ? { valor: imcValor, label: clasificarIMC(imcValor).label } : null,
     geb,
     indiceCinturaCadera: indiceCC,
+    metodo: (r.metodo_medicion as 'basico' | 'isak' | 'otro' | null) ?? undefined,
+    pliegueBiceps: r.pliegue_biceps,
+    pliegueCrestaIliaca: r.pliegue_cresta_iliaca,
+    pliegueSupraespinal: r.pliegue_supraespinal,
+    pliegueMuslo: r.pliegue_muslo,
+    plieguePantorrilla: r.pliegue_pantorrilla,
+    perimetroBrazoContraido: r.perimetro_brazo_contraido,
+    perimetroMusloMedio: r.perimetro_muslo_medio,
+    diametroHumero: r.diametro_humero,
+    diametroBiestiloideo: r.diametro_biestiloideo,
+    diametroFemur: r.diametro_femur,
+    tallaSentado: r.talla_sentado,
+    envergadura: r.envergadura,
+    s6: sumatorias.s6,
+    s8: sumatorias.s8,
   }
 }
 
