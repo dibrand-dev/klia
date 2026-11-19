@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import SlideOver from '@/components/ui/SlideOver'
 import {
-  calcular, fmt, somatochart, medidasDesdeRegistro,
-  type Medidas, type Paciente as PacienteCalculo,
+  calcular, fmt, somatochart, medidasDesdeRegistro, resolverTurnoParaRegistro, rangoDiaCalendarioAR,
+  type Medidas, type Paciente as PacienteCalculo, type TurnoCandidato,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
 import './nuevo-registro.css'
@@ -23,6 +23,8 @@ interface Props {
   pacienteFechaNacimiento: string | null
   /** Registro a editar. null = alta de un registro nuevo. */
   registro: RegistroAntropometrico | null
+  /** Turno explícito (si el caller ya lo conoce) — tiene prioridad sobre resolverTurnoParaRegistro. Ningún caller lo pasa hoy. */
+  turnoId?: string | null
 }
 
 type Metodo = 'basico' | 'isak' | 'otro'
@@ -109,7 +111,7 @@ function medidasDesdeVals(vals: Record<string, string>): Medidas {
 }
 
 export default function NuevoRegistroSlide({
-  open, onClose, pacienteId, pacienteNombre, pacienteApellido, pacienteGenero, pacienteFechaNacimiento, registro,
+  open, onClose, pacienteId, pacienteNombre, pacienteApellido, pacienteGenero, pacienteFechaNacimiento, registro, turnoId,
 }: Props) {
   const router = useRouter()
   const esEdicion = !!registro
@@ -231,6 +233,31 @@ export default function NuevoRegistroSlide({
     }, 900)
   }
 
+  // Turno al que corresponde esta medición cargada a mano, para que el bloque de
+  // antropometría del Historial pueda emparejarla por turno_id. Nunca bloquea el
+  // guardado: cualquier error de consulta cae a null, igual que antes de esto.
+  async function resolverTurnoId(excluirRegistroId: string | null): Promise<string | null> {
+    if (turnoId) return turnoId
+    try {
+      const supabase = createClient()
+      const { desde, hasta } = rangoDiaCalendarioAR(fecha)
+      const [{ data: turnosData, error: turnosError }, { data: ocupadosData, error: ocupadosError }] = await Promise.all([
+        supabase.from('turnos').select('id, fecha_hora, estado').eq('paciente_id', pacienteId).gte('fecha_hora', desde).lt('fecha_hora', hasta),
+        supabase.from('registros_antropometricos').select('id, turno_id').eq('paciente_id', pacienteId).not('turno_id', 'is', null),
+      ])
+      if (turnosError || ocupadosError) return null
+      const turnosCandidatos = (turnosData ?? []) as TurnoCandidato[]
+      const ocupados = new Set<string>(
+        ((ocupadosData ?? []) as { id: string; turno_id: string | null }[])
+          .filter((r) => r.id !== excluirRegistroId && r.turno_id)
+          .map((r) => r.turno_id as string)
+      )
+      return resolverTurnoParaRegistro(turnosCandidatos, fecha, ocupados, new Date())
+    } catch {
+      return null
+    }
+  }
+
   async function handleGuardar() {
     if (!esEdicion && !terapeutaId) {
       setError('No se pudo identificar al profesional. Recargá la página e intentá de nuevo.')
@@ -259,6 +286,10 @@ export default function NuevoRegistroSlide({
     if (payload.perfil_medicion === undefined) delete payload.perfil_medicion
 
     if (esEdicion && registro) {
+      // Solo se intenta resolver si el registro todavía no tiene turno — uno ya asociado nunca se toca.
+      if (!registro.turno_id) {
+        payload.turno_id = await resolverTurnoId(registro.id)
+      }
       const { error: dbError } = await supabase
         .from('registros_antropometricos')
         .update(payload as never)
@@ -268,9 +299,10 @@ export default function NuevoRegistroSlide({
         setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
       }
     } else {
+      const turnoResuelto = await resolverTurnoId(null)
       const { error: dbError } = await supabase
         .from('registros_antropometricos')
-        .insert({ ...payload, terapeuta_id: terapeutaId, paciente_id: pacienteId, turno_id: null } as never)
+        .insert({ ...payload, terapeuta_id: terapeutaId, paciente_id: pacienteId, turno_id: turnoResuelto } as never)
       if (dbError) {
         console.error('[NuevoRegistroSlide] error al insertar registro antropométrico', dbError.code, dbError.message, dbError)
         setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
