@@ -250,7 +250,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     localidad: profile.localidad ?? '',
     direccion: profile.direccion ?? '',
     terminologia: (profile.terminologia ?? 'sesion') as 'sesion' | 'consulta',
+    antropometria_certificacion: profile.antropometria_certificacion ?? '',
   })
+  const [antropometriaActiva, setAntropometriaActiva] = useState<boolean>(
+    profile.antropometria_activa ?? (profile.especialidad === 'Nutrición')
+  )
   const redesRef = useRef<RedesSociales>({
     instagram_url: profile.instagram_url ?? null,
     facebook_url: profile.facebook_url ?? null,
@@ -435,6 +439,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       localidad: perfilForm.localidad || null,
       direccion: perfilForm.direccion || null,
       terminologia: perfilForm.terminologia,
+      antropometria_certificacion: perfilForm.antropometria_certificacion.trim().slice(0, 60) || null,
+      antropometria_activa: antropometriaActiva,
       ...redesRef.current,
     }).eq('id', profile.id)
     if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
@@ -987,6 +993,17 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   )}
                 </div>
                 <div style={fieldStyle}>
+                  <label style={labelStyle}>Certificación en antropometría</label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    placeholder="Ej: ISAK nivel 1"
+                    maxLength={60}
+                    value={perfilForm.antropometria_certificacion}
+                    onChange={e => setPerfilForm(p => ({ ...p, antropometria_certificacion: e.target.value }))}
+                  />
+                </div>
+                <div style={fieldStyle}>
                   <label style={labelStyle}>Teléfono de contacto</label>
                   <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                     <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>+54</span>
@@ -1022,6 +1039,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <span style={hintStyle}>Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.</span>
                 </div>
               </div>
+
+              <ToggleRow
+                name="Módulo de antropometría"
+                desc="Muestra la solapa Antropometría en la ficha de tus pacientes."
+                on={antropometriaActiva}
+                onChange={() => setAntropometriaActiva((v) => !v)}
+              />
 
               <div style={secFootStyle}>
                 {perfilSaved && (
