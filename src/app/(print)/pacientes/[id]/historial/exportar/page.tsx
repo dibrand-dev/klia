@@ -5,11 +5,36 @@ import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { zonedDateArgentina } from '@/lib/timezone'
 import { armarHistorialParaImprimir, fmt, fmtDioptria, TITULO_MODULO, type BloqueModulo } from '@/lib/historial/armarImpresion'
+import { codigoPaciente } from '@/lib/pacientes/codigo'
 import ImprimirButton from './ImprimirButton'
 import './historial-print.css'
 
-export const metadata = { title: 'Historia clínica — KLIA', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
+
+// Caracteres inválidos para nombre de archivo (Windows/macOS) — el navegador usa
+// el <title> como nombre sugerido al "Guardar como PDF".
+function sanitizarNombreArchivo(texto: string): string {
+  return texto.replace(/[\\/:*?"<>|]/g, '').trim()
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const fallback = { title: 'Historia clínica — KLIA', robots: { index: false, follow: false } }
+  const supabase = createClient()
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo || efectivo.esColaborador) return fallback
+
+  const { data: paciente } = await supabase
+    .from('pacientes')
+    .select('id, nombre, apellido')
+    .eq('id', params.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .single()
+
+  if (!paciente) return fallback
+
+  const titulo = sanitizarNombreArchivo(`${paciente.nombre} ${paciente.apellido} - HCE ${codigoPaciente(paciente.id)} - KLIA`)
+  return { title: titulo, robots: { index: false, follow: false } }
+}
 
 function fmtFechaCorta(fechaISO: string): string {
   return format(parseISO(fechaISO), 'dd/MM/yyyy')

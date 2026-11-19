@@ -5,6 +5,7 @@ import './foto-paciente.css'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseISO, differenceInYears, format } from 'date-fns'
+import { codigoPaciente } from '@/lib/pacientes/codigo'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
 import { formatNombreCompleto } from '@/lib/utils'
@@ -153,7 +154,7 @@ export default function PacienteHeader({
 
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="patient-id-row">
-              <span className="mono">PAC-{paciente.id.slice(0, 8).toUpperCase()}</span>
+              <span className="mono">{codigoPaciente(paciente.id)}</span>
               <span className={`pill-status ${paciente.activo ? '' : 'inactivo'}`}>
                 <span className="dot" />
                 {paciente.activo ? 'En tratamiento' : 'Inactivo'}

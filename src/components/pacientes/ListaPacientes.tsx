@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format, parseISO, isToday, isYesterday, isTomorrow } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { codigoPaciente } from '@/lib/pacientes/codigo'
 import { formatNombreCompleto } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Paciente } from '@/types/database'
@@ -456,7 +457,7 @@ function PacienteCard({ paciente }: { paciente: PacienteListado }) {
         )}
         <div className="dir-pc-id">
           <h3>{nombre}</h3>
-          <span className="code">PAC-{paciente.id.slice(0, 8).toUpperCase()}</span>
+          <span className="code">{codigoPaciente(paciente.id)}</span>
         </div>
 
         <div ref={menuRef} className="dir-menu-wrap">
