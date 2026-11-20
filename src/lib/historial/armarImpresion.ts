@@ -42,7 +42,8 @@ export interface BloqueNutricion {
   pliegueAbdominal: number | null
   perimetroBrazo: number | null
   perimetroPierna: number | null
-  imc: { valor: number; label: string } | null
+  // label ausente en menores de 18 (EDAD_ADULTO) — los cortes son de adulto, ver clasificarIMC.
+  imc: { valor: number; label?: string } | null
   geb: number | null
   indiceCinturaCadera: number | null
   /** ISAK (perfil restringido) — además de los campos de arriba, nunca en vez de. Todo
@@ -176,7 +177,7 @@ function armarBloqueNutricion(r: RegistroAntropometrico, paciente: Paciente): Bl
     pliegueTricipital: r.pliegue_tricipital, pliegueSubescapular: r.pliegue_subescapular,
     pliegueSuprailiaco: r.pliegue_suprailiaco, pliegueAbdominal: r.pliegue_abdominal,
     perimetroBrazo: r.perimetro_brazo, perimetroPierna: r.perimetro_pierna,
-    imc: imcValor != null ? { valor: imcValor, label: clasificarIMC(imcValor).label } : null,
+    imc: imcValor != null ? { valor: imcValor, label: clasificarIMC(imcValor, edad)?.label } : null,
     geb,
     indiceCinturaCadera: indiceCC,
     metodo: (r.metodo_medicion as 'basico' | 'isak' | 'otro' | null) ?? undefined,

@@ -5,6 +5,8 @@ import { armarHistorialParaImprimir } from './armarImpresion'
 import type { Paciente, NotaClinica, TurnoRow, RegistroAntropometrico } from '@/types/database'
 
 const paciente = { genero: 'F', fecha_nacimiento: '1990-01-01' } as unknown as Paciente
+// 16 años a la fecha del registro de los tests ('2026-04-18') — menor de EDAD_ADULTO (18).
+const pacienteMenor = { genero: 'F', fecha_nacimiento: '2010-01-01' } as unknown as Paciente
 
 function nota(over: Partial<NotaClinica> = {}): NotaClinica {
   return {
@@ -94,4 +96,34 @@ test('registro ISAK parcial: falta un pliegue (cresta ilíaca) → Σ8 null, Σ6
   assert.equal(antro.s6, 80)
   assert.equal(antro.s8, null)
   assert.equal(antro.pliegueCrestaIliaca, null)
+})
+
+test('paciente adulto: el IMC trae clasificación (label)', () => {
+  const r = registro()
+  const res = armarHistorialParaImprimir({
+    especialidadProfesional: 'Nutrición', terminologia: 'sesion', tiposTurno: [], paciente,
+    notas: [nota()], turnos: [turno()], registrosAntropometricos: [r],
+    registrosPio: [], registrosRefraccion: [], registrosEspecialidad: [],
+  })
+  const bloque = res.notas[0].modulo
+  assert.ok(bloque && bloque.tipo === 'Nutrición')
+  const antro = bloque.antro
+  assert.ok(antro.imc)
+  assert.equal(antro.imc?.valor, 70 / (1.65 * 1.65))
+  assert.equal(antro.imc?.label, 'Sobrepeso')
+})
+
+test('paciente menor de 18: el IMC numérico se mantiene, sin clasificación (label ausente)', () => {
+  const r = registro()
+  const res = armarHistorialParaImprimir({
+    especialidadProfesional: 'Nutrición', terminologia: 'sesion', tiposTurno: [], paciente: pacienteMenor,
+    notas: [nota()], turnos: [turno()], registrosAntropometricos: [r],
+    registrosPio: [], registrosRefraccion: [], registrosEspecialidad: [],
+  })
+  const bloque = res.notas[0].modulo
+  assert.ok(bloque && bloque.tipo === 'Nutrición')
+  const antro = bloque.antro
+  assert.ok(antro.imc)
+  assert.equal(antro.imc?.valor, 70 / (1.65 * 1.65))
+  assert.equal(antro.imc?.label, undefined)
 })

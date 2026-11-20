@@ -46,8 +46,8 @@ export default function ModuloNutricion({ pacienteId, valores, onChange, edadPac
     if (!p || !a) return hint('Completá peso y altura')
     const imc = calcularIMC(p, a)
     if (imc == null) return hint('Completá peso y altura')
-    const c = clasificarIMC(imc)
-    return { val: f1(imc), sub: c.label }
+    const c = clasificarIMC(imc, edadPaciente)
+    return { val: f1(imc), sub: c?.label }
   })()
 
   const calcGeb: ResultadoCalc = (() => {
