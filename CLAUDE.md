@@ -477,17 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-20_
+_Actualizado el 2026-11-21_
 
 ```
-40562d6 fix: portal paciente — cerrar el detalle al guardar el comentario y botón Cerrar visible
-2690e65 feat: barra de impresión unificada
-b86188c fix: encabezado de la HC (matrícula, hora, tipo)
-3bbda55 fix: saltos de página y espacios en la HC
-a2e7d19 fix: nombre de archivo de la HC
-c92c210 fix: cita y texto de conicidad (Pitanga y Lessa)
-f8c6b1c feat: datos ISAK en la exportación de historia clínica
-e0a9ae9 feat: solapa Antropometría según antropometria_activa del profesional
-7b7f186 feat: certificación y toggle de antropometría en Ajustes
-c6eaeaa docs: CLAUDE.md - commits del dia 2026-11-19
+93ff65e fix: no clasificar IMC con cortes de adulto en menores de 18
+d44e4c0 docs: CLAUDE.md - commits del dia 2026-11-20
 ```
