@@ -91,3 +91,36 @@ test('somatochart: labels:true (compat) sigue mostrando las etiquetas default', 
   const svg = somatochart([], { labels: true })
   assert.ok(svg.includes('MESOMORFO'))
 })
+
+function puntoActual(svg: string): string {
+  const m = svg.match(/<circle cx="[^"]+" cy="[^"]+" r="5.5"[^>]*>/)
+  if (!m) throw new Error('No se encontró el punto "actual" en el SVG')
+  return m[0]
+}
+
+test('somatochart: siluetas apagado (default) produce el mismo string que siluetas:false', () => {
+  const pts = [{ x: -1.5, y: 2.3, kind: 'actual' as const }]
+  const sinOpcion = somatochart(pts)
+  const explicito = somatochart(pts, { siluetas: false })
+  assert.equal(sinOpcion, explicito)
+})
+
+test('somatochart: siluetas:true agrega exactamente 3 <svg ...viewBox="0 0 120 240"', () => {
+  const svg = somatochart([], { siluetas: true })
+  const matches = svg.match(/<svg x="[^"]+" y="[^"]+" width="[^"]+" height="[^"]+" viewBox="0 0 120 240"/g) ?? []
+  assert.equal(matches.length, 3)
+})
+
+test('somatochart: siluetas:true no cambia la posición del punto "actual"', () => {
+  const pts = [{ x: -1.5, y: 2.3, kind: 'actual' as const }]
+  const sin = puntoActual(somatochart(pts))
+  const con = puntoActual(somatochart(pts, { siluetas: true }))
+  assert.equal(sin, con)
+})
+
+test('somatochart: siluetas:true agranda el viewBox hacia arriba (y inicial negativo)', () => {
+  const svg = somatochart([], { siluetas: true })
+  const m = svg.match(/^<svg viewBox="0 (-?[\d.]+) /)
+  assert.ok(m, 'el SVG exterior debería tener viewBox="0 {minY} ..."')
+  assert.ok(Number(m![1]) < 0, `esperaba un y inicial negativo, dio ${m![1]}`)
+})

@@ -1,6 +1,8 @@
 // Somatocarta (SVG) y formatters es-AR. Librería pura: sin dependencias, sin I/O.
 // Portado de isak-data.js (diseño), excluyendo clasificadores textuales (fuera de alcance: informes).
 
+import { SILUETAS } from './siluetas'
+
 const MINUS = '−'
 
 /** Formatea un número en es-AR (coma decimal, menos tipográfico). */
@@ -59,6 +61,9 @@ export interface OpcionesSomatocarta {
   w?: number
   /** false oculta las etiquetas; un objeto las reemplaza (ej. "ENDOMORFIA" para el informe del paciente). Default: true, con "ENDOMORFO"/"MESOMORFO"/"ECTOMORFO". */
   labels?: boolean | EtiquetasSomatocarta
+  /** Siluetas de somatotipo (estilo A) en los 3 vértices. Default false — apagado no cambia
+   * una sola línea del SVG existente; todo lo nuevo va condicionado a esta opción. */
+  siluetas?: boolean
 }
 
 /**
@@ -85,7 +90,25 @@ export function somatochart(
     return `Q${p[0]} ${p[1]} ${b[0]} ${b[1]}`
   }
 
+  // Siluetas de somatotipo (estilo A, opción apagada por defecto) — todo en unidades de
+  // viewBox (no px reales; el SVG se escala solo al imprimir/mostrar), proporcional a k.
+  let minY = 0
+  let siluetasSvg = ''
+  if (c.siluetas) {
+    const hFig = 4 * k, anchoFig = hFig / 2
+    const fsL = Math.max(8, k * 0.62)
+    const bottomMeso = c.labels === false ? M[1] - 8 : M[1] - 8 - fsL - 3
+    const topMeso = bottomMeso - hFig
+    if (topMeso < 0) minY = topMeso - 4
+    const fig = (x: number, y: number, contenido: string) =>
+      `<svg x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${anchoFig.toFixed(1)}" height="${hFig.toFixed(1)}" viewBox="0 0 120 240" fill="${c.muted}" aria-hidden="true">${contenido}</svg>`
+    siluetasSvg += fig(cx - 8.6 * k, cy + 4 * k, SILUETAS.endo)
+    siluetasSvg += fig(cx + 6.6 * k, cy + 4 * k, SILUETAS.ecto)
+    siluetasSvg += fig(cx - k, topMeso, SILUETAS.meso)
+  }
+
   let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:${W}px;margin:0 auto" font-family="${c.font}" role="img" aria-label="Somatocarta">`
+  if (minY < 0) s = s.replace(`viewBox="0 0 ${W} ${H}"`, `viewBox="0 ${minY} ${W} ${H - minY}"`)
   for (let x = -8; x <= 8; x += 2) {
     const a = P(x, -8), b = P(x, 14)
     s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c.grid}" stroke-width="1"/>`
@@ -99,6 +122,7 @@ export function somatochart(
     ([a, b]) => { s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c.line}" stroke-width="1" stroke-dasharray="3 3"/>` },
   )
   s += `<circle cx="${O[0]}" cy="${O[1]}" r="1.6" fill="${c.muted}"/>`
+  if (c.siluetas) s += siluetasSvg
   if (c.labels !== false) {
     const etiquetas = typeof c.labels === 'object' ? c.labels : {}
     const txtMeso = etiquetas.meso ?? 'MESOMORFO', txtEndo = etiquetas.endo ?? 'ENDOMORFO', txtEcto = etiquetas.ecto ?? 'ECTOMORFO'

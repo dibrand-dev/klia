@@ -412,6 +412,7 @@ export default async function InformeAntropometriaPublicoPage({ params }: { para
               <div dangerouslySetInnerHTML={{ __html: somatochart(puntos, {
                 w: 250, ink: '#0E1430', muted: '#8A90A8', line: '#E5E7EF', grid: '#F1F2F7', prev: '#8A90A8', old: '#B9BED0', font: 'Inter,sans-serif',
                 labels: { endo: 'ENDOMORFIA', meso: 'MESOMORFIA', ecto: 'ECTOMORFIA' },
+                siluetas: true,
               }) }} />
               <div className="cleg">
                 <span><i className="sa" />Hoy</span>
