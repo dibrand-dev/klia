@@ -477,9 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-21_
+_Actualizado el 2026-11-22_
 
 ```
-93ff65e fix: no clasificar IMC con cortes de adulto en menores de 18
-d44e4c0 docs: CLAUDE.md - commits del dia 2026-11-20
+8a6cb06 feat: siluetas en la somatocarta del informe público del paciente
+6c51ed1 docs: CLAUDE.md - commits del dia 2026-11-21
 ```
