@@ -7,6 +7,8 @@ import { zonedDateArgentina } from '@/lib/timezone'
 import PrestadorActions from '@/components/ops/PrestadorActions'
 import PrestadorEditButton from '@/components/ops/PrestadorEditButton'
 import type { EmailLog } from '@/types/database'
+import { formatearCuit } from '@/lib/facturacion/cuit'
+import { CONDICIONES_IVA } from '@/lib/facturacion/constantes'
 
 export const metadata = { title: 'Detalle prestador — Klia Ops' }
 
@@ -127,6 +129,9 @@ export default async function PrestadorDetallePage({
             <dt>Especialidad</dt><dd>{profile.especialidad ?? '—'}</dd>
             <dt>Matrícula</dt><dd>{profile.matricula ?? '—'}</dd>
             <dt>Teléfono</dt><dd>{profile.telefono ?? '—'}</dd>
+            <dt>CUIT</dt><dd>{profile.cuit ? formatearCuit(profile.cuit) : '—'}</dd>
+            <dt>Condición IVA</dt><dd>{profile.condicion_iva ? (CONDICIONES_IVA.find((c) => c.value === profile.condicion_iva)?.label ?? profile.condicion_iva) : '—'}</dd>
+            <dt>Razón social</dt><dd>{profile.razon_social ?? '—'}</dd>
             <dt>Registro</dt><dd>{format(zonedDateArgentina(profile.created_at), "d 'de' MMMM yyyy", { locale: es })}</dd>
             <dt>Último acceso</dt><dd>{lastSignInLabel}</dd>
           </dl>

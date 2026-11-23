@@ -16,6 +16,8 @@ import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
 import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
+import { normalizarCuit, validarCuit, formatearCuit } from '@/lib/facturacion/cuit'
+import { CONDICIONES_IVA } from '@/lib/facturacion/constantes'
 import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
 import type { TipoTurnoConSedes, SedeTipoTurno } from '@/components/tipos-turno/TiposTurnoSection'
 
@@ -251,6 +253,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     direccion: profile.direccion ?? '',
     terminologia: (profile.terminologia ?? 'sesion') as 'sesion' | 'consulta',
     antropometria_certificacion: profile.antropometria_certificacion ?? '',
+    cuit: normalizarCuit(profile.cuit ?? ''),
+    condicion_iva: profile.condicion_iva ?? '',
+    razon_social: profile.razon_social ?? '',
   })
   const [antropometriaActiva, setAntropometriaActiva] = useState<boolean>(
     profile.antropometria_activa ?? (profile.especialidad === 'Nutrición')
@@ -423,6 +428,10 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         return
       }
     }
+    if (perfilForm.cuit && !validarCuit(perfilForm.cuit)) {
+      setPerfilError('El CUIT no es válido.')
+      return
+    }
     setPerfilLoading(true); setPerfilSaved(false)
     const supabase = createClient()
     const dniClean = perfilForm.dni.replace(/\D/g, '')
@@ -441,6 +450,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       terminologia: perfilForm.terminologia,
       antropometria_certificacion: perfilForm.antropometria_certificacion.trim().slice(0, 60) || null,
       antropometria_activa: antropometriaActiva,
+      cuit: perfilForm.cuit || null,
+      condicion_iva: perfilForm.condicion_iva || null,
+      razon_social: perfilForm.razon_social.trim().slice(0, 120) || null,
       ...redesRef.current,
     }).eq('id', profile.id)
     if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
@@ -1001,6 +1013,36 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                     maxLength={60}
                     value={perfilForm.antropometria_certificacion}
                     onChange={e => setPerfilForm(p => ({ ...p, antropometria_certificacion: e.target.value }))}
+                  />
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>CUIT <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ej: 20-12345678-6"
+                    maxLength={13}
+                    value={formatearCuit(perfilForm.cuit)}
+                    onChange={e => setPerfilForm(p => ({ ...p, cuit: normalizarCuit(e.target.value) }))}
+                  />
+                  <span style={hintStyle}>Para facturar tu suscripción de KLIA.</span>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Condición frente al IVA <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <select style={inputStyle} value={perfilForm.condicion_iva} onChange={e => setPerfilForm(p => ({ ...p, condicion_iva: e.target.value }))}>
+                    <option value="">Sin especificar</option>
+                    {CONDICIONES_IVA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Razón social <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    maxLength={120}
+                    value={perfilForm.razon_social}
+                    onChange={e => setPerfilForm(p => ({ ...p, razon_social: e.target.value }))}
                   />
                 </div>
                 <div style={fieldStyle}>

@@ -78,6 +78,10 @@ export type Database = {
           updated_at: string
           antropometria_certificacion: string | null
           antropometria_activa: boolean | null
+          cuit: string | null
+          condicion_iva: string | null
+          razon_social: string | null
+          facturacion_aviso_enviado_at: string | null
         }
         Insert: {
           id: string
@@ -152,6 +156,10 @@ export type Database = {
           updated_at?: string
           antropometria_certificacion?: string | null
           antropometria_activa?: boolean | null
+          cuit?: string | null
+          condicion_iva?: string | null
+          razon_social?: string | null
+          facturacion_aviso_enviado_at?: string | null
         }
         Update: {
           id?: string
@@ -226,6 +234,10 @@ export type Database = {
           updated_at?: string
           antropometria_certificacion?: string | null
           antropometria_activa?: boolean | null
+          cuit?: string | null
+          condicion_iva?: string | null
+          razon_social?: string | null
+          facturacion_aviso_enviado_at?: string | null
         }
         Relationships: []
       }
