@@ -31,6 +31,18 @@ export function clasificarIMC(imc: number, edad?: number | null): IMCInfo | null
   return { label: 'Obesidad', status: 'danger' }
 }
 
+// Único normalizador de sexo del repo — 'M'/'F' tal cual, o la palabra
+// completa ('masculino'/'femenino'), case-insensitive; cualquier otro valor
+// (incluido null) no clasifica. Reusar siempre esto en vez de reimplementar
+// el chequeo `=== 'M' || === 'F'` inline (ver armarImpresion.ts/NuevaNotaForm.tsx).
+export function normalizarSexo(genero: string | null | undefined): 'M' | 'F' | null {
+  if (!genero) return null
+  const g = genero.trim().toLowerCase()
+  if (g === 'm' || g === 'masculino') return 'M'
+  if (g === 'f' || g === 'femenino') return 'F'
+  return null
+}
+
 export type FormulaGEB = 'mifflin' | 'harris'
 
 export function calcularGEB(

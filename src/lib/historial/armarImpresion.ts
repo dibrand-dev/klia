@@ -1,6 +1,6 @@
 import { parseISO, differenceInYears } from 'date-fns'
 import type { NotaClinica, TurnoRow, Paciente, RegistroAntropometrico, RegistroPIO, RegistroRefraccion, RegistroEspecialidad } from '@/types/database'
-import { calcularIMC, clasificarIMC, calcularGEB } from '@/lib/nutricion/calculos'
+import { calcularIMC, clasificarIMC, calcularGEB, normalizarSexo } from '@/lib/nutricion/calculos'
 import { calcular, medidasDesdeRegistro } from '@/lib/antropometria'
 import { calcularPIOCorregida, calcularEquivalenteEsferico } from '@/lib/oftalmologia/calculos'
 import { clasificarTA } from '@/lib/clinica-medica/calculos'
@@ -158,13 +158,9 @@ function edadA(fechaReferenciaISO: string, fechaNacimientoISO: string | null): n
   return differenceInYears(parseISO(fechaReferenciaISO), parseISO(fechaNacimientoISO))
 }
 
-function sexoParaGEB(genero: string | null): 'M' | 'F' | null {
-  return genero === 'M' || genero === 'F' ? genero : null
-}
-
 function armarBloqueNutricion(r: RegistroAntropometrico, paciente: Paciente): BloqueNutricion {
   const imcValor = calcularIMC(r.peso, r.altura)
-  const sexo = sexoParaGEB(paciente.genero)
+  const sexo = normalizarSexo(paciente.genero)
   const edad = edadA(r.fecha, paciente.fecha_nacimiento)
   const geb = sexo != null && edad != null ? calcularGEB(r.peso, r.altura, edad, sexo, 'mifflin') : null
   const indiceCC = r.cintura && r.cadera ? r.cintura / r.cadera : null

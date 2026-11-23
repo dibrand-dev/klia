@@ -15,6 +15,8 @@ interface Props {
   onChange: (key: string, val: string | string[]) => void
   edadPaciente: number | null
   sexoPaciente: 'M' | 'F' | null
+  fechaNacimientoPaciente?: string | null
+  fechaNota?: string
 }
 
 // Especialidades sin módulo propio (incluye 'Otra especialidad' del diseño):
@@ -23,10 +25,20 @@ export function tieneModulo(especialidad: string | null | undefined): boolean {
   return !!especialidad && ['Nutrición', 'Oftalmología', 'Kinesiología', 'Odontología', 'Psicología', 'Clínica Médica'].includes(especialidad)
 }
 
-export default function ModuloEspecialidad({ especialidad, pacienteId, valores, onChange, edadPaciente, sexoPaciente }: Props) {
+export default function ModuloEspecialidad({ especialidad, pacienteId, valores, onChange, edadPaciente, sexoPaciente, fechaNacimientoPaciente, fechaNota }: Props) {
   switch (especialidad) {
     case 'Nutrición':
-      return <ModuloNutricion pacienteId={pacienteId} valores={valores} onChange={onChange} edadPaciente={edadPaciente} sexoPaciente={sexoPaciente} />
+      return (
+        <ModuloNutricion
+          pacienteId={pacienteId}
+          valores={valores}
+          onChange={onChange}
+          edadPaciente={edadPaciente}
+          sexoPaciente={sexoPaciente}
+          fechaNacimientoPaciente={fechaNacimientoPaciente ?? null}
+          fechaNota={fechaNota}
+        />
+      )
     case 'Oftalmología':
       return <ModuloOftalmologia pacienteId={pacienteId} valores={valores} onChange={onChange} />
     case 'Kinesiología':
