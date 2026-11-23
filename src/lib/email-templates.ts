@@ -231,6 +231,17 @@ export function emailPagoExitoso(
   `, '¡Pago confirmado! — KLIA')
 }
 
+export function emailDatosFacturacion({ nombre }: { nombre: string }): string {
+  return baseTemplate(`
+    ${icon('🧾', '#eff6ff')}
+    ${h1('Completá tus datos de facturación')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, gracias por tu suscripción a KLIA.`)}
+    ${para('Para poder emitirte la factura necesitamos que completes tu CUIT, tu condición frente al IVA y tu razón social.')}
+    ${cta('Cargar mis datos', 'https://app.klia.com.ar/ajustes')}
+    ${help('Podés completarlos cuando quieras en Ajustes → Perfil profesional.')}
+  `, 'Completá tus datos de facturación — KLIA')
+}
+
 export function emailPagoFallido(nombre: string, plan: string): string {
   return baseTemplate(`
     ${icon('⚠️', '#fffbeb')}

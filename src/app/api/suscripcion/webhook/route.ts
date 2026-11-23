@@ -5,6 +5,7 @@ import { preApproval, mpClient, mpAccessToken } from '@/lib/mercadopago'
 import { enviarEmail } from '@/lib/brevo'
 import { emailPagoExitoso, emailPagoFallido, emailSuscripcionCancelada } from '@/lib/email-templates'
 import { serviceClient } from '@/lib/supabase/service'
+import { avisarDatosFacturacion } from '@/lib/facturacion/aviso'
 
 // El SDK de mercadopago no tiene un cliente dedicado para el recurso
 // "authorized_payments" (los cobros recurrentes de una preapproval) — es el
@@ -217,6 +218,14 @@ export async function POST(req: NextRequest) {
         fecha_pago: paymentDetail.date_approved ?? new Date().toISOString(),
         raw: paymentDetail as unknown as Record<string, unknown>,
       })
+
+      if (paymentDetail.status === 'approved') {
+        try {
+          await avisarDatosFacturacion(db, resuelto.sub.terapeuta_id)
+        } catch (err) {
+          console.error('[webhook suscripcion] error en aviso de datos de facturación', resuelto.sub.terapeuta_id, err)
+        }
+      }
 
       return NextResponse.json({ ok: true })
     }
