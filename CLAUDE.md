@@ -477,9 +477,8 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-22_
+_Actualizado el 2026-11-23_
 
 ```
-8a6cb06 feat: siluetas en la somatocarta del informe público del paciente
-6c51ed1 docs: CLAUDE.md - commits del dia 2026-11-21
+5d422e7 feat: datos de facturación del profesional (CUIT, condición IVA, razón social)
 ```
