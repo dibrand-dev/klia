@@ -7,6 +7,8 @@ interface FormData {
   apellido: string
   email: string
   telefono: string
+  dni: string
+  fechaNacimiento: string
   coberturaId: string
   whatsappOptIn: boolean
 }
@@ -29,6 +31,8 @@ interface Props {
   onNext: () => void
   onBack: () => void
   sede?: SedePublica | null
+  requiereDni?: boolean
+  requiereFechaNacimiento?: boolean
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -56,6 +60,9 @@ function InputField({
   required,
   placeholder,
   prefix,
+  inputMode,
+  min,
+  max,
 }: {
   label: string
   id: string
@@ -65,6 +72,9 @@ function InputField({
   required?: boolean
   placeholder?: string
   prefix?: string
+  inputMode?: 'text' | 'numeric' | 'tel'
+  min?: string
+  max?: string
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -107,6 +117,9 @@ function InputField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
+          inputMode={inputMode}
+          min={min}
+          max={max}
           style={{
             flex: 1,
             padding: '11px 14px',
@@ -138,12 +151,18 @@ export default function StepDatos({
   onNext,
   onBack,
   sede,
+  requiereDni,
+  requiereFechaNacimiento,
 }: Props) {
   const duracion = tipoResuelto.duracion
   const precio = tipoResuelto.precio
 
   const fechaFmt = formatFecha(fecha)
-  const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
+  const isValid = Boolean(
+    form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
+    && (!requiereDni || form.dni.trim())
+    && (!requiereFechaNacimiento || form.fechaNacimiento.trim())
+  )
 
   function setField(k: keyof FormData, v: string) {
     onForm({ ...form, [k]: v })
@@ -227,6 +246,27 @@ export default function StepDatos({
         />
 
         <InputField
+          label={`DNI${requiereDni ? '' : ' (opcional)'}`}
+          id="bk-dni"
+          inputMode="numeric"
+          value={form.dni}
+          onChange={(v) => setField('dni', v)}
+          required={requiereDni}
+          placeholder="12345678"
+        />
+
+        <InputField
+          label={`Fecha de nacimiento${requiereFechaNacimiento ? '' : ' (opcional)'}`}
+          id="bk-fecha-nacimiento"
+          type="date"
+          value={form.fechaNacimiento}
+          onChange={(v) => setField('fechaNacimiento', v)}
+          required={requiereFechaNacimiento}
+          min="1900-01-01"
+          max={new Date().toISOString().slice(0, 10)}
+        />
+
+        <InputField
           label="Teléfono (opcional)"
           id="bk-telefono"
           type="tel"
@@ -235,6 +275,13 @@ export default function StepDatos({
           placeholder="11 1234-5678"
           prefix="+54"
         />
+
+        <p style={{ margin: '-6px 0 16px', fontSize: 11.5, color: '#8A93A1', lineHeight: 1.5 }}>
+          Usamos estos datos para tu ficha clínica. Más info en nuestra{' '}
+          <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#8A93A1', textDecoration: 'underline' }}>
+            Política de Privacidad
+          </a>.
+        </p>
 
         <label
           htmlFor="bk-whatsapp-opt-in"

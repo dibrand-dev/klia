@@ -24,6 +24,8 @@ interface DatosForm {
   apellido: string
   email: string
   telefono: string
+  dni: string
+  fechaNacimiento: string
   coberturaId: string
   whatsappOptIn: boolean
 }
@@ -384,6 +386,8 @@ export default function StepPago({
             apellido: datosForm.apellido,
             email: datosForm.email,
             telefono: datosForm.telefono || undefined,
+            dni: datosForm.dni || undefined,
+            fecha_nacimiento: datosForm.fechaNacimiento || undefined,
             cobertura_id: datosForm.coberturaId,
             whatsapp_opt_in: datosForm.whatsappOptIn,
             sede_id: sede?.id ?? undefined,

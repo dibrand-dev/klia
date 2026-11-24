@@ -366,6 +366,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [bookingEntrevistaVisible, setBookingEntrevistaVisible] = useState<boolean>((p.booking_entrevista_visible as boolean | null) ?? true)
   const [bookingVisibilidadError, setBookingVisibilidadError] = useState<string | null>(null)
   const [bookingRequierePago, setBookingRequierePago] = useState<boolean>((p.booking_requiere_pago as boolean | null) ?? true)
+  const [bookingRequiereDni, setBookingRequiereDni] = useState<boolean>((p.booking_requiere_dni as boolean | null) ?? false)
+  const [bookingRequiereFechaNacimiento, setBookingRequiereFechaNacimiento] = useState<boolean>((p.booking_requiere_fecha_nacimiento as boolean | null) ?? false)
   const [bookingSlug] = useState<string>((p.booking_slug as string | null) ?? '')
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingSaved, setBookingSaved] = useState(false)
@@ -678,6 +680,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       booking_sesion_visible: bookingSesionVisible,
       booking_entrevista_visible: bookingEntrevistaVisible,
       booking_requiere_pago: bookingRequierePago,
+      booking_requiere_dni: bookingRequiereDni,
+      booking_requiere_fecha_nacimiento: bookingRequiereFechaNacimiento,
     } as never).eq('id', profile.id)
     setBookingLoading(false); setBookingSaved(true)
     setTimeout(() => setBookingSaved(false), 2500)
@@ -1778,6 +1782,20 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
                 on={bookingRequierePago}
                 onChange={() => setBookingRequierePago(v => !v)}
+              />
+
+              <ToggleRow
+                name="Pedir DNI al reservar"
+                desc="El paciente tiene que completar su DNI para poder reservar."
+                on={bookingRequiereDni}
+                onChange={() => setBookingRequiereDni(v => !v)}
+              />
+
+              <ToggleRow
+                name="Pedir fecha de nacimiento al reservar"
+                desc="El paciente tiene que completar su fecha de nacimiento para poder reservar."
+                on={bookingRequiereFechaNacimiento}
+                onChange={() => setBookingRequiereFechaNacimiento(v => !v)}
               />
 
               <div style={secFootStyle}>

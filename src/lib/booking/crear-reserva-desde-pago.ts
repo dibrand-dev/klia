@@ -14,6 +14,8 @@ export type ReservaPendientePago = {
   apellido: string
   email: string | null
   telefono: string | null
+  dni: string | null
+  fecha_nacimiento: string | null
   whatsapp_opt_in: boolean
   fecha_hora: string
   duracion_min: number
@@ -33,12 +35,12 @@ export type ReservaPendientePago = {
 // profesional.
 export async function crearOReusarPacienteDesdeReserva(
   db: ReturnType<typeof serviceClient>,
-  reserva: Pick<ReservaPendientePago, 'terapeuta_id' | 'nombre' | 'apellido' | 'email' | 'telefono' | 'whatsapp_opt_in' | 'tipo_turno' | 'tipo_turno_id'>,
+  reserva: Pick<ReservaPendientePago, 'terapeuta_id' | 'nombre' | 'apellido' | 'email' | 'telefono' | 'dni' | 'fecha_nacimiento' | 'whatsapp_opt_in' | 'tipo_turno' | 'tipo_turno_id'>,
 ): Promise<string | null> {
   const emailNormalizado = normalizarEmail(reserva.email) ?? ''
   const { data: existentes } = await db
     .from('pacientes')
-    .select('id, nombre, apellido, activo, created_at')
+    .select('id, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
     .eq('terapeuta_id', reserva.terapeuta_id)
     .ilike('email', escaparIlike(emailNormalizado))
 
@@ -55,6 +57,8 @@ export async function crearOReusarPacienteDesdeReserva(
   if (existing) {
     const patch: Record<string, unknown> = {}
     if (!existing.activo) patch.activo = true
+    if (reserva.dni && !existing.dni) patch.dni = reserva.dni
+    if (reserva.fecha_nacimiento && !existing.fecha_nacimiento) patch.fecha_nacimiento = reserva.fecha_nacimiento
     if (reserva.whatsapp_opt_in) {
       patch.whatsapp_opt_in = true
       patch.whatsapp_opt_in_at = new Date().toISOString()
@@ -74,6 +78,8 @@ export async function crearOReusarPacienteDesdeReserva(
       apellido: reserva.apellido,
       email: emailNormalizado,
       telefono: reserva.telefono,
+      dni: reserva.dni,
+      fecha_nacimiento: reserva.fecha_nacimiento,
       activo: true,
       motivo_consulta: (!reserva.tipo_turno_id && reserva.tipo_turno === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,
       ...(reserva.whatsapp_opt_in ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString(), whatsapp_opt_in_origen: 'reserva_publica' } : {}),
@@ -246,8 +252,9 @@ export async function crearReservaDesdePago(
   // 5) Calendar/Meet + email de confirmación al paciente
   const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, reserva.terapeuta_id, medioPago, pago)
 
-  // 6) Dejar constancia del turno creado en la reserva ya reclamada
-  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id }).eq('hash', reserva.hash)
+  // 6) Dejar constancia del turno creado en la reserva ya reclamada, y
+  // limpiar dni/fecha_nacimiento ahora que ya se copiaron al paciente.
+  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id, dni: null, fecha_nacimiento: null }).eq('hash', reserva.hash)
 
   return {
     turnoId: turno.id,

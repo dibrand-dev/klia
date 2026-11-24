@@ -5,6 +5,7 @@ import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
 import { isSlotAvailable } from '@/lib/booking/slot-disponible'
 import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
+import { validarDniReserva, validarFechaNacimientoReserva } from '@/lib/booking/validar-datos-reserva'
 import { ARGENTINA_TZ } from '@/lib/timezone'
 import { serviceClient } from '@/lib/supabase/service'
 
@@ -28,13 +29,15 @@ export async function POST(req: NextRequest) {
     apellido?: string
     email?: string
     telefono?: string
+    dni?: string
+    fecha_nacimiento?: string
     cobertura_id?: string
     sede_id?: string
     tipo_turno_id?: string
     whatsapp_opt_in?: boolean
   }
 
-  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, cobertura_id: coberturaId, sede_id: sedeId, tipo_turno_id: tipoTurnoId, whatsapp_opt_in: whatsappOptIn } = body
+  const { slug, fecha, hora, tipo, modalidad, nombre, apellido, email, telefono, dni, fecha_nacimiento: fechaNacimiento, cobertura_id: coberturaId, sede_id: sedeId, tipo_turno_id: tipoTurnoId, whatsapp_opt_in: whatsappOptIn } = body
 
   if (!slug || !fecha || !hora || !tipo || !nombre || !apellido || !email) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
@@ -45,12 +48,36 @@ export async function POST(req: NextRequest) {
   // 1. Get professional
   const { data: profile } = await db
     .from('profiles')
-    .select('id, plan, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_sesion_visible, booking_entrevista_visible, booking_moneda, booking_activo, booking_requiere_pago, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
+    .select('id, plan, nombre, apellido, especialidad, booking_duracion_sesion, booking_duracion_entrevista, booking_tiempo_entre, booking_anticipacion_minutos, booking_precio_sesion, booking_precio_entrevista, booking_sesion_visible, booking_entrevista_visible, booking_moneda, booking_activo, booking_requiere_pago, booking_requiere_dni, booking_requiere_fecha_nacimiento, mp_access_token, mp_public_key, agenda_hora_inicio, agenda_hora_fin, transferencia_banco, transferencia_alias, transferencia_titular')
     .eq('booking_slug', slug)
     .single()
 
   if (!profile || !profile.booking_activo) {
     return NextResponse.json({ error: 'Perfil no disponible' }, { status: 404 })
+  }
+
+  // Validación server-side de DNI/fecha de nacimiento — nunca confiar en el
+  // cliente, aunque el flag esté apagado del lado del form.
+  let dniValidado: string | null = null
+  if (profile.booking_requiere_dni && !dni) {
+    return NextResponse.json({ error: 'El DNI es obligatorio' }, { status: 400 })
+  }
+  if (dni) {
+    dniValidado = validarDniReserva(dni)
+    if (!dniValidado) {
+      return NextResponse.json({ error: 'DNI inválido' }, { status: 400 })
+    }
+  }
+
+  let fechaNacValidada: string | null = null
+  if (profile.booking_requiere_fecha_nacimiento && !fechaNacimiento) {
+    return NextResponse.json({ error: 'La fecha de nacimiento es obligatoria' }, { status: 400 })
+  }
+  if (fechaNacimiento) {
+    fechaNacValidada = validarFechaNacimientoReserva(fechaNacimiento)
+    if (!fechaNacValidada) {
+      return NextResponse.json({ error: 'Fecha de nacimiento inválida' }, { status: 400 })
+    }
   }
 
   // Validar la sede ANTES de resolver el tipo — mismo criterio que
@@ -123,6 +150,8 @@ export async function POST(req: NextRequest) {
       apellido,
       email: normalizarEmail(email),
       telefono: telefono ?? null,
+      dni: dniValidado,
+      fecha_nacimiento: fechaNacValidada,
       cobertura_id: coberturaId ?? null,
       whatsapp_opt_in: !!whatsappOptIn,
       fecha_hora: fechaHora,
@@ -163,7 +192,7 @@ export async function POST(req: NextRequest) {
   const emailNormalizado = normalizarEmail(email)!
   const { data: existentes } = await db
     .from('pacientes')
-    .select('id, obra_social, nombre, apellido, activo, created_at')
+    .select('id, obra_social, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
     .eq('terapeuta_id', profile.id)
     .ilike('email', escaparIlike(emailNormalizado))
 
@@ -195,6 +224,14 @@ export async function POST(req: NextRequest) {
       patch.obra_social = osEncontrada.nombre
       patch.os_config_id = osEncontrada.id
     }
+    // Completar DNI/fecha de nacimiento solo si el paciente no los tenía ya
+    // cargados — nunca pisar un dato existente con el de esta reserva.
+    if (dniValidado && !existing.dni) {
+      patch.dni = dniValidado
+    }
+    if (fechaNacValidada && !existing.fecha_nacimiento) {
+      patch.fecha_nacimiento = fechaNacValidada
+    }
     // Solo había pacientes inactivos con este email — se reusa el más antiguo
     // en vez de crear uno nuevo, reactivándolo.
     if (!existing.activo) {
@@ -220,6 +257,8 @@ export async function POST(req: NextRequest) {
         apellido,
         email: emailNormalizado,
         telefono: telefono ?? null,
+        dni: dniValidado,
+        fecha_nacimiento: fechaNacValidada,
         activo: true,
         motivo_consulta: (!tipoResuelto.tipoTurnoId && tipo === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,
         ...(!esParticular && osEncontrada ? { obra_social: osEncontrada.nombre, os_config_id: osEncontrada.id } : {}),

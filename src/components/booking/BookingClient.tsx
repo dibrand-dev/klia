@@ -92,6 +92,8 @@ export default function BookingClient({ profile }: Props) {
     apellido: '',
     email: '',
     telefono: '',
+    dni: '',
+    fechaNacimiento: '',
     coberturaId: '',
     whatsappOptIn: false,
   })
@@ -409,6 +411,8 @@ export default function BookingClient({ profile }: Props) {
                 onNext={() => goNextFrom('datos')}
                 onBack={handleBack}
                 sede={sede}
+                requiereDni={profile.booking_requiere_dni}
+                requiereFechaNacimiento={profile.booking_requiere_fecha_nacimiento}
               />
             </div>
           )}
