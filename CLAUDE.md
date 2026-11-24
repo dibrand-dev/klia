@@ -477,8 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-23_
+_Actualizado el 2026-11-24_
 
 ```
-5d422e7 feat: datos de facturación del profesional (CUIT, condición IVA, razón social)
+91f19d9 feat: clasificación pediátrica de peso y talla (OMS) en la nota de Nutrición
+09c5e29 feat: aviso post-pago para cargar datos de facturación
 ```
