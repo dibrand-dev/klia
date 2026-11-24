@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { finalizarReservaConfirmada, type MedioPago, type DatosPago } from '@/lib/booking/finalizar-reserva'
 import { isSlotAvailable } from '@/lib/booking/slot-disponible'
-import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
+import { normalizarEmail, normalizarNombre, normalizarDni, escaparIlike, elegirPacienteExistente } from '@/lib/pacientes/duplicados'
 import { enviarEmail } from '@/lib/brevo'
 import { emailSobreturnoReservaPublica } from '@/lib/email-templates'
 import { zonedDateArgentina, formatFechaHoraArgentina } from '@/lib/timezone'
@@ -44,15 +44,29 @@ export async function crearOReusarPacienteDesdeReserva(
     .eq('terapeuta_id', reserva.terapeuta_id)
     .ilike('email', escaparIlike(emailNormalizado))
 
-  const ordenados = (existentes ?? []).slice().sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const nombreBuscado = normalizarNombre(reserva.nombre)
-  const apellidoBuscado = normalizarNombre(reserva.apellido)
-  const activos = ordenados.filter((p) => p.activo)
-  const existing =
-    activos.find((p) => normalizarNombre(p.nombre) === nombreBuscado && normalizarNombre(p.apellido) === apellidoBuscado)
-    ?? activos[0]
-    ?? ordenados[0]
-    ?? null
+  let existing = elegirPacienteExistente(existentes ?? [], reserva.nombre, reserva.apellido, reserva.dni)
+
+  // Sin match por email: si la reserva trae DNI, buscar en toda la cartera
+  // del profesional por ese DNI. Solo se reusa si además coincide nombre y
+  // apellido — si el nombre difiere, se crea un paciente nuevo.
+  if (!existing && reserva.dni) {
+    const { data: porDni } = await db
+      .from('pacientes')
+      .select('id, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
+      .eq('terapeuta_id', reserva.terapeuta_id)
+      .not('dni', 'is', null)
+
+    const nombreBuscado = normalizarNombre(reserva.nombre)
+    const apellidoBuscado = normalizarNombre(reserva.apellido)
+    existing = (porDni ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .find((p) =>
+        normalizarDni(p.dni) === reserva.dni
+        && normalizarNombre(p.nombre) === nombreBuscado
+        && normalizarNombre(p.apellido) === apellidoBuscado
+      ) ?? null
+  }
 
   if (existing) {
     const patch: Record<string, unknown> = {}

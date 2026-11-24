@@ -4,7 +4,7 @@ import { fromZonedTime } from 'date-fns-tz'
 import { finalizarReservaConfirmada } from '@/lib/booking/finalizar-reserva'
 import { resolverTipoReserva } from '@/lib/booking/resolver-tipo'
 import { isSlotAvailable } from '@/lib/booking/slot-disponible'
-import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
+import { normalizarEmail, normalizarNombre, normalizarDni, escaparIlike, elegirPacienteExistente } from '@/lib/pacientes/duplicados'
 import { validarDniReserva, validarFechaNacimientoReserva } from '@/lib/booking/validar-datos-reserva'
 import { ARGENTINA_TZ } from '@/lib/timezone'
 import { serviceClient } from '@/lib/supabase/service'
@@ -196,17 +196,30 @@ export async function POST(req: NextRequest) {
     .eq('terapeuta_id', profile.id)
     .ilike('email', escaparIlike(emailNormalizado))
 
-  // Prioridad: activo con nombre+apellido normalizados iguales > activo más
-  // antiguo > (si no hay ningún activo) inactivo más antiguo, reactivándolo.
-  const ordenados = (existentes ?? []).slice().sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const nombreBuscado = normalizarNombre(nombre)
-  const apellidoBuscado = normalizarNombre(apellido)
-  const activos = ordenados.filter((p) => p.activo)
-  const existing =
-    activos.find((p) => normalizarNombre(p.nombre) === nombreBuscado && normalizarNombre(p.apellido) === apellidoBuscado)
-    ?? activos[0]
-    ?? ordenados[0]
-    ?? null
+  let existing = elegirPacienteExistente(existentes ?? [], nombre, apellido, dniValidado)
+
+  // Sin match por email: si la reserva trae DNI, buscar en toda la cartera
+  // del profesional por ese DNI (mismo patrón que /api/pacientes/verificar-duplicado).
+  // Solo se reusa si además coincide nombre y apellido — si el nombre difiere,
+  // se crea un paciente nuevo (podría ser otra persona, DNI mal tipeado o reusado).
+  if (!existing && dniValidado) {
+    const { data: porDni } = await db
+      .from('pacientes')
+      .select('id, obra_social, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
+      .eq('terapeuta_id', profile.id)
+      .not('dni', 'is', null)
+
+    const nombreBuscado = normalizarNombre(nombre)
+    const apellidoBuscado = normalizarNombre(apellido)
+    existing = (porDni ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .find((p) =>
+        normalizarDni(p.dni) === dniValidado
+        && normalizarNombre(p.nombre) === nombreBuscado
+        && normalizarNombre(p.apellido) === apellidoBuscado
+      ) ?? null
+  }
 
   if (existing) {
     pacienteId = existing.id
