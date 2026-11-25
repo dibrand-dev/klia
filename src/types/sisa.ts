@@ -16,6 +16,7 @@ export interface FhirCodeableConcept {
 export interface FhirExtension {
   url: string
   valueBoolean?: boolean
+  valueString?: string
   valueCoding?: FhirCoding
 }
 
@@ -29,15 +30,30 @@ export interface FhirPeriod {
   end?: string
 }
 
+export interface FhirIssuer {
+  identifier?: { value?: string }
+  display?: string
+}
+
 export interface FhirQualification {
   identifier?: FhirIdentifier[]
   code?: FhirCodeableConcept
   period?: FhirPeriod
   extension?: FhirExtension[]
+  issuer?: FhirIssuer
+}
+
+export interface FhirHumanName {
+  family?: string
+  given?: string[]
 }
 
 export interface FhirPractitioner {
   resourceType: 'Practitioner'
+  id?: string
+  gender?: 'male' | 'female' | 'other' | 'unknown'
+  birthDate?: string
+  name?: FhirHumanName[]
   qualification?: FhirQualification[]
 }
 
@@ -50,21 +66,41 @@ export interface FhirBundle {
   entry?: FhirBundleEntry[]
 }
 
-// Qualification ya mapeada a los campos que usamos — nunca se persiste el
-// JSON crudo del Bus, solo esto (Ley 25.326: nada de birthDate/CUIL/nombre).
-export interface MatriculaQualification {
-  jurisdiccion: string | null
-  profesion: string | null
-  numero: string | null
+// Una qualification del Bus ya mapeada a los campos que persistimos en
+// profesional_matriculas — tipo/provincia ya resueltos (nacional vs.
+// provincial según el emisor), nunca el JSON crudo de la extension.
+export interface MatriculaMapeada {
+  tipo: 'nacional' | 'provincial'
+  provincia: string | null
+  jurisdiccionCodigo: string | null
+  jurisdiccionNombre: string | null
+  numero: string
+  profesionCodigo: string | null
+  profesionNombre: string | null
+  especialidades: string[] | null
+  emisorCodigo: string | null
+  emisorNombre: string | null
+  fechaDesde: string | null
+  fechaHasta: string | null
   habilitada: boolean
-  desde: string | null
 }
 
-export type MatriculaEstado = 'habilitada' | 'no_habilitada' | 'sin_ficha' | 'error_servicio'
+export type RefepsEstado = 'habilitada' | 'no_habilitada' | 'sin_ficha' | 'no_coincide' | 'error_servicio'
 
-export interface MatriculaResultado {
-  estado: MatriculaEstado
+// Forma sanitizada que devuelve /api/v1/refeps/validate-professional al
+// cliente — nunca fecha de nacimiento, CUIL, ni el JSON crudo del Bus.
+export interface RefepsValidationMatricula {
+  tipo: 'nacional' | 'provincial'
+  provincia: string | null
+  jurisdiccion: string | null
+  numero: string
+  profesion: string | null
+  emisor: string | null
+  habilitada: boolean
+}
+
+export interface RefepsValidationResponse {
+  estado: RefepsEstado
   fechaVerificacion: string
-  qualifications: MatriculaQualification[]
-  coincideMatricula: boolean | null
+  matriculas: RefepsValidationMatricula[]
 }
