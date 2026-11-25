@@ -1,124 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import type { SisaApiRawResponse, SisaConsultaRequest, SisaValidationResponse } from '@/types/sisa'
+import { serviceClient } from '@/lib/supabase/service'
+import { consultarPractitioner, BusConsultaError } from '@/lib/refeps/bus'
+import type { MatriculaResultado } from '@/types/sisa'
 
 export const runtime = 'nodejs'
 
-const SISA_BASE_URL = 'https://sisa.msal.gov.ar/sisa/services/rest/profesional/obtener'
-const SISA_TIMEOUT_MS = 10_000
-
-// TODO: confirmar valor exacto de estado activo con soporte@sisa.msal.gov.ar
-// La documentación del WS020 no especifica los valores posibles de `estado`.
-const ESTADO_ACTIVO = 'ACTIVO'
-
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Auth — solo profesionales autenticados pueden consultar
+export async function POST(): Promise<NextResponse> {
+  // Auth — solo el propio profesional autenticado consulta su matrícula.
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  // Credenciales SISA
-  const sisaUser = process.env.SISA_USER
-  const sisaPassword = process.env.SISA_PASSWORD
-  if (!sisaUser || !sisaPassword) {
-    console.error('[REFEPS] Variables de entorno SISA_USER o SISA_PASSWORD no configuradas')
-    return NextResponse.json(
-      { valido: false, error: 'Configuración de SISA incompleta' },
-      { status: 500 }
-    )
+  // DNI del propio perfil autenticado — nunca un DNI libre del body.
+  const db = serviceClient()
+  const { data: profile } = await db
+    .from('profiles')
+    .select('dni, matricula')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (!profile?.dni) {
+    return NextResponse.json({ error: 'Falta cargar el DNI en tu perfil' }, { status: 400 })
   }
 
-  // Parsear body
-  let body: SisaConsultaRequest
+  const fechaVerificacion = new Date().toISOString()
+
   try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
-  }
+    const resultado = await consultarPractitioner(profile.dni)
 
-  const { nrodoc, apellido } = body
-  if (!nrodoc || typeof nrodoc !== 'string' || !nrodoc.trim()) {
-    return NextResponse.json({ error: 'El campo nrodoc es obligatorio' }, { status: 400 })
-  }
-
-  // Construir URL con query params
-  const params = new URLSearchParams({
-    usuario: sisaUser,
-    clave: sisaPassword,
-    nrodoc: nrodoc.trim(),
-    apellido: apellido?.trim() ?? '',
-    nombre: '',
-    codigo: '',
-  })
-  const url = `${SISA_BASE_URL}?${params.toString()}`
-
-  // Fetch con timeout
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), SISA_TIMEOUT_MS)
-
-  let raw: SisaApiRawResponse
-  try {
-    const response = await fetch(url, { signal: controller.signal })
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      console.error(`[REFEPS] SISA respondió con status ${response.status}`)
-      return NextResponse.json(
-        { valido: false, error: 'Servicio SISA no disponible' },
-        { status: 502 }
-      )
+    if (resultado.estado === 'sin_ficha') {
+      const body: MatriculaResultado = {
+        estado: 'sin_ficha',
+        fechaVerificacion,
+        qualifications: [],
+        coincideMatricula: null,
+      }
+      return NextResponse.json(body, { status: 200 })
     }
 
-    raw = (await response.json()) as SisaApiRawResponse
+    const matriculaPropia = profile.matricula?.trim() || null
+    const coincideMatricula = matriculaPropia
+      ? resultado.qualifications.some((q) => q.numero?.trim() === matriculaPropia)
+      : null
+
+    const body: MatriculaResultado = {
+      estado: resultado.estado,
+      fechaVerificacion,
+      qualifications: resultado.qualifications,
+      coincideMatricula,
+    }
+    return NextResponse.json(body, { status: 200 })
   } catch (err) {
-    clearTimeout(timeoutId)
-    const isTimeout = err instanceof Error && err.name === 'AbortError'
-    console.error('[REFEPS] Error al consultar SISA:', isTimeout ? 'timeout' : err)
-    return NextResponse.json(
-      { valido: false, error: 'Servicio SISA no disponible' },
-      { status: 502 }
-    )
-  }
-
-  // Sin resultado o código de error del servicio
-  if (!raw || !raw.nrodoc) {
-    const result: SisaValidationResponse = {
-      valido: false,
-      error: 'Profesional no encontrado en el REFEPS',
-      codigoError: raw?.codigo,
+    // Un error del Bus (403/500/timeout/red) nunca marca al profesional
+    // como no habilitado — queda en "error_servicio" para reintentar.
+    const codigo = err instanceof BusConsultaError ? err.codigo : 'bus_no_disponible'
+    console.error('[REFEPS] Error al consultar el Bus de Interoperabilidad:', codigo)
+    const body: MatriculaResultado = {
+      estado: 'error_servicio',
+      fechaVerificacion,
+      qualifications: [],
+      coincideMatricula: null,
     }
-    return NextResponse.json(result, { status: 200 })
+    return NextResponse.json(body, { status: 200 })
   }
-
-  // Profesional encontrado — verificar estado activo
-  const estadoActivo = raw.estado?.toUpperCase() === ESTADO_ACTIVO
-  if (!estadoActivo) {
-    const result: SisaValidationResponse = {
-      valido: false,
-      error: `Matrícula no habilitada (estado: ${raw.estado ?? 'desconocido'})`,
-      codigoError: raw.codigo,
-    }
-    return NextResponse.json(result, { status: 200 })
-  }
-
-  // Respuesta exitosa — sanitizar campos antes de enviar al cliente
-  const result: SisaValidationResponse = {
-    valido: true,
-    profesional: {
-      apellido: raw.apellido ?? '',
-      nombre: raw.nombre ?? '',
-      tipoDocumento: raw.tipoDocumento ?? '',
-      nrodoc: raw.nrodoc ?? '',
-      matricula: raw.matricula ?? '',
-      profesion: raw.profesion ?? '',
-      jurisdiccion: raw.jurisdiccion ?? '',
-      estado: raw.estado ?? '',
-      especialidad: raw.especialidad ?? '',
-      fechaMatricula: raw.fechaMatricula ?? '',
-      fechaModificacion: raw.fechaModificacion ?? '',
-      fechaRegistro: raw.fechaRegistro ?? '',
-      datosCertificacion: raw.datosCertificacion ?? '',
-    },
-  }
-  return NextResponse.json(result, { status: 200 })
 }

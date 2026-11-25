@@ -1,5 +1,7 @@
 // Funciones puras de cálculo antropométrico — sin dependencias de React/Supabase.
 
+import { EDAD_ADULTO } from '@/lib/antropometria/constantes'
+
 // Normaliza altura a metros: si el valor es mayor a 3, se asume que vino en cm.
 function alturaEnMetros(altura: number): number {
   return altura > 3 ? altura / 100 : altura
@@ -13,12 +15,32 @@ export function calcularIMC(peso: number | null | undefined, altura: number | nu
 }
 
 export type IMCStatus = 'info' | 'success' | 'warning' | 'danger'
+export interface IMCInfo { label: string; status: IMCStatus }
 
-export function clasificarIMC(imc: number): { label: string; status: IMCStatus } {
+// Los cortes (18.5/25/30) son de adulto (OMS) — en menores de EDAD_ADULTO no
+// aplican, devuelven null (sin clasificar) hasta tener la tabla pediátrica.
+// Los call sites que no pasan edad (sin overload de edad) siguen clasificando
+// como antes — ver ModuloClinicaMedica.tsx/StickyWidgetAntropometria.tsx.
+export function clasificarIMC(imc: number): IMCInfo
+export function clasificarIMC(imc: number, edad: number | null | undefined): IMCInfo | null
+export function clasificarIMC(imc: number, edad?: number | null): IMCInfo | null {
+  if (edad != null && edad < EDAD_ADULTO) return null
   if (imc < 18.5) return { label: 'Bajo peso', status: 'info' }
   if (imc < 25) return { label: 'Normal', status: 'success' }
   if (imc < 30) return { label: 'Sobrepeso', status: 'warning' }
   return { label: 'Obesidad', status: 'danger' }
+}
+
+// Único normalizador de sexo del repo — 'M'/'F' tal cual, o la palabra
+// completa ('masculino'/'femenino'), case-insensitive; cualquier otro valor
+// (incluido null) no clasifica. Reusar siempre esto en vez de reimplementar
+// el chequeo `=== 'M' || === 'F'` inline (ver armarImpresion.ts/NuevaNotaForm.tsx).
+export function normalizarSexo(genero: string | null | undefined): 'M' | 'F' | null {
+  if (!genero) return null
+  const g = genero.trim().toLowerCase()
+  if (g === 'm' || g === 'masculino') return 'M'
+  if (g === 'f' || g === 'femenino') return 'F'
+  return null
 }
 
 export type FormulaGEB = 'mifflin' | 'harris'

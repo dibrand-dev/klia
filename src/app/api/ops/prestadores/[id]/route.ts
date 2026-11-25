@@ -32,6 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     plan, estado_cuenta, trial_fin,
     nombre, apellido, especialidad, matricula,
     telefono, pais, provincia, localidad, direccion,
+    cuit, condicion_iva, razon_social,
   } = body
 
   const updateData: Record<string, unknown> = {}
@@ -44,6 +45,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (provincia !== undefined) updateData.provincia = provincia
   if (localidad !== undefined) updateData.localidad = localidad
   if (direccion !== undefined) updateData.direccion = direccion
+  if (cuit !== undefined) updateData.cuit = cuit
+  if (condicion_iva !== undefined) updateData.condicion_iva = condicion_iva
+  if (razon_social !== undefined) updateData.razon_social = razon_social
   if (plan !== undefined) updateData.plan = plan
   if (estado_cuenta !== undefined) updateData.estado_cuenta = estado_cuenta
   if (trial_fin !== undefined) updateData.trial_fin = trial_fin

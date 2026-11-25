@@ -30,6 +30,8 @@ export type ProfileData = {
   booking_entrevista_visible: boolean
   booking_moneda: string
   booking_requiere_pago: boolean
+  booking_requiere_dni: boolean
+  booking_requiere_fecha_nacimiento: boolean
   mp_conectado: boolean
   transferencia_banco: string | null
   transferencia_alias: string | null
@@ -158,6 +160,8 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     booking_entrevista_visible: data.booking_entrevista_visible ?? true,
     booking_moneda: data.booking_moneda ?? 'ARS',
     booking_requiere_pago: data.booking_requiere_pago ?? true,
+    booking_requiere_dni: data.booking_requiere_dni ?? false,
+    booking_requiere_fecha_nacimiento: data.booking_requiere_fecha_nacimiento ?? false,
     mp_conectado: !!(data.mp_access_token),
     transferencia_banco: data.transferencia_banco ?? null,
     transferencia_alias: data.transferencia_alias ?? null,

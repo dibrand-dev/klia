@@ -1,7 +1,9 @@
 // Tests de oro: 4 informes reales de ISAKMetry (spec §8). Corre con: npx tsx --test
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, redondear, zPhantom, type Medidas, type Paciente } from './calculos'
+import { calcular, categoriaMusculoOseo, categoriaCormico, categoriaManouvrier, categoriaConicidad, redondear, zPhantom, lecturaSomatotipo, type Medidas, type Paciente } from './calculos'
+import { RANGOS_MUSCULO_OSEO, CATEGORIAS_MUSCULO_OSEO } from './constantes'
+import { fmt } from './graficos'
 
 interface Caso {
   nombre: string; pac: Paciente; m: Medidas
@@ -69,12 +71,6 @@ for (const c of CASOS) {
   })
 }
 
-test('residual = masa − (adiposo + muscular + óseo)', () => {
-  const c = CASOS[0]
-  const r = calcular(c.m, c.pac)
-  cerca(r.tejidos!.residual, 69.7 - (24.95 + 25.03 + 9.64), 0.03, 'residual Agustín')
-})
-
 test('categorías: músculo/óseo por sexo y límites de las 5 zonas', () => {
   assert.equal(calcular(CASOS[0].m, CASOS[0].pac).indices.musculoOseoCategoria, 'Medio') // M 2,60
   assert.equal(calcular(CASOS[1].m, CASOS[1].pac).indices.musculoOseoCategoria, 'Medio') // F 2,36
@@ -104,12 +100,60 @@ test('sexo null: no asume M — IMC/Σ6/Σ8/somatotipo se calculan igual, múscu
   assert.ok(r.faltan.muscular?.includes('sexo'))
 })
 
+test('edad null: no asume adulto — IMC/Σ6/Σ8/somatotipo se calculan igual, tejidos queda null con \'edad\' en faltan', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: c.pac.sexo, edad: null })
+  cerca(r.salud.imc, c.esp.imc, 0.05, 'IMC con edad null')
+  cerca(r.sumatorias.s6, c.esp.s6, 0.01, 'Σ6 con edad null')
+  cerca(r.sumatorias.s8, c.esp.s8, 0.01, 'Σ8 con edad null')
+  cerca(r.somatotipo.endo, c.esp.endo, 0.01, 'endo con edad null')
+  cerca(r.somatotipo.meso, c.esp.meso, 0.01, 'meso con edad null')
+  cerca(r.somatotipo.ecto, c.esp.ecto, 0.01, 'ecto con edad null')
+  assert.equal(r.esAdulto, false)
+  assert.equal(r.tejidos, null)
+  assert.equal(r.indices.musculoOseo, null)
+  assert.equal(r.indices.musculoOseoCategoria, null)
+  assert.ok(r.faltan.adiposo?.includes('edad'))
+  assert.ok(r.faltan.muscular?.includes('edad'))
+  assert.ok(r.faltan.oseo?.includes('edad'))
+})
+
+test('menor de edad legítimo (edad conocida, < 20): sin tejidos, pero sin \'faltan\' espurio', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: c.pac.sexo, edad: 15 })
+  assert.equal(r.esAdulto, false)
+  assert.equal(r.tejidos, null)
+  assert.equal(r.faltan.adiposo, undefined)
+  assert.equal(r.faltan.muscular, undefined)
+  assert.equal(r.faltan.oseo, undefined)
+})
+
 test('proporciones: categorías', () => {
   assert.equal(categoriaCormico(0.5), 'braquicórmico')
   assert.equal(categoriaCormico(0.52), 'metricórmico')
   assert.equal(categoriaCormico(0.56), 'macrocórmico')
   assert.equal(categoriaManouvrier(79), 'miembros inferiores cortos')
   assert.equal(categoriaManouvrier(98), 'miembros inferiores largos')
+})
+
+test('córmico: el valor mostrado (calcular() ya lo redondea a 2 decimales) y la categoría no se contradicen al cruzar un corte', () => {
+  // talla sentado 101 / talla 200 = 0,505 crudo → redondea a 0,51, que cruza el
+  // corte de 0,51 (braquicórmico < 0,51 ≤ metricórmico): con el valor crudo
+  // (0,505 < 0,51) sería braquicórmico; con el redondeado que se muestra ("0,51")
+  // tiene que ser metricórmico — es lo que calcular() ya devuelve.
+  const r = calcular({ tallaSentado: 101, talla: 200 }, { sexo: 'M', edad: 30 })
+  assert.equal(r.indices.cormico, 0.51)
+  assert.equal(categoriaCormico(r.indices.cormico as number), 'metricórmico')
+})
+
+test('Manouvrier: clasificar sobre el valor redondeado que se muestra (Math.round), no el crudo', () => {
+  // talla sentado 100 / talla 184,6 → (184,6-100)/100*100 = 84,6 crudo (< 85 → "cortos"),
+  // pero redondea a 85 (lo que se muestra) → "medios". Mismo criterio que el call site
+  // del informe profesional (page.tsx), que ahora redondea antes de clasificar.
+  const r = calcular({ tallaSentado: 100, talla: 184.6 }, { sexo: 'M', edad: 30 })
+  assert.ok(Math.abs((r.indices.manouvrier as number) - 84.6) < 0.01)
+  assert.equal(categoriaManouvrier(r.indices.manouvrier as number), 'miembros inferiores cortos') // sobre el crudo: distinto
+  assert.equal(categoriaManouvrier(Math.round(r.indices.manouvrier as number)), 'miembros inferiores medios') // sobre el redondeado mostrado: correcto
 })
 
 test('envergadura relativa redondeada a 2 decimales', () => {
@@ -123,7 +167,6 @@ test('datos faltantes: no inventa valores y dice qué falta', () => {
   const c = CASOS[0]
   const r = calcular({ ...c.m, femur: null }, c.pac)
   assert.equal(r.tejidos!.oseo, null)
-  assert.equal(r.tejidos!.residual, null)
   assert.equal(r.indices.musculoOseo, null)
   assert.equal(r.somatotipo.meso, null)
   assert.equal(r.somatotipo.y, null)
@@ -165,4 +208,86 @@ test('Z-score Phantom: talla del phantom da Z = (v − p)/s', () => {
 test('redondear', () => {
   assert.equal(redondear(1.005, 2), 1.01)
   assert.equal(redondear(null), null)
+})
+
+test('categoriaCormico: cortes exactos de la nutricionista (< 0,51 / 0,51–0,53 inclusive / > 0,53)', () => {
+  assert.equal(categoriaCormico(0.5), 'braquicórmico')
+  assert.equal(categoriaCormico(0.509), 'braquicórmico')
+  assert.equal(categoriaCormico(0.51), 'metricórmico') // límite inferior inclusive
+  assert.equal(categoriaCormico(0.53), 'metricórmico') // límite superior inclusive
+  assert.equal(categoriaCormico(0.531), 'macrocórmico')
+})
+
+test('categoriaConicidad: cortes por sexo, null sin sexo o sin valor', () => {
+  assert.equal(categoriaConicidad('M', 1.2), 'normal')
+  assert.equal(categoriaConicidad('M', 1.25), 'riesgo') // límite inclusive del lado "riesgo"
+  assert.equal(categoriaConicidad('F', 1.1), 'normal')
+  assert.equal(categoriaConicidad('F', 1.18), 'riesgo')
+  assert.equal(categoriaConicidad(null, 1.3), null)
+  assert.equal(categoriaConicidad('M', null), null)
+})
+
+test('tejidosZ: null en menores y cuando falta edad; calculado en adultos con todos los datos', () => {
+  const c = CASOS[0]
+  const adulto = calcular(c.m, c.pac)
+  assert.ok(adulto.tejidosZ)
+  assert.notEqual(adulto.tejidosZ!.adiposo, null)
+  assert.notEqual(adulto.tejidosZ!.muscular, null)
+  assert.notEqual(adulto.tejidosZ!.oseo, null)
+
+  const menor = calcular(c.m, { sexo: c.pac.sexo, edad: 15 })
+  assert.equal(menor.tejidosZ, null)
+
+  const sinEdad = calcular(c.m, { sexo: c.pac.sexo, edad: null })
+  assert.equal(sinEdad.tejidosZ, null)
+})
+
+test('tejidosZ: sin sexo, muscular queda null pero adiposo/óseo (y sus Z) se calculan igual', () => {
+  const c = CASOS[0]
+  const r = calcular(c.m, { sexo: null, edad: c.pac.edad })
+  assert.equal(r.tejidos!.muscular, null)
+  assert.notEqual(r.tejidos!.adiposo, null)
+  assert.notEqual(r.tejidos!.oseo, null)
+  assert.ok(r.tejidosZ)
+  assert.equal(r.tejidosZ!.muscular, null)
+  assert.notEqual(r.tejidosZ!.adiposo, null)
+  assert.notEqual(r.tejidosZ!.oseo, null)
+})
+
+test('escala músculo/óseo: las etiquetas (2 decimales, misma fuente que clasifica) coinciden con categoriaMusculoOseo en los bordes de ambos sexos', () => {
+  // Reproduce el armado de etiquetas de la página 3 del informe, a partir de RANGOS_MUSCULO_OSEO
+  // (la misma fuente que usa categoriaMusculoOseo) — nunca copias hardcodeadas.
+  const etiquetas = (sexo: 'M' | 'F') => {
+    const r = RANGOS_MUSCULO_OSEO[sexo]
+    return [`< ${fmt(r[0], 2)}`, `${fmt(r[0], 2)}–${fmt(r[1], 2)}`, `${fmt(r[1], 2)}–${fmt(r[2], 2)}`, `${fmt(r[2], 2)}–${fmt(r[3], 2)}`, `> ${fmt(r[3], 2)}`]
+  }
+
+  assert.deepEqual(etiquetas('F'), ['< 2,01', '2,01–2,11', '2,11–2,78', '2,78–2,96', '> 2,96'])
+  assert.deepEqual(etiquetas('M'), ['< 2,34', '2,34–2,44', '2,44–3,11', '3,11–3,29', '> 3,29'])
+
+  // Cada borde exacto cae en la categoría que indica su propia etiqueta (el límite inferior
+  // de un tramo pertenece a ese tramo, no al anterior — mismo criterio que categoriaMusculoOseo).
+  for (const sexo of ['F', 'M'] as const) {
+    const r = RANGOS_MUSCULO_OSEO[sexo]
+    assert.equal(categoriaMusculoOseo(r[0], sexo), CATEGORIAS_MUSCULO_OSEO[1], `${sexo}: borde inferior del tramo 2`)
+    assert.equal(categoriaMusculoOseo(r[1], sexo), CATEGORIAS_MUSCULO_OSEO[2], `${sexo}: borde inferior del tramo 3`)
+    assert.equal(categoriaMusculoOseo(r[2], sexo), CATEGORIAS_MUSCULO_OSEO[3], `${sexo}: borde inferior del tramo 4`)
+    assert.equal(categoriaMusculoOseo(r[3], sexo), CATEGORIAS_MUSCULO_OSEO[4], `${sexo}: borde inferior del tramo 5`)
+  }
+
+  // Caso de la nutricionista: 2,79 en mujer cae en "Alto" (tramo "2,78–2,96").
+  assert.equal(categoriaMusculoOseo(2.79, 'F'), 'Alto')
+})
+
+test('lecturaSomatotipo: clasifica redondeando a 1 decimal (half-up), 5 niveles según tabla de la nutricionista (18/11/2026)', () => {
+  assert.equal(lecturaSomatotipo(2.92), 'moderado')
+  assert.equal(lecturaSomatotipo(2.5), 'bajo')
+  assert.equal(lecturaSomatotipo(2.54), 'bajo')
+  assert.equal(lecturaSomatotipo(2.55), 'moderado')
+  assert.equal(lecturaSomatotipo(4.5), 'moderado')
+  assert.equal(lecturaSomatotipo(4.55), 'alto')
+  assert.equal(lecturaSomatotipo(6.5), 'alto')
+  assert.equal(lecturaSomatotipo(8.5), 'muy alto')
+  assert.equal(lecturaSomatotipo(8.55), 'extremadamente alto')
+  assert.equal(lecturaSomatotipo(0.1), 'bajo')
 })

@@ -3,7 +3,7 @@
 // Si falta un dato, el indicador dependiente es null y `faltan` dice qué falta.
 
 import {
-  CATEGORIAS_MUSCULO_OSEO, CORTES_SALUD, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM,
+  CATEGORIAS_MUSCULO_OSEO, CORTES_CONICIDAD_POR_SEXO, CORTES_SALUD, CORTES_SOMATOTIPO, EDAD_ADULTO, PHANTOM, RANGOS_MUSCULO_OSEO, TALLA_PHANTOM, TALLA_PHANTOM_SD,
   type CategoriaMusculoOseo, type Sexo, type VariablePhantom,
 } from './constantes'
 
@@ -20,10 +20,10 @@ export interface Medidas {
   humero?: N; biestiloideo?: N; femur?: N
 }
 
-export interface Paciente { sexo: Sexo | null; edad: number }
+export interface Paciente { sexo: Sexo | null; edad: number | null }
 
 export interface Tejidos {
-  adiposo: number | null; muscular: number | null; oseo: number | null; residual: number | null
+  adiposo: number | null; muscular: number | null; oseo: number | null
 }
 
 export interface Resultado {
@@ -31,6 +31,8 @@ export interface Resultado {
   sumatorias: { s6: number | null; s8: number | null }
   corregidos: { brazo: number | null; muslo: number | null; pierna: number | null }
   tejidos: Tejidos | null // null en menores
+  /** Z-scores Phantom de cada tejido (Kerr). */
+  tejidosZ: Tejidos | null
   indices: {
     adiposoMuscular: number | null
     musculoOseo: number | null
@@ -59,12 +61,24 @@ const todos = (...v: (number | null)[]): boolean => v.every((x) => x !== null)
 export const redondear = (v: number | null, dec = 2): number | null =>
   v === null ? null : Math.round((v + Number.EPSILON) * 10 ** dec) / 10 ** dec
 
+/** Z-score Phantom de la talla misma (no usa razón de talla, a diferencia de zPhantom). */
+export function zTalla(valor: N): number | null {
+  const v = num(valor)
+  return v === null ? null : (v - TALLA_PHANTOM) / TALLA_PHANTOM_SD
+}
+
 /** Z-score Phantom. null si falta el valor o la talla. */
 export function zPhantom(variable: VariablePhantom, valor: N, talla: N): number | null {
   const v = num(valor), h = num(talla)
   if (v === null || h === null || h <= 0) return null
   const [p, s, d] = PHANTOM[variable]
   return (v * (TALLA_PHANTOM / h) ** d - p) / s
+}
+
+/** Categoría de conicidad, por sexo (cortes aprobados por la nutricionista el 17/11/2026 — ver constantes.ts). Sin sexo, null. */
+export function categoriaConicidad(sexo: Sexo | null, valor: number | null): 'normal' | 'riesgo' | null {
+  if (sexo === null || valor === null) return null
+  return valor < CORTES_CONICIDAD_POR_SEXO[sexo] ? 'normal' : 'riesgo'
 }
 
 export function categoriaMusculoOseo(
@@ -85,9 +99,15 @@ export const categoriaManouvrier = (v: number) =>
 export const categoriaEnvergadura = (v: number) =>
   v < 1 ? 'menor a la talla' : v > 1 ? 'mayor a la talla' : 'igual a la talla'
 
-/** Lectura de un componente del somatotipo (Carter y Heath). */
-export function lecturaSomatotipo(v: number): 'bajo' | 'moderado' | 'alto' | 'muy alto' {
-  return v < 3 ? 'bajo' : v < 5.5 ? 'moderado' : v < 7.5 ? 'alto' : 'muy alto'
+/** Lectura de un componente del somatotipo (Carter y Heath). Clasifica sobre el valor
+ * redondeado a 1 decimal (half-up), no el crudo. Cortes: ver CORTES_SOMATOTIPO. */
+export function lecturaSomatotipo(v: number): 'bajo' | 'moderado' | 'alto' | 'muy alto' | 'extremadamente alto' {
+  const r = Math.round((v + Number.EPSILON) * 10) / 10
+  return r <= CORTES_SOMATOTIPO.bajo ? 'bajo'
+    : r <= CORTES_SOMATOTIPO.moderado ? 'moderado'
+      : r <= CORTES_SOMATOTIPO.alto ? 'alto'
+        : r <= CORTES_SOMATOTIPO.muyAlto ? 'muy alto'
+          : 'extremadamente alto'
 }
 
 export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO): Resultado {
@@ -97,7 +117,8 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
   const bR = num(m.brazoRelajado), bC = num(m.brazoContraido), cin = num(m.cintura), cad = num(m.cadera)
   const mM = num(m.musloMedio), pie = num(m.pierna)
   const hum = num(m.humero), bie = num(m.biestiloideo), fem = num(m.femur)
-  const esAdulto = pac.edad >= EDAD_ADULTO
+  const edad = num(pac.edad)
+  const esAdulto = edad !== null && edad >= EDAD_ADULTO
   const faltan: Record<string, string[]> = {}
   const req = (clave: string, pares: [string, number | null][]) => {
     const f = pares.filter(([, v]) => v === null).map(([n]) => n)
@@ -119,27 +140,36 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
 
   // Composición tisular: solo adultos
   let tejidos: Tejidos | null = null
+  let tejidosZ: Tejidos | null = null
   if (esAdulto) {
     let adiposo: number | null = null, muscular: number | null = null, oseo: number | null = null
     if (s6 !== null && h !== null && k !== null) {
       const z6 = (s6 * k - 116.41) / 34.79
       adiposo = (z6 * 5.85 + 25.6) * (h / TALLA_PHANTOM) ** 3
     }
-    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null && pac.sexo !== null) {
+    if (cBrazo !== null && cMuslo !== null && cPierna !== null && h !== null && pac.sexo !== null && edad !== null) {
       const sexo = pac.sexo === 'M' ? 1 : 0
       muscular =
         (h / 100) * (0.00744 * cBrazo ** 2 + 0.00088 * cMuslo ** 2 + 0.00441 * cPierna ** 2) +
-        2.4 * sexo - 0.048 * pac.edad + 7.8
+        2.4 * sexo - 0.048 * edad + 7.8
     }
     if (h !== null && bie !== null && fem !== null) {
       oseo = 3.02 * ((h / 100) ** 2 * (bie / 100) * (fem / 100) * 400) ** 0.712
     }
-    const residual = masa !== null && adiposo !== null && muscular !== null && oseo !== null ? masa - (adiposo + muscular + oseo) : null
-    tejidos = { adiposo, muscular, oseo, residual }
+    tejidos = { adiposo, muscular, oseo }
+    tejidosZ = {
+      adiposo: zPhantom('adiposo', adiposo, h),
+      muscular: zPhantom('muscular', muscular, h),
+      oseo: zPhantom('oseo', oseo, h),
+    }
     req('adiposo', [['talla', h], ...(s6 === null ? ([['Σ6 pliegues', null]] as [string, number | null][]) : [])])
     req('muscular', [['talla', h], ['perímetro brazo relajado', bR], ['tríceps', tri], ['perímetro muslo medio', mM], ['muslo (pliegue)', mus], ['perímetro pierna', pie], ['pantorrilla (pliegue)', pan], ['sexo', pac.sexo === null ? null : 1]])
     req('oseo', [['talla', h], ['diámetro biestiloideo', bie], ['diámetro fémur', fem]])
-    req('residual', [['masa', masa]])
+  } else if (edad === null) {
+    // Edad desconocida (no un menor legítimo): no se puede determinar si corresponde calcular tejidos.
+    req('adiposo', [['edad', null]])
+    req('muscular', [['edad', null]])
+    req('oseo', [['edad', null]])
   }
 
   // Somatotipo Heath-Carter
@@ -191,6 +221,7 @@ export function calcular(m: Medidas, pac: Paciente, rangos = RANGOS_MUSCULO_OSEO
     sumatorias: { s6, s8 },
     corregidos: { brazo: cBrazo, muslo: cMuslo, pierna: cPierna },
     tejidos,
+    tejidosZ,
     indices: {
       adiposoMuscular: adiMus,
       musculoOseo: musOseo,

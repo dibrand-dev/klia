@@ -5,11 +5,36 @@ import { createClient } from '@/lib/supabase/server'
 import { getEffectiveTerapeutaIdServer } from '@/lib/auth/getEffectiveTerapeutaId'
 import { zonedDateArgentina } from '@/lib/timezone'
 import { armarHistorialParaImprimir, fmt, fmtDioptria, TITULO_MODULO, type BloqueModulo } from '@/lib/historial/armarImpresion'
-import ImprimirButton from './ImprimirButton'
+import { codigoPaciente } from '@/lib/pacientes/codigo'
+import BarraImprimir from '@/app/(print)/BarraImprimir'
 import './historial-print.css'
 
-export const metadata = { title: 'Historia clínica — KLIA', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
+
+// Caracteres inválidos para nombre de archivo (Windows/macOS) — el navegador usa
+// el <title> como nombre sugerido al "Guardar como PDF".
+function sanitizarNombreArchivo(texto: string): string {
+  return texto.replace(/[\\/:*?"<>|]/g, '').trim()
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const fallback = { title: 'Historia clínica — KLIA', robots: { index: false, follow: false } }
+  const supabase = createClient()
+  const efectivo = await getEffectiveTerapeutaIdServer(supabase)
+  if (!efectivo || efectivo.esColaborador) return fallback
+
+  const { data: paciente } = await supabase
+    .from('pacientes')
+    .select('id, nombre, apellido')
+    .eq('id', params.id)
+    .eq('terapeuta_id', efectivo.terapeutaId)
+    .single()
+
+  if (!paciente) return fallback
+
+  const titulo = sanitizarNombreArchivo(`${paciente.nombre} ${paciente.apellido} - HCE ${codigoPaciente(paciente.id)} - KLIA`)
+  return { title: titulo, robots: { index: false, follow: false } }
+}
 
 function fmtFechaCorta(fechaISO: string): string {
   return format(parseISO(fechaISO), 'dd/MM/yyyy')
@@ -34,10 +59,10 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
 
   if (!paciente) notFound()
 
-  const [{ data: profile }, { data: notasData }, { data: turnosData }, { data: antroData }, { data: pioData }, { data: refraccionData }, { data: especialidadData }] = await Promise.all([
+  const [{ data: profile }, { data: notasData }, { data: turnosData }, { data: antroData }, { data: pioData }, { data: refraccionData }, { data: especialidadData }, { data: tiposTurnoData }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, domicilio_consultorio, localidad_consultorio, provincia_consultorio')
+      .select('nombre, apellido, especialidad, matricula, matricula_tipo, matricula_provincia, domicilio_consultorio, localidad_consultorio, provincia_consultorio, terminologia')
       .eq('id', efectivo.terapeutaId)
       .single(),
     supabase
@@ -71,10 +96,16 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
       .select('*')
       .eq('paciente_id', params.id)
       .eq('terapeuta_id', efectivo.terapeutaId),
+    supabase
+      .from('tipos_turno')
+      .select('id, nombre')
+      .eq('terapeuta_id', efectivo.terapeutaId),
   ])
 
   const historial = armarHistorialParaImprimir({
     especialidadProfesional: profile?.especialidad ?? null,
+    terminologia: profile?.terminologia ?? null,
+    tiposTurno: tiposTurnoData ?? [],
     paciente,
     notas: notasData ?? [],
     turnos: turnosData ?? [],
@@ -85,8 +116,12 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
   })
 
   const ahoraAR = zonedDateArgentina(new Date().toISOString())
-  const matriculaFormateada = profile?.matricula
-    ? `${profile.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${profile.matricula}${profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
+  // profiles.matricula se guarda siempre sin prefijo (ver AjustesClient.tsx, que lo arma
+  // recién en la UI) — este strip es solo defensivo por si algún dato viejo lo tuviera
+  // (mismo patrón que src/app/api/planillas/pami/route.ts).
+  const matriculaLimpia = profile?.matricula?.replace(/^(MN|MP)\s*/i, '') ?? ''
+  const matriculaFormateada = matriculaLimpia
+    ? `${profile?.matricula_tipo === 'nacional' ? 'MN' : 'MP'} ${matriculaLimpia}${profile?.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
     : null
   const direccionConsultorio = [profile?.domicilio_consultorio, profile?.localidad_consultorio, profile?.provincia_consultorio]
     .filter((v): v is string => !!v && v.trim() !== '')
@@ -111,10 +146,10 @@ export default async function ExportarHistorialPage({ params }: { params: { id: 
           @bottom-right { content: "Página " counter(page) " de " counter(pages); font: 8.5pt 'Inter', sans-serif; color: #5B6472; }
         }
       ` }} />
-      <div className="hc-toolbar">
-        <ImprimirButton />
-        <span>A4 · incluye pie con número de página</span>
-      </div>
+      <BarraImprimir
+        linkFicha={{ href: `/pacientes/${params.id}`, label: `Ficha de ${paciente.nombre} ${paciente.apellido}` }}
+        leyenda="A4 · incluye pie con número de página"
+      />
       <main className="hc-sheet">
         <header className="hc-mb">
           <div>
@@ -257,6 +292,58 @@ function BloqueNutricionRender({ b }: { b: import('@/lib/historial/armarImpresio
           <Celda label="IMC" valor={b.imc ? `${fmt(b.imc.valor, 1)} ` : null} unidad={b.imc?.label} />
           <Celda label="GEB (Mifflin-St Jeor)" valor={b.geb != null ? fmt(b.geb, 0) : null} unidad="kcal" />
           <Celda label="Índice cintura/cadera" valor={b.indiceCinturaCadera != null ? fmt(b.indiceCinturaCadera, 2) : null} />
+        </div>
+      )}
+      <BloqueIsakRender b={b} />
+    </>
+  )
+}
+
+const HAY_CAMPO_ISAK = (b: import('@/lib/historial/armarImpresion').BloqueNutricion): boolean =>
+  b.pliegueBiceps != null || b.pliegueCrestaIliaca != null || b.pliegueSupraespinal != null ||
+  b.pliegueMuslo != null || b.plieguePantorrilla != null || b.perimetroBrazoContraido != null ||
+  b.perimetroMusloMedio != null || b.diametroHumero != null || b.diametroBiestiloideo != null ||
+  b.diametroFemur != null || b.tallaSentado != null || b.envergadura != null || b.s6 != null || b.s8 != null
+
+function BloqueIsakRender({ b }: { b: import('@/lib/historial/armarImpresion').BloqueNutricion }) {
+  if (b.metodo !== 'isak' && !HAY_CAMPO_ISAK(b)) return null
+  return (
+    <>
+      {b.metodo === 'isak' && <p className="hc-st">Método: ISAK</p>}
+      {(b.pliegueBiceps != null || b.pliegueCrestaIliaca != null || b.pliegueSupraespinal != null || b.pliegueMuslo != null || b.plieguePantorrilla != null) && (
+        <table>
+          <thead><tr><th>Bíceps</th><th>Cresta ilíaca</th><th>Supraespinal</th><th>Muslo</th><th>Pantorrilla</th></tr></thead>
+          <tbody>
+            <tr>
+              <td className="n">{b.pliegueBiceps != null ? `${fmt(b.pliegueBiceps, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueCrestaIliaca != null ? `${fmt(b.pliegueCrestaIliaca, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueSupraespinal != null ? `${fmt(b.pliegueSupraespinal, 0)} mm` : '—'}</td>
+              <td className="n">{b.pliegueMuslo != null ? `${fmt(b.pliegueMuslo, 0)} mm` : '—'}</td>
+              <td className="n">{b.plieguePantorrilla != null ? `${fmt(b.plieguePantorrilla, 0)} mm` : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {(b.perimetroBrazoContraido != null || b.perimetroMusloMedio != null || b.diametroHumero != null || b.diametroBiestiloideo != null || b.diametroFemur != null) && (
+        <table>
+          <thead><tr><th>Perím. brazo contraído</th><th>Perím. muslo medio</th><th>Diám. húmero</th><th>Diám. biestiloideo</th><th>Diám. fémur</th></tr></thead>
+          <tbody>
+            <tr>
+              <td className="n">{b.perimetroBrazoContraido != null ? `${fmt(b.perimetroBrazoContraido, 1)} cm` : '—'}</td>
+              <td className="n">{b.perimetroMusloMedio != null ? `${fmt(b.perimetroMusloMedio, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroHumero != null ? `${fmt(b.diametroHumero, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroBiestiloideo != null ? `${fmt(b.diametroBiestiloideo, 1)} cm` : '—'}</td>
+              <td className="n">{b.diametroFemur != null ? `${fmt(b.diametroFemur, 1)} cm` : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {(b.tallaSentado != null || b.envergadura != null || b.s6 != null || b.s8 != null) && (
+        <div className="hc-kv c3">
+          <Celda label="Talla sentado" valor={b.tallaSentado != null ? fmt(b.tallaSentado, 1) : null} unidad="cm" />
+          <Celda label="Envergadura" valor={b.envergadura != null ? fmt(b.envergadura, 1) : null} unidad="cm" />
+          <Celda label="Σ6 pliegues" valor={b.s6 != null ? fmt(b.s6, 1) : null} unidad="mm" />
+          <Celda label="Σ8 pliegues" valor={b.s8 != null ? fmt(b.s8, 1) : null} unidad="mm" />
         </div>
       )}
     </>

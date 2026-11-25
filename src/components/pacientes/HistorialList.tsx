@@ -11,6 +11,29 @@ import { cn } from '@/lib/utils'
 import type { NotaClinica, TurnoRow } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
 import NotaContenido, { isHtmlEmpty } from './NotaContenido'
+import {
+  calcular, medidasDesdeRegistro, fmt, sgn, resumenEvolucionSesion, registroMasRecientePorTurno, turnoIdsSoloMedicion,
+  type MedicionBasica,
+} from '@/lib/antropometria'
+
+/** Subconjunto de columnas de registros_antropometricos que trae historial/page.tsx. */
+interface RegistroAntropoResumen {
+  id: string
+  turno_id: string | null
+  fecha: string
+  created_at: string
+  peso: number | null
+  pliegue_tricipital: number | null
+  pliegue_subescapular: number | null
+  pliegue_biceps: number | null
+  pliegue_cresta_iliaca: number | null
+  pliegue_supraespinal: number | null
+  pliegue_abdominal: number | null
+  pliegue_muslo: number | null
+  pliegue_pantorrilla: number | null
+}
+
+const DIRECCION_LABEL: Record<string, string> = { aumento: 'aumentó', disminuyo: 'disminuyó', se_mantuvo: 'se mantuvo' }
 
 function stripHtmlAndMarkdown(texto: string): string {
   return texto
@@ -34,6 +57,11 @@ function formatHoraNota(nota: { hora_nota: string | null; created_at: string }):
   return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
+// Formato del bloque de antropometría: "18 abr 2026" (sin punto después del mes).
+function formatFechaCorta(fechaIso: string): string {
+  return format(parseISO(fechaIso), 'dd MMM yyyy', { locale: es }).replace('.', '')
+}
+
 function extraerTags(texto: string): string[] {
   const clean = stripHtmlAndMarkdown(texto)
   const matches = clean.match(/#[a-zA-Z0-9_-]+/g)
@@ -50,11 +78,12 @@ const MONTH_FULL: Record<string, string> = {
 type Props = {
   notas: NotaClinica[]
   turnos: TurnoRow[]
+  registrosAntropometricos: RegistroAntropoResumen[]
   pacienteId: string
   proximaSesion?: TurnoRow | null
 }
 
-export default function HistorialList({ notas, turnos, pacienteId, proximaSesion = null }: Props) {
+export default function HistorialList({ notas, turnos, registrosAntropometricos, pacienteId, proximaSesion = null }: Props) {
   const router = useRouter()
   const [localNotas, setLocalNotas] = useState<NotaClinica[]>(notas)
   const [selectedNota, setSelectedNota] = useState<NotaClinica | null>(null)
@@ -130,8 +159,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
   const sessionNoMap = new Map<string, number>()
   chronological.forEach((n, idx) => sessionNoMap.set(n.id, idx + 1))
 
-  function sesionMeta(nota: NotaClinica) {
-    const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
+  function metaDesdeTurno(turno: TurnoRow | null | undefined, sessionNo: number) {
     const modalidad = turno?.modalidad
     const modalidadLabel =
       modalidad === 'videollamada' ? 'Virtual'
@@ -145,15 +173,116 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
     const isNoAsistio = turno?.estado === 'no_asistio'
     const statusLabel = isCompletada ? 'Completada' : isCancelada ? 'Cancelada' : isNoAsistio ? 'No asistió' : null
     const statusChipClass = isCompletada ? 'ok' : isCancelada ? 'danger' : isNoAsistio ? 'warn' : 'neutral'
-    const sessionNo = sessionNoMap.get(nota.id) ?? 0
     return { modalidadLabel, modalidadChipClass, duracionLabel, statusLabel, statusChipClass, sessionNo }
   }
 
-  const grouped: Record<string, NotaClinica[]> = {}
-  for (const nota of localNotas) {
-    const key = format(parseISO(nota.fecha), 'yyyy-MM')
+  function sesionMeta(nota: NotaClinica) {
+    const turno = nota.turno_id ? turnosById.get(nota.turno_id) : null
+    return metaDesdeTurno(turno, sessionNoMap.get(nota.id) ?? 0)
+  }
+
+  // ── Antropometría por sesión ──────────────────────────────────────
+  // Orden global ascendente por fecha+created_at — la "medición anterior" de un
+  // registro es, sin excepción, el que está inmediatamente antes en este orden
+  // (tenga turno o no), tal como se pidió.
+  const registrosOrdenados = [...registrosAntropometricos].sort((a, b) =>
+    (a.fecha + a.created_at).localeCompare(b.fecha + b.created_at)
+  )
+  const registroPorTurno = registroMasRecientePorTurno(registrosAntropometricos)
+
+  function medicionAnteriorDe(registro: RegistroAntropoResumen): RegistroAntropoResumen | null {
+    const idx = registrosOrdenados.findIndex((r) => r.id === registro.id)
+    return idx > 0 ? registrosOrdenados[idx - 1] : null
+  }
+
+  function basicaDesdeRegistro(r: RegistroAntropoResumen): MedicionBasica {
+    const resultado = calcular(medidasDesdeRegistro(r), { sexo: null, edad: null })
+    return { peso: r.peso ?? null, s6: resultado.sumatorias.s6, s8: resultado.sumatorias.s8 }
+  }
+
+  function BloqueAntropometria({ registro, solo }: { registro: RegistroAntropoResumen; solo: boolean }) {
+    const previo = medicionAnteriorDe(registro)
+    const resumen = resumenEvolucionSesion(basicaDesdeRegistro(registro), previo ? basicaDesdeRegistro(previo) : null)
+    if (!resumen) return null
+    const primeraMedicion = previo === null
+    const filas: { key: 'peso' | 's6' | 's8'; label: string; unidad: string; dec: number }[] = [
+      { key: 'peso', label: 'Peso', unidad: 'kg', dec: 1 },
+      { key: 's6', label: 'Suma de 6 pliegues', unidad: 'mm', dec: 0 },
+      { key: 's8', label: 'Suma de 8 pliegues', unidad: 'mm', dec: 0 },
+    ]
+    return (
+      <div className={`s-anthro${solo ? ' solo' : ''}`}>
+        <div className="a-head">
+          <span className="a-title">Antropometría</span>
+          <span className="a-date">{formatFechaCorta(registro.fecha)}</span>
+          {primeraMedicion && <span className="chip neutral">Primera medición</span>}
+        </div>
+        <div className="a-rows">
+          {filas.map((f) => {
+            const campo = resumen[f.key]
+            if (!campo) return null
+            return (
+              <div className="a-row" key={f.key}>
+                <span className="a-lbl">{f.label}</span>
+                <span className="a-val">{fmt(campo.valor, f.dec)}<small>{f.unidad}</small></span>
+                <span className="a-cd">
+                  {campo.direccion && (
+                    <>
+                      <span className="chip neutral">{DIRECCION_LABEL[campo.direccion]}</span>
+                      <span className="a-diff">{sgn(campo.diferencia, f.dec)} {f.unidad}</span>
+                    </>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="a-foot">
+          <a
+            className="a-link"
+            href={`/pacientes/${pacienteId}/antropometria/informe?registro=${registro.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Ver medición
+            <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth={1.8} fill="none" /></svg>
+          </a>
+          {!primeraMedicion && previo && <span className="a-ref">Comparado con {formatFechaCorta(previo.fecha)}</span>}
+        </div>
+      </div>
+    )
+  }
+
+  // Entradas "solo medición": turnos con registro antropométrico (por turno_id) que no
+  // tienen ninguna nota propia. No consumen número de sesión ni alteran sessionNoMap.
+  const turnoIdsConNota = new Set(localNotas.map((n) => n.turno_id).filter((id): id is string => !!id))
+  type EntradaMedicionSola = { turno: TurnoRow; registro: RegistroAntropoResumen; fecha: string; ordenKey: string }
+  const entradasMedicionSola: EntradaMedicionSola[] = []
+  for (const turnoId of turnoIdsSoloMedicion(turnoIdsConNota, registroPorTurno)) {
+    const turno = turnosById.get(turnoId)
+    const registro = registroPorTurno.get(turnoId)
+    if (!turno || !registro) continue
+    entradasMedicionSola.push({ turno, registro, fecha: registro.fecha, ordenKey: registro.fecha + registro.created_at })
+  }
+
+  type Entrada =
+    | { tipo: 'nota'; nota: NotaClinica; ordenKey: string }
+    | { tipo: 'medicion'; turno: TurnoRow; registro: RegistroAntropoResumen; ordenKey: string }
+  const entradas: Entrada[] = [
+    ...localNotas.map((nota): Entrada => ({ tipo: 'nota', nota, ordenKey: nota.fecha + nota.created_at })),
+    ...entradasMedicionSola.map((e): Entrada => ({ tipo: 'medicion', turno: e.turno, registro: e.registro, ordenKey: e.ordenKey })),
+  ]
+
+  const grouped: Record<string, Entrada[]> = {}
+  for (const entrada of entradas) {
+    const fecha = entrada.tipo === 'nota' ? entrada.nota.fecha : entrada.registro.fecha
+    const key = format(parseISO(fecha), 'yyyy-MM')
     if (!grouped[key]) grouped[key] = []
-    grouped[key].push(nota)
+    grouped[key].push(entrada)
+  }
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => b.ordenKey.localeCompare(a.ordenKey))
   }
   const sortedMonths = Object.keys(grouped).sort().reverse()
 
@@ -178,17 +307,47 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
         {sortedMonths.map((monthKey) => {
           const [year, mm] = monthKey.split('-')
           const monthLabel = `${MONTH_FULL[mm]} ${year}`
-          const monthNotas = grouped[monthKey]
+          const monthEntradas = grouped[monthKey]
           return (
             <div key={monthKey} className="month-group">
               <div className="month-hdr">
                 <span className="m-name">{monthLabel}</span>
-                <span className="m-count">{monthNotas.length} {monthNotas.length === 1 ? 'sesión' : 'sesiones'}</span>
+                <span className="m-count">{monthEntradas.length} {monthEntradas.length === 1 ? 'sesión' : 'sesiones'}</span>
                 <span className="m-line" />
               </div>
 
               <div className="sessions">
-                {monthNotas.map((nota) => {
+                {monthEntradas.map((entrada) => {
+                  if (entrada.tipo === 'medicion') {
+                    const { turno, registro } = entrada
+                    const fecha = parseISO(registro.fecha)
+                    const day = format(fecha, 'd')
+                    const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
+                    const yearShort = format(fecha, 'yy')
+                    const time = turno.fecha_hora ? new Date(turno.fecha_hora).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' }) : null
+                    const meta = metaDesdeTurno(turno, 0)
+
+                    return (
+                      <article key={`medicion-${registro.id}`} className="scard no-click">
+                        <div className="s-date">
+                          <div className="s-day">{day}</div>
+                          <div className="s-month-year">{monthShort} · {yearShort}</div>
+                          {time && <div className="s-time">{time} hs</div>}
+                        </div>
+                        <div className="s-body">
+                          <div className="s-title-row">
+                            <span className="s-title">Control antropométrico</span>
+                            {meta.modalidadLabel && <span className={`chip ${meta.modalidadChipClass}`}>{meta.modalidadLabel}</span>}
+                            {meta.duracionLabel && <span className="chip neutral">{meta.duracionLabel}</span>}
+                            {meta.statusLabel && <span className={`chip ${meta.statusChipClass}`}>{meta.statusLabel}</span>}
+                          </div>
+                          <BloqueAntropometria registro={registro} solo />
+                        </div>
+                      </article>
+                    )
+                  }
+
+                  const nota = entrada.nota
                   const fecha = parseISO(nota.fecha)
                   const day = format(fecha, 'd')
                   const monthShort = format(fecha, 'MMM', { locale: es }).toUpperCase().replace('.', '')
@@ -197,6 +356,7 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                   const excerpt = previewContenido(nota.contenido)
                   const tags = extraerTags(nota.contenido)
                   const meta = sesionMeta(nota)
+                  const registroDeLaNota = nota.turno_id ? registroPorTurno.get(nota.turno_id) : undefined
 
                   return (
                     <article
@@ -230,6 +390,8 @@ export default function HistorialList({ notas, turnos, pacienteId, proximaSesion
                             ))}
                           </div>
                         )}
+
+                        {registroDeLaNota && <BloqueAntropometria registro={registroDeLaNota} solo={false} />}
                       </div>
                     </article>
                   )

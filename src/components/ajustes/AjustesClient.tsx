@@ -16,6 +16,8 @@ import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
 import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
+import { normalizarCuit, validarCuit, formatearCuit } from '@/lib/facturacion/cuit'
+import { CONDICIONES_IVA } from '@/lib/facturacion/constantes'
 import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
 import type { TipoTurnoConSedes, SedeTipoTurno } from '@/components/tipos-turno/TiposTurnoSection'
 
@@ -250,7 +252,14 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     localidad: profile.localidad ?? '',
     direccion: profile.direccion ?? '',
     terminologia: (profile.terminologia ?? 'sesion') as 'sesion' | 'consulta',
+    antropometria_certificacion: profile.antropometria_certificacion ?? '',
+    cuit: normalizarCuit(profile.cuit ?? ''),
+    condicion_iva: profile.condicion_iva ?? '',
+    razon_social: profile.razon_social ?? '',
   })
+  const [antropometriaActiva, setAntropometriaActiva] = useState<boolean>(
+    profile.antropometria_activa ?? (profile.especialidad === 'Nutrición')
+  )
   const redesRef = useRef<RedesSociales>({
     instagram_url: profile.instagram_url ?? null,
     facebook_url: profile.facebook_url ?? null,
@@ -357,6 +366,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [bookingEntrevistaVisible, setBookingEntrevistaVisible] = useState<boolean>((p.booking_entrevista_visible as boolean | null) ?? true)
   const [bookingVisibilidadError, setBookingVisibilidadError] = useState<string | null>(null)
   const [bookingRequierePago, setBookingRequierePago] = useState<boolean>((p.booking_requiere_pago as boolean | null) ?? true)
+  const [bookingRequiereDni, setBookingRequiereDni] = useState<boolean>((p.booking_requiere_dni as boolean | null) ?? false)
+  const [bookingRequiereFechaNacimiento, setBookingRequiereFechaNacimiento] = useState<boolean>((p.booking_requiere_fecha_nacimiento as boolean | null) ?? false)
   const [bookingSlug] = useState<string>((p.booking_slug as string | null) ?? '')
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingSaved, setBookingSaved] = useState(false)
@@ -419,6 +430,10 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         return
       }
     }
+    if (perfilForm.cuit && !validarCuit(perfilForm.cuit)) {
+      setPerfilError('El CUIT no es válido.')
+      return
+    }
     setPerfilLoading(true); setPerfilSaved(false)
     const supabase = createClient()
     const dniClean = perfilForm.dni.replace(/\D/g, '')
@@ -435,6 +450,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       localidad: perfilForm.localidad || null,
       direccion: perfilForm.direccion || null,
       terminologia: perfilForm.terminologia,
+      antropometria_certificacion: perfilForm.antropometria_certificacion.trim().slice(0, 60) || null,
+      antropometria_activa: antropometriaActiva,
+      cuit: perfilForm.cuit || null,
+      condicion_iva: perfilForm.condicion_iva || null,
+      razon_social: perfilForm.razon_social.trim().slice(0, 120) || null,
       ...redesRef.current,
     }).eq('id', profile.id)
     if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
@@ -660,6 +680,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       booking_sesion_visible: bookingSesionVisible,
       booking_entrevista_visible: bookingEntrevistaVisible,
       booking_requiere_pago: bookingRequierePago,
+      booking_requiere_dni: bookingRequiereDni,
+      booking_requiere_fecha_nacimiento: bookingRequiereFechaNacimiento,
     } as never).eq('id', profile.id)
     setBookingLoading(false); setBookingSaved(true)
     setTimeout(() => setBookingSaved(false), 2500)
@@ -987,6 +1009,47 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   )}
                 </div>
                 <div style={fieldStyle}>
+                  <label style={labelStyle}>Certificación en antropometría</label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    placeholder="Ej: ISAK nivel 1"
+                    maxLength={60}
+                    value={perfilForm.antropometria_certificacion}
+                    onChange={e => setPerfilForm(p => ({ ...p, antropometria_certificacion: e.target.value }))}
+                  />
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>CUIT <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ej: 20-12345678-6"
+                    maxLength={13}
+                    value={formatearCuit(perfilForm.cuit)}
+                    onChange={e => setPerfilForm(p => ({ ...p, cuit: normalizarCuit(e.target.value) }))}
+                  />
+                  <span style={hintStyle}>Para facturar tu suscripción de KLIA.</span>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Condición frente al IVA <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <select style={inputStyle} value={perfilForm.condicion_iva} onChange={e => setPerfilForm(p => ({ ...p, condicion_iva: e.target.value }))}>
+                    <option value="">Sin especificar</option>
+                    {CONDICIONES_IVA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Razón social <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    maxLength={120}
+                    value={perfilForm.razon_social}
+                    onChange={e => setPerfilForm(p => ({ ...p, razon_social: e.target.value }))}
+                  />
+                </div>
+                <div style={fieldStyle}>
                   <label style={labelStyle}>Teléfono de contacto</label>
                   <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                     <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>+54</span>
@@ -1022,6 +1085,13 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <span style={hintStyle}>Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.</span>
                 </div>
               </div>
+
+              <ToggleRow
+                name="Módulo de antropometría"
+                desc="Muestra la solapa Antropometría en la ficha de tus pacientes."
+                on={antropometriaActiva}
+                onChange={() => setAntropometriaActiva((v) => !v)}
+              />
 
               <div style={secFootStyle}>
                 {perfilSaved && (
@@ -1712,6 +1782,20 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
                 on={bookingRequierePago}
                 onChange={() => setBookingRequierePago(v => !v)}
+              />
+
+              <ToggleRow
+                name="Pedir DNI al reservar"
+                desc="El paciente tiene que completar su DNI para poder reservar."
+                on={bookingRequiereDni}
+                onChange={() => setBookingRequiereDni(v => !v)}
+              />
+
+              <ToggleRow
+                name="Pedir fecha de nacimiento al reservar"
+                desc="El paciente tiene que completar su fecha de nacimiento para poder reservar."
+                on={bookingRequiereFechaNacimiento}
+                onChange={() => setBookingRequiereFechaNacimiento(v => !v)}
               />
 
               <div style={secFootStyle}>

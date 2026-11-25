@@ -238,7 +238,7 @@ export function emailDatosFacturacion({ nombre }: { nombre: string }): string {
     ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${nombre}</strong>, gracias por tu suscripción a KLIA.`)}
     ${para('Para poder emitirte la factura necesitamos que completes tu CUIT, tu condición frente al IVA y tu razón social.')}
     ${cta('Cargar mis datos', 'https://app.klia.com.ar/ajustes')}
-    ${help('Podés completarlos cuando quieras en Ajustes → Perfil.')}
+    ${help('Podés completarlos cuando quieras en Ajustes → Perfil profesional.')}
   `, 'Completá tus datos de facturación — KLIA')
 }
 
@@ -876,4 +876,26 @@ export function emailPlanAlimentarioCompartido(params: {
       </td></tr>
     </table>
   `, 'Tu plan alimentario')
+}
+
+export function emailAntropometriaCompartido(params: {
+  pacienteNombre: string
+  profesionalNombre: string
+  informeUrl: string
+  mensajePersonalizado: string
+}): string {
+  return baseTemplate(`
+    ${icon('📏', '#EFF4FF')}
+    ${h1('Tu evaluación antropométrica')}
+    ${para(`Hola <strong style="color:#2b2f38;font-weight:600;">${params.pacienteNombre}</strong>, ${params.profesionalNombre} te comparte tu evaluación antropométrica.`)}
+    ${params.mensajePersonalizado ? infoBox(`💬 ${params.mensajePersonalizado}`, '#F0F4FF', '#2563EB', '#1E3A8A') : ''}
+    ${cta('Ver mi evaluación', params.informeUrl)}
+    ${para('Lo podés abrir desde el celular cuando quieras, sin crear cuenta. Si tu profesional carga un nuevo control, vas a poder verlo en el mismo link.')}
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:28px;border-top:1px solid #e8eaf0;">
+      <tr><td style="padding:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#7a7f8a;text-align:center;">
+        Si el botón no funciona, copiá y pegá este enlace:<br>
+        <a href="${params.informeUrl}" style="color:#2563EB;word-break:break-all;font-size:11px;">${params.informeUrl}</a>
+      </td></tr>
+    </table>
+  `, 'Tu evaluación antropométrica')
 }

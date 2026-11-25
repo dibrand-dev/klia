@@ -1,0 +1,92 @@
+/* Informe profesional de antropometría ISAK (perfil restringido). Clases propias
+   (isak-*), sin reutilizar hc-* de historial-print.css. Tokens reales de
+   globals.css — el mockup los redefinía con los mismos valores hex, así que no
+   hace falta un :root paralelo (mismo criterio que historial-print.css). */
+
+.isak-root { margin: 0; background: #E9EBEF; font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; font-size: 10pt; line-height: 1.45; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.isak-pages { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px 16px 56px; overflow-x: auto; }
+
+.isak-page { width: 210mm; height: 297mm; flex: none; background: #fff; padding: 11mm 13mm 9mm; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(11,18,32,.08), 0 8px 24px rgba(11,18,32,.06); overflow: hidden; }
+
+/* encabezado */
+.isak-ph { border-bottom: 1.5pt solid var(--ink); padding-bottom: 7px; margin-bottom: 14px; }
+.isak-ph-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.isak-ph-t { font-size: 15pt; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; }
+.isak-ph-pro { font-size: 9.5pt; color: var(--ink-2); margin-top: 2px; }
+.isak-ph-meta { display: flex; gap: 18px; text-align: right; }
+.isak-lb { display: block; font-size: 7pt; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.isak-ph-meta b { font-size: 9.5pt; font-weight: 600; }
+.isak-ph-pac { display: grid; grid-template-columns: 1.8fr .7fr .9fr 1fr .9fr 1.2fr; margin-top: 9px; border: 1px solid var(--border-strong); border-radius: 6px; }
+.isak-ph-pac > div { padding: 5px 9px; border-left: 1px solid var(--border-strong); }
+.isak-ph-pac > div:first-child { border-left: 0; }
+.isak-ph-pac b { display: block; font-size: 9.5pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+.isak-ph-leg { display: flex; gap: 16px; justify-content: flex-end; margin-top: 6px; font-size: 8pt; color: var(--muted); }
+.isak-ph-leg span { display: inline-flex; align-items: center; gap: 5px; }
+.isak-ph-leg b { color: var(--ink); font-weight: 600; }
+.isak-sym-a { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); display: inline-block; }
+.isak-sym-p { width: 7px; height: 7px; background: var(--muted-2); transform: rotate(45deg); display: inline-block; }
+.isak-sym-o { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--muted-3); display: inline-block; }
+
+/* cuerpo */
+.isak-pb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.isak-sec { margin: 0; font-size: 10pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 5px; border-bottom: 1px solid var(--ink); display: flex; justify-content: space-between; align-items: baseline; }
+.isak-sec span { font-weight: 500; letter-spacing: .04em; color: var(--muted); font-size: 8pt; }
+.isak-sub { margin: 0 0 5px; font-size: 8pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.isak-page table { width: 100%; border-collapse: collapse; font-size: 9pt; font-variant-numeric: tabular-nums; }
+.isak-page th, .isak-page td { border: 1px solid var(--border); padding: 3.5px 8px; text-align: left; vertical-align: top; }
+.isak-page thead th { font-size: 7pt; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+.isak-page th.n, .isak-page td.n { text-align: right; white-space: nowrap; }
+.isak-page td .u { color: var(--muted); font-size: 8pt; margin-left: 3px; }
+.isak-page td.miss { color: var(--muted); }
+.isak-falta { display: block; font-size: 7.5pt; color: var(--warn); font-weight: 600; white-space: nowrap; }
+.isak-page tr.isak-tot td { font-weight: 700; background: var(--surface-2); }
+.isak-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.isak-box { border: 1px solid var(--border-strong); border-radius: 8px; padding: 10px 12px; }
+.isak-box .isak-bt { font-size: 8pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }
+.isak-box .isak-bt span { font-weight: 500; color: var(--muted); letter-spacing: .03em; text-transform: none; }
+.isak-big { font-size: 20pt; font-weight: 700; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.isak-big small { font-size: 9pt; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.isak-note { font-size: 8.5pt; color: var(--muted); margin-top: 5px; }
+.isak-cat { display: inline-block; font-size: 8pt; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 4px; padding: 1px 7px; margin-left: 8px; vertical-align: middle; color: var(--ink); }
+.isak-rng { margin-top: 12px; }
+.isak-rng .isak-bar { display: grid; grid-template-columns: repeat(5,1fr); gap: 2px; position: relative; }
+.isak-rng .isak-bar i { height: 8px; background: var(--surface-3); border-radius: 2px; display: block; }
+.isak-rng .isak-bar i.on { background: var(--ink); }
+.isak-rng .isak-mk { position: absolute; top: -7px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--ink); transform: translateX(-5px); }
+.isak-rng .isak-lbs { display: grid; grid-template-columns: repeat(5,1fr); gap: 2px; margin-top: 4px; font-size: 7pt; color: var(--muted); text-align: center; }
+.isak-rng .isak-lbs b { display: block; color: var(--ink-2); font-weight: 600; }
+.isak-rng .isak-lbs .on b { color: var(--ink); }
+.isak-comp { display: grid; grid-template-columns: 1fr; justify-items: center; gap: 14px; align-items: center; }
+.isak-leg { display: flex; flex-direction: column; gap: 5px; font-size: 8.5pt; margin-top: 8px; }
+.isak-leg div { display: grid; grid-template-columns: 10px 1fr auto; gap: 7px; align-items: center; }
+.isak-leg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.isak-bars { display: flex; flex-direction: column; gap: 9px; }
+.isak-br { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: center; font-size: 8.5pt; }
+.isak-br .isak-tr { display: flex; flex-direction: column; gap: 3px; }
+.isak-br .isak-ln { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-size: 8pt; color: var(--muted); }
+.isak-br .isak-track { position: relative; flex: 1; height: 9px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.isak-br .isak-track i { position: absolute; inset: 0; height: 100%; border-radius: 2px; background: var(--ink); display: block; }
+.isak-br .isak-ln.p .isak-track i { background: var(--muted-3); }
+/* Barras de "Fraccionamiento tisular" (P2): sin el riel gris — ya no representan % de la
+   masa corporal (donde el riel tenía sentido como techo), sino % normalizado sobre la suma
+   de los 3 tejidos. No toca .isak-track base, que sigue usando la sección de "Distribución
+   adiposo/muscular" (P3) con su riel de siempre. */
+.isak-br .isak-track--sin-riel { background: none; }
+.isak-aviso { border: 1px solid var(--border-strong); border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--ink-2); background: var(--warn-soft); }
+.isak-aviso b { color: var(--ink); }
+.isak-info { border: 1px solid var(--border); border-radius: 6px; padding: 8px 11px; font-size: 9pt; color: var(--muted); background: var(--surface-2); }
+.isak-soma { display: grid; grid-template-columns: minmax(0,1fr) 236px; gap: 16px; align-items: start; }
+.isak-chart-leg { display: flex; gap: 14px; justify-content: center; font-size: 8pt; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+.isak-chart-leg span { display: inline-flex; align-items: center; gap: 5px; }
+.isak-foot-note { margin-top: auto; font-size: 8.5pt; color: var(--muted); border-top: 1px solid var(--border); padding-top: 7px; }
+.isak-pf { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-strong); padding-top: 6px; margin-top: 10px; font-size: 8pt; color: var(--muted); }
+.isak-pf b { color: var(--ink-2); font-weight: 600; }
+
+@page { size: A4; margin: 0; }
+
+@media print {
+  .isak-root { background: #fff; }
+  .isak-pages { padding: 0; gap: 0; overflow: visible; }
+  .isak-page { box-shadow: none; break-after: page; page-break-after: always; }
+  .isak-page:last-child { break-after: auto; }
+}

@@ -10,13 +10,17 @@ export default async function PortalHoyPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const db = serviceClient()
-  // El layout ya redirige a PortalNoDisponible si accesoPrincipal es null —
-  // si esta página llegó a renderizar, hay un principal válido.
-  const principal = await accesoPrincipal(db, user!.id)
+  if (!user) return null
+
+  // El layout ya redirige/muestra PortalNoDisponible si accesoPrincipal es
+  // null — pero layout y page corren en paralelo, así que esta página puede
+  // llegar a ejecutar antes de que ese redirect/fallback tome efecto.
+  const principal = await accesoPrincipal(db, user.id)
+  if (!principal) return null
 
   const [{ data: paciente }, { data: profile }] = await Promise.all([
-    db.from('pacientes').select('nombre').eq('id', principal!.pacienteId).maybeSingle(),
-    db.from('profiles').select('nombre, apellido').eq('id', principal!.terapeutaId).maybeSingle(),
+    db.from('pacientes').select('nombre').eq('id', principal.pacienteId).maybeSingle(),
+    db.from('profiles').select('nombre, apellido').eq('id', principal.terapeutaId).maybeSingle(),
   ])
 
   const profesionalNombre = [profile?.nombre, profile?.apellido].filter(Boolean).join(' ') || 'tu profesional'

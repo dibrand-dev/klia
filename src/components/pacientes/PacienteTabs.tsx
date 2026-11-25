@@ -22,6 +22,7 @@ export default function PacienteTabs({
   especialidad,
   esColaborador = false,
   puedeUsarPortal = false,
+  antropometriaActiva = false,
 }: {
   pacienteId: string
   active: PacienteTabKey
@@ -30,10 +31,13 @@ export default function PacienteTabs({
   especialidad?: string | null
   esColaborador?: boolean
   puedeUsarPortal?: boolean
+  /** antropometria_activa del profesional efectivo, ya resuelto server-side (profiles.antropometria_activa ?? especialidad === 'Nutrición'). Solo gatea la solapa Antropometría — Plan Alimentario y Hábitos siguen dependiendo únicamente de showComposicion. */
+  antropometriaActiva?: boolean
 }) {
   const router = useRouter()
   const showAdmision = ESPECIALIDADES_SALUD_MENTAL.includes(especialidad ?? '')
   const showComposicion = especialidad === 'Nutrición'
+  const showAntropometria = antropometriaActiva
   const showRefraccion = especialidad === 'Oftalmología'
   // A diferencia de Antropometría/Plan Alimentario/Hábitos (solo por
   // especialidad), Registro también depende del plan — puedeUsarPortal ya
@@ -48,7 +52,7 @@ export default function PacienteTabs({
     { key: 'informes', label: 'Informes' },
     ...(tieneDrive ? [{ key: 'archivos' as PacienteTabKey, label: 'Archivos' }] : []),
     ...(showAdmision ? [{ key: 'admision' as PacienteTabKey, label: 'Admisión' }] : []),
-    ...(showComposicion ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
+    ...(showAntropometria ? [{ key: 'composicion' as PacienteTabKey, label: 'Antropometría' }] : []),
     ...(showComposicion ? [{ key: 'plan-alimentario' as PacienteTabKey, label: 'Plan Alimentario' }] : []),
     ...(showComposicion ? [{ key: 'habitos' as PacienteTabKey, label: 'Hábitos' }] : []),
     ...(showRegistro ? [{ key: 'registro' as PacienteTabKey, label: 'Registro' }] : []),

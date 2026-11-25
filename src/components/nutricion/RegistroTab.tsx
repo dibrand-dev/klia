@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Paciente } from '@/types/database'
 import SlideOver from '@/components/ui/SlideOver'
-import { sumarDias } from '@/lib/portal/semana'
+import { sumarDias, lunesDe } from '@/lib/portal/semana'
 import { hoyFechaAR } from '@/lib/tz'
 import type { ComentarioProfesionalOut } from '@/lib/portal/comentario-profesional'
 import './registro.css'
@@ -92,6 +92,7 @@ interface SemanaData {
   diasRetencion: number | null
   esColaborador: boolean
   profesionalNombre: string
+  ultimoRegistroFecha: string | null
 }
 
 interface EstadoAcceso {
@@ -202,6 +203,10 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
   function irSemana(delta: number) {
     if (!data) return
     setSemana(sumarDias(data.semanaInicio, delta * 7))
+  }
+
+  function irASemanaDe(fecha: string) {
+    setSemana(lunesDe(fecha))
   }
 
   function celdaPorKey(key: string): { fecha: string; fila: Fila; celda: Celda & { estado: 'registro' | 'miss' } } | null {
@@ -450,6 +455,16 @@ export default function RegistroTab({ paciente }: { paciente: Paciente }) {
           </div>
           <div className="rg-wk-cnt"><b>{data.contador.hechas} de {data.contador.total}</b> comidas registradas{data.esSemanaActual ? ' · hasta hoy' : ''}</div>
         </div>
+
+        {data.contador.hechas === 0 && data.ultimoRegistroFecha && (
+          <div style={{ padding: '12px 16px 0' }}>
+            <div className="rg-inote warn" role="status">
+              {IconAlert}
+              <span className="rg-tx">No hay registros en esta semana. El último fue el {formatCorto(data.ultimoRegistroFecha)}.</span>
+              <button className="btn" onClick={() => irASemanaDe(data.ultimoRegistroFecha!)}>Ver esa semana</button>
+            </div>
+          </div>
+        )}
 
         {acceso.estado === 'activo' && !acceso.registroHabilitado && (
           <div style={{ padding: '12px 16px 0' }}>

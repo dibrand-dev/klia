@@ -1,10 +1,12 @@
 import { parseISO, differenceInYears } from 'date-fns'
 import type { NotaClinica, TurnoRow, Paciente, RegistroAntropometrico, RegistroPIO, RegistroRefraccion, RegistroEspecialidad } from '@/types/database'
-import { calcularIMC, clasificarIMC, calcularGEB } from '@/lib/nutricion/calculos'
+import { calcularIMC, clasificarIMC, calcularGEB, normalizarSexo } from '@/lib/nutricion/calculos'
+import { calcular, medidasDesdeRegistro } from '@/lib/antropometria'
 import { calcularPIOCorregida, calcularEquivalenteEsferico } from '@/lib/oftalmologia/calculos'
 import { clasificarTA } from '@/lib/clinica-medica/calculos'
 import { severidadPHQ9, severidadGAD7 } from '@/lib/psicologia/calculos'
 import { descripcionCie10 } from '@/lib/cie10/server'
+import { labelTipoTurno } from '@/lib/tipos-turno'
 
 // ─── Formato numérico es-AR (coma decimal, signo "−" tipográfico) ──────────
 function fmt(n: number, decimales: number): string {
@@ -40,9 +42,27 @@ export interface BloqueNutricion {
   pliegueAbdominal: number | null
   perimetroBrazo: number | null
   perimetroPierna: number | null
-  imc: { valor: number; label: string } | null
+  // label ausente en menores de 18 (EDAD_ADULTO) — los cortes son de adulto, ver clasificarIMC.
+  imc: { valor: number; label?: string } | null
   geb: number | null
   indiceCinturaCadera: number | null
+  /** ISAK (perfil restringido) — además de los campos de arriba, nunca en vez de. Todo
+   * opcional: solo se completa lo que no es null; nunca se calcula con datos faltantes. */
+  metodo?: 'basico' | 'isak' | 'otro'
+  pliegueBiceps?: number | null
+  pliegueCrestaIliaca?: number | null
+  pliegueSupraespinal?: number | null
+  pliegueMuslo?: number | null
+  plieguePantorrilla?: number | null
+  perimetroBrazoContraido?: number | null
+  perimetroMusloMedio?: number | null
+  diametroHumero?: number | null
+  diametroBiestiloideo?: number | null
+  diametroFemur?: number | null
+  tallaSentado?: number | null
+  envergadura?: number | null
+  s6?: number | null
+  s8?: number | null
 }
 
 export interface BloqueOftalmologia {
@@ -128,7 +148,9 @@ const MODALIDAD_LABEL: Record<string, string> = {
 
 function horaDeNota(nota: { hora_nota: string | null; created_at: string }): string {
   const iso = nota.hora_nota ?? nota.created_at
-  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' })
+  // hour12: false — si no, es-AR devuelve "10:50 a. m." y la página le agrega
+  // " h" encima, quedando "10:50 a. m. h".
+  return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })
 }
 
 function edadA(fechaReferenciaISO: string, fechaNacimientoISO: string | null): number | null {
@@ -136,25 +158,39 @@ function edadA(fechaReferenciaISO: string, fechaNacimientoISO: string | null): n
   return differenceInYears(parseISO(fechaReferenciaISO), parseISO(fechaNacimientoISO))
 }
 
-function sexoParaGEB(genero: string | null): 'M' | 'F' | null {
-  return genero === 'M' || genero === 'F' ? genero : null
-}
-
 function armarBloqueNutricion(r: RegistroAntropometrico, paciente: Paciente): BloqueNutricion {
   const imcValor = calcularIMC(r.peso, r.altura)
-  const sexo = sexoParaGEB(paciente.genero)
+  const sexo = normalizarSexo(paciente.genero)
   const edad = edadA(r.fecha, paciente.fecha_nacimiento)
   const geb = sexo != null && edad != null ? calcularGEB(r.peso, r.altura, edad, sexo, 'mifflin') : null
   const indiceCC = r.cintura && r.cadera ? r.cintura / r.cadera : null
+  // Σ6/Σ8 con la misma función que usa el bloque de antropometría del Historial — nunca
+  // se reimplementa la suma. calcular() ya devuelve null si falta algún pliegue.
+  const sumatorias = calcular(medidasDesdeRegistro(r), { sexo: null, edad: null }).sumatorias
   return {
     peso: r.peso, altura: r.altura, cintura: r.cintura, cadera: r.cadera,
     porcentajeGrasa: r.porcentaje_grasa, porcentajeMusculo: r.porcentaje_musculo,
     pliegueTricipital: r.pliegue_tricipital, pliegueSubescapular: r.pliegue_subescapular,
     pliegueSuprailiaco: r.pliegue_suprailiaco, pliegueAbdominal: r.pliegue_abdominal,
     perimetroBrazo: r.perimetro_brazo, perimetroPierna: r.perimetro_pierna,
-    imc: imcValor != null ? { valor: imcValor, label: clasificarIMC(imcValor).label } : null,
+    imc: imcValor != null ? { valor: imcValor, label: clasificarIMC(imcValor, edad)?.label } : null,
     geb,
     indiceCinturaCadera: indiceCC,
+    metodo: (r.metodo_medicion as 'basico' | 'isak' | 'otro' | null) ?? undefined,
+    pliegueBiceps: r.pliegue_biceps,
+    pliegueCrestaIliaca: r.pliegue_cresta_iliaca,
+    pliegueSupraespinal: r.pliegue_supraespinal,
+    pliegueMuslo: r.pliegue_muslo,
+    plieguePantorrilla: r.pliegue_pantorrilla,
+    perimetroBrazoContraido: r.perimetro_brazo_contraido,
+    perimetroMusloMedio: r.perimetro_muslo_medio,
+    diametroHumero: r.diametro_humero,
+    diametroBiestiloideo: r.diametro_biestiloideo,
+    diametroFemur: r.diametro_femur,
+    tallaSentado: r.talla_sentado,
+    envergadura: r.envergadura,
+    s6: sumatorias.s6,
+    s8: sumatorias.s8,
   }
 }
 
@@ -269,6 +305,8 @@ export const TITULO_MODULO: Record<string, string> = {
 
 interface Params {
   especialidadProfesional: string | null
+  terminologia: 'sesion' | 'consulta' | null | undefined
+  tiposTurno: { id: string; nombre: string }[]
   paciente: Paciente
   notas: NotaClinica[]
   turnos: TurnoRow[]
@@ -283,7 +321,7 @@ interface Params {
 // notas_clinicas y las 4 tablas de módulo, y arma el view-model ya
 // formateado para el render (KL1-T40).
 export function armarHistorialParaImprimir(params: Params): HistorialParaImprimir {
-  const { especialidadProfesional, paciente, notas, turnos, registrosAntropometricos, registrosPio, registrosRefraccion, registrosEspecialidad } = params
+  const { especialidadProfesional, terminologia, tiposTurno, paciente, notas, turnos, registrosAntropometricos, registrosPio, registrosRefraccion, registrosEspecialidad } = params
 
   const notasOrdenadas = [...notas]
     .filter((n) => !n.borrador)
@@ -335,7 +373,7 @@ export function armarHistorialParaImprimir(params: Params): HistorialParaImprimi
       id: nota.id,
       fecha: nota.fecha,
       horaLabel: horaDeNota(nota),
-      tipoTurnoLabel: turno?.tipo_turno ?? null,
+      tipoTurnoLabel: turno ? labelTipoTurno(turno.tipo_turno_id ?? null, tiposTurno, terminologia) : null,
       modalidadLabel: turno ? MODALIDAD_LABEL[turno.modalidad] ?? null : null,
       contenidoHtml: nota.contenido,
       modulo,

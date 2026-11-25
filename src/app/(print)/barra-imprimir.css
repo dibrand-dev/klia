@@ -1,0 +1,15 @@
+/* Barra de impresión compartida por las páginas de impresión (HC, informe
+   ISAK) — clases propias (imp-*), tomadas 1:1 de .hc-toolbar/.hc-btn
+   (historial-print.css) para no cambiar el look ya resuelto de la HC. */
+.imp-toolbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid var(--border); }
+.imp-toolbar a { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: 13px; }
+.imp-toolbar a svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.imp-sp { flex: 1; }
+.imp-leyenda { font-size: 13px; color: var(--muted); }
+.imp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 8px; font: 600 13.5px/1 'Inter', sans-serif; background: var(--ink); color: #fff; border: 1px solid var(--ink); cursor: pointer; }
+.imp-btn:hover { background: #000; }
+.imp-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+@media print {
+  .imp-toolbar { display: none !important; }
+}

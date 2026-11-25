@@ -811,6 +811,8 @@ export default function PacienteDetalle({
       pacienteApellido={paciente.apellido}
       pacienteGenero={paciente.genero}
       pacienteFechaNacimiento={paciente.fecha_nacimiento}
+      pacienteEmail={paciente.email}
+      pacienteTelefono={paciente.telefono}
     /></>
 
   }

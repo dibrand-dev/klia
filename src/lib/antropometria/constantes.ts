@@ -2,11 +2,12 @@
 // Las constantes Phantom (p, s, d) fueron validadas numéricamente contra 4 informes
 // reales de ISAKMetry (75/75 valores), pero no tienen cita formal. Ver spec §4.
 
-/** Talla del Phantom (cm). */
+/** Talla del Phantom (cm) y su desvío estándar — para el Z-score de la talla misma. */
 export const TALLA_PHANTOM = 170.18
+export const TALLA_PHANTOM_SD = 6.29
 
 export type VariablePhantom =
-  | 'masa' | 'tallaSentado'
+  | 'masa' | 'tallaSentado' | 'envergadura'
   | 'triceps' | 'subescapular' | 'biceps' | 'crestaIliaca' | 'supraespinal'
   | 'abdominal' | 'muslo' | 'pantorrilla'
   | 'brazoRelajado' | 'brazoContraido' | 'cintura' | 'cadera' | 'musloMedio' | 'pierna'
@@ -18,6 +19,9 @@ export type VariablePhantom =
 export const PHANTOM: Record<VariablePhantom, readonly [number, number, number]> = {
   masa: [64.58, 8.6, 3],
   tallaSentado: [89.92, 4.5, 1],
+  // Faltaba en la librería (solo se usaba para talla sentado y diámetros): se agrega
+  // para el Z-score de envergadura en la tabla "Medidas básicas" del informe profesional.
+  envergadura: [172.35, 7.41, 1],
   triceps: [15.4, 4.47, 1],
   subescapular: [17.2, 5.07, 1],
   biceps: [8.0, 2.0, 1],
@@ -54,11 +58,18 @@ export const RANGOS_MUSCULO_OSEO: Record<Sexo, readonly [number, number, number,
   M: [2.34, 2.44, 3.11, 3.29],
 }
 
-/** Cortes de salud (OMS para cintura/cadera). Conicidad <1,40: sin validar (de ISAKMetry). */
+/** Cortes de salud (OMS para cintura/cadera). */
 export const CORTES_SALUD = {
   cinturaCadera: { F: 0.85, M: 0.9 } as Record<Sexo, number>,
   cinturaTalla: 0.5,
-  conicidad: 1.4,
 }
+
+// Decisión cerrada con la nutricionista: cortes de conicidad por sexo, de Pitanga y Lessa
+// (2004) — riesgo coronario en adultos de Salvador, Brasil (la fórmula del índice es de
+// Valdez 1991). Ver fuentes.ts.
+export const CORTES_CONICIDAD_POR_SEXO: Record<Sexo, number> = { M: 1.25, F: 1.18 }
+
+// Tabla provista por la nutricionista, 18/11/2026; reemplaza los cortes anteriores.
+export const CORTES_SOMATOTIPO = { bajo: 2.5, moderado: 4.5, alto: 6.5, muyAlto: 8.5 } as const
 
 export const EDAD_ADULTO = 18

@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { finalizarReservaConfirmada, type MedioPago, type DatosPago } from '@/lib/booking/finalizar-reserva'
 import { isSlotAvailable } from '@/lib/booking/slot-disponible'
-import { normalizarEmail, normalizarNombre, escaparIlike } from '@/lib/pacientes/duplicados'
+import { normalizarEmail, normalizarNombre, normalizarDni, escaparIlike, elegirPacienteExistente } from '@/lib/pacientes/duplicados'
 import { enviarEmail } from '@/lib/brevo'
 import { emailSobreturnoReservaPublica } from '@/lib/email-templates'
 import { zonedDateArgentina, formatFechaHoraArgentina } from '@/lib/timezone'
@@ -14,6 +14,8 @@ export type ReservaPendientePago = {
   apellido: string
   email: string | null
   telefono: string | null
+  dni: string | null
+  fecha_nacimiento: string | null
   whatsapp_opt_in: boolean
   fecha_hora: string
   duracion_min: number
@@ -33,28 +35,44 @@ export type ReservaPendientePago = {
 // profesional.
 export async function crearOReusarPacienteDesdeReserva(
   db: ReturnType<typeof serviceClient>,
-  reserva: Pick<ReservaPendientePago, 'terapeuta_id' | 'nombre' | 'apellido' | 'email' | 'telefono' | 'whatsapp_opt_in' | 'tipo_turno' | 'tipo_turno_id'>,
+  reserva: Pick<ReservaPendientePago, 'terapeuta_id' | 'nombre' | 'apellido' | 'email' | 'telefono' | 'dni' | 'fecha_nacimiento' | 'whatsapp_opt_in' | 'tipo_turno' | 'tipo_turno_id'>,
 ): Promise<string | null> {
   const emailNormalizado = normalizarEmail(reserva.email) ?? ''
   const { data: existentes } = await db
     .from('pacientes')
-    .select('id, nombre, apellido, activo, created_at')
+    .select('id, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
     .eq('terapeuta_id', reserva.terapeuta_id)
     .ilike('email', escaparIlike(emailNormalizado))
 
-  const ordenados = (existentes ?? []).slice().sort((a, b) => a.created_at.localeCompare(b.created_at))
-  const nombreBuscado = normalizarNombre(reserva.nombre)
-  const apellidoBuscado = normalizarNombre(reserva.apellido)
-  const activos = ordenados.filter((p) => p.activo)
-  const existing =
-    activos.find((p) => normalizarNombre(p.nombre) === nombreBuscado && normalizarNombre(p.apellido) === apellidoBuscado)
-    ?? activos[0]
-    ?? ordenados[0]
-    ?? null
+  let existing = elegirPacienteExistente(existentes ?? [], reserva.nombre, reserva.apellido, reserva.dni)
+
+  // Sin match por email: si la reserva trae DNI, buscar en toda la cartera
+  // del profesional por ese DNI. Solo se reusa si además coincide nombre y
+  // apellido — si el nombre difiere, se crea un paciente nuevo.
+  if (!existing && reserva.dni) {
+    const { data: porDni } = await db
+      .from('pacientes')
+      .select('id, nombre, apellido, activo, created_at, dni, fecha_nacimiento')
+      .eq('terapeuta_id', reserva.terapeuta_id)
+      .not('dni', 'is', null)
+
+    const nombreBuscado = normalizarNombre(reserva.nombre)
+    const apellidoBuscado = normalizarNombre(reserva.apellido)
+    existing = (porDni ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .find((p) =>
+        normalizarDni(p.dni) === reserva.dni
+        && normalizarNombre(p.nombre) === nombreBuscado
+        && normalizarNombre(p.apellido) === apellidoBuscado
+      ) ?? null
+  }
 
   if (existing) {
     const patch: Record<string, unknown> = {}
     if (!existing.activo) patch.activo = true
+    if (reserva.dni && !existing.dni) patch.dni = reserva.dni
+    if (reserva.fecha_nacimiento && !existing.fecha_nacimiento) patch.fecha_nacimiento = reserva.fecha_nacimiento
     if (reserva.whatsapp_opt_in) {
       patch.whatsapp_opt_in = true
       patch.whatsapp_opt_in_at = new Date().toISOString()
@@ -74,6 +92,8 @@ export async function crearOReusarPacienteDesdeReserva(
       apellido: reserva.apellido,
       email: emailNormalizado,
       telefono: reserva.telefono,
+      dni: reserva.dni,
+      fecha_nacimiento: reserva.fecha_nacimiento,
       activo: true,
       motivo_consulta: (!reserva.tipo_turno_id && reserva.tipo_turno === 'entrevista') ? 'Entrevista inicial (reserva online)' : null,
       ...(reserva.whatsapp_opt_in ? { whatsapp_opt_in: true, whatsapp_opt_in_at: new Date().toISOString(), whatsapp_opt_in_origen: 'reserva_publica' } : {}),
@@ -246,8 +266,9 @@ export async function crearReservaDesdePago(
   // 5) Calendar/Meet + email de confirmación al paciente
   const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, reserva.terapeuta_id, medioPago, pago)
 
-  // 6) Dejar constancia del turno creado en la reserva ya reclamada
-  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id }).eq('hash', reserva.hash)
+  // 6) Dejar constancia del turno creado en la reserva ya reclamada, y
+  // limpiar dni/fecha_nacimiento ahora que ya se copiaron al paciente.
+  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id, dni: null, fecha_nacimiento: null }).eq('hash', reserva.hash)
 
   return {
     turnoId: turno.id,

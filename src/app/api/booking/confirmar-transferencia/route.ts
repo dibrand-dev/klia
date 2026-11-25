@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   const venceEn = (fechaCita < veinticuatroHs ? fechaCita : veinticuatroHs).toISOString()
 
   await db.from('turnos').update({ vence_en: venceEn }).eq('id', turno.id)
-  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id }).eq('hash', hash)
+  await db.from('reservas_pendientes_pago').update({ turno_id: turno.id, dni: null, fecha_nacimiento: null }).eq('hash', hash)
 
   const { googleEventId, meetLink } = await finalizarReservaConfirmada(turno.id, reserva.terapeuta_id, 'transferencia', {
     monto: reserva.monto ?? 0,

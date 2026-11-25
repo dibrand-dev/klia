@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffectiveTerapeutaId } from '@/lib/auth/useEffectiveTerapeutaId'
 import SlideOver from '@/components/ui/SlideOver'
 import {
-  calcular, fmt, somatochart,
-  type Medidas, type Paciente as PacienteCalculo,
+  calcular, fmt, somatochart, medidasDesdeRegistro, resolverTurnoParaRegistro, rangoDiaCalendarioAR,
+  type Medidas, type Paciente as PacienteCalculo, type TurnoCandidato,
 } from '@/lib/antropometria'
 import type { RegistroAntropometrico } from '@/types/database'
 import './nuevo-registro.css'
@@ -23,6 +23,8 @@ interface Props {
   pacienteFechaNacimiento: string | null
   /** Registro a editar. null = alta de un registro nuevo. */
   registro: RegistroAntropometrico | null
+  /** Turno explícito (si el caller ya lo conoce) — tiene prioridad sobre resolverTurnoParaRegistro. Ningún caller lo pasa hoy. */
+  turnoId?: string | null
 }
 
 type Metodo = 'basico' | 'isak' | 'otro'
@@ -109,7 +111,7 @@ function medidasDesdeVals(vals: Record<string, string>): Medidas {
 }
 
 export default function NuevoRegistroSlide({
-  open, onClose, pacienteId, pacienteNombre, pacienteApellido, pacienteGenero, pacienteFechaNacimiento, registro,
+  open, onClose, pacienteId, pacienteNombre, pacienteApellido, pacienteGenero, pacienteFechaNacimiento, registro, turnoId,
 }: Props) {
   const router = useRouter()
   const esEdicion = !!registro
@@ -123,6 +125,7 @@ export default function NuevoRegistroSlide({
     basicas: true, pliegues: true, perimetros: true, diametros: true,
   })
   const [resBarAbierta, setResBarAbierta] = useState(false)
+  const [ultimoRegistro, setUltimoRegistro] = useState<RegistroAntropometrico | null>(null)
   const [previo, setPrevio] = useState<RegistroAntropometrico | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,11 +149,11 @@ export default function NuevoRegistroSlide({
     setError(null)
   }, [open, registro])
 
-  // Registro previo (para la comparación "Previo" y el punto gris de la somatocarta)
+  // "Último registro" del header: el más reciente del paciente, sin importar la fecha elegida en el formulario.
   useEffect(() => {
-    if (!open) { setPrevio(null); return }
+    if (!open) { setUltimoRegistro(null); return }
     let cancelado = false
-    async function fetchPrevio() {
+    async function fetchUltimo() {
       const supabase = createClient()
       const { data } = await supabase
         .from('registros_antropometricos')
@@ -160,24 +163,48 @@ export default function NuevoRegistroSlide({
         .limit(registro ? 2 : 1)
       if (cancelado) return
       const filas = (data ?? []) as RegistroAntropometrico[]
-      const otro = filas.find((r) => r.id !== registro?.id) ?? null
-      setPrevio(otro)
+      setUltimoRegistro(filas.find((r) => r.id !== registro?.id) ?? null)
     }
-    fetchPrevio()
+    fetchUltimo()
     return () => { cancelado = true }
   }, [open, pacienteId, registro])
 
+  // "Previo" de las tarjetas de comparación: el último registro con fecha estrictamente anterior
+  // a la fecha elegida en el formulario (se recalcula si el usuario la cambia).
+  useEffect(() => {
+    if (!open) { setPrevio(null); return }
+    let cancelado = false
+    async function fetchPrevio() {
+      const supabase = createClient()
+      let query = supabase
+        .from('registros_antropometricos')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .lt('fecha', fecha)
+        .order('fecha', { ascending: false })
+        .limit(1)
+      if (registro?.id) query = query.neq('id', registro.id)
+      const { data } = await query.maybeSingle()
+      if (cancelado) return
+      setPrevio((data as RegistroAntropometrico | null) ?? null)
+    }
+    fetchPrevio()
+    return () => { cancelado = true }
+  }, [open, pacienteId, registro, fecha])
+
   if (!open) return null
 
-  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx. Nunca se asume 'M': sin género cargado, sexo queda null.
-  const edad = pacienteFechaNacimiento ? differenceInYears(new Date(), parseISO(pacienteFechaNacimiento)) : 30
+  // Sexo/edad del paciente — mismo patrón que NuevaNotaForm.tsx. Nunca se asume un valor por defecto:
+  // sin fecha de nacimiento, edad queda null; sin género cargado, sexo queda null.
+  const edad = pacienteFechaNacimiento ? differenceInYears(new Date(), parseISO(pacienteFechaNacimiento)) : null
   const sexo: PacienteCalculo['sexo'] = pacienteGenero === 'M' || pacienteGenero === 'F' ? pacienteGenero : null
   const paciente: PacienteCalculo = { sexo, edad }
+  const textoSexoEdad = edad == null ? (sexo ?? 'Sexo no cargado') : `${sexo ?? 'Sexo no cargado'} · ${edad} años`
 
   const medidas = medidasDesdeVals(vals)
   const resultado = calcular(medidas, paciente)
 
-  const medidasPrevio = previo ? medidasDesdeVals(valsDesdeRegistro(previo)) : null
+  const medidasPrevio = previo ? medidasDesdeRegistro(previo) : null
   const resultadoPrevio = medidasPrevio ? calcular(medidasPrevio, paciente) : null
 
   function iniciales(): string {
@@ -199,11 +226,36 @@ export default function NuevoRegistroSlide({
 
   function cerrarConToast() {
     const n = Object.values(vals).filter((v) => numDesde(v) != null).length
-    setToastMsg(n ? `Registro guardado · ${n} medidas` : 'Registro guardado sin medidas')
+    setToastMsg(n === 0 ? 'Registro guardado sin medidas' : n === 1 ? 'Registro guardado · 1 medida' : `Registro guardado · ${n} medidas`)
     setTimeout(() => {
       router.refresh()
       onClose()
     }, 900)
+  }
+
+  // Turno al que corresponde esta medición cargada a mano, para que el bloque de
+  // antropometría del Historial pueda emparejarla por turno_id. Nunca bloquea el
+  // guardado: cualquier error de consulta cae a null, igual que antes de esto.
+  async function resolverTurnoId(excluirRegistroId: string | null): Promise<string | null> {
+    if (turnoId) return turnoId
+    try {
+      const supabase = createClient()
+      const { desde, hasta } = rangoDiaCalendarioAR(fecha)
+      const [{ data: turnosData, error: turnosError }, { data: ocupadosData, error: ocupadosError }] = await Promise.all([
+        supabase.from('turnos').select('id, fecha_hora, estado').eq('paciente_id', pacienteId).gte('fecha_hora', desde).lt('fecha_hora', hasta),
+        supabase.from('registros_antropometricos').select('id, turno_id').eq('paciente_id', pacienteId).not('turno_id', 'is', null),
+      ])
+      if (turnosError || ocupadosError) return null
+      const turnosCandidatos = (turnosData ?? []) as TurnoCandidato[]
+      const ocupados = new Set<string>(
+        ((ocupadosData ?? []) as { id: string; turno_id: string | null }[])
+          .filter((r) => r.id !== excluirRegistroId && r.turno_id)
+          .map((r) => r.turno_id as string)
+      )
+      return resolverTurnoParaRegistro(turnosCandidatos, fecha, ocupados, new Date())
+    } catch {
+      return null
+    }
   }
 
   async function handleGuardar() {
@@ -234,6 +286,10 @@ export default function NuevoRegistroSlide({
     if (payload.perfil_medicion === undefined) delete payload.perfil_medicion
 
     if (esEdicion && registro) {
+      // Solo se intenta resolver si el registro todavía no tiene turno — uno ya asociado nunca se toca.
+      if (!registro.turno_id) {
+        payload.turno_id = await resolverTurnoId(registro.id)
+      }
       const { error: dbError } = await supabase
         .from('registros_antropometricos')
         .update(payload as never)
@@ -243,9 +299,10 @@ export default function NuevoRegistroSlide({
         setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
       }
     } else {
+      const turnoResuelto = await resolverTurnoId(null)
       const { error: dbError } = await supabase
         .from('registros_antropometricos')
-        .insert({ ...payload, terapeuta_id: terapeutaId, paciente_id: pacienteId, turno_id: null } as never)
+        .insert({ ...payload, terapeuta_id: terapeutaId, paciente_id: pacienteId, turno_id: turnoResuelto } as never)
       if (dbError) {
         console.error('[NuevoRegistroSlide] error al insertar registro antropométrico', dbError.code, dbError.message, dbError)
         setError('Error al guardar. Intentá de nuevo.'); setLoading(false); return
@@ -348,8 +405,8 @@ export default function NuevoRegistroSlide({
               <div className="nr-name">{esEdicion ? 'Editar registro antropométrico' : 'Nuevo registro antropométrico'}</div>
               <div className="nr-meta">
                 <span>{pacienteNombre} {pacienteApellido}</span>
-                <span>{sexo ?? 'Sexo no cargado'} · {edad} años</span>
-                {previo && <span>Último registro {previo.fecha.split('-').reverse().join('/')}</span>}
+                <span>{textoSexoEdad}</span>
+                {ultimoRegistro && <span>Último registro {ultimoRegistro.fecha.split('-').reverse().join('/')}</span>}
               </div>
             </div>
             <button type="button" className="nr-close" aria-label="Cerrar" onClick={onClose}>

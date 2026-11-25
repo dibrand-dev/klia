@@ -5,6 +5,8 @@ import SlideOver from '@/components/ui/SlideOver'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import { cn } from '@/lib/utils'
+import { normalizarCuit, validarCuit, formatearCuit } from '@/lib/facturacion/cuit'
+import { CONDICIONES_IVA } from '@/lib/facturacion/constantes'
 
 interface Prestador {
   id: string
@@ -18,6 +20,9 @@ interface Prestador {
   provincia: string | null
   localidad: string | null
   direccion: string | null
+  cuit: string | null
+  condicion_iva: string | null
+  razon_social: string | null
 }
 
 interface Props {
@@ -37,6 +42,9 @@ export default function PrestadorEditSlide({ prestador, open, onClose, onSaved }
   const [provincia, setProvincia] = useState(prestador.provincia ?? '')
   const [localidad, setLocalidad] = useState(prestador.localidad ?? '')
   const [direccion, setDireccion] = useState(prestador.direccion ?? '')
+  const [cuit, setCuit] = useState(normalizarCuit(prestador.cuit ?? ''))
+  const [condicionIva, setCondicionIva] = useState(prestador.condicion_iva ?? '')
+  const [razonSocial, setRazonSocial] = useState(prestador.razon_social ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,6 +53,10 @@ export default function PrestadorEditSlide({ prestador, open, onClose, onSaved }
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!nombre.trim() || !apellido.trim()) return
+    if (cuit && !validarCuit(cuit)) {
+      setError('El CUIT no es válido.')
+      return
+    }
     setLoading(true)
     setError(null)
 
@@ -61,6 +73,9 @@ export default function PrestadorEditSlide({ prestador, open, onClose, onSaved }
         provincia: provincia || null,
         localidad: localidad || null,
         direccion: direccion || null,
+        cuit: cuit || null,
+        condicion_iva: condicionIva || null,
+        razon_social: razonSocial.trim() || null,
       }),
     })
 
@@ -216,6 +231,50 @@ export default function PrestadorEditSlide({ prestador, open, onClose, onSaved }
             type="text"
             value={direccion}
             onChange={(e) => setDireccion(e.target.value)}
+            className="input-field"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-1.5">
+            CUIT
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Ej: 20-12345678-6"
+            maxLength={13}
+            value={formatearCuit(cuit)}
+            onChange={(e) => setCuit(normalizarCuit(e.target.value))}
+            className="input-field"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-1.5">
+            Condición frente al IVA
+          </label>
+          <select
+            value={condicionIva}
+            onChange={(e) => setCondicionIva(e.target.value)}
+            className="input-field"
+          >
+            <option value="">Sin especificar</option>
+            {CONDICIONES_IVA.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-[0.05em] text-on-surface-variant mb-1.5">
+            Razón social
+          </label>
+          <input
+            type="text"
+            maxLength={120}
+            value={razonSocial}
+            onChange={(e) => setRazonSocial(e.target.value)}
             className="input-field"
           />
         </div>

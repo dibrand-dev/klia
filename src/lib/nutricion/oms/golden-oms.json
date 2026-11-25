@@ -1,0 +1,2021 @@
+{
+"descripcion": "Casos de oro: edad en días (tabla 0-5) o meses completos (tabla 5-19). 'valor' es IMC (kg/m2) o talla (cm). Esperado calculado con las columnas SD publicadas por la OMS, independientes de L/M/S.",
+"casos": [
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 14.383,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 14.387,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 19.825,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 19.829,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 21.633,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 21.637,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 16.799,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 70.985,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 365,
+"valor": 70.989,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 13.879,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 13.883,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 19.033,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 19.037,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 20.789,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 20.793,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 16.145,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 76.808,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 546,
+"valor": 76.812,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 13.568,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 13.572,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 18.534,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 18.538,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 20.258,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 20.262,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 15.736,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 81.691,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 730,
+"valor": 81.695,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 13.804,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 13.808,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 18.866,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 18.87,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 20.613,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 20.617,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 16.019,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 81.015,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 731,
+"valor": 81.019,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 13.36,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 13.364,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 18.353,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 18.357,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 19.972,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 19.976,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 15.6,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 88.653,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1095,
+"valor": 88.657,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 13.064,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 13.068,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 18.17,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 18.174,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 19.861,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 19.865,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 15.333,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 94.92,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1460,
+"valor": 94.924,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 12.888,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 12.892,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 18.282,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 18.286,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 20.252,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 20.256,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 15.192,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 100.674,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1825,
+"valor": 100.678,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 12.888,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 12.892,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 16.615,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 16.619,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 18.283,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 18.287,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 15.192,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 100.69,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1826,
+"valor": 100.694,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 12.878,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 12.882,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 16.617,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 16.621,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 18.302,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 18.306,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 15.184,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 101.156,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "dias",
+"edad": 1856,
+"valor": 101.16,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 13.029,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 13.033,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 16.643,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 16.647,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 18.257,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 18.261,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 15.264,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 101.08,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 61,
+"valor": 101.084,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 13.038,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 13.042,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 16.759,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 16.763,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 18.518,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 18.522,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 15.306,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 106.095,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 72,
+"valor": 106.099,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 13.733,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 13.737,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 18.478,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 18.482,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 21.398,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 21.402,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 16.443,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 125.03,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 120,
+"valor": 125.034,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 16.009,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 16.013,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 22.683,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 22.687,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 26.967,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 26.971,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 19.774,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 153.348,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 180,
+"valor": 153.352,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 17.256,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 17.26,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 24.859,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 24.863,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 29.195,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 29.199,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 21.664,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 161.12,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "M",
+"tabla": "meses",
+"edad": 215,
+"valor": 161.124,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 13.792,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 13.796,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 19.618,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 19.622,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 21.589,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 21.593,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 16.358,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 68.854,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 365,
+"valor": 68.858,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 13.324,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 13.328,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 18.85,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 18.854,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 20.771,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 20.775,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 15.731,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 74.841,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 546,
+"valor": 74.845,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 13.09,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 13.094,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 18.447,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 18.451,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 20.347,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 20.351,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 15.405,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 79.948,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 730,
+"valor": 79.952,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 13.347,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 13.351,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 18.738,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 18.742,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 20.629,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 20.633,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 15.688,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 79.274,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 731,
+"valor": 79.278,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 13.081,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 13.085,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 18.423,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 18.427,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 20.303,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 20.307,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 15.397,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 87.418,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1095,
+"valor": 87.422,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 12.816,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 12.82,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 18.518,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 18.522,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 20.578,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 20.582,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 15.26,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 94.098,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1460,
+"valor": 94.102,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 12.685,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 12.689,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 18.795,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 18.799,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 21.059,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 21.063,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 15.274,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 99.89,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1825,
+"valor": 99.894,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 12.685,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 12.689,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 16.891,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 16.895,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 18.796,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 18.8,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 15.275,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 99.906,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1826,
+"valor": 99.91,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 12.681,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 12.685,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 16.903,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 16.907,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 18.818,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 18.822,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 15.28,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 100.351,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "dias",
+"edad": 1856,
+"valor": 100.355,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 12.746,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 12.75,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 16.868,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 16.872,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 18.856,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 18.86,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 15.244,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 100.053,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 61,
+"valor": 100.057,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 12.698,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 12.702,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 17.009,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 17.013,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 19.222,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 19.226,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 15.27,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 104.883,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 72,
+"valor": 104.887,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 13.468,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 13.472,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 19.03,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 19.034,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 22.568,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 22.572,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 16.613,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 125.841,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 120,
+"valor": 125.845,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 15.869,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 15.873,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 23.512,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 23.516,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 28.222,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 28.226,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 20.212,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 147.909,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 180,
+"valor": 147.913,
+"esperado": "adecuada"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 16.441,
+"esperado": "bajo_peso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 16.445,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 24.748,
+"esperado": "adecuado"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 24.752,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 29.503,
+"esperado": "sobrepeso"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 29.507,
+"esperado": "obesidad"
+},
+{
+"ind": "bmi",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 21.244,
+"esperado": "adecuado"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 149.81,
+"esperado": "baja_talla"
+},
+{
+"ind": "talla",
+"sexo": "F",
+"tabla": "meses",
+"edad": 215,
+"valor": 149.814,
+"esperado": "adecuada"
+}
+]
+}

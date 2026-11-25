@@ -1,12 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
+import { validarDniReserva, validarFechaNacimientoReserva } from '@/lib/booking/validar-datos-reserva'
 
 interface FormData {
   nombre: string
   apellido: string
   email: string
   telefono: string
+  dni: string
+  fechaNacimiento: string
   coberturaId: string
   whatsappOptIn: boolean
 }
@@ -29,6 +33,8 @@ interface Props {
   onNext: () => void
   onBack: () => void
   sede?: SedePublica | null
+  requiereDni?: boolean
+  requiereFechaNacimiento?: boolean
 }
 
 const MODALIDAD_LABELS: Record<string, string> = {
@@ -53,19 +59,33 @@ function InputField({
   type,
   value,
   onChange,
+  onBlur,
   required,
   placeholder,
   prefix,
+  inputMode,
+  min,
+  max,
+  error,
 }: {
   label: string
   id: string
   type?: string
   value: string
   onChange: (v: string) => void
+  onBlur?: () => void
   required?: boolean
   placeholder?: string
   prefix?: string
+  inputMode?: 'text' | 'numeric' | 'tel'
+  min?: string
+  max?: string
+  error?: string
 }) {
+  const [focused, setFocused] = useState(false)
+  const errorId = `${id}-error`
+  const borderColor = focused ? '#2563EB' : (error ? 'var(--danger)' : '#E7E9EE')
+
   return (
     <div style={{ marginBottom: 16 }}>
       <label
@@ -107,10 +127,15 @@ function InputField({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           required={required}
+          inputMode={inputMode}
+          min={min}
+          max={max}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           style={{
             flex: 1,
             padding: '11px 14px',
-            border: '1.5px solid #E7E9EE',
+            border: `1.5px solid ${borderColor}`,
             borderRadius: prefix ? '0 10px 10px 0' : 10,
             fontSize: 14,
             color: '#0B1220',
@@ -119,10 +144,13 @@ function InputField({
             fontFamily: 'Inter, system-ui, sans-serif',
             transition: 'border-color 0.15s',
           }}
-          onFocus={(e) => { e.target.style.borderColor = '#2563EB' }}
-          onBlur={(e) => { e.target.style.borderColor = '#E7E9EE' }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => { setFocused(false); onBlur?.() }}
         />
       </div>
+      {error && (
+        <p id={errorId} style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--danger)' }}>{error}</p>
+      )}
     </div>
   )
 }
@@ -138,12 +166,33 @@ export default function StepDatos({
   onNext,
   onBack,
   sede,
+  requiereDni,
+  requiereFechaNacimiento,
 }: Props) {
   const duracion = tipoResuelto.duracion
   const precio = tipoResuelto.precio
 
   const fechaFmt = formatFecha(fecha)
-  const isValid = form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
+
+  const [dniTouched, setDniTouched] = useState(false)
+  const [fechaNacTouched, setFechaNacTouched] = useState(false)
+
+  // Contenido inválido bloquea isValid aunque el campo sea opcional —
+  // independiente de si ya fue "tocado" (eso solo controla si se MUESTRA
+  // el mensaje de error, no si el dato es aceptable para continuar).
+  const dniInvalido = form.dni.trim() !== '' && !validarDniReserva(form.dni)
+  const fechaNacInvalida = form.fechaNacimiento.trim() !== '' && !validarFechaNacimientoReserva(form.fechaNacimiento)
+
+  const dniError = dniTouched && dniInvalido ? 'Ingresá un DNI válido (6 a 9 números).' : undefined
+  const fechaNacError = fechaNacTouched && fechaNacInvalida ? 'Ingresá una fecha de nacimiento válida.' : undefined
+
+  const isValid = Boolean(
+    form.nombre.trim() && form.apellido.trim() && form.email.trim() && form.coberturaId !== ''
+    && (!requiereDni || form.dni.trim())
+    && (!requiereFechaNacimiento || form.fechaNacimiento.trim())
+    && !dniInvalido
+    && !fechaNacInvalida
+  )
 
   function setField(k: keyof FormData, v: string) {
     onForm({ ...form, [k]: v })
@@ -227,6 +276,31 @@ export default function StepDatos({
         />
 
         <InputField
+          label={`DNI${requiereDni ? '' : ' (opcional)'}`}
+          id="bk-dni"
+          inputMode="numeric"
+          value={form.dni}
+          onChange={(v) => setField('dni', v)}
+          onBlur={() => setDniTouched(true)}
+          required={requiereDni}
+          placeholder="12345678"
+          error={dniError}
+        />
+
+        <InputField
+          label={`Fecha de nacimiento${requiereFechaNacimiento ? '' : ' (opcional)'}`}
+          id="bk-fecha-nacimiento"
+          type="date"
+          value={form.fechaNacimiento}
+          onChange={(v) => setField('fechaNacimiento', v)}
+          onBlur={() => setFechaNacTouched(true)}
+          required={requiereFechaNacimiento}
+          min="1900-01-01"
+          max={new Date().toISOString().slice(0, 10)}
+          error={fechaNacError}
+        />
+
+        <InputField
           label="Teléfono (opcional)"
           id="bk-telefono"
           type="tel"
@@ -235,6 +309,13 @@ export default function StepDatos({
           placeholder="11 1234-5678"
           prefix="+54"
         />
+
+        <p style={{ margin: '-6px 0 16px', fontSize: 11.5, color: '#8A93A1', lineHeight: 1.5 }}>
+          Usamos estos datos para tu ficha clínica. Más info en nuestra{' '}
+          <a href="/privacidad" target="_blank" rel="noopener noreferrer" style={{ color: '#8A93A1', textDecoration: 'underline' }}>
+            Política de Privacidad
+          </a>.
+        </p>
 
         <label
           htmlFor="bk-whatsapp-opt-in"

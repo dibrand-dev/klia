@@ -4,6 +4,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { TEXTOS_SOMATOTIPO, ACLARACION_ESCALA_SOMATOTIPO, type ComponenteSomatotipo, type NivelSomatotipo } from './textos-somatotipo'
 import { categoriaCinturaCadera, TABLA_CINTURA_CADERA, CORTE_OMS_CINTURA_CADERA } from './tabla-cintura-cadera'
+import { TEXTOS_CORMICO, TEXTOS_MANOUVRIER, TEXTOS_ENVERGADURA } from './textos-proporcionalidad'
+import { categoriaCormico, categoriaManouvrier, categoriaEnvergadura } from './calculos'
 
 test('Natalia: mujer 50,96 años, cintura/cadera 0,784 → moderado', () => {
   const r = categoriaCinturaCadera('F', 50.96, 0.784)
@@ -94,7 +96,7 @@ test('tabla cintura/cadera cubre las 5 décadas para ambos sexos', () => {
 
 test('todas las claves de textos del somatotipo existen y no están vacías', () => {
   const componentes: ComponenteSomatotipo[] = ['endo', 'meso', 'ecto']
-  const niveles: NivelSomatotipo[] = ['bajo', 'moderado', 'alto', 'muy alto']
+  const niveles: NivelSomatotipo[] = ['bajo', 'moderado', 'alto', 'muy alto', 'extremadamente alto']
   for (const c of componentes) {
     assert.ok(TEXTOS_SOMATOTIPO[c], `falta el componente ${c}`)
     for (const n of niveles) {
@@ -104,4 +106,10 @@ test('todas las claves de textos del somatotipo existen y no están vacías', ()
     }
   }
   assert.ok(ACLARACION_ESCALA_SOMATOTIPO.trim().length > 0)
+})
+
+test('textos de proporcionalidad: todas las keys que devuelven las funciones de categoría tienen texto', () => {
+  for (const v of [0.4, 0.52, 0.6]) assert.ok(TEXTOS_CORMICO[categoriaCormico(v)].etiqueta)
+  for (const v of [80, 87, 95]) assert.ok(TEXTOS_MANOUVRIER[categoriaManouvrier(v)].etiqueta)
+  for (const v of [0.9, 1, 1.1]) assert.ok(TEXTOS_ENVERGADURA[categoriaEnvergadura(v)].etiqueta)
 })

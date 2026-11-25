@@ -222,6 +222,7 @@ export default function RegistroSheet({
     if (!res.ok) { toast('No pudimos guardar el comentario.'); return }
     toast('Comentario guardado')
     onGuardado()
+    onClose()
   }
 
   // En modo libre (sin plan_comida_id) el plazo no se cuenta desde una hora
@@ -365,7 +366,7 @@ export default function RegistroSheet({
                     </>
                   )}
                 </div>
-                {puedeEditarDet && (
+                {puedeEditarDet ? (
                   <div className="pp-so-foot">
                     <button className="pp-pb" onClick={onReemplazar}>{IconCam}Reemplazar foto</button>
                     <button
@@ -375,6 +376,11 @@ export default function RegistroSheet({
                     >
                       {guardandoComentario ? 'Guardando...' : 'Guardar comentario'}
                     </button>
+                    <button className="pp-pb" onClick={cerrar}>Cerrar</button>
+                  </div>
+                ) : (
+                  <div className="pp-so-foot">
+                    <button className="pp-pb" onClick={cerrar}>Cerrar</button>
                   </div>
                 )}
               </>

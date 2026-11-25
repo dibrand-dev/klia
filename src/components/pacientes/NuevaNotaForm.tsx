@@ -11,6 +11,7 @@ import '@/components/notas/nota-especialidad.css'
 import ModuloEspecialidad, { tieneModulo } from '@/components/notas/ModuloEspecialidad'
 import { notaPlaceholder, normalizarValoresModulo, type ValoresModulo } from '@/lib/notas/modulos'
 import { guardarDatosModulo } from '@/lib/notas/persistencia'
+import { normalizarSexo } from '@/lib/nutricion/calculos'
 
 function isHtmlEmpty(html: string): boolean {
   return !html.replace(/<[^>]*>/g, '').trim()
@@ -82,6 +83,7 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
   const esNutricionista = especialidad === 'Nutrición'
   const [edadPaciente, setEdadPaciente] = useState<number | null>(null)
   const [sexoPaciente, setSexoPaciente] = useState<'M' | 'F' | null>(null)
+  const [fechaNacimientoPaciente, setFechaNacimientoPaciente] = useState<string | null>(null)
   const [datosModulo, setDatosModulo] = useState<ValoresModulo>({})
 
   function cambiarValorModulo(key: string, val: string | string[]) {
@@ -121,8 +123,11 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
         .select('fecha_nacimiento, genero')
         .eq('id', pacienteId)
         .single()
-      if (paciente?.fecha_nacimiento) setEdadPaciente(differenceInYears(new Date(), new Date(paciente.fecha_nacimiento)))
-      if (paciente?.genero === 'M' || paciente?.genero === 'F') setSexoPaciente(paciente.genero)
+      if (paciente?.fecha_nacimiento) {
+        setEdadPaciente(differenceInYears(new Date(), new Date(paciente.fecha_nacimiento)))
+        setFechaNacimientoPaciente(paciente.fecha_nacimiento)
+      }
+      setSexoPaciente(normalizarSexo(paciente?.genero ?? null))
     }
     if (pacienteId && esNutricionista) fetchDatosPaciente()
   }, [pacienteId, esNutricionista])
@@ -406,6 +411,8 @@ export default function NuevaNotaForm({ pacienteId, turnoId, modoInicial = 'text
             onChange={cambiarValorModulo}
             edadPaciente={edadPaciente}
             sexoPaciente={sexoPaciente}
+            fechaNacimientoPaciente={fechaNacimientoPaciente}
+            fechaNota={fecha}
           />
         )}
 

@@ -1,11 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { format } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { calcularIMC, clasificarIMC, calcularGEB, type FormulaGEB } from '@/lib/nutricion/calculos'
+import { clasificarPediatrico, type ResultadoPediatrico } from '@/lib/nutricion/pediatria'
 import { n, f0, f1, dl, hint, type ResultadoCalc } from '@/lib/notas/calc-utils'
 import { Grilla, CampoNum, Colapsable, TarjetaCalc } from '@/components/notas/campos'
 import type { ValoresModulo } from '@/lib/notas/modulos'
+
+// Mismas etiquetas que clasificarIMC() de adulto — no se inventan textos nuevos.
+const IMC_PEDIATRICO_LABEL: Record<ResultadoPediatrico['imcCategoria'], string> = {
+  bajo_peso: 'Bajo peso',
+  adecuado: 'Normal',
+  sobrepeso: 'Sobrepeso',
+  obesidad: 'Obesidad',
+}
 
 interface Props {
   pacienteId: string
@@ -13,9 +23,11 @@ interface Props {
   onChange: (key: string, val: string) => void
   edadPaciente: number | null
   sexoPaciente: 'M' | 'F' | null
+  fechaNacimientoPaciente?: string | null
+  fechaNota?: string
 }
 
-export default function ModuloNutricion({ pacienteId, valores, onChange, edadPaciente, sexoPaciente }: Props) {
+export default function ModuloNutricion({ pacienteId, valores, onChange, edadPaciente, sexoPaciente, fechaNacimientoPaciente, fechaNota }: Props) {
   const [closed, setClosed] = useState(false)
   const [pliegOpen, setPliegOpen] = useState(false)
   const [formula, setFormula] = useState<FormulaGEB>('mifflin')
@@ -40,14 +52,44 @@ export default function ModuloNutricion({ pacienteId, valores, onChange, edadPac
   }, [pacienteId])
 
   const v = (k: string) => (valores[k] as string) ?? ''
+  const pesoVal = n(v('peso'))
+  const alturaVal = n(v('alt'))
+  const esMenor = edadPaciente != null && edadPaciente < 18
+
+  // Clasificación pediátrica (OMS) — solo se dispara (y solo ahí se carga la
+  // tabla LMS, vía import() dinámico dentro de clasificarPediatrico) cuando
+  // ya sabemos por edadPaciente que es menor de 18; nunca para adultos.
+  const [pediatrico, setPediatrico] = useState<ResultadoPediatrico | null>(null)
+  useEffect(() => {
+    let cancelado = false
+    if (!esMenor || !fechaNacimientoPaciente || !sexoPaciente || !pesoVal || !alturaVal) {
+      setPediatrico(null)
+      return
+    }
+    clasificarPediatrico({
+      sexo: sexoPaciente,
+      fechaNacimiento: fechaNacimientoPaciente,
+      fechaReferencia: fechaNota || format(new Date(), 'yyyy-MM-dd'),
+      pesoKg: pesoVal,
+      tallaCm: alturaVal,
+    }).then((res) => { if (!cancelado) setPediatrico(res) })
+    return () => { cancelado = true }
+  }, [esMenor, fechaNacimientoPaciente, sexoPaciente, fechaNota, pesoVal, alturaVal])
 
   const calcImc: ResultadoCalc = (() => {
-    const p = n(v('peso')); const a = n(v('alt'))
-    if (!p || !a) return hint('Completá peso y altura')
-    const imc = calcularIMC(p, a)
+    if (!pesoVal || !alturaVal) return hint('Completá peso y altura')
+    const imc = calcularIMC(pesoVal, alturaVal)
     if (imc == null) return hint('Completá peso y altura')
-    const c = clasificarIMC(imc)
-    return { val: f1(imc), sub: c.label }
+    if (esMenor) {
+      if (!pediatrico) return { val: f1(imc) }
+      const imcLabel = IMC_PEDIATRICO_LABEL[pediatrico.imcCategoria]
+      const tallaLabel = pediatrico.tallaCategoria === 'baja_talla' ? 'Baja talla' : 'Talla adecuada'
+      const anios = Math.floor(pediatrico.edadMeses / 12)
+      const mesesResto = pediatrico.edadMeses % 12
+      return { val: f1(imc), sub: `${imcLabel}<br>${tallaLabel}<br>Pediátrico · OMS · ${anios} a ${mesesResto} m` }
+    }
+    const c = clasificarIMC(imc, edadPaciente)
+    return { val: f1(imc), sub: c?.label }
   })()
 
   const calcGeb: ResultadoCalc = (() => {
