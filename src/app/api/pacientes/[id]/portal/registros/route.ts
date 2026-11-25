@@ -267,6 +267,25 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }),
   }))
 
+  // Si la semana pedida no tiene registros, buscar la fecha del último
+  // registro del paciente (en cualquier semana) para poder avisarle al
+  // profesional en vez de mostrar un estado vacío sin más contexto — pero
+  // solo si cae dentro de la ventana que se puede navegar hacia atrás.
+  let ultimoRegistroFecha: string | null = null
+  if (hechas === 0) {
+    const { data: ultimoRegistro } = await db
+      .from('portal_registros')
+      .select('fecha_local')
+      .eq('paciente_id', params.id)
+      .eq('terapeuta_id', efectivo.terapeutaId)
+      .order('fecha_local', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (ultimoRegistro && ultimoRegistro.fecha_local >= lunesMinimo) {
+      ultimoRegistroFecha = ultimoRegistro.fecha_local
+    }
+  }
+
   return NextResponse.json({
     semanaInicio: dias[0],
     semanaFin: dias[6],
@@ -278,5 +297,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     diasRetencion,
     esColaborador: efectivo.esColaborador,
     profesionalNombre: nombreProfesionalActual,
+    ultimoRegistroFecha,
   })
 }
