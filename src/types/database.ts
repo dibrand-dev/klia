@@ -24,6 +24,9 @@ export type Database = {
           avatar_url: string | null
           sexo: string | null
           fecha_nacimiento_profesional: string | null
+          refeps: string | null
+          refeps_estado: string | null
+          refeps_verificado_at: string | null
           domicilio_consultorio: string | null
           localidad_consultorio: string | null
           provincia_consultorio: string | null
@@ -104,6 +107,9 @@ export type Database = {
           avatar_url?: string | null
           sexo?: string | null
           fecha_nacimiento_profesional?: string | null
+          refeps?: string | null
+          refeps_estado?: string | null
+          refeps_verificado_at?: string | null
           domicilio_consultorio?: string | null
           localidad_consultorio?: string | null
           provincia_consultorio?: string | null
@@ -184,6 +190,9 @@ export type Database = {
           avatar_url?: string | null
           sexo?: string | null
           fecha_nacimiento_profesional?: string | null
+          refeps?: string | null
+          refeps_estado?: string | null
+          refeps_verificado_at?: string | null
           domicilio_consultorio?: string | null
           localidad_consultorio?: string | null
           provincia_consultorio?: string | null
@@ -2753,6 +2762,112 @@ export type Database = {
         Update: {
           ultima_sync_exitosa?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      profesional_matriculas: {
+        Row: {
+          id: string
+          profesional_id: string
+          tipo: string | null
+          provincia: string | null
+          jurisdiccion_codigo: string | null
+          jurisdiccion_nombre: string | null
+          numero: string
+          profesion_codigo: string | null
+          profesion_nombre: string | null
+          especialidades: unknown
+          emisor_codigo: string | null
+          emisor_nombre: string | null
+          fecha_desde: string | null
+          fecha_hasta: string | null
+          habilitada: boolean | null
+          origen: string
+          verificada: boolean
+          verificada_at: string | null
+          es_principal: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profesional_id: string
+          tipo?: string | null
+          provincia?: string | null
+          jurisdiccion_codigo?: string | null
+          jurisdiccion_nombre?: string | null
+          numero: string
+          profesion_codigo?: string | null
+          profesion_nombre?: string | null
+          especialidades?: unknown
+          emisor_codigo?: string | null
+          emisor_nombre?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          habilitada?: boolean | null
+          origen?: string
+          verificada?: boolean
+          verificada_at?: string | null
+          es_principal?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          profesional_id?: string
+          tipo?: string | null
+          provincia?: string | null
+          jurisdiccion_codigo?: string | null
+          jurisdiccion_nombre?: string | null
+          numero?: string
+          profesion_codigo?: string | null
+          profesion_nombre?: string | null
+          especialidades?: unknown
+          emisor_codigo?: string | null
+          emisor_nombre?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          habilitada?: boolean | null
+          origen?: string
+          verificada?: boolean
+          verificada_at?: string | null
+          es_principal?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      refeps_verificaciones: {
+        Row: {
+          id: string
+          profesional_id: string
+          codigo_refeps: string
+          estado: string
+          http_status: number | null
+          practitioner_id: string | null
+          respuesta: Record<string, unknown> | null
+          consentimiento_at: string | null
+          consultado_at: string
+        }
+        Insert: {
+          id?: string
+          profesional_id: string
+          codigo_refeps: string
+          estado: string
+          http_status?: number | null
+          practitioner_id?: string | null
+          respuesta?: Record<string, unknown> | null
+          consentimiento_at?: string | null
+          consultado_at?: string
+        }
+        Update: {
+          profesional_id?: string
+          codigo_refeps?: string
+          estado?: string
+          http_status?: number | null
+          practitioner_id?: string | null
+          respuesta?: Record<string, unknown> | null
+          consentimiento_at?: string | null
+          consultado_at?: string
         }
         Relationships: []
       }
