@@ -1403,7 +1403,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                       </span>
                     )}
                     <div style={{ flex: 1 }} />
-                    <button onClick={handleHorarioSave} disabled={horarioLoading}
+                    <button type="button" onClick={handleHorarioSave} disabled={horarioLoading}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: horarioLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: horarioLoading ? 0.7 : 1 }}>
                       {horarioSaved ? '✓ Guardado' : horarioLoading ? 'Guardando...' : 'Guardar'}
                     </button>
