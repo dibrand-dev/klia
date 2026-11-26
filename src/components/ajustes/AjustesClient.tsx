@@ -100,6 +100,12 @@ const grid2Class = 'grid grid-cols-1 sm:grid-cols-2 gap-4'
 const hintStyle: React.CSSProperties = {
   fontSize: 11.5, color: 'var(--muted-2)',
 }
+const pasoReqTagStyle: React.CSSProperties = {
+  fontSize: 10.5, fontWeight: 600, color: 'var(--muted-2)',
+  border: '1px solid var(--border)', borderRadius: 100,
+  padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.04em',
+  whiteSpace: 'nowrap',
+}
 
 // KL1-T39 — mismos planes en los que está disponible el aviso de deuda,
 // consultados también server-side en el cron (/api/cron/aviso-deuda).
@@ -193,9 +199,10 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
 
 // ── Accordion — misma tarjeta/bordes que el resto de la app, con resumen
 // en el header (Ajustes v3, Fase 1: orden y estética únicamente). ───────
-function Accordion({ title, desc, defaultOpen = false, children }: {
+function Accordion({ title, desc, right, defaultOpen = false, children }: {
   title: string
   desc?: string
+  right?: React.ReactNode
   defaultOpen?: boolean
   children: React.ReactNode
 }) {
@@ -214,6 +221,7 @@ function Accordion({ title, desc, defaultOpen = false, children }: {
           <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{title}</div>
           {desc && <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>{desc}</div>}
         </div>
+        {right}
         <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'var(--muted-2)', strokeWidth: 2, fill: 'none', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }}>
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -853,13 +861,27 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   const cobrosCompleto = mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular)
 
+  const transferenciaCargada = !!(transferenciaBanco && transferenciaAlias && transferenciaTitular)
+  const diasActivosHorario = Object.values(horariosPorDia).filter(d => d.activo).length
+
   const reservasPasos = [
     true, // Horarios de atención: siempre hay alguna configuración de horario.
     bookingPrecioSesion !== '' || bookingPrecioEntrevista !== '' || tipoPropioActivoExiste,
-    !bookingRequierePago || mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular),
+    !bookingRequierePago || mpConectado || transferenciaCargada,
     bookingBio.trim() !== '',
   ]
   const reservasPasosOk = reservasPasos.filter(Boolean).length
+
+  const resumenPreciosReservas = [
+    bookingPrecioSesion !== '' ? `Sesión $${Number(bookingPrecioSesion).toLocaleString('es-AR')}` : null,
+    bookingPrecioEntrevista !== '' ? `Entrevista inicial $${Number(bookingPrecioEntrevista).toLocaleString('es-AR')}` : null,
+  ].filter(Boolean).join(' · ') || 'Sin precio cargado todavía'
+
+  const MODALIDAD_LABEL: Record<string, string> = { presencial: 'Presencial', videollamada: 'Videollamada', telefonica: 'Telefónica' }
+  const resumenPresentacionReservas = [
+    bookingBio.trim() ? 'Bio cargada' : 'Sin bio',
+    bookingModalidades.length > 0 ? bookingModalidades.map(m => MODALIDAD_LABEL[m] ?? m).join(' y ') : 'Sin modalidad',
+  ].join(' · ')
 
   const integracionesCompleto = mpConectado && googleConectado
 
@@ -1613,7 +1635,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
           {currentGroup === 'reservas' && (
             <>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>Link activo</div>
               <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Compartí tu link personal para que tus pacientes reserven turnos online.</div>
@@ -1644,126 +1666,203 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               </div>
             )}
 
+            {/* Progreso — solo lectura de reservasPasos, no bloquea nada */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>{reservasPasosOk} de 4 pasos</span>
+              <div style={{ flex: 1, height: 6, borderRadius: 100, background: 'var(--surface-2)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 100, background: 'var(--ok)', width: `${(reservasPasosOk / 4) * 100}%`, transition: 'width .2s ease' }} />
+              </div>
+            </div>
+
             <form onSubmit={handleBookingSave}>
-              {/* Bio */}
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Bio pública</label>
-                <textarea
-                  value={bookingBio}
-                  onChange={e => {
-                    if (e.target.value.length > 200) return
-                    setBookingBio(e.target.value)
-                  }}
-                  rows={3}
-                  maxLength={200}
-                  placeholder="Describí brevemente tu enfoque y especialidad (visible para pacientes)..."
-                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                />
-                <div style={{
-                  marginTop: 4, textAlign: 'right', fontSize: 12, fontWeight: 500,
-                  color: bookingBio.length < 150 ? '#10b981' : bookingBio.length < 191 ? '#F59E0B' : '#EF4444',
-                }}>
-                  {bookingBio.length}/200
-                </div>
-              </div>
+              {/* ─ Paso 1: Horarios de atención ─ */}
+              <Accordion
+                title="Horarios de atención"
+                desc={multiSede ? 'Configurado por sede en Agenda y consultorio.' : `${diasActivosHorario} día${diasActivosHorario === 1 ? '' : 's'} activo${diasActivosHorario === 1 ? '' : 's'} por semana.`}
+                defaultOpen
+                right={<>
+                  <span style={pasoReqTagStyle}>Requerido</span>
+                  <Chip text="Completo" tone="ok" />
+                </>}
+              >
+                <p style={{ fontSize: 13, color: 'var(--ink-2)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                  {multiSede
+                    ? 'Tenés horarios configurados por sede en el grupo Agenda y consultorio.'
+                    : `Tenés ${diasActivosHorario} día${diasActivosHorario === 1 ? '' : 's'} activo${diasActivosHorario === 1 ? '' : 's'} por semana cargados.`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => goToGroup('agenda')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}
+                >
+                  Editar horarios
+                </button>
+              </Accordion>
 
-              {/* Duraciones y buffer */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ marginBottom: 18 }}>
-                {[
-                  { label: 'Duración sesión (min)', value: bookingDuracionSesion, set: setBookingDuracionSesion },
-                  { label: 'Duración entrevista (min)', value: bookingDuracionEntrevista, set: setBookingDuracionEntrevista },
-                ].map(({ label, value, set }) => (
-                  <div key={label}>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
-                    <input type="number" min={5} max={240} value={value} onChange={e => set(Number(e.target.value))}
-                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                ))}
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Buffer entre turnos (min)</label>
-                  <input type="number" min={0} max={240} value={bookingTiempoEntre} onChange={e => setBookingTiempoEntre(Number(e.target.value))}
-                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-              </div>
-
-              {/* Anticipación */}
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Anticipación mínima (minutos)</label>
-                <input type="number" min={0} max={10080} value={bookingAnticipacion} onChange={e => setBookingAnticipacion(Number(e.target.value))}
-                  style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Mínimo de minutos de anticipación para reservar. Ej: 60 = 1 hora de anticipación.</p>
-              </div>
-
-              {/* Modalidades */}
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Modalidades disponibles</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[['presencial','Presencial'],['videollamada','Videollamada'],['telefonica','Telefónica']].map(([val, lbl]) => (
-                    <label key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={bookingModalidades.includes(val)} onChange={e => {
-                        if (e.target.checked) setBookingModalidades(m => [...m, val])
-                        else setBookingModalidades(m => m.filter(x => x !== val))
-                      }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                      {lbl}
-                    </label>
+              {/* ─ Paso 2: Qué ofrecés y a qué precio ─ */}
+              <Accordion
+                title="Qué ofrecés y a qué precio"
+                desc={resumenPreciosReservas}
+                right={<>
+                  <span style={pasoReqTagStyle}>Requerido</span>
+                  <Chip text={reservasPasos[1] ? 'Completo' : 'Pendiente'} tone={reservasPasos[1] ? 'ok' : 'warn'} />
+                </>}
+              >
+                {/* Duraciones */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: 18 }}>
+                  {[
+                    { label: 'Duración sesión (min)', value: bookingDuracionSesion, set: setBookingDuracionSesion },
+                    { label: 'Duración entrevista (min)', value: bookingDuracionEntrevista, set: setBookingDuracionEntrevista },
+                  ].map(({ label, value, set }) => (
+                    <div key={label}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</label>
+                      <input type="number" min={5} max={240} value={value} onChange={e => set(Number(e.target.value))}
+                        style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Precios */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: tipoPropioActivoExiste ? 6 : 18 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio sesión</label>
-                  <MontoInput name="Precio sesión" value={bookingPrecioSesion} onChange={setBookingPrecioSesion} placeholder="Ej: 70000"
-                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                  {tipoPropioActivoExiste && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
-                      <Toggle on={bookingSesionVisible} onChange={handleToggleSesionVisible} />
-                      Mostrar en link de reservas
-                    </label>
-                  )}
+                {/* Precios */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginBottom: tipoPropioActivoExiste ? 6 : 18 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio sesión</label>
+                    <MontoInput name="Precio sesión" value={bookingPrecioSesion} onChange={setBookingPrecioSesion} placeholder="Ej: 70000"
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                    {tipoPropioActivoExiste && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                        <Toggle on={bookingSesionVisible} onChange={handleToggleSesionVisible} />
+                        Mostrar en link de reservas
+                      </label>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio entrevista inicial</label>
+                    <MontoInput name="Precio entrevista inicial" value={bookingPrecioEntrevista} onChange={setBookingPrecioEntrevista} placeholder="Ej: 70000"
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                    {tipoPropioActivoExiste && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                        <Toggle on={bookingEntrevistaVisible} onChange={handleToggleEntrevistaVisible} />
+                        Mostrar en link de reservas
+                      </label>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Precio entrevista inicial</label>
-                  <MontoInput name="Precio entrevista inicial" value={bookingPrecioEntrevista} onChange={setBookingPrecioEntrevista} placeholder="Ej: 70000"
-                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
-                  {tipoPropioActivoExiste && (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12.5, color: 'var(--ink-2)', cursor: 'pointer' }}>
-                      <Toggle on={bookingEntrevistaVisible} onChange={handleToggleEntrevistaVisible} />
-                      Mostrar en link de reservas
-                    </label>
-                  )}
+
+                {tipoPropioActivoExiste && bookingVisibilidadError && (
+                  <p style={{ fontSize: 12, color: 'var(--danger)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
+                    {bookingVisibilidadError}
+                  </p>
+                )}
+              </Accordion>
+
+              {/* ─ Paso 3: Cómo cobrás ─ */}
+              <Accordion
+                title="Cómo cobrás"
+                desc={bookingRequierePago ? 'Requiere pago para confirmar.' : 'No requiere pago para confirmar.'}
+                right={<span style={pasoReqTagStyle}>Opcional</span>}
+              >
+                <ToggleRow
+                  name="Requiere pago para confirmar"
+                  desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
+                  on={bookingRequierePago}
+                  onChange={() => setBookingRequierePago(v => !v)}
+                />
+
+                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Mercado Pago</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Se conecta en Integraciones</div>
+                    </div>
+                    <Chip text={mpConectado ? 'Conectado' : 'No conectado'} tone={mpConectado ? 'ok' : 'muted'} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Transferencia bancaria</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>Se carga en Cobros y obras sociales</div>
+                    </div>
+                    <Chip text={transferenciaCargada ? 'Cargada' : 'Sin cargar'} tone={transferenciaCargada ? 'ok' : 'muted'} />
+                  </div>
                 </div>
-              </div>
+              </Accordion>
 
-              {tipoPropioActivoExiste && bookingVisibilidadError && (
-                <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 18px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', flexShrink: 0 }} />
-                  {bookingVisibilidadError}
-                </p>
-              )}
+              {/* ─ Paso 4: Tu presentación ─ */}
+              <Accordion
+                title="Tu presentación"
+                desc={resumenPresentacionReservas}
+                right={<>
+                  <span style={pasoReqTagStyle}>Opcional</span>
+                  <Chip text={reservasPasos[3] ? 'Completo' : 'Pendiente'} tone={reservasPasos[3] ? 'ok' : 'warn'} />
+                </>}
+              >
+                {/* Bio */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Bio pública</label>
+                  <textarea
+                    value={bookingBio}
+                    onChange={e => {
+                      if (e.target.value.length > 200) return
+                      setBookingBio(e.target.value)
+                    }}
+                    rows={3}
+                    maxLength={200}
+                    placeholder="Describí brevemente tu enfoque y especialidad (visible para pacientes)..."
+                    style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                  <div style={{
+                    marginTop: 4, textAlign: 'right', fontSize: 12, fontWeight: 500,
+                    color: bookingBio.length < 150 ? '#10b981' : bookingBio.length < 191 ? '#F59E0B' : '#EF4444',
+                  }}>
+                    {bookingBio.length}/200
+                  </div>
+                </div>
 
-              {/* Requiere pago */}
-              <ToggleRow
-                name="Requiere pago para confirmar"
-                desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
-                on={bookingRequierePago}
-                onChange={() => setBookingRequierePago(v => !v)}
-              />
+                {/* Modalidades */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Modalidades disponibles</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[['presencial','Presencial'],['videollamada','Videollamada'],['telefonica','Telefónica']].map(([val, lbl]) => (
+                      <label key={val} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={bookingModalidades.includes(val)} onChange={e => {
+                          if (e.target.checked) setBookingModalidades(m => [...m, val])
+                          else setBookingModalidades(m => m.filter(x => x !== val))
+                        }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                        {lbl}
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
-              <ToggleRow
-                name="Pedir DNI al reservar"
-                desc="El paciente tiene que completar su DNI para poder reservar."
-                on={bookingRequiereDni}
-                onChange={() => setBookingRequiereDni(v => !v)}
-              />
+                <ToggleRow
+                  name="Pedir DNI al reservar"
+                  desc="El paciente tiene que completar su DNI para poder reservar."
+                  on={bookingRequiereDni}
+                  onChange={() => setBookingRequiereDni(v => !v)}
+                />
 
-              <ToggleRow
-                name="Pedir fecha de nacimiento al reservar"
-                desc="El paciente tiene que completar su fecha de nacimiento para poder reservar."
-                on={bookingRequiereFechaNacimiento}
-                onChange={() => setBookingRequiereFechaNacimiento(v => !v)}
-              />
+                <ToggleRow
+                  name="Pedir fecha de nacimiento al reservar"
+                  desc="El paciente tiene que completar su fecha de nacimiento para poder reservar."
+                  on={bookingRequiereFechaNacimiento}
+                  onChange={() => setBookingRequiereFechaNacimiento(v => !v)}
+                />
+
+                {/* Buffer y anticipación */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginTop: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Buffer entre turnos (min)</label>
+                    <input type="number" min={0} max={240} value={bookingTiempoEntre} onChange={e => setBookingTiempoEntre(Number(e.target.value))}
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Anticipación mínima (minutos)</label>
+                    <input type="number" min={0} max={10080} value={bookingAnticipacion} onChange={e => setBookingAnticipacion(Number(e.target.value))}
+                      style={{ width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '0 12px', height: 40, fontSize: 14, color: 'var(--ink)', background: 'var(--surface)', outline: 'none', boxSizing: 'border-box' }} />
+                    <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Ej: 60 = 1 hora de anticipación.</p>
+                  </div>
+                </div>
+              </Accordion>
 
               <div style={secFootStyle}>
                 {bookingError && (
