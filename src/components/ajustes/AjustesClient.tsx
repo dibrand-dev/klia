@@ -191,6 +191,60 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
   )
 }
 
+// ── Accordion — misma tarjeta/bordes que el resto de la app, con resumen
+// en el header (Ajustes v3, Fase 1: orden y estética únicamente). ───────
+function Accordion({ title, desc, defaultOpen = false, children }: {
+  title: string
+  desc?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 12, marginBottom: 14, overflow: 'hidden', background: 'var(--surface)' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+          padding: '16px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{title}</div>
+          {desc && <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>{desc}</div>}
+        </div>
+        <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'var(--muted-2)', strokeWidth: 2, fill: 'none', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease' }}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{ padding: '16px 18px 20px', borderTop: '1px solid var(--border)' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Chip de estado para el hub "Resumen" ────────────────────────────────
+function Chip({ text, tone }: { text: string; tone: 'ok' | 'warn' | 'muted' }) {
+  const colors = {
+    ok: { bg: 'var(--ok-soft)', fg: 'var(--ok)' },
+    warn: { bg: 'var(--amber-soft)', fg: 'var(--amber-ink)' },
+    muted: { bg: 'var(--surface-2)', fg: 'var(--muted)' },
+  }[tone]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', padding: '2px 9px',
+      borderRadius: 100, fontSize: 11, fontWeight: 600,
+      background: colors.bg, color: colors.fg, whiteSpace: 'nowrap',
+    }}>
+      {text}
+    </span>
+  )
+}
+
 // ── HORAS arrays ──────────────────────────────────────────────────────
 const HORAS_INICIO = Array.from({ length: 24 * 4 }, (_, i) => i * 0.25)        // 0:00 → 23:45
 const HORAS_FIN    = Array.from({ length: 24 * 4 - 1 }, (_, i) => (i + 1) * 0.25) // 0:15 → 24:00
@@ -235,7 +289,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const mostrarAvisoDeuda = PLANES_AVISO_DEUDA.includes(profile.plan ?? '')
   const router = useRouter()
-  const [activeSection, setActiveSection] = useState('perfil')
   const [multiSede, setMultiSede] = useState(false)
 
   // Perfil state
@@ -270,6 +323,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [perfilLoading, setPerfilLoading] = useState(false)
   const [perfilSaved, setPerfilSaved] = useState(false)
   const [perfilError, setPerfilError] = useState<string | null>(null)
+  const [facturacionLoading, setFacturacionLoading] = useState(false)
+  const [facturacionSaved, setFacturacionSaved] = useState(false)
+  const [facturacionError, setFacturacionError] = useState<string | null>(null)
 
   // Recetas state
   const [recetasForm, setRecetasForm] = useState({
@@ -340,8 +396,9 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   // Cobros y pagos state
   const [cobrosVentana, setCobrosVentana] = useState(cobrosVentanaHoras)
   const [cobrosCancelacion, setCobrosCancelacion] = useState(cobrosCancelacionHoras)
-  const [cobrosPrecio, setCobrosPrecio] = useState(cobrosPrecioSesion?.toString() ?? '')
-  const [cobrosMonedaVal, setCobrosMonedaVal] = useState(cobrosMoneda)
+  // cobrosPrecioSesion/cobrosMoneda (props) ya no tienen campo en la UI — KL
+  // item 7: único consumidor era esta pantalla, se saca el bloque "Precio de
+  // sesión — link público" sin tocar las columnas ni la firma de props.
   const [cobrosMensaje, setCobrosMensaje] = useState(cobrosMessagePaciente)
   const [cobrosLoading, setCobrosLoading] = useState(false)
   const [cobrosSaved, setCobrosSaved] = useState(false)
@@ -374,24 +431,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const [bookingCopied, setBookingCopied] = useState(false)
 
 
-  // ── IntersectionObserver for scroll-spy ───────────────────────────
-  useEffect(() => {
-    const sections = document.querySelectorAll('.ajustes-sec[id]')
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) setActiveSection(e.target.id) })
-    }, { rootMargin: '-100px 0px -60% 0px' })
-    sections.forEach(s => io.observe(s))
-    return () => io.disconnect()
-  }, [])
-
-  function scrollToSection(id: string) {
-    const el = document.getElementById(id)
-    if (el) {
-      const offset = el.getBoundingClientRect().top + window.scrollY - 70
-      window.scrollTo({ top: offset, behavior: 'smooth' })
-    }
-  }
-
   // ── Avatar handlers ────────────────────────────────────────────────
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -419,10 +458,44 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     setAvatarUrl(null); setUploading(false); router.refresh()
   }
 
-  // ── Perfil save ────────────────────────────────────────────────────
-  async function handlePerfilSave(e: React.FormEvent) {
+  // ── Datos de facturación save (CUIT, condición IVA, razón social) ──
+  // Separado de handlePerfilSave a pedido explícito: estos campos viven ahora
+  // en el grupo "Cuenta y plan", lejos de "Perfil y matrícula" — si
+  // compartieran el guardado, un cambio sin guardar en Perfil se guardaría
+  // sin querer al tocar "Guardar" acá. Misma tabla, mismo cliente, misma
+  // validación de CUIT que tenía handlePerfilSave, aislada a estas 3 columnas.
+  async function handleFacturacionSave(e: React.FormEvent) {
+    e.preventDefault()
+    setFacturacionError(null)
+    if (perfilForm.cuit && !validarCuit(perfilForm.cuit)) {
+      setFacturacionError('El CUIT no es válido.')
+      return
+    }
+    setFacturacionLoading(true); setFacturacionSaved(false)
+    const supabase = createClient()
+    const { error } = await supabase.from('profiles').update({
+      cuit: perfilForm.cuit || null,
+      condicion_iva: perfilForm.condicion_iva || null,
+      razon_social: perfilForm.razon_social.trim().slice(0, 120) || null,
+    }).eq('id', profile.id)
+    if (error) { setFacturacionError('Error al guardar.'); setFacturacionLoading(false); return }
+    setFacturacionSaved(true); setFacturacionLoading(false); router.refresh()
+  }
+
+  // ── Guardado del grupo "Perfil y matrícula" (perfil + sexo/fecha) ──
+  // El grupo entero (Datos personales, Matrícula, Redes sociales, Módulos de
+  // especialidad) comparte un solo botón "Guardar cambios" al pie, igual que
+  // hoy la sección "Perfil profesional" tiene un único submit para todos sus
+  // campos — no se inventa un guardado independiente por acordeón. Sexo y
+  // fecha de nacimiento, reubicados acá desde "Recetas electrónicas", siguen
+  // escribiendo exactamente las mismas columnas que handleRecetasSave (sin
+  // tocar domicilio del consultorio, que sigue aparte). Si el primer guardado
+  // falla, se corta ahí y se muestra solo ese error — nunca un guardado
+  // parcial sin avisar, ni dos indicadores de éxito a la vez.
+  async function handlePerfilGrupoSave(e: React.FormEvent) {
     e.preventDefault()
     setPerfilError(null)
+    setRecetasError(null)
     if (perfilForm.dni) {
       const dniClean = perfilForm.dni.replace(/\D/g, '')
       if (dniClean.length < 7 || dniClean.length > 8) {
@@ -430,14 +503,10 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         return
       }
     }
-    if (perfilForm.cuit && !validarCuit(perfilForm.cuit)) {
-      setPerfilError('El CUIT no es válido.')
-      return
-    }
     setPerfilLoading(true); setPerfilSaved(false)
     const supabase = createClient()
     const dniClean = perfilForm.dni.replace(/\D/g, '')
-    const { error } = await supabase.from('profiles').update({
+    const { error: perfilErr } = await supabase.from('profiles').update({
       dni: dniClean || null,
       especialidad: perfilForm.especialidad || null,
       titulo_credencial_adicional: perfilForm.titulo_credencial_adicional || null,
@@ -452,13 +521,23 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       terminologia: perfilForm.terminologia,
       antropometria_certificacion: perfilForm.antropometria_certificacion.trim().slice(0, 60) || null,
       antropometria_activa: antropometriaActiva,
-      cuit: perfilForm.cuit || null,
-      condicion_iva: perfilForm.condicion_iva || null,
-      razon_social: perfilForm.razon_social.trim().slice(0, 120) || null,
       ...redesRef.current,
     }).eq('id', profile.id)
-    if (error) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
-    setPerfilSaved(true); setPerfilLoading(false); router.refresh()
+    if (perfilErr) { setPerfilError('Error al guardar.'); setPerfilLoading(false); return }
+    setPerfilLoading(false)
+
+    setRecetasLoading(true); setRecetasSaved(false)
+    const { error: recetasErr } = await supabase.from('profiles').update({
+      sexo: recetasForm.sexo || null,
+      fecha_nacimiento_profesional: recetasForm.fecha_nacimiento || null,
+      domicilio_consultorio: recetasForm.domicilio_consultorio || null,
+      localidad_consultorio: recetasForm.localidad_consultorio || null,
+      provincia_consultorio: recetasForm.provincia_consultorio || null,
+    }).eq('id', profile.id)
+    if (recetasErr) { setRecetasError('Error al guardar.'); setRecetasLoading(false); return }
+    setRecetasLoading(false)
+
+    setPerfilSaved(true); router.refresh()
   }
 
   function agregarFranja(dia: string) {
@@ -579,8 +658,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     await supabase.from('profiles').update({
       cobros_ventana_horas: cobrosVentana,
       cobros_cancelacion_horas: cobrosCancelacion,
-      cobros_precio_sesion: cobrosPrecio ? parseFloat(cobrosPrecio) : null,
-      cobros_moneda: cobrosMonedaVal,
       cobros_mensaje_paciente: cobrosMensaje || null,
     } as never).eq('id', profile.id)
     setCobrosLoading(false); setCobrosSaved(true)
@@ -735,27 +812,87 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   const initials = `${profile.nombre?.[0] ?? ''}${profile.apellido?.[0] ?? ''}`.toUpperCase()
 
-  // ── Sub-nav links ──────────────────────────────────────────────────
-  const navItems = [
-    { id: 'perfil', label: 'Perfil profesional' },
-    { id: 'recetas', label: 'Recetas electrónicas' },
-    { id: 'horarios', label: multiSede ? 'Sedes y horarios' : 'Horarios' },
-    { id: 'tipos-turno', label: 'Tipos de turno' },
-    { id: 'cobros-pagos', label: 'Cobros y pagos' },
-    { id: 'transferencia', label: 'Transferencia bancaria' },
-    { id: 'recordatorios', label: 'Recordatorios' },
-    ...(mostrarAvisoDeuda ? [{ id: 'aviso-deuda', label: 'Aviso de deuda' }] : []),
-    { id: 'politica', label: 'Política de cobros' },
-    { id: 'feriados', label: 'Feriados' },
-    { id: 'obras', label: 'Obras sociales' },
-    { id: 'integraciones', label: 'Integraciones' },
-    { id: 'firmas', label: 'Firma escaneada' },
-    { id: 'link-publico', label: 'Link público' },
-    { id: 'sep' },
-    ...(mostrarColaboradoras ? [{ id: 'colaboradoras', label: 'Asistentes' }] : []),
-    { id: 'plan', label: 'Suscripción y plan' },
-    { id: 'cuenta', label: 'Cuenta y seguridad' },
+  // ── Los 8 grupos — navegación por estado dentro de la misma ruta /ajustes,
+  // sincronizada con el hash de la URL (#cobros) para que Atrás y mobile
+  // funcionen sin crear rutas nuevas. null = pantalla Resumen. ──────────────
+  const GRUPOS: { id: string; label: string; desc: string; icon: React.ReactNode }[] = [
+    { id: 'perfil', label: 'Perfil y matrícula', desc: 'Tus datos, matrícula, terminología, firma y sello.', icon: ICONS.perfil },
+    { id: 'agenda', label: 'Agenda y consultorio', desc: 'Horarios, feriados, sedes y tipos de turno.', icon: ICONS.horarios },
+    { id: 'cobros', label: 'Cobros y obras sociales', desc: 'Cómo te pagan, reglas de cobro y obras sociales.', icon: ICONS.cobros },
+    { id: 'reservas', label: 'Reservas online', desc: 'Tu link público: bio, modalidades y precios.', icon: ICONS['link-publico'] },
+    { id: 'notif', label: 'Notificaciones', desc: 'Recordatorios a tus pacientes y avisos de cobro.', icon: ICONS.recordatorios },
+    { id: 'integ', label: 'Integraciones', desc: 'Google Calendar, Drive y Mercado Pago.', icon: ICONS.integraciones },
+    ...(mostrarColaboradoras ? [{ id: 'equipo', label: 'Asistentes', desc: 'Tu secretaria o asistente.', icon: ICONS.colaboradoras }] : []),
+    { id: 'cuenta', label: 'Cuenta y plan', desc: 'Tu plan, facturación y seguridad.', icon: ICONS.cuenta },
   ]
+  const GRUPO_IDS = GRUPOS.map(g => g.id)
+
+  const [currentGroup, setCurrentGroup] = useState<string | null>(null)
+
+  useEffect(() => {
+    function leerHash() {
+      const hash = window.location.hash.replace('#', '')
+      setCurrentGroup(hash && GRUPO_IDS.includes(hash) ? hash : null)
+    }
+    leerHash()
+    window.addEventListener('hashchange', leerHash)
+    return () => window.removeEventListener('hashchange', leerHash)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function goToGroup(id: string | null) {
+    setCurrentGroup(id)
+    window.history.pushState(null, '', id ? `#${id}` : window.location.pathname + window.location.search)
+    window.scrollTo({ top: 0 })
+  }
+
+  // ── Chips de estado del Resumen — solo lectura de datos ya existentes,
+  // nunca se guarda nada acá. ────────────────────────────────────────────
+  const perfilFaltante = !profile.nombre ? 'nombre' : !perfilForm.especialidad ? 'especialidad' : !perfilForm.dni ? 'DNI' : !perfilForm.matricula ? 'matrícula' : null
+  const perfilCompleto = !perfilFaltante
+
+  const cobrosCompleto = mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular)
+
+  const reservasPasos = [
+    true, // Horarios de atención: siempre hay alguna configuración de horario.
+    bookingPrecioSesion !== '' || bookingPrecioEntrevista !== '' || tipoPropioActivoExiste,
+    !bookingRequierePago || mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular),
+    bookingBio.trim() !== '',
+  ]
+  const reservasPasosOk = reservasPasos.filter(Boolean).length
+
+  const integracionesCompleto = mpConectado && googleConectado
+
+  const resumenTareas: { label: string; detalle: string; grupo: string }[] = []
+  if (!perfilCompleto) resumenTareas.push({ label: 'Completá tu perfil', detalle: `Falta ${perfilFaltante}.`, grupo: 'perfil' })
+  if (!bookingActivo || reservasPasosOk < 4) resumenTareas.push({ label: 'Activá tu link de reservas', detalle: `${reservasPasosOk} de 4 pasos completos.`, grupo: 'reservas' })
+
+  // ── Envoltorio de cada grupo: botón Volver + header (icono/título/desc del
+  // propio GRUPOS) + contenido. Usa currentGroup/GRUPOS/goToGroup por clausura. ──
+  function GrupoShell({ children }: { children: React.ReactNode }) {
+    const grupo = GRUPOS.find(g => g.id === currentGroup)
+    if (!grupo) return null
+    return (
+      <div>
+        <button type="button" onClick={() => goToGroup(null)} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 18,
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          fontSize: 13, fontWeight: 600, color: 'var(--muted)',
+        }}>
+          <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: 'currentColor', strokeWidth: 2, fill: 'none' }}><path d="M15 18l-6-6 6-6" /></svg>
+          Volver a Ajustes
+        </button>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
+          <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{grupo.icon}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>{grupo.label}</h2>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', margin: '4px 0 0', lineHeight: 1.5 }}>{grupo.desc}</p>
+          </div>
+        </div>
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 md:px-7 pb-20 w-full mx-auto" style={{ maxWidth: 1320 }}>
@@ -799,414 +936,373 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         </div>
       )}
 
-      {/* Mobile chip nav — horizontal scroll strip */}
-      <div className="md:hidden mb-5">
-        <div
-          className="ajustes-nav flex gap-2 overflow-x-auto pb-1"
-          style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
-        >
-          {navItems.filter(i => i.id !== 'sep').map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id!)}
-              style={{
-                flexShrink: 0,
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: activeSection === item.id ? 600 : 500,
-                background: activeSection === item.id ? 'var(--ink)' : 'var(--surface-2)',
-                color: activeSection === item.id ? 'white' : 'var(--ink-2)',
-                whiteSpace: 'nowrap',
-                transition: 'background .12s ease, color .12s ease',
-              }}
-            >
-              <span style={{ width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {ICONS[item.id!]}
-              </span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Settings grid — desktop: sidebar + content; mobile: content only */}
-      <div className="md:grid md:gap-8 md:items-start" style={{ gridTemplateColumns: '240px 1fr' }}>
-
-        {/* Desktop sidebar nav */}
-        <nav className="hidden md:flex md:flex-col md:sticky gap-1 p-1" style={{ top: 70 }}>
-          {navItems.map(item =>
-            item.id === 'sep' ? (
-              <div key="sep" style={{ height: 1, background: 'var(--border)', margin: '6px 12px' }} />
-            ) : (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id!)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 12px', borderRadius: 8,
-                  border: 'none', cursor: 'pointer', flexShrink: 0,
-                  color: activeSection === item.id ? 'white' : 'var(--ink-2)',
-                  fontSize: 13.5, fontWeight: activeSection === item.id ? 600 : 500,
-                  background: activeSection === item.id ? 'var(--ink)' : 'transparent',
-                  transition: 'background .12s ease, color .12s ease',
-                  textAlign: 'left', whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'var(--surface-2)'
-                }}
-                onMouseLeave={e => {
-                  if (activeSection !== item.id) (e.currentTarget as HTMLElement).style.background = 'transparent'
-                }}
-              >
-                <span style={{ width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {ICONS[item.id!]}
-                </span>
-                {item.label}
-              </button>
-            )
-          )}
-        </nav>
-
-        {/* Sections */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-          {/* ═══ PERFIL PROFESIONAL ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'perfil' ? ' hidden md:block' : ''}`} id="perfil" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.perfil}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Perfil profesional</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Datos visibles para tus pacientes y colegas en Interconsultas.</p>
-              </div>
-            </div>
-
-            {/* Avatar */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 18,
-              padding: 16, background: 'var(--surface-2)',
-              borderRadius: 12, border: '1px solid var(--border)',
-              marginBottom: 22,
-            }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)',
-                color: '#16389F', display: 'grid', placeItems: 'center',
-                fontWeight: 600, fontSize: 24, letterSpacing: '-0.02em',
-                overflow: 'hidden', position: 'relative',
-              }}>
-                {avatarUrl
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  ? <img src={avatarUrl} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
-                  : initials}
-                <label style={{
-                  position: 'absolute', bottom: 0, right: 0,
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: 'var(--ink)', color: 'white',
-                  display: 'grid', placeItems: 'center',
-                  border: '2px solid var(--surface-2)',
-                  cursor: uploading ? 'not-allowed' : 'pointer',
-                  opacity: uploading ? 0.5 : 1,
-                }}>
-                  <svg viewBox="0 0 24 24" style={{ width: 10, height: 10, stroke: 'white', strokeWidth: 2, fill: 'none' }}>
-                    <path d="M3 5h4l2-2h6l2 2h4v14H3z"/><circle cx="12" cy="13" r="4"/>
-                  </svg>
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleAvatarUpload} disabled={uploading} />
-                </label>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>Foto del profesional</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)' }}>JPG, PNG o WebP · Máximo 2MB · Se mostrará en círculo</div>
-                {avatarUrl && (
-                  <button type="button" onClick={handleDeleteAvatar} disabled={uploading}
-                    style={{ marginTop: 6, fontSize: 12, color: '#DC2626', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontWeight: 500 }}>
-                    Eliminar foto
+      {currentGroup === null ? (
+        <>
+          {/* ═══ RESUMEN ═══ */}
+          {resumenTareas.length > 0 && (
+            <div style={{ ...secStyle, marginBottom: 20 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 14 }}>Te falta configurar</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {resumenTareas.map(t => (
+                  <button
+                    key={t.grupo}
+                    type="button"
+                    onClick={() => goToGroup(t.grupo)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{t.label}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>{t.detalle}</div>
+                    </div>
+                    <span style={{ fontSize: 15, color: 'var(--muted-2)', flexShrink: 0 }}>→</span>
                   </button>
-                )}
+                ))}
               </div>
             </div>
+          )}
 
-            {perfilError && (
-              <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
-                {perfilError}
-              </div>
-            )}
-
-            <form onSubmit={handlePerfilSave}>
-              {/* Read-only identity */}
-              <div className={`${grid2Class} mb-4`}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Nombre completo <span style={{ color: '#DC2626' }}>*</span></label>
-                  <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={`${profile.nombre} ${profile.apellido}`} readOnly />
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Email <span style={{ color: '#DC2626' }}>*</span></label>
-                  <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={profile.email} readOnly />
-                </div>
-              </div>
-
-              <div className={`${grid2Class} mb-4`}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Especialidad</label>
-                  <select style={inputStyle} value={perfilForm.especialidad} onChange={e => setPerfilForm(p => ({ ...p, especialidad: e.target.value }))}>
-                    <option value="">Sin especificar</option>
-                    {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
-                  </select>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Título o credencial adicional <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
-                  <input style={inputStyle} type="text" placeholder="Ej: Prof. en Educación Física" value={perfilForm.titulo_credencial_adicional} onChange={e => setPerfilForm(p => ({ ...p, titulo_credencial_adicional: e.target.value }))} />
-                  <span style={hintStyle}>Se muestra junto a tu especialidad, ej: &quot;Nutrición · Prof. en Educación Física&quot;.</span>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Término para los turnos</label>
-                  <select style={inputStyle} value={perfilForm.terminologia} onChange={e => setPerfilForm(p => ({ ...p, terminologia: e.target.value as 'sesion' | 'consulta' }))}>
-                    <option value="sesion">Sesión</option>
-                    <option value="consulta">Consulta</option>
-                  </select>
-                  <span style={hintStyle}>Personaliza cómo se llaman los turnos en toda la app.</span>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>DNI <span style={{ color: '#DC2626' }}>*</span></label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Ej: 27704316"
-                    maxLength={9}
-                    value={perfilForm.dni}
-                    onChange={e => setPerfilForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '') }))}
-                  />
-                  <span style={hintStyle}>Solo dígitos, sin puntos ni espacios.</span>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Tipo de matrícula</label>
-                  <select style={inputStyle} value={perfilForm.matricula_tipo} onChange={e => setPerfilForm(p => ({ ...p, matricula_tipo: e.target.value, matricula_provincia: e.target.value !== 'provincial' ? '' : p.matricula_provincia }))}>
-                    <option value="">Seleccioná el tipo</option>
-                    <option value="provincial">Provincial</option>
-                    <option value="nacional">Nacional</option>
-                  </select>
-                </div>
-                {perfilForm.matricula_tipo === 'provincial' && (
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Provincia de la matrícula</label>
-                    <select style={inputStyle} value={perfilForm.matricula_provincia} onChange={e => setPerfilForm(p => ({ ...p, matricula_provincia: e.target.value }))}>
-                      <option value="">Seleccioná la provincia</option>
-                      {(PAISES_PROVINCIAS['Argentina'] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                    </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {GRUPOS.map(g => {
+              let chip: { text: string; tone: 'ok' | 'warn' | 'muted' } | null = null
+              if (g.id === 'perfil') chip = perfilCompleto ? { text: 'Completo', tone: 'ok' } : { text: 'Pendiente', tone: 'warn' }
+              if (g.id === 'cobros') chip = cobrosCompleto ? { text: 'Completo', tone: 'ok' } : { text: 'Pendiente', tone: 'warn' }
+              if (g.id === 'reservas') chip = (bookingActivo && reservasPasosOk === 4) ? { text: 'Activo', tone: 'ok' } : { text: `${reservasPasosOk} de 4 pasos`, tone: 'muted' }
+              if (g.id === 'integ') chip = integracionesCompleto ? { text: 'Completo', tone: 'ok' } : { text: 'Pendiente', tone: 'warn' }
+              if (g.id === 'cuenta') chip = { text: profile.plan ? profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1) : 'Sin plan', tone: 'muted' }
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => goToGroup(g.id)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', gap: 10,
+                    padding: 18, borderRadius: 14, border: '1px solid var(--border)',
+                    background: 'var(--surface)', cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{g.icon}</div>
+                    {chip && <Chip text={chip.text} tone={chip.tone} />}
                   </div>
-                )}
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Número de matrícula</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: 12345" value={perfilForm.matricula} onChange={e => setPerfilForm(p => ({ ...p, matricula: e.target.value }))} />
-                  {perfilForm.matricula && (
-                    <span style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4, display: 'block' }}>
-                      Se mostrará como: {perfilForm.matricula_tipo === 'provincial'
-                        ? `MP ${perfilForm.matricula}${perfilForm.matricula_provincia ? ` (${perfilForm.matricula_provincia})` : ''}`
-                        : perfilForm.matricula_tipo === 'nacional'
-                        ? `MN ${perfilForm.matricula}`
-                        : perfilForm.matricula}
+                  <div>
+                    <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>{g.label}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 3, lineHeight: 1.5 }}>{g.desc}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      ) : (
+        <GrupoShell>
+
+          {currentGroup === 'perfil' && (
+            <>
+              <form onSubmit={handlePerfilGrupoSave}>
+                <Accordion title="Datos personales" desc="Datos visibles para tus pacientes y colegas en Interconsultas." defaultOpen>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 18,
+                    padding: 16, background: 'var(--surface-2)',
+                    borderRadius: 12, border: '1px solid var(--border)',
+                    marginBottom: 22,
+                  }}>
+                    <div style={{
+                      width: 72, height: 72, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(145deg, #E3E9F6, #C9D3E9)',
+                      color: '#16389F', display: 'grid', placeItems: 'center',
+                      fontWeight: 600, fontSize: 24, letterSpacing: '-0.02em',
+                      overflow: 'hidden', position: 'relative',
+                    }}>
+                      {avatarUrl
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        ? <img src={avatarUrl} alt={initials} style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                        : initials}
+                      <label style={{
+                        position: 'absolute', bottom: 0, right: 0,
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: 'var(--ink)', color: 'white',
+                        display: 'grid', placeItems: 'center',
+                        border: '2px solid var(--surface-2)',
+                        cursor: uploading ? 'not-allowed' : 'pointer',
+                        opacity: uploading ? 0.5 : 1,
+                      }}>
+                        <svg viewBox="0 0 24 24" style={{ width: 10, height: 10, stroke: 'white', strokeWidth: 2, fill: 'none' }}>
+                          <path d="M3 5h4l2-2h6l2 2h4v14H3z"/><circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleAvatarUpload} disabled={uploading} />
+                      </label>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>Foto del profesional</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>JPG, PNG o WebP · Máximo 2MB · Se mostrará en círculo</div>
+                      {avatarUrl && (
+                        <button type="button" onClick={handleDeleteAvatar} disabled={uploading}
+                          style={{ marginTop: 6, fontSize: 12, color: '#DC2626', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontWeight: 500 }}>
+                          Eliminar foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {perfilError && (
+                    <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
+                      {perfilError}
+                    </div>
+                  )}
+
+                  <div className={`${grid2Class} mb-4`}>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Nombre completo <span style={{ color: '#DC2626' }}>*</span></label>
+                      <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={`${profile.nombre} ${profile.apellido}`} readOnly />
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Email <span style={{ color: '#DC2626' }}>*</span></label>
+                      <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={profile.email} readOnly />
+                    </div>
+                  </div>
+
+                  <div className={`${grid2Class} mb-4`}>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Especialidad</label>
+                      <select style={inputStyle} value={perfilForm.especialidad} onChange={e => setPerfilForm(p => ({ ...p, especialidad: e.target.value }))}>
+                        <option value="">Sin especificar</option>
+                        {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Título o credencial adicional <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                      <input style={inputStyle} type="text" placeholder="Ej: Prof. en Educación Física" value={perfilForm.titulo_credencial_adicional} onChange={e => setPerfilForm(p => ({ ...p, titulo_credencial_adicional: e.target.value }))} />
+                      <span style={hintStyle}>Se muestra junto a tu especialidad, ej: &quot;Nutrición · Prof. en Educación Física&quot;.</span>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Término para los turnos</label>
+                      <select style={inputStyle} value={perfilForm.terminologia} onChange={e => setPerfilForm(p => ({ ...p, terminologia: e.target.value as 'sesion' | 'consulta' }))}>
+                        <option value="sesion">Sesión</option>
+                        <option value="consulta">Consulta</option>
+                      </select>
+                      <span style={hintStyle}>Personaliza cómo se llaman los turnos en toda la app.</span>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>DNI</label>
+                      <input
+                        style={inputStyle}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Ej: 27704316"
+                        maxLength={9}
+                        value={perfilForm.dni}
+                        onChange={e => setPerfilForm(p => ({ ...p, dni: e.target.value.replace(/\D/g, '') }))}
+                      />
+                      <span style={hintStyle}>Solo dígitos, sin puntos ni espacios.</span>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Sexo</label>
+                      <select style={inputStyle} value={recetasForm.sexo} onChange={e => setRecetasForm(p => ({ ...p, sexo: e.target.value }))}>
+                        <option value="">Seleccioná</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                      </select>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Fecha de nacimiento</label>
+                      <input style={inputStyle} type="date" value={recetasForm.fecha_nacimiento} onChange={e => setRecetasForm(p => ({ ...p, fecha_nacimiento: e.target.value }))} />
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Teléfono de contacto</label>
+                      <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                        <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>+54</span>
+                        <input style={{ ...inputStyle, border: 'none', flex: 1, borderRadius: 0 }} type="tel" placeholder="9 11 1234-5678" value={perfilForm.telefono} onChange={e => setPerfilForm(p => ({ ...p, telefono: e.target.value }))} />
+                      </div>
+                      <span style={hintStyle}>Visible para otros profesionales en interconsultas.</span>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>País</label>
+                      <select style={inputStyle} value={perfilForm.pais} onChange={e => setPerfilForm(p => ({ ...p, pais: e.target.value, provincia: '', localidad: '' }))}>
+                        {PAISES.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Provincia / Estado</label>
+                      <select style={inputStyle} value={perfilForm.provincia} onChange={e => setPerfilForm(p => ({ ...p, provincia: e.target.value }))}>
+                        <option value="">Sin especificar</option>
+                        {(PAISES_PROVINCIAS[perfilForm.pais] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                      </select>
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Localidad / Ciudad</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={perfilForm.localidad} onChange={e => setPerfilForm(p => ({ ...p, localidad: e.target.value }))} />
+                    </div>
+                    <div className="sm:col-span-2" style={fieldStyle}>
+                      <label style={labelStyle}>Dirección donde realiza la prestación</label>
+                      <input style={inputStyle} type="text" placeholder="Av. Corrientes 1234, Piso 3" value={perfilForm.direccion} onChange={e => setPerfilForm(p => ({ ...p, direccion: e.target.value }))} />
+                      <span style={hintStyle}>Se usa en las planillas de asistencia para obras sociales.</span>
+                    </div>
+                  </div>
+                </Accordion>
+
+                <Accordion title="Matrícula" desc="Se muestra en tu perfil público y en documentos.">
+                  <div className={grid2Class}>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Tipo de matrícula</label>
+                      <select style={inputStyle} value={perfilForm.matricula_tipo} onChange={e => setPerfilForm(p => ({ ...p, matricula_tipo: e.target.value, matricula_provincia: e.target.value !== 'provincial' ? '' : p.matricula_provincia }))}>
+                        <option value="">Seleccioná el tipo</option>
+                        <option value="provincial">Provincial</option>
+                        <option value="nacional">Nacional</option>
+                      </select>
+                    </div>
+                    {perfilForm.matricula_tipo === 'provincial' && (
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>Provincia de la matrícula</label>
+                        <select style={inputStyle} value={perfilForm.matricula_provincia} onChange={e => setPerfilForm(p => ({ ...p, matricula_provincia: e.target.value }))}>
+                          <option value="">Seleccioná la provincia</option>
+                          {(PAISES_PROVINCIAS['Argentina'] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Número de matrícula</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: 12345" value={perfilForm.matricula} onChange={e => setPerfilForm(p => ({ ...p, matricula: e.target.value }))} />
+                      {perfilForm.matricula && (
+                        <span style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4, display: 'block' }}>
+                          Se mostrará como: {perfilForm.matricula_tipo === 'provincial'
+                            ? `MP ${perfilForm.matricula}${perfilForm.matricula_provincia ? ` (${perfilForm.matricula_provincia})` : ''}`
+                            : perfilForm.matricula_tipo === 'nacional'
+                            ? `MN ${perfilForm.matricula}`
+                            : perfilForm.matricula}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Accordion>
+
+                <Accordion title="Redes sociales" desc="Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.">
+                  <RedesSocialesField initialValue={redesRef.current} onChange={(v) => { redesRef.current = v }} />
+                </Accordion>
+
+                <Accordion title="Módulos de especialidad" desc="Funciones adicionales según tu especialidad.">
+                  <ToggleRow
+                    name="Módulo de antropometría"
+                    desc="Muestra la solapa Antropometría en la ficha de tus pacientes."
+                    on={antropometriaActiva}
+                    onChange={() => setAntropometriaActiva((v) => !v)}
+                  />
+                  <div style={{ ...fieldStyle, marginTop: 16 }}>
+                    <label style={labelStyle}>Certificación en antropometría</label>
+                    <input
+                      style={inputStyle}
+                      type="text"
+                      placeholder="Ej: ISAK nivel 1"
+                      maxLength={60}
+                      value={perfilForm.antropometria_certificacion}
+                      onChange={e => setPerfilForm(p => ({ ...p, antropometria_certificacion: e.target.value }))}
+                    />
+                  </div>
+                </Accordion>
+
+                <div style={secFootStyle}>
+                  {perfilSaved && (
+                    <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                      Cambios guardados
                     </span>
                   )}
+                  <div style={{ flex: 1 }} />
+                  <button type="submit" disabled={perfilLoading}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: perfilLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: perfilLoading ? 0.7 : 1 }}>
+                    {perfilLoading ? 'Guardando...' : 'Guardar cambios'}
+                  </button>
                 </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Certificación en antropometría</label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    placeholder="Ej: ISAK nivel 1"
-                    maxLength={60}
-                    value={perfilForm.antropometria_certificacion}
-                    onChange={e => setPerfilForm(p => ({ ...p, antropometria_certificacion: e.target.value }))}
-                  />
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>CUIT <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Ej: 20-12345678-6"
-                    maxLength={13}
-                    value={formatearCuit(perfilForm.cuit)}
-                    onChange={e => setPerfilForm(p => ({ ...p, cuit: normalizarCuit(e.target.value) }))}
-                  />
-                  <span style={hintStyle}>Para facturar tu suscripción de KLIA.</span>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Condición frente al IVA <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
-                  <select style={inputStyle} value={perfilForm.condicion_iva} onChange={e => setPerfilForm(p => ({ ...p, condicion_iva: e.target.value }))}>
-                    <option value="">Sin especificar</option>
-                    {CONDICIONES_IVA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Razón social <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    maxLength={120}
-                    value={perfilForm.razon_social}
-                    onChange={e => setPerfilForm(p => ({ ...p, razon_social: e.target.value }))}
-                  />
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Teléfono de contacto</label>
-                  <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                    <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>+54</span>
-                    <input style={{ ...inputStyle, border: 'none', flex: 1, borderRadius: 0 }} type="tel" placeholder="9 11 1234-5678" value={perfilForm.telefono} onChange={e => setPerfilForm(p => ({ ...p, telefono: e.target.value }))} />
+              </form>
+
+              <Accordion title="Domicilio para recetas electrónicas" desc="Se usa exclusivamente para la emisión de recetas electrónicas y no es visible para tus pacientes.">
+                {recetasError && (
+                  <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
+                    {recetasError}
                   </div>
-                  <span style={hintStyle}>Visible para otros profesionales en interconsultas.</span>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>País</label>
-                  <select style={inputStyle} value={perfilForm.pais} onChange={e => setPerfilForm(p => ({ ...p, pais: e.target.value, provincia: '', localidad: '' }))}>
-                    {PAISES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Provincia / Estado</label>
-                  <select style={inputStyle} value={perfilForm.provincia} onChange={e => setPerfilForm(p => ({ ...p, provincia: e.target.value }))}>
-                    <option value="">Sin especificar</option>
-                    {(PAISES_PROVINCIAS[perfilForm.pais] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                  </select>
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Localidad / Ciudad</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={perfilForm.localidad} onChange={e => setPerfilForm(p => ({ ...p, localidad: e.target.value }))} />
-                </div>
-                <div className="sm:col-span-2" style={fieldStyle}>
-                  <label style={labelStyle}>Dirección donde realiza la prestación</label>
-                  <input style={inputStyle} type="text" placeholder="Av. Corrientes 1234, Piso 3" value={perfilForm.direccion} onChange={e => setPerfilForm(p => ({ ...p, direccion: e.target.value }))} />
-                  <span style={hintStyle}>Se usa en las planillas de asistencia para obras sociales.</span>
-                </div>
-                <div className="sm:col-span-2" style={fieldStyle}>
-                  <label style={labelStyle}>Redes sociales</label>
-                  <RedesSocialesField initialValue={redesRef.current} onChange={(v) => { redesRef.current = v }} />
-                  <span style={hintStyle}>Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.</span>
-                </div>
-              </div>
-
-              <ToggleRow
-                name="Módulo de antropometría"
-                desc="Muestra la solapa Antropometría en la ficha de tus pacientes."
-                on={antropometriaActiva}
-                onChange={() => setAntropometriaActiva((v) => !v)}
-              />
-
-              <div style={secFootStyle}>
-                {perfilSaved && (
-                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                    Cambios guardados
-                  </span>
                 )}
-                <div style={{ flex: 1 }} />
-                <button type="submit" disabled={perfilLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: perfilLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: perfilLoading ? 0.7 : 1 }}>
-                  {perfilLoading ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-            </form>
-          </section>
+                <form onSubmit={handleRecetasSave}>
+                  <div className="mb-4">
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Domicilio del consultorio</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: Av. Corrientes 1234, Piso 3, Of. 8" value={recetasForm.domicilio_consultorio} onChange={e => setRecetasForm(p => ({ ...p, domicilio_consultorio: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className={grid2Class}>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Localidad del consultorio</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={recetasForm.localidad_consultorio} onChange={e => setRecetasForm(p => ({ ...p, localidad_consultorio: e.target.value }))} />
+                    </div>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Provincia del consultorio</label>
+                      <select style={inputStyle} value={recetasForm.provincia_consultorio} onChange={e => setRecetasForm(p => ({ ...p, provincia_consultorio: e.target.value }))}>
+                        <option value="">Seleccioná la provincia</option>
+                        {['Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'].map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={secFootStyle}>
+                    {recetasSaved && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                        Guardado
+                      </span>
+                    )}
+                    <div style={{ flex: 1 }} />
+                    <button type="submit" disabled={recetasLoading}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: recetasLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: recetasLoading ? 0.7 : 1 }}>
+                      {recetasLoading ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </form>
+              </Accordion>
 
-          {/* ═══ RECETAS ELECTRÓNICAS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'recetas' ? ' hidden md:block' : ''}`} id="recetas" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.recetas}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Datos para recetas electrónicas</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Información requerida para la emisión de recetas. No es visible para tus pacientes.</p>
-              </div>
-            </div>
-
-            {recetasError && (
-              <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
-                {recetasError}
-              </div>
-            )}
-
-            <form onSubmit={handleRecetasSave}>
-              {/* Fila 1 — Sexo + Fecha de nacimiento */}
-              <div className={`${grid2Class} mb-4`}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Sexo</label>
-                  <select style={inputStyle} value={recetasForm.sexo} onChange={e => setRecetasForm(p => ({ ...p, sexo: e.target.value }))}>
-                    <option value="">Seleccioná</option>
-                    <option value="M">Masculino</option>
-                    <option value="F">Femenino</option>
-                  </select>
+              <Accordion title="Firma y sello" desc="Se aplican automáticamente al final de documentos exportados. Tienen validez legal en Argentina según Ley 25.506.">
+                <div className={`${grid2Class} mb-2`}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px', background: 'var(--surface)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Firma</div>
+                    <FirmaUploader
+                      label="Firma manuscrita"
+                      descripcion="Solo tu firma, sin sello"
+                      instrucciones="Solo tu firma, sin sello, sobre fondo blanco en tinta negra."
+                      firmaUrl={firmaUrl}
+                      bucket="firmas-profesionales"
+                      storagePath={`${profile.id}/firma-simple`}
+                      onUpload={(url) => { setFirmaUrl(url); updateFirmaDB('firma_url', url) }}
+                      onDelete={() => { setFirmaUrl(null); updateFirmaDB('firma_url', null) }}
+                    />
+                  </div>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px', background: 'var(--surface)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Sello profesional</div>
+                    <FirmaUploader
+                      label="Firma y sello profesional"
+                      descripcion="Combinación de tu firma manuscrita y sello profesional"
+                      instrucciones="La imagen debe mostrar tu firma y sello profesional sobre fondo blanco, en tinta negra."
+                      firmaUrl={firmaSelloUrl}
+                      bucket="firmas-profesionales"
+                      storagePath={`${profile.id}/firma-sello`}
+                      onUpload={(url) => { setFirmaSelloUrl(url); updateFirmaDB('firma_sello_url', url) }}
+                      onDelete={() => { setFirmaSelloUrl(null); updateFirmaDB('firma_sello_url', null) }}
+                    />
+                  </div>
                 </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Fecha de nacimiento</label>
-                  <input style={inputStyle} type="date" value={recetasForm.fecha_nacimiento} onChange={e => setRecetasForm(p => ({ ...p, fecha_nacimiento: e.target.value }))} />
-                </div>
-              </div>
+              </Accordion>
+            </>
+          )}
 
-              {/* Fila 2 — Domicilio del consultorio */}
-              <div className="mb-4">
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Domicilio del consultorio</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: Av. Corrientes 1234, Piso 3, Of. 8" value={recetasForm.domicilio_consultorio} onChange={e => setRecetasForm(p => ({ ...p, domicilio_consultorio: e.target.value }))} />
-                </div>
-              </div>
-
-              {/* Fila 3 — Localidad + Provincia */}
-              <div className={`${grid2Class} mb-4`}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Localidad del consultorio</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: Buenos Aires" value={recetasForm.localidad_consultorio} onChange={e => setRecetasForm(p => ({ ...p, localidad_consultorio: e.target.value }))} />
-                </div>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Provincia del consultorio</label>
-                  <select style={inputStyle} value={recetasForm.provincia_consultorio} onChange={e => setRecetasForm(p => ({ ...p, provincia_consultorio: e.target.value }))}>
-                    <option value="">Seleccioná la provincia</option>
-                    {['Buenos Aires','CABA','Catamarca','Chaco','Chubut','Córdoba','Corrientes','Entre Ríos','Formosa','Jujuy','La Pampa','La Rioja','Mendoza','Misiones','Neuquén','Río Negro','Salta','San Juan','San Luis','Santa Cruz','Santa Fe','Santiago del Estero','Tierra del Fuego','Tucumán'].map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={secFootStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                  <svg viewBox="0 0 20 20" style={{ width: 14, height: 14, stroke: 'var(--muted-2)', fill: 'none', strokeWidth: 1.6, flexShrink: 0 }}>
-                    <circle cx="10" cy="10" r="7.5"/><path d="M10 7v3M10 13h.01"/>
-                  </svg>
-                  <span style={{ fontSize: 12, color: 'var(--muted-2)', lineHeight: 1.4 }}>
-                    Estos datos se usan exclusivamente para la emisión de recetas electrónicas y no son visibles para tus pacientes.
-                  </span>
-                </div>
-                {recetasSaved && (
-                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                    Cambios guardados
-                  </span>
-                )}
-                <button type="submit" disabled={recetasLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: recetasLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: recetasLoading ? 0.7 : 1 }}>
-                  {recetasLoading ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          {/* ═══ SEDES Y HORARIOS POR SEDE (solo 2+ sedes reales — ver SedesHorariosSection) ═══ */}
-          <div className={`ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios">
-            <SedesHorariosSection plan={profile.plan} onMultiChange={setMultiSede} />
-          </div>
-
-          {/* ═══ HORARIOS (experiencia actual — 1 sola sede) ═══ */}
-          <section className={multiSede ? 'hidden' : `ajustes-sec${activeSection !== 'horarios' ? ' hidden md:block' : ''}`} id="horarios-simple" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('#FFF4E4', 'var(--warn)')}>{ICONS.horarios}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Horarios de atención</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Define los días y franjas horarias visibles en tu agenda.</p>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              {DIAS_SEMANA_CONFIG.map(({ key, label }, idx) => {
+          {currentGroup === 'agenda' && (
+            <>
+              <Accordion title="Sedes y horarios" desc="Define tus sedes y los horarios de atención en cada una." defaultOpen>
+                <SedesHorariosSection plan={profile.plan} onMultiChange={setMultiSede} />
+                {!multiSede && (
+                <div style={{ marginTop: 18 }}>
+                  <div style={{ marginBottom: 16 }}>
+                  {DIAS_SEMANA_CONFIG.map(({ key, label }, idx) => {
                 const dia = horariosPorDia[key] ?? { activo: false, franjas: [{ inicio: 9, fin: 18 }] }
                 return (
                   <div key={key} style={{
@@ -1275,384 +1371,255 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 )
               })}
-            </div>
-
-            <div style={secFootStyle}>
-              {horarioSaved && (
-                <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                  Cambios guardados
-                </span>
-              )}
-              <div style={{ flex: 1 }} />
-              <button onClick={handleHorarioSave} disabled={horarioLoading}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: horarioLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: horarioLoading ? 0.7 : 1 }}>
-                {horarioSaved ? '✓ Guardado' : horarioLoading ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </section>
-
-          {/* ═══ TIPOS DE TURNO ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'tipos-turno' ? ' hidden md:block' : ''}`} id="tipos-turno" style={secStyle}>
-            <TiposTurnoSection
-              plan={profile.plan}
-              habilitado={tiposTurnoHabilitado}
-              tiposIniciales={tiposTurno}
-              terminologia={profile.terminologia ?? undefined}
-              sedes={sedes}
-              baseSesion={{ precioCargado: bookingPrecioSesion !== '', visible: bookingSesionVisible }}
-              baseEntrevista={{ precioCargado: bookingPrecioEntrevista !== '', visible: bookingEntrevistaVisible }}
-            />
-          </section>
-
-          {/* ═══ COBROS Y PAGOS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'cobros-pagos' ? ' hidden md:block' : ''}`} id="cobros-pagos" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.cobros}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Cobros y pagos</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá cómo y cuándo se cobran las sesiones agendadas desde tu link público.</p>
-              </div>
-              {mpConectado && (
-                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--ok-soft)', color: 'var(--ok)', flexShrink: 0 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-                  Mercado Pago vinculado
-                </div>
-              )}
-            </div>
-
-            <form onSubmit={handleCobrosSave}>
-              {/* Ventana de pago */}
-              <div style={{ marginBottom: 22 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Ventana de pago</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Cuánto tiempo tiene el paciente para pagar antes de que se libere el turno?</div>
-                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
-                  {[24, 48, 72].map(h => (
-                    <button key={h} type="button" onClick={() => setCobrosVentana(h)}
-                      style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === h ? 'var(--ink)' : 'transparent', color: cobrosVentana === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
-                      {h} hs
-                    </button>
-                  ))}
-                  <button type="button" onClick={() => setCobrosVentana(0)}
-                    style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === 0 ? 'var(--ink)' : 'transparent', color: cobrosVentana === 0 ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
-                    Sin límite
-                  </button>
-                </div>
-              </div>
-
-              {/* Política de cancelación */}
-              <div style={{ marginBottom: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Política de cancelación</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Con cuántas horas de anticipación puede cancelar el paciente con devolución completa?</div>
-                <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
-                  {[6, 12, 24, 48].map(h => (
-                    <button key={h} type="button" onClick={() => setCobrosCancelacion(h)}
-                      style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosCancelacion === h ? 'var(--ink)' : 'transparent', color: cobrosCancelacion === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
-                      {h} hs
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Precio de sesión */}
-              <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)', marginBottom: 22 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Precio de sesión — link público</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Este precio se aplica cuando un paciente agenda desde tu link público.</div>
-                <div className={grid2Class} style={{ maxWidth: 480 }}>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Moneda</label>
-                    <select style={inputStyle} value={cobrosMonedaVal} onChange={e => setCobrosMonedaVal(e.target.value)}>
-                      <option value="ARS">ARS — Peso argentino</option>
-                      <option value="USD">USD — Dólar</option>
-                      <option value="EUR">EUR — Euro</option>
-                    </select>
                   </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Monto por sesión</label>
-                    <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                      <span style={{ padding: '0 12px', fontSize: 13, color: 'var(--muted)', fontWeight: 500, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>$</span>
-                      <input style={{ ...inputStyle, border: 'none', flex: 1, borderRadius: 0 }} type="number" min="0" step="0.01" placeholder="60000" value={cobrosPrecio} onChange={e => setCobrosPrecio(e.target.value)} />
-                    </div>
+
+                  <div style={secFootStyle}>
+                    {horarioSaved && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                        Cambios guardados
+                      </span>
+                    )}
+                    <div style={{ flex: 1 }} />
+                    <button onClick={handleHorarioSave} disabled={horarioLoading}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: horarioLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: horarioLoading ? 0.7 : 1 }}>
+                      {horarioSaved ? '✓ Guardado' : horarioLoading ? 'Guardando...' : 'Guardar'}
+                    </button>
                   </div>
                 </div>
-              </div>
-
-              {/* Mensaje al paciente */}
-              <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)' }}>
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Mensaje personalizado al paciente</label>
-                  <textarea style={textareaStyle} placeholder="Se incluye en el email de confirmación de turno…" value={cobrosMensaje} onChange={e => setCobrosMensaje(e.target.value)} />
-                  <span style={hintStyle}>Se incluye en el email de confirmación de turno y en el link público.</span>
-                </div>
-              </div>
-
-              <div style={secFootStyle}>
-                {cobrosSaved && (
-                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                    Cambios guardados
-                  </span>
                 )}
-                <div style={{ flex: 1 }} />
-                <button type="submit" disabled={cobrosLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: cobrosLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: cobrosLoading ? 0.7 : 1 }}>
-                  {cobrosLoading ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-            </form>
-          </section>
+              </Accordion>
 
-          {/* ═══ TRANSFERENCIA BANCARIA ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'transferencia' ? ' hidden md:block' : ''}`} id="transferencia" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--ok-soft)', 'var(--ok)')}>{ICONS.transferencia}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Transferencia bancaria</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Medio de pago alternativo a Mercado Pago — se muestra en tu link público de reservas junto al pago online, si lo tenés conectado.</p>
-              </div>
-            </div>
+              <Accordion title="Tipos de turno" desc="Configurá los tipos de turno propios que ofrecés.">
+                <TiposTurnoSection
+                  plan={profile.plan}
+                  habilitado={tiposTurnoHabilitado}
+                  tiposIniciales={tiposTurno}
+                  terminologia={profile.terminologia ?? undefined}
+                  sedes={sedes}
+                  baseSesion={{ precioCargado: bookingPrecioSesion !== '', visible: bookingSesionVisible }}
+                  baseEntrevista={{ precioCargado: bookingPrecioEntrevista !== '', visible: bookingEntrevistaVisible }}
+                />
+              </Accordion>
 
-            <form onSubmit={handleTransferenciaSave}>
-              <div className={grid2Class} style={{ marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Banco</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: Banco Galicia" value={transferenciaBanco} onChange={e => setTransferenciaBanco(e.target.value)} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Alias</label>
-                  <input style={inputStyle} type="text" placeholder="Ej: mi.alias.mp" value={transferenciaAlias} onChange={e => setTransferenciaAlias(e.target.value)} />
-                </div>
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Titular (Nombre y Apellido)</label>
-                <input style={inputStyle} type="text" placeholder="Ej: Norberto Riccitelli" value={transferenciaTitular} onChange={e => setTransferenciaTitular(e.target.value)} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {transferenciaSaved && (
-                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                    Guardado
-                  </span>
-                )}
-                <div style={{ flex: 1 }} />
-                <button type="submit" disabled={transferenciaLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: transferenciaLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: transferenciaLoading ? 0.7 : 1 }}>
-                  {transferenciaLoading ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          {/* ═══ RECORDATORIOS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'recordatorios' ? ' hidden md:block' : ''}`} id="recordatorios" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.recordatorios}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Recordatorios</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Controlá qué avisos reciben tus pacientes antes de su turno.</p>
-              </div>
-            </div>
-            <ToggleRow
-              name="Recordatorio de turno al paciente"
-              desc="Si lo desactivás, tus pacientes no reciben recordatorio de turno por ningún canal (email ni WhatsApp). No afecta el aviso de pago."
-              on={recordatorioTurnoActivo}
-              onChange={handleRecordatorioTurnoToggle}
-              disabled={recordatorioTurnoLoading}
-            />
-          </section>
-
-          {mostrarAvisoDeuda && (
-            <section className={`ajustes-sec${activeSection !== 'aviso-deuda' ? ' hidden md:block' : ''}`} id="aviso-deuda" style={secStyle}>
-              <div style={secHdrStyle}>
-                <div style={icnStyle('var(--warn-soft)', '#B45309')}>
-                  {icnSvg(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Aviso de deuda</h2>
-                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Notificá automáticamente a pacientes particulares con sesiones realizadas sin pagar.</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px', gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Cuándo enviar el aviso</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Contado desde el fin de la sesión. Un solo aviso por email por sesión — no aplica a obras sociales, bonificadas, ausencias ni cancelaciones.</div>
-                </div>
-                <select
-                  style={{ ...inputStyle, width: 240, flexShrink: 0 }}
-                  value={avisoDeudaTiming}
-                  onChange={e => handleAvisoDeudaTimingChange(e.target.value)}
-                  disabled={avisoDeudaLoading}
-                >
-                  {OPCIONES_AVISO_DEUDA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-              {avisoDeudaSaved && (
-                <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
-                  Guardado
-                </span>
-              )}
-            </section>
+              <Accordion title="Feriados y días no laborales" desc="Configurá cómo KLIA maneja los feriados en tu agenda y link público.">
+                <ToggleRow
+                  name="Respetar feriados nacionales"
+                  desc="Los feriados nacionales no aparecen como disponibles en tu link público de turnos."
+                  on={feriadosNacionales}
+                  onChange={handleFeriadosNacionalesToggle}
+                />
+                <ToggleRow
+                  name={`Respetar feriados de ${perfilForm.provincia || 'tu provincia'}`}
+                  desc={!perfilForm.provincia
+                    ? '⚠️ Completá tu provincia en el perfil para activar esta opción.'
+                    : `Los feriados provinciales de ${perfilForm.provincia} no aparecen como disponibles en tu link público.`}
+                  on={feriadosProvinciales}
+                  onChange={handleFeriadosProvincialesToggle}
+                  disabled={!perfilForm.provincia}
+                />
+                <ToggleRow
+                  name="Mantener sesiones confirmadas en feriados"
+                  desc="Las sesiones ya confirmadas en feriados se mantienen y se cobran normalmente. Solo bloquea nuevos turnos."
+                  on={feriadosTrabajaSiConfirmado}
+                  onChange={handleFeriadosTrabajaSiConfirmadoToggle}
+                />
+              </Accordion>
+            </>
           )}
 
-          {/* ═══ POLÍTICA DE COBROS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'politica' ? ' hidden md:block' : ''}`} id="politica" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--warn-soft)', '#B45309')}>{ICONS.politica}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Política de cobros</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Define cómo se calculan las deudas de tus pacientes.</p>
-              </div>
-            </div>
+          {currentGroup === 'cobros' && (
+            <>
+              <Accordion title="Cómo te pagan" desc="Mercado Pago y transferencia bancaria para cobrar tus sesiones." defaultOpen>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '4px 0 18px', borderBottom: '1px solid var(--border)', marginBottom: 18 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Mercado Pago</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
+                      {mpConectado ? `Vinculado${mpNombre ? ` — ${mpNombre}` : ''}` : 'No conectado todavía.'}
+                    </div>
+                  </div>
+                  {mpConectado ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'var(--ok-soft)', color: 'var(--ok)', flexShrink: 0 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+                      Vinculado
+                    </span>
+                  ) : (
+                    <a href="/api/auth/mercadopago" style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', flexShrink: 0, textDecoration: 'none' }}>
+                      Conectar
+                    </a>
+                  )}
+                </div>
 
-            <ToggleRow
-              name="Cobrar sesiones no asistidas"
-              desc={<>Si está activo, las sesiones marcadas como <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>&ldquo;No asistió&rdquo;</strong> se incluyen en la deuda del paciente. Podés configurar excepciones por paciente desde su ficha.</>}
-              on={cobrar}
-              onChange={handleCobrarToggle}
-              disabled={cobrarGuardando}
-            />
-            <ToggleRow
-              name="Cobrar cancelaciones tardías"
-              desc={<>Cobrar sesiones canceladas con menos de <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>24 hs</strong> de anticipación.</>}
-              on={false}
-              onChange={() => {}}
-            />
-            <div style={{ ...({ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0' }), borderBottom: 'none' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Recordatorio automático de cobros</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>Enviar un email al paciente el primer día de cada mes con el detalle de sesiones adeudadas.</div>
-              </div>
-              <Toggle on={true} onChange={() => {}} />
-            </div>
-          </section>
+                <form onSubmit={handleTransferenciaSave}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Transferencia bancaria</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Medio de pago alternativo a Mercado Pago — se muestra en tu link público de reservas junto al pago online, si lo tenés conectado.</div>
+                  <div className={grid2Class} style={{ marginBottom: 16 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Banco</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: Banco Galicia" value={transferenciaBanco} onChange={e => setTransferenciaBanco(e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Alias</label>
+                      <input style={inputStyle} type="text" placeholder="Ej: mi.alias.mp" value={transferenciaAlias} onChange={e => setTransferenciaAlias(e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Titular (Nombre y Apellido)</label>
+                    <input style={inputStyle} type="text" placeholder="Ej: Norberto Riccitelli" value={transferenciaTitular} onChange={e => setTransferenciaTitular(e.target.value)} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {transferenciaSaved && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                        Guardado
+                      </span>
+                    )}
+                    <div style={{ flex: 1 }} />
+                    <button type="submit" disabled={transferenciaLoading}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: transferenciaLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: transferenciaLoading ? 0.7 : 1 }}>
+                      {transferenciaLoading ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  </div>
+                </form>
+              </Accordion>
 
-          {/* ═══ FERIADOS ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'feriados' ? ' hidden md:block' : ''}`} id="feriados" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('#FEF3C7', '#92400E')}>{ICONS.feriados}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Feriados y días no laborales</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá cómo KLIA maneja los feriados en tu agenda y link público.</p>
-              </div>
-            </div>
-            <ToggleRow
-              name="Respetar feriados nacionales"
-              desc="Los feriados nacionales no aparecen como disponibles en tu link público de turnos."
-              on={feriadosNacionales}
-              onChange={handleFeriadosNacionalesToggle}
-            />
-            <ToggleRow
-              name={`Respetar feriados de ${perfilForm.provincia || 'tu provincia'}`}
-              desc={!perfilForm.provincia
-                ? '⚠️ Completá tu provincia en el perfil para activar esta opción.'
-                : `Los feriados provinciales de ${perfilForm.provincia} no aparecen como disponibles en tu link público.`}
-              on={feriadosProvinciales}
-              onChange={handleFeriadosProvincialesToggle}
-              disabled={!perfilForm.provincia}
-            />
-            <ToggleRow
-              name="Mantener sesiones confirmadas en feriados"
-              desc="Las sesiones ya confirmadas en feriados se mantienen y se cobran normalmente. Solo bloquea nuevos turnos."
-              on={feriadosTrabajaSiConfirmado}
-              onChange={handleFeriadosTrabajaSiConfirmadoToggle}
-            />
-          </section>
+              <Accordion title="Link de pago" desc="Ventana de pago, política de cancelación y mensaje al paciente en tu link público.">
+                <form onSubmit={handleCobrosSave}>
+                  {/* Ventana de pago */}
+                  <div style={{ marginBottom: 22 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Ventana de pago</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Cuánto tiempo tiene el paciente para pagar antes de que se libere el turno?</div>
+                    <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
+                      {[24, 48, 72].map(h => (
+                        <button key={h} type="button" onClick={() => setCobrosVentana(h)}
+                          style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === h ? 'var(--ink)' : 'transparent', color: cobrosVentana === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                          {h} hs
+                        </button>
+                      ))}
+                      <button type="button" onClick={() => setCobrosVentana(0)}
+                        style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosVentana === 0 ? 'var(--ink)' : 'transparent', color: cobrosVentana === 0 ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                        Sin límite
+                      </button>
+                    </div>
+                  </div>
 
-          {/* ═══ OBRAS SOCIALES ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'obras' ? ' hidden md:block' : ''}`} id="obras" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('#ECF0FF', '#002d72')}>{ICONS.obras}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Obras sociales y prepagas</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá honorarios y datos de cada obra social para tus liquidaciones.</p>
-              </div>
-            </div>
-            <ObraSocialesConfig initialList={obrasSociales} terapeutaId={profile.id} />
-          </section>
+                  {/* Política de cancelación */}
+                  <div style={{ marginBottom: 22, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Política de cancelación</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.55 }}>¿Con cuántas horas de anticipación puede cancelar el paciente con devolución completa?</div>
+                    <div style={{ display: 'inline-flex', padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, gap: 2 }}>
+                      {[6, 12, 24, 48].map(h => (
+                        <button key={h} type="button" onClick={() => setCobrosCancelacion(h)}
+                          style={{ border: 'none', padding: '7px 14px', fontSize: 13, fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: cobrosCancelacion === h ? 'var(--ink)' : 'transparent', color: cobrosCancelacion === h ? 'white' : 'var(--muted)', transition: 'all .12s ease' }}>
+                          {h} hs
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* ═══ INTEGRACIONES ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'integraciones' ? ' hidden md:block' : ''}`} id="integraciones" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.integraciones}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Integraciones</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Conectá KLIA con tus herramientas favoritas. Los datos se sincronizan en tiempo real.</p>
-              </div>
-            </div>
-            <Suspense fallback={null}>
-              <IntegracionesClient
-                conectado={googleConectado}
-                syncEnabled={googleSyncEnabled}
-                mpConectado={mpConectado}
-                mpEmail={mpEmail}
-                mpNombre={mpNombre}
-              />
-            </Suspense>
-          </section>
+                  {/* Mensaje al paciente */}
+                  <div style={{ paddingTop: 18, borderTop: '1px solid var(--border)' }}>
+                    <div style={fieldStyle}>
+                      <label style={labelStyle}>Mensaje personalizado al paciente</label>
+                      <textarea style={textareaStyle} placeholder="Se incluye en el email de confirmación de turno…" value={cobrosMensaje} onChange={e => setCobrosMensaje(e.target.value)} />
+                      <span style={hintStyle}>Se incluye en el email de confirmación de turno y en el link público.</span>
+                    </div>
+                  </div>
 
-          {/* ═══ FIRMAS DIGITALES ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'firmas' ? ' hidden md:block' : ''}`} id="firmas" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--violet-soft)', 'var(--violet)')}>{ICONS.firmas}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Firma escaneada</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Configurá tu firma y sello para planillas, informes y consentimientos.</p>
-              </div>
-            </div>
+                  <div style={secFootStyle}>
+                    {cobrosSaved && (
+                      <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                        Cambios guardados
+                      </span>
+                    )}
+                    <div style={{ flex: 1 }} />
+                    <button type="submit" disabled={cobrosLoading}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: cobrosLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: cobrosLoading ? 0.7 : 1 }}>
+                      {cobrosLoading ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </form>
+              </Accordion>
 
-            <div className={`${grid2Class} mb-5`}>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px', background: 'var(--surface)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Firma</div>
-                <FirmaUploader
-                  label="Firma manuscrita"
-                  descripcion="Solo tu firma, sin sello"
-                  instrucciones="Solo tu firma, sin sello, sobre fondo blanco en tinta negra."
-                  firmaUrl={firmaUrl}
-                  bucket="firmas-profesionales"
-                  storagePath={`${profile.id}/firma-simple`}
-                  onUpload={(url) => { setFirmaUrl(url); updateFirmaDB('firma_url', url) }}
-                  onDelete={() => { setFirmaUrl(null); updateFirmaDB('firma_url', null) }}
+              <Accordion title="Deuda y cobros generales" desc="Reglas para calcular la deuda de tus pacientes.">
+                <ToggleRow
+                  name="Cobrar sesiones no asistidas"
+                  desc={<>Si está activo, las sesiones marcadas como <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>&ldquo;No asistió&rdquo;</strong> se incluyen en la deuda del paciente. Podés configurar excepciones por paciente desde su ficha.</>}
+                  on={cobrar}
+                  onChange={handleCobrarToggle}
+                  disabled={cobrarGuardando}
                 />
-              </div>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 18px', background: 'var(--surface)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Sello profesional</div>
-                <FirmaUploader
-                  label="Firma y sello profesional"
-                  descripcion="Combinación de tu firma manuscrita y sello profesional"
-                  instrucciones="La imagen debe mostrar tu firma y sello profesional sobre fondo blanco, en tinta negra."
-                  firmaUrl={firmaSelloUrl}
-                  bucket="firmas-profesionales"
-                  storagePath={`${profile.id}/firma-sello`}
-                  onUpload={(url) => { setFirmaSelloUrl(url); updateFirmaDB('firma_sello_url', url) }}
-                  onDelete={() => { setFirmaSelloUrl(null); updateFirmaDB('firma_sello_url', null) }}
+              </Accordion>
+
+              <Accordion title="Obras sociales y prepagas" desc="Configurá honorarios y datos de cada obra social para tus liquidaciones.">
+                <ObraSocialesConfig initialList={obrasSociales} terapeutaId={profile.id} />
+              </Accordion>
+            </>
+          )}
+
+          {currentGroup === 'notif' && (
+            <>
+              <Accordion title="Recordatorios a pacientes" desc="Controlá qué avisos reciben tus pacientes antes de su turno." defaultOpen>
+                <ToggleRow
+                  name="Recordatorio de turno al paciente"
+                  desc="Se envía un día antes del turno, por email y WhatsApp. Si lo desactivás, tus pacientes no reciben recordatorio de turno por ningún canal. No afecta el aviso de pago."
+                  on={recordatorioTurnoActivo}
+                  onChange={handleRecordatorioTurnoToggle}
+                  disabled={recordatorioTurnoLoading}
                 />
-              </div>
-            </div>
+              </Accordion>
 
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-              padding: '10px 12px', borderRadius: 8,
-              background: 'var(--accent-soft-2)', border: '1px solid var(--accent-soft)',
-              fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55,
-            }}>
-              <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--accent)', strokeWidth: 2, fill: 'none', flexShrink: 0, marginTop: 1 }}>
-                <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
-              </svg>
-              <span>Estas firmas se aplican automáticamente al final de los documentos exportados. <strong style={{ color: 'var(--ink)', fontWeight: 600 }}>Tienen validez legal en Argentina</strong> según Ley 25.506.</span>
-            </div>
-          </section>
+              {mostrarAvisoDeuda && (
+                <Accordion title="Aviso de deuda" desc="Notificá automáticamente a pacientes particulares con sesiones realizadas sin pagar.">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px', gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Cuándo enviar el aviso</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Contado desde el fin de la sesión. Un solo aviso por email por sesión — no aplica a obras sociales, bonificadas, ausencias ni cancelaciones.</div>
+                    </div>
+                    <select
+                      style={{ ...inputStyle, width: 240, flexShrink: 0 }}
+                      value={avisoDeudaTiming}
+                      onChange={e => handleAvisoDeudaTimingChange(e.target.value)}
+                      disabled={avisoDeudaLoading}
+                    >
+                      {OPCIONES_AVISO_DEUDA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  {avisoDeudaSaved && (
+                    <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                      Guardado
+                    </span>
+                  )}
+                </Accordion>
+              )}
+            </>
+          )}
 
-          {/* ═══ LINK PÚBLICO ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'link-publico' ? ' hidden md:block' : ''}`} id="link-publico" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('#EFF4FF', '#2563EB')}>{ICONS['link-publico']}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Link público de reservas</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Compartí tu link personal para que tus pacientes reserven turnos online.</p>
-              </div>
-              <Toggle on={bookingActivo} onChange={() => setBookingActivo(v => !v)} />
+          {currentGroup === 'integ' && (
+            <Accordion title="Google Calendar y Mercado Pago" desc="Conectá KLIA con tus herramientas favoritas. Los datos se sincronizan en tiempo real." defaultOpen>
+              <Suspense fallback={null}>
+                <IntegracionesClient
+                  conectado={googleConectado}
+                  syncEnabled={googleSyncEnabled}
+                  mpConectado={mpConectado}
+                  mpEmail={mpEmail}
+                  mpNombre={mpNombre}
+                />
+              </Suspense>
+            </Accordion>
+          )}
+
+          {currentGroup === 'reservas' && (
+            <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>Link activo</div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Compartí tu link personal para que tus pacientes reserven turnos online.</div>
             </div>
+            <Toggle on={bookingActivo} onChange={() => setBookingActivo(v => !v)} />
+          </div>
 
             {/* Slug read-only */}
             {bookingSlug && (
@@ -1823,30 +1790,19 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 </button>
               </div>
             </form>
-          </section>
-
-          {mostrarColaboradoras && (
-            <section className={`ajustes-sec${activeSection !== 'colaboradoras' ? ' hidden md:block' : ''}`} id="colaboradoras" style={secStyle}>
-              <div style={secHdrStyle}>
-                <div style={icnStyle('var(--accent-soft)', 'var(--accent)')}>{ICONS.colaboradoras}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Asistentes</h2>
-                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Invitá a tu secretaria o asistente para que gestione la agenda y los pacientes en tu nombre.</p>
-                </div>
-              </div>
-              <ColaboradorasConfig />
-            </section>
+            </>
           )}
 
+          {currentGroup === 'equipo' && mostrarColaboradoras && (
+            <Accordion title="Asistentes" desc="Invitá a tu secretaria o asistente para que gestione la agenda y los pacientes en tu nombre." defaultOpen>
+              <ColaboradorasConfig />
+            </Accordion>
+          )}
+
+          {currentGroup === 'cuenta' && (
+            <>
           {/* ═══ SUSCRIPCIÓN ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'plan' ? ' hidden md:block' : ''}`} id="plan" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('#FEF3E2', '#D97706')}>{ICONS.plan}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Suscripción y plan</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Tu plan actual, próximo cobro y facturación.</p>
-              </div>
-            </div>
+          <Accordion title="Tu plan" desc="Tu plan actual, próximo cobro y facturación." defaultOpen>
             <SuscripcionPortal
               profile={{
                 estado_cuenta: profile.estado_cuenta,
@@ -1856,49 +1812,94 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               }}
               suscripcion={suscripcion}
             />
-          </section>
+          </Accordion>
 
-          {/* ═══ CUENTA Y SEGURIDAD ═══ */}
-          <section className={`ajustes-sec${activeSection !== 'cuenta' ? ' hidden md:block' : ''}`} id="cuenta" style={secStyle}>
-            <div style={secHdrStyle}>
-              <div style={icnStyle('var(--danger-soft)', 'var(--danger)')}>{ICONS.cuenta}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', margin: 0, color: 'var(--ink)' }}>Cuenta y seguridad</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', margin: '3px 0 0', lineHeight: 1.5 }}>Email de acceso, contraseña y autenticación de dos factores.</p>
+          <Accordion title="Datos de facturación" desc="CUIT, condición frente al IVA y razón social para facturar tu suscripción de KLIA.">
+            {facturacionError && (
+              <div style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--danger)', marginBottom: 16 }}>
+                {facturacionError}
               </div>
-            </div>
-
-            <ToggleRow
-              name="Autenticación en dos pasos (2FA)"
-              desc="Agrega una capa extra de seguridad usando una app de autenticación."
-              on={false}
-              onChange={() => {}}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Alertas de inicio de sesión</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>Recibí un email cuando se acceda a tu cuenta desde un dispositivo nuevo.</div>
+            )}
+            <form onSubmit={handleFacturacionSave}>
+              <div className={`${grid2Class} mb-4`}>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>CUIT <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ej: 20-12345678-6"
+                    maxLength={13}
+                    value={formatearCuit(perfilForm.cuit)}
+                    onChange={e => setPerfilForm(p => ({ ...p, cuit: normalizarCuit(e.target.value) }))}
+                  />
+                  <span style={hintStyle}>Para facturar tu suscripción de KLIA.</span>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Condición frente al IVA <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                  <select style={inputStyle} value={perfilForm.condicion_iva} onChange={e => setPerfilForm(p => ({ ...p, condicion_iva: e.target.value }))}>
+                    <option value="">Sin especificar</option>
+                    {CONDICIONES_IVA.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
               </div>
-              <Toggle on={true} onChange={() => {}} />
-            </div>
+              <div className="mb-4" style={fieldStyle}>
+                <label style={labelStyle}>Razón social <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--muted-2)' }}>opcional</span></label>
+                <input
+                  style={inputStyle}
+                  type="text"
+                  maxLength={120}
+                  value={perfilForm.razon_social}
+                  onChange={e => setPerfilForm(p => ({ ...p, razon_social: e.target.value }))}
+                />
+              </div>
+              <div style={secFootStyle}>
+                {facturacionSaved && (
+                  <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
+                    Guardado
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <button type="submit" disabled={facturacionLoading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: facturacionLoading ? 'not-allowed' : 'pointer', border: '1px solid var(--ink)', background: 'var(--ink)', color: 'white', opacity: facturacionLoading ? 0.7 : 1 }}>
+                  {facturacionLoading ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </Accordion>
 
-            <div style={secFootStyle}>
-              <button style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}>
-                Cambiar contraseña
-              </button>
-              <div style={{ flex: 1 }} />
-              <button
-                type="button"
-                onClick={() => { setEliminarEmailInput(''); setEliminarError(null); setEliminarOpen(true) }}
-                style={{ background: 'transparent', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: 0 }}
-              >
-                Eliminar cuenta
-              </button>
+          <Accordion title="Seguridad" desc="Email de acceso y contraseña.">
+            <div style={fieldStyle} className="mb-4">
+              <label style={labelStyle}>Email</label>
+              <input style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }} value={profile.email} readOnly />
             </div>
-          </section>
+            <button
+              type="button"
+              disabled
+              title="Próximamente"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'not-allowed', border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--muted)', opacity: 0.8 }}
+            >
+              Cambiar contraseña — Próximamente
+            </button>
+          </Accordion>
 
-        </div>
-      </div>
+          <Accordion title="Eliminar cuenta" desc="Da de baja tu cuenta de KLIA.">
+            <p style={{ fontSize: 13, color: 'var(--muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+              Esta acción bloquea tu acceso a KLIA y cancela tu suscripción de Mercado Pago si tenés una activa.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setEliminarEmailInput(''); setEliminarError(null); setEliminarOpen(true) }}
+              style={{ background: 'transparent', border: '1px solid var(--danger)', color: '#DC2626', fontWeight: 600, fontSize: 13, cursor: 'pointer', padding: '9px 14px', borderRadius: 8 }}
+            >
+              Eliminar cuenta
+            </button>
+          </Accordion>
+            </>
+          )}
+        </GrupoShell>
+      )}
 
       <SlideOver
         open={eliminarOpen}
