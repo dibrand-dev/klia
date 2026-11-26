@@ -1,0 +1,541 @@
+<!doctype html><html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ajustes v3 · Matrícula</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="klin-shared.css"><style>
+  :root {
+    --navy: #001a48; --navy-2: #002d72;
+    --blue: #2563EB; --blue-soft: #EFF4FF; --blue-soft-2: #F4F7FF;
+    --green: #10b981; --green-soft: #DCFCE7; --green-ink: #047857;
+    --amber: #f59e0b; --amber-soft: #FEF3C7;
+    --red: #DC2626; --red-soft: #FEE2E2;
+    --mp: #009EE3; --mp-dark: #0080B8;
+  }
+
+  .content { padding: 0 28px 80px; max-width: 1320px; width: 100%; margin: 0 auto; }
+  @media (max-width: 720px) { .content { padding: 0 16px 80px; } }
+
+  /* ===== PAGE HEADER ===== */
+  .page-hdr { padding: 26px 0 18px; }
+  .page-h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0; line-height: 1.15; color: var(--ink); }
+  .page-sub { color: var(--muted); font-size: 14px; margin: 4px 0 0; max-width: 640px; }
+
+  /* ===== SETTINGS LAYOUT ===== */
+  .settings { display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: flex-start; }
+  @media (max-width: 960px) { .settings { grid-template-columns: 1fr; } }
+
+  .sub-nav {
+    position: sticky; top: 70px;
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 4px;
+  }
+  @media (max-width: 960px) {
+    .sub-nav {
+      position: static; flex-direction: row; overflow-x: auto;
+      gap: 0; padding: 0 0 4px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+    .sub-nav::-webkit-scrollbar { height: 4px; }
+  }
+  .sub-nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 8px;
+    text-decoration: none; color: var(--ink-2);
+    font-size: 13.5px; font-weight: 500;
+    transition: background .12s ease, color .12s ease;
+    white-space: nowrap;
+  }
+  .sub-nav a:hover { background: var(--surface-2); }
+  .sub-nav a.active { background: var(--ink); color: white; font-weight: 600; }
+  .sub-nav a svg { width: 15px; height: 15px; stroke: currentColor; stroke-width: 1.7; fill: none; flex: none; }
+  .sub-nav a.active svg { stroke: white; }
+  .sub-nav .nav-sep {
+    height: 1px; background: var(--border);
+    margin: 6px 12px; padding: 0;
+  }
+  @media (max-width: 960px) {
+    .sub-nav .nav-sep { display: none; }
+    .sub-nav a { padding: 8px 12px; border-radius: 100px; }
+    .sub-nav a:not(:last-child) { margin-right: 4px; }
+  }
+
+  /* ===== SECTIONS ===== */
+  .sections { display: flex; flex-direction: column; gap: 22px; }
+  .sec {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 26px;
+    scroll-margin-top: 80px;
+  }
+  @media (max-width: 720px) { .sec { padding: 20px 18px; border-radius: 12px; } }
+
+  .sec-hdr {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 22px; padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sec-hdr .icn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--blue-soft); color: var(--blue);
+    display: grid; place-items: center; flex: none;
+  }
+  .sec-hdr .icn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.7; fill: none; }
+  .sec-hdr .info { flex: 1; min-width: 0; }
+  .sec-hdr h2 {
+    font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+    margin: 0; color: var(--ink);
+  }
+  .sec-hdr p {
+    font-size: 13px; color: var(--muted); margin: 3px 0 0;
+    line-height: 1.5;
+  }
+  .sec-hdr .badge {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 100px;
+    font-size: 11px; font-weight: 600;
+    background: var(--green-soft); color: var(--green-ink);
+  }
+  .sec-hdr .badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .sec-hdr .badge.off { background: var(--surface-3); color: var(--muted); }
+
+  /* Form grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 11px; font-weight: 600; color: var(--muted-2);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .field label em { color: var(--red); font-style: normal; font-weight: 700; margin-left: 2px; }
+  .field input,
+  .field select,
+  .field textarea {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0 12px; height: 38px;
+    font: inherit; font-size: 14px; color: var(--ink);
+    background: var(--surface); outline: none;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .field textarea {
+    height: auto; padding: 10px 12px; min-height: 80px; resize: vertical;
+    line-height: 1.55;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .field .hint { font-size: 11.5px; color: var(--muted-2); }
+  .field.span-2 { grid-column: span 2; }
+  @media (max-width: 600px) { .field.span-2 { grid-column: span 1; } }
+
+  /* Input group with prefix */
+  .input-group {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .input-group:focus-within {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  .input-group .pfx {
+    padding: 0 12px; font-size: 13px; color: var(--muted); font-weight: 500;
+    background: var(--surface-2); border-right: 1px solid var(--border);
+    display: flex; align-items: center;
+  }
+  .input-group input {
+    flex: 1; border: none; outline: none; padding: 0 12px; height: 38px;
+    font: inherit; font-size: 14px; color: var(--ink); background: transparent;
+    font-variant-numeric: tabular-nums; min-width: 0;
+  }
+
+  /* Redes sociales */
+  .soc-list{display:flex;flex-direction:column;gap:8px}
+  .soc-row{display:grid;grid-template-columns:168px minmax(0,1fr) 32px;gap:8px;align-items:start}
+  @media (max-width:600px){.soc-row{grid-template-columns:minmax(0,1fr) 32px}.soc-row .soc-in{grid-column:1/-1;grid-row:2}}
+  .soc-pick{position:relative}
+  .soc-btn{width:100%;height:38px;display:flex;align-items:center;gap:9px;padding:0 10px 0 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font:inherit;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+  .soc-btn:hover{background:var(--surface-2)}
+  .soc-btn[aria-expanded="true"]{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+  .soc-btn span{flex:1}
+  .soc-btn .cv{width:13px;height:13px;stroke:var(--muted-2);stroke-width:2;fill:none}
+  .soc-ic{width:17px;height:17px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .soc-menu{position:absolute;top:calc(100% + 4px);left:0;z-index:30;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(14,20,48,.14);padding:4px;display:none}
+  .soc-menu.open{display:block}
+  .soc-opt{width:100%;display:flex;align-items:center;gap:9px;padding:8px 9px;border:none;background:none;border-radius:7px;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;text-align:left}
+  .soc-opt:hover:not(:disabled){background:var(--surface-2)}
+  .soc-opt span{flex:1}
+  .soc-opt em{font-style:normal;font-size:11px;color:var(--muted-2)}
+  .soc-opt:disabled{color:var(--muted-2);cursor:default}
+  .soc-opt.on{background:var(--blue-soft);color:var(--blue);font-weight:600}
+  .soc-opt .ck{width:13px;height:13px;stroke:currentColor;stroke-width:2.2;fill:none}
+  .soc-in{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .field .soc-in input.bad{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+  .soc-msg{font-size:11.5px;color:var(--muted-2);display:flex;gap:5px;align-items:center;min-height:15px}
+  .soc-msg b{font-weight:500;color:var(--ink-2,var(--ink))}
+  .soc-msg.warn{color:#92400E}
+  .soc-msg svg{width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none;flex:none}
+  .soc-del{width:32px;height:38px;border:none;background:none;border-radius:8px;display:grid;place-items:center;color:var(--muted-2);cursor:pointer}
+  .soc-del:hover{background:var(--red-soft);color:var(--red)}
+  .soc-del svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
+  .soc-add{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--border);background:none;border-radius:8px;height:36px;padding:0 12px;font:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;margin-top:2px}
+  .soc-add:hover{background:var(--surface-2);border-style:solid}
+  .soc-add svg{width:13px;height:13px;stroke:currentColor;stroke-width:2;fill:none}
+  .soc-full{font-size:12px;color:var(--muted-2);margin-top:2px}
+  .soc-empty{font-size:13px;color:var(--muted);padding:2px 0 4px}
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 16px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink-2);
+    transition: filter .12s ease, background .12s ease;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+  .btn-primary {
+    background: var(--ink); color: white; border-color: var(--ink);
+  }
+  .btn-primary:hover { background: #000; }
+  .btn-primary svg { stroke: white; }
+  .btn-blue {
+    background: linear-gradient(135deg, var(--blue) 0%, #1D4ED8 100%);
+    color: white; border-color: transparent;
+    box-shadow: 0 4px 10px rgba(37,99,235,0.18);
+  }
+  .btn-blue:hover { filter: brightness(1.08); background: linear-gradient(135deg, var(--blue) 0%, #1D4ED8 100%); }
+  .btn-blue svg { stroke: white; stroke-width: 2; }
+  .btn-mp {
+    background: var(--mp); color: white; border-color: transparent;
+    box-shadow: 0 4px 10px rgba(0,158,227,0.22);
+  }
+  .btn-mp:hover { background: var(--mp-dark); }
+  .btn-mp svg { stroke: white; stroke-width: 2; }
+  .btn-danger-link {
+    background: transparent; border: none; color: var(--red);
+    font-weight: 600; font-size: 13px; cursor: pointer; padding: 0;
+  }
+  .btn-danger-link:hover { text-decoration: underline; }
+
+  .sec-foot {
+    margin-top: 22px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: center;
+  }
+  .sec-foot .auto-save {
+    font-size: 12px; color: var(--muted-2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .sec-foot .auto-save .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .sec-foot .spacer { flex: 1; }
+
+  /* ===== AVATAR FIELD ===== */
+  .avatar-field {
+    display: flex; align-items: center; gap: 18px;
+    padding: 16px; background: var(--surface-2);
+    border-radius: 12px; border: 1px solid var(--border);
+    margin-bottom: 22px;
+  }
+  .avatar-pic {
+    width: 72px; height: 72px; border-radius: 50%; flex: none;
+    background: linear-gradient(145deg, #E3E9F6, #C9D3E9);
+    color: #16389F; display: grid; place-items: center;
+    font-weight: 600; font-size: 24px; letter-spacing: -0.02em;
+    position: relative;
+    overflow: hidden;
+  }
+  .avatar-pic .edit {
+    position: absolute; bottom: 0; right: 0;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--ink); color: white;
+    display: grid; place-items: center;
+    border: 2px solid var(--surface-2);
+    cursor: pointer;
+  }
+  .avatar-pic .edit svg { width: 10px; height: 10px; stroke: white; stroke-width: 2; fill: none; }
+  .avatar-info { flex: 1; min-width: 0; }
+  .avatar-info .name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .avatar-info .spec { font-size: 12px; color: var(--muted); }
+  .avatar-info .remove {
+    margin-top: 6px;
+    font-size: 12px; color: var(--red); cursor: pointer; font-weight: 500;
+  }
+  .avatar-info .remove:hover { text-decoration: underline; }
+
+  /* ===== TOGGLE ===== */
+  .toggle-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-row .t-info { flex: 1; min-width: 0; }
+  .toggle-row .t-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .toggle-row .t-desc { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .toggle-row .t-desc b { color: var(--ink-2); font-weight: 600; }
+  .switch {
+    position: relative; width: 38px; height: 22px; flex: none;
+    background: var(--border-strong); border-radius: 100px;
+    cursor: pointer; transition: background .15s ease;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%; background: white;
+    transition: transform .15s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .switch[data-on="true"] { background: var(--ink); }
+  .switch[data-on="true"]::after { transform: translateX(16px); }
+
+  /* ===== SEGMENTED ===== */
+  .segselect {
+    display: inline-flex; padding: 3px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    gap: 2px;
+  }
+  .segselect button {
+    border: none; background: transparent; padding: 7px 14px;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    border-radius: 6px; cursor: pointer; font: inherit;
+    transition: all .12s ease;
+    font-variant-numeric: tabular-nums;
+  }
+  .segselect button.active { background: var(--ink); color: white; }
+
+  /* ===== INTEGRATIONS ===== */
+  .integration {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px 18px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface);
+    margin-bottom: 12px;
+    transition: border-color .12s ease;
+  }
+  .integration:hover { border-color: var(--border-strong); }
+  .integration:last-child { margin-bottom: 0; }
+  .int-logo {
+    width: 44px; height: 44px; border-radius: 10px; flex: none;
+    display: grid; place-items: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .int-logo svg { width: 26px; height: 26px; }
+  .int-logo.mp { background: white; }
+  .int-info { flex: 1; min-width: 0; }
+  .int-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .int-name {
+    font-size: 14.5px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .int-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 100px;
+    font-size: 11px; font-weight: 600;
+  }
+  .int-status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .int-status.on { background: var(--green-soft); color: var(--green-ink); }
+  .int-status.off { background: var(--surface-3); color: var(--muted); }
+  .int-desc {
+    font-size: 13px; color: var(--muted); margin-top: 4px;
+    line-height: 1.55; text-wrap: pretty;
+  }
+  .int-account {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 8px; padding: 4px 10px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 100px; font-size: 12px; color: var(--ink-2);
+  }
+  .int-account svg { width: 11px; height: 11px; stroke: var(--muted); stroke-width: 1.8; fill: none; }
+  .int-account b { font-weight: 600; }
+  .int-account .em { color: var(--muted); font-weight: 500; }
+  .int-actions {
+    margin-top: 12px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .int-actions .toggle-mini {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--muted); font-weight: 500;
+  }
+
+  /* ===== PLAN CARD ===== */
+  .plan-current {
+    background: linear-gradient(135deg, #F4F7FE 0%, #EEF2FF 100%);
+    border: 1px solid var(--blue-soft);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 20px;
+    flex-wrap: wrap;
+  }
+  .plan-current .name {
+    font-size: 18px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.015em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .plan-current .name .tag {
+    font-size: 10.5px; background: var(--blue); color: white;
+    padding: 2px 8px; border-radius: 100px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .plan-current .price {
+    font-size: 22px; font-weight: 700; color: var(--ink);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .plan-current .price .per {
+    font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 4px;
+  }
+  .plan-current .renew {
+    font-size: 12px; color: var(--muted);
+    flex: 1; min-width: 180px;
+  }
+  .plan-current .renew b { color: var(--ink-2); font-weight: 600; }
+  .plan-current .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ===== Obras Sociales list ===== */
+  .os-list { display: flex; flex-direction: column; gap: 8px; }
+  .os-row {
+    display: grid; grid-template-columns: 1fr 140px 140px auto;
+    gap: 12px; align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface);
+  }
+  @media (max-width: 700px) {
+    .os-row { grid-template-columns: 1fr auto; }
+    .os-row .os-fee, .os-row .os-days { display: none; }
+  }
+  .os-row .os-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+  .os-row .os-plans { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .os-row .os-fee, .os-row .os-days {
+    font-size: 12px; color: var(--muted-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .os-row .os-fee b, .os-row .os-days b { color: var(--ink-2); font-weight: 600; }
+  .os-row .ghost-btn {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: transparent; border: 1px solid var(--border);
+    cursor: pointer; display: grid; place-items: center;
+  }
+  .os-row .ghost-btn:hover { background: var(--surface-2); }
+  .os-row .ghost-btn svg { width: 13px; height: 13px; stroke: var(--ink-2); stroke-width: 1.8; fill: none; }
+
+  /* ===== Firma digital preview ===== */
+  .firma-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .firma-grid { grid-template-columns: 1fr; } }
+  .firma-box {
+    border: 1px dashed var(--border-strong); border-radius: 12px;
+    padding: 28px 18px; text-align: center;
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .firma-box.has {
+    border-style: solid; border-color: var(--border);
+    background: var(--surface);
+  }
+  .firma-box .preview {
+    height: 90px; display: grid; place-items: center;
+    color: var(--ink); font-style: italic;
+    font-family: 'Pinyon Script', 'Brush Script MT', cursive;
+    font-size: 36px;
+    border-bottom: 2px solid var(--ink-2);
+    margin: 0 auto 14px; max-width: 220px;
+  }
+  .firma-box .preview-sello {
+    height: 90px; display: grid; place-items: center;
+    margin: 0 auto 14px; max-width: 220px;
+  }
+  .firma-box .stamp {
+    border: 2px solid var(--navy-2); color: var(--navy-2);
+    padding: 8px 16px; border-radius: 100px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; line-height: 1.3;
+    transform: rotate(-3deg);
+  }
+  .firma-box .stamp small { display: block; font-size: 9px; opacity: 0.8; font-weight: 600; }
+  .firma-box .label {
+    font-size: 11px; font-weight: 600; color: var(--muted-2);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .firma-box .upload {
+    margin-top: 10px;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; gap: 12px; justify-content: center;
+  }
+  .firma-box .upload .link { color: var(--blue); cursor: pointer; font-weight: 500; }
+  .firma-box .upload .link:hover { text-decoration: underline; }
+
+  /* ===== Horarios ===== */
+  .schedule {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .sch-row {
+    display: grid; grid-template-columns: 110px 1fr;
+    align-items: center; gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface);
+  }
+  .sch-row .day-name {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13.5px; font-weight: 500; color: var(--ink-2);
+  }
+  .sch-row .day-name .switch { transform: scale(0.85); }
+  .sch-row .times { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sch-row .times input[type="time"] {
+    width: 80px; height: 32px; padding: 0 8px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font: inherit; font-size: 13px; color: var(--ink);
+    font-variant-numeric: tabular-nums; background: var(--surface);
+  }
+  .sch-row .times .arrow { color: var(--muted-2); font-size: 12px; }
+  .sch-row .times .off { font-size: 12px; color: var(--muted-2); font-style: italic; }
+  .sch-row .times .add-slot {
+    background: transparent; border: 1px dashed var(--border); border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; color: var(--muted); cursor: pointer;
+    font-weight: 500;
+  }
+  .sch-row .times .add-slot:hover { color: var(--ink); border-color: var(--border-strong); }
+
+  /* ===== Inline alert ===== */
+  .inline-info {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    background: var(--blue-soft-2); border: 1px solid var(--blue-soft);
+    font-size: 12.5px; color: var(--ink-2);
+    line-height: 1.55;
+  }
+  .inline-info svg { width: 14px; height: 14px; stroke: var(--blue); stroke-width: 2; fill: none; flex: none; margin-top: 1px; }
+  .inline-info b { color: var(--ink); font-weight: 600; }
+
+  /* ===== Footer ===== */
+  .app-foot {
+    margin-top: 40px;
+    padding: 22px 28px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .app-foot-inner { max-width: 1320px; margin: 0 auto; text-align: center; }
+  .app-foot .copy {
+    font-size: 11.5px; color: var(--muted); font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .app-foot .links { font-size: 11.5px; }
+  .app-foot .links a { color: var(--muted); text-decoration: none; font-weight: 500; }
+  .app-foot .links a:hover { color: var(--ink); text-decoration: underline; }
+  .app-foot .links .sep { color: var(--muted-3); margin: 0 6px; }
+</style><link rel="stylesheet" href="ajustes-v2.css"><link rel="stylesheet" href="ajustes-v3.css"></head><body><div class="pg" style="max-width:1240px"><h1>Perfil · Matrícula provincial y nacional</h1>
+<p class="lead">Cada profesional puede cargar una matrícula provincial, una nacional o las dos. Para verificar el perfil alcanza con una de las dos; la otra es opcional. Cada tipo tiene su lugar fijo, así no hay que decidir cuál agregar. Lo que se pide al cargar cambia según el tipo: la provincial lleva provincia, la nacional no.</p>
+<div class="banner info" style="margin-top:12px"><div><b>Qué ya existe en el código:</b> la tabla <code>profesional_matriculas</code> (tipo, provincia, número, principal, verificada) y el endpoint <code>/api/v1/refeps/validate-professional</code>, que con el DNI trae <b>todas</b> las matrículas del profesional y las guarda. Pide DNI, un número de matrícula que coincida con REFEPS y el consentimiento. <b>Qué falta:</b> la pantalla de Ajustes todavía usa una sola matrícula del perfil (<code>matricula_tipo</code>, <code>matricula_provincia</code>, <code>matricula</code>) y ningún componente llama al endpoint. Hay que conectar la UI y pasar a leer de la tabla los lugares que hoy leen el perfil: planillas PAMI, aviso de deuda, historial exportado, antropometría, plan alimentario y link público (hoy muestra la matrícula cruda). Es cambio de datos: va por staging.</div></div>
+<section style="margin-top:36px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">1 · Sin ninguna cargada</h2><div class="pair" style="display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start"><div class="card-d"><div class="sections grp-body"><details class="sec acc" id="mninguna" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">Sin cargar</span></div><span class="st warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Falta cargar</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="cta-ver"><div class="cta-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div><div class="cta-tx"><b>Cargá al menos una matrícula</b><span>Alcanza con la provincial o la nacional para verificar tu perfil. Si tenés las dos, cargalas.</span></div><div class="cta-bt"><button class="btn btn-primary" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verificar con REFEPS</button></div></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Provincial</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula provincial</button></div></li><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Nacional</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula nacional</button></div></li></ul></div></details></div></div><div class="phone m"><div class="m-bar"><button class="back" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Ajustes</button><div class="t">Perfil y matrícula</div></div><div class="m-pad"><div class="sections grp-body"><details class="sec acc" id="mninguna" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">Sin cargar</span></div><span class="st warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Falta cargar</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="cta-ver"><div class="cta-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div><div class="cta-tx"><b>Cargá al menos una matrícula</b><span>Alcanza con la provincial o la nacional para verificar tu perfil. Si tenés las dos, cargalas.</span></div><div class="cta-bt"><button class="btn btn-primary" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verificar con REFEPS</button></div></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Provincial</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula provincial</button></div></li><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Nacional</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula nacional</button></div></li></ul></div></details></div></div></div></div></section><section style="margin-top:36px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">2 · Solo provincial</h2><div class="pair" style="display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start"><div class="card-d"><div class="sections grp-body"><details class="sec acc" id="mprov" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MP 123456 · Sin verificar</span></div><span class="st warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Sin verificar</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="cta-ver"><div class="cta-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div><div class="cta-tx"><b>Verificá tu matrícula con REFEPS</b><span>Completamos tu perfil automáticamente y habilitás las recetas electrónicas. Consultamos el registro del Ministerio de Salud de la Nación.</span></div><div class="cta-bt"><button class="btn btn-primary" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verificar con REFEPS</button></div></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Provincial</span><span class="num mono">MP 123456</span></div><div class="mat-meta">Nutrición · Buenos Aires</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin verificar</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Nacional</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula nacional</button></div></li></ul></div></details></div></div><div class="phone m"><div class="m-bar"><button class="back" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Ajustes</button><div class="t">Perfil y matrícula</div></div><div class="m-pad"><div class="sections grp-body"><details class="sec acc" id="mprov" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MP 123456 · Sin verificar</span></div><span class="st warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Sin verificar</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="cta-ver"><div class="cta-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div><div class="cta-tx"><b>Verificá tu matrícula con REFEPS</b><span>Completamos tu perfil automáticamente y habilitás las recetas electrónicas. Consultamos el registro del Ministerio de Salud de la Nación.</span></div><div class="cta-bt"><button class="btn btn-primary" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verificar con REFEPS</button></div></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Provincial</span><span class="num mono">MP 123456</span></div><div class="mat-meta">Nutrición · Buenos Aires</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin verificar</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Nacional</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula nacional</button></div></li></ul></div></details></div></div></div></div></section><section style="margin-top:36px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">3 · Solo nacional (verificada)</h2><div class="pair" style="display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start"><div class="card-d"><div class="sections grp-body"><details class="sec acc" id="mnac" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MN 54321 · Verificada</span></div><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="ver-strip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><div><b>Matrícula nacional verificada con REFEPS</b><span>Con una matrícula verificada alcanza. Si tenés también la provincial, podés cargarla.</span></div><button class="btn sm" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2"/><path d="M20 20v-5h-5"/></svg>Volver a verificar</button></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Provincial</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula provincial</button></div></li><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Nacional</span><span class="num mono">MN 54321</span></div><div class="mat-meta">Nutrición</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li></ul></div></details></div></div><div class="phone m"><div class="m-bar"><button class="back" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Ajustes</button><div class="t">Perfil y matrícula</div></div><div class="m-pad"><div class="sections grp-body"><details class="sec acc" id="mnac" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MN 54321 · Verificada</span></div><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="ver-strip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><div><b>Matrícula nacional verificada con REFEPS</b><span>Con una matrícula verificada alcanza. Si tenés también la provincial, podés cargarla.</span></div><button class="btn sm" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2"/><path d="M20 20v-5h-5"/></svg>Volver a verificar</button></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row slot-empty" style="border-style:dashed;background:var(--surface-2)"><div class="mat-id"><span class="tipo">Provincial</span></div><div class="mat-meta">No cargada · opcional si cargaste la otra</div><div class="mat-st"><span class="st off"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Sin cargar</span></div><div class="mat-act"><button class="btn sm" type="button" data-open="g"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Cargar matrícula provincial</button></div></li><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Nacional</span><span class="num mono">MN 54321</span></div><div class="mat-meta">Nutrición</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li></ul></div></details></div></div></div></div></section><section style="margin-top:36px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">4 · Las dos, traídas por REFEPS con el DNI</h2><div class="pair" style="display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start"><div class="card-d"><div class="sections grp-body"><details class="sec acc" id="mambas" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MN 54321 · MP 123456 · Verificadas</span></div><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="ver-strip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><div><b>Matrículas verificadas con REFEPS</b><span>Con tu DNI traemos todas las que tenés. Alcanza con una para verificar tu perfil.</span></div><button class="btn sm" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2"/><path d="M20 20v-5h-5"/></svg>Volver a verificar</button></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row"><div class="mat-id"><span class="tipo">Provincial</span><span class="num mono">MP 123456</span></div><div class="mat-meta">Nutrición · Buenos Aires</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><button class="link-btn" type="button">Marcar como principal</button><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Nacional</span><span class="num mono">MN 54321</span></div><div class="mat-meta">Nutrición</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li></ul><div class="mat-foot"><span class="hint">La principal es la que sale en recetas y certificados. Si REFEPS trae más de una provincial, aparecen todas.</span></div></div></details></div></div><div class="phone m"><div class="m-bar"><button class="back" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Ajustes</button><div class="t">Perfil y matrícula</div></div><div class="m-pad"><div class="sections grp-body"><details class="sec acc" id="mambas" open><summary><div class="acc-t"><h3>Matrícula</h3><span class="acc-s">MN 54321 · MP 123456 · Verificadas</span></div><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span><svg class="acc-c" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="acc-b"><div class="ver-strip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><div><b>Matrículas verificadas con REFEPS</b><span>Con tu DNI traemos todas las que tenés. Alcanza con una para verificar tu perfil.</span></div><button class="btn sm" type="button" data-open="a"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2"/><path d="M20 20v-5h-5"/></svg>Volver a verificar</button></div><ul class="mat-list" aria-label="Matrículas"><li class="mat-row"><div class="mat-id"><span class="tipo">Provincial</span><span class="num mono">MP 123456</span></div><div class="mat-meta">Nutrición · Buenos Aires</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><button class="link-btn" type="button">Marcar como principal</button><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li><li class="mat-row is-main"><div class="mat-id"><span class="tipo">Nacional</span><span class="num mono">MN 54321</span></div><div class="mat-meta">Nutrición</div><div class="mat-st"><span class="st ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Verificada</span></div><div class="mat-act"><span class="mat-main-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Principal</span><button class="icon-btn sm" type="button" aria-label="Más acciones"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div></li></ul><div class="mat-foot"><span class="hint">La principal es la que sale en recetas y certificados. Si REFEPS trae más de una provincial, aparecen todas.</span></div></div></details></div></div></div></div></section>
+<style>.card-d{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px}.card-d .mat-row{grid-template-columns:1fr;gap:8px}.card-d .mat-st,.card-d .mat-act{justify-content:flex-start}.mat-row>*{min-width:0;max-width:100%}.card-d .cta-ver{flex-wrap:wrap}.card-d .mat-id,.phone .mat-id{display:flex!important;align-items:center;gap:10px;flex-wrap:wrap}.card-d .mat-id .tipo,.phone .mat-id .tipo{width:auto!important;flex:none!important;display:inline-flex}@media (max-width:1100px){.pair{grid-template-columns:1fr!important}}</style></div></body></html>

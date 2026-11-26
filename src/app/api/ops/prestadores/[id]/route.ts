@@ -35,11 +35,52 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     cuit, condicion_iva, razon_social,
   } = body
 
+  const db = serviceClient()
+
+  // Fase 3 matrículas (Ajustes v3): profiles.matricula ya no se escribe
+  // directo desde este endpoint — lo sincroniza trg_sync_matricula_principal
+  // a partir de profesional_matriculas (migración 024). Se valida ANTES de
+  // tocar profiles, para que el PATCH sea atómico: si la matrícula queda
+  // bloqueada, no se guarda ningún otro campo tampoco.
+  if (matricula !== undefined) {
+    if (typeof matricula !== 'string' || !matricula.trim()) {
+      // A pedido explícito: nunca se borra la matrícula principal desde
+      // acá — un valor vacío se rechaza en vez de limpiar la fila.
+      return NextResponse.json({ error: 'La matrícula no puede quedar vacía.' }, { status: 400 })
+    }
+
+    const { data: principal } = await db
+      .from('profesional_matriculas')
+      .select('id, origen')
+      .eq('profesional_id', params.id)
+      .eq('es_principal', true)
+      .maybeSingle()
+
+    if (principal?.origen === 'refeps') {
+      return NextResponse.json({ error: 'Matrícula verificada por REFEPS, no editable desde OPS' }, { status: 409 })
+    }
+
+    const numero = matricula.trim()
+    if (principal) {
+      const { error: errMat } = await db.from('profesional_matriculas').update({ numero }).eq('id', principal.id)
+      if (errMat) return NextResponse.json({ error: errMat.message }, { status: 500 })
+    } else {
+      // Sin ninguna fila todavía — se inserta manual, no verificada; el
+      // trigger la marca principal por ser la primera.
+      const { error: errMat } = await db.from('profesional_matriculas').insert({
+        profesional_id: params.id,
+        numero,
+        origen: 'manual',
+        verificada: false,
+      })
+      if (errMat) return NextResponse.json({ error: errMat.message }, { status: 500 })
+    }
+  }
+
   const updateData: Record<string, unknown> = {}
   if (nombre !== undefined) updateData.nombre = nombre
   if (apellido !== undefined) updateData.apellido = apellido
   if (especialidad !== undefined) updateData.especialidad = especialidad
-  if (matricula !== undefined) updateData.matricula = matricula
   if (telefono !== undefined) updateData.telefono = telefono
   if (pais !== undefined) updateData.pais = pais
   if (provincia !== undefined) updateData.provincia = provincia
@@ -52,43 +93,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (estado_cuenta !== undefined) updateData.estado_cuenta = estado_cuenta
   if (trial_fin !== undefined) updateData.trial_fin = trial_fin
 
-  const db = serviceClient()
   const { error } = await db
     .from('profiles')
     .update(updateData)
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Fase 3 matrículas (Ajustes v3): este PATCH escribe profiles.matricula
-  // directo, con service_role, sin pasar por profesional_matriculas — igual
-  // hueco que el onboarding. "Fila sin tipo" = la matrícula legacy, sin
-  // distinguir provincial/nacional (este formulario de OPS no pide esa
-  // distinción) — se busca por tipo/provincia nulos, nunca por número, para
-  // no duplicar fila si el admin solo corrige el número.
-  if (matricula !== undefined) {
-    const { data: existentes } = await db
-      .from('profesional_matriculas')
-      .select('id, tipo, provincia')
-      .eq('profesional_id', params.id)
-    const filaSinTipo = (existentes ?? []).find((m) => !m.tipo && !m.provincia)
-
-    if (typeof matricula === 'string' && matricula.trim()) {
-      const numero = matricula.trim()
-      if (filaSinTipo) {
-        await db.from('profesional_matriculas').update({ numero }).eq('id', filaSinTipo.id)
-      } else {
-        await db.from('profesional_matriculas').insert({
-          profesional_id: params.id,
-          numero,
-          origen: 'manual',
-          verificada: false,
-        })
-      }
-    } else if (filaSinTipo) {
-      await db.from('profesional_matriculas').delete().eq('id', filaSinTipo.id)
-    }
-  }
 
   return NextResponse.json({ ok: true })
 }

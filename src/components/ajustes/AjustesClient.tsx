@@ -13,13 +13,16 @@ import IntegracionesClient from '@/components/ajustes/IntegracionesClient'
 import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSection'
 import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
 import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
+import MatriculasSection from '@/components/ajustes/MatriculasSection'
 import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
 import { normalizarCuit, validarCuit, formatearCuit } from '@/lib/facturacion/cuit'
 import { CONDICIONES_IVA } from '@/lib/facturacion/constantes'
-import type { Profile, ProfesionalObraSocial, TipoTurno } from '@/types/database'
+import type { Profile, ProfesionalObraSocial, TipoTurno, Database } from '@/types/database'
 import type { TipoTurnoConSedes, SedeTipoTurno } from '@/components/tipos-turno/TiposTurnoSection'
+
+type ProfesionalMatricula = Database['public']['Tables']['profesional_matriculas']['Row']
 
 type Suscripcion = {
   estado: string
@@ -48,6 +51,7 @@ interface Props {
   tiposTurnoHabilitado: boolean
   tiposTurno: TipoTurnoConSedes[]
   sedes: SedeTipoTurno[]
+  matriculas: ProfesionalMatricula[]
 }
 
 // ── Design helpers ────────────────────────────────────────────────────
@@ -293,7 +297,7 @@ const DIAS_SEMANA_CONFIG = [
 ]
 
 // ── Main component ─────────────────────────────────────────────────────
-export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno, sedes }: Props) {
+export default function AjustesClient({ profile, obrasSociales, suscripcion, googleConectado, googleSyncEnabled, mpConectado, mpEmail, mpNombre, cobrosVentanaHoras, cobrosCancelacionHoras, cobrosPrecioSesion, cobrosMoneda, cobrosMessagePaciente, esColaborador = false, tiposTurnoHabilitado, tiposTurno, sedes, matriculas }: Props) {
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const mostrarAvisoDeuda = PLANES_AVISO_DEUDA.includes(profile.plan ?? '')
   const router = useRouter()
@@ -860,12 +864,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   // ── Chips de estado del Resumen — solo lectura de datos ya existentes,
   // nunca se guarda nada acá. ────────────────────────────────────────────
-  // profile.matricula en vez de perfilForm.matricula: ya no vive en el
-  // estado del formulario (Fase 3). Sigue siendo la misma lectura que
-  // antes (el campo viejo) — el punto 7 de Fase 3 (leer
-  // profesional_matriculas / matrícula verificada para este chip) queda
-  // para la próxima etapa, no está hecho todavía.
-  const perfilFaltante = !profile.nombre ? 'nombre' : !perfilForm.especialidad ? 'especialidad' : !perfilForm.dni ? 'DNI' : !profile.matricula ? 'matrícula' : null
+  // Punto 7 de Fase 3: hay matrícula si profesional_matriculas tiene
+  // alguna fila; si la tabla está vacía, profiles.matricula como respaldo
+  // (perfil viejo que nunca llegó a cargar nada en la tabla nueva).
+  const hayMatricula = matriculas.length > 0 ? true : !!profile.matricula
+  const matriculaVerificada = matriculas.some((m) => m.verificada)
+  const perfilFaltante = !profile.nombre ? 'nombre' : !perfilForm.especialidad ? 'especialidad' : !perfilForm.dni ? 'DNI' : !hayMatricula ? 'matrícula' : null
   const perfilCompleto = !perfilFaltante
 
   const cobrosCompleto = mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular)
@@ -896,6 +900,10 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   const resumenTareas: { label: string; detalle: string; grupo: string }[] = []
   if (!perfilCompleto) resumenTareas.push({ label: 'Completá tu perfil', detalle: `Falta ${perfilFaltante}.`, grupo: 'perfil' })
+  // No cuenta como "Pendiente" (perfilCompleto sigue siendo solo
+  // existencia, igual que Fase 1) — es un aviso aparte en "Te falta
+  // configurar" para la matrícula cargada pero todavía sin verificar.
+  else if (hayMatricula && !matriculaVerificada) resumenTareas.push({ label: 'Verificá tu matrícula', detalle: 'Con REFEPS, para habilitar recetas electrónicas.', grupo: 'perfil' })
   if (!bookingActivo || reservasPasosOk < 4) resumenTareas.push({ label: 'Activá tu link de reservas', detalle: `${reservasPasosOk} de 4 pasos completos.`, grupo: 'reservas' })
 
   // ── Envoltorio de cada grupo: botón Volver + header (icono/título/desc del
@@ -1176,30 +1184,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 </Accordion>
 
                 <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
-                  <div style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 10,
-                    padding: '10px 12px', borderRadius: 8,
-                    background: 'var(--accent-soft-2)', border: '1px solid var(--accent-soft)',
-                    fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 14,
-                  }}>
-                    <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--accent)', strokeWidth: 2, fill: 'none', flexShrink: 0, marginTop: 1 }}>
-                      <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
-                    </svg>
-                    <span>La carga y verificación de matrícula provincial y nacional (REFEPS) se está rediseñando — por ahora, este es el valor actual, de solo lectura.</span>
-                  </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Matrícula actual</label>
-                    <input
-                      style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }}
-                      value={
-                        !profile.matricula ? 'Sin cargar'
-                        : profile.matricula_tipo === 'provincial' ? `MP ${profile.matricula}${profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
-                        : profile.matricula_tipo === 'nacional' ? `MN ${profile.matricula}`
-                        : profile.matricula
-                      }
-                      readOnly
-                    />
-                  </div>
+                  <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
                 </Accordion>
 
                 <Accordion title="Redes sociales" desc="Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.">
