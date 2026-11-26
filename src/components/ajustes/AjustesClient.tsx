@@ -301,7 +301,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const mostrarColaboradoras = (profile.plan === 'premium' || profile.plan === 'bonificado') && !esColaborador
   const mostrarAvisoDeuda = PLANES_AVISO_DEUDA.includes(profile.plan ?? '')
   const router = useRouter()
-  const [multiSede, setMultiSede] = useState(false)
+  // null = todavía no se sabe (SedesHorariosSection no terminó de cargar).
+  // No se asume false mientras tanto — eso era lo que hacía aparecer el
+  // bloque legacy de "Horarios de atención" un instante y después
+  // desaparecer de golpe para un profesional con 2+ sedes.
+  const [multiSede, setMultiSede] = useState<boolean | null>(null)
 
   // Perfil state
   const [perfilForm, setPerfilForm] = useState({
@@ -1183,10 +1187,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
-                <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
-                  <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
-                </Accordion>
-
                 <Accordion title="Redes sociales" desc="Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.">
                   <RedesSocialesField initialValue={redesRef.current} onChange={(v) => { redesRef.current = v }} />
                 </Accordion>
@@ -1225,6 +1225,15 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </button>
                 </div>
               </form>
+
+              {/* Fuera del <form> de Perfil a propósito: MatriculasSection abre
+                  SlideOvers con su propio <form> interno. Si quedara anidado
+                  dentro de otro <form>, el evento submit del interno burbujea
+                  hasta el externo y dispara handlePerfilGrupoSave sin que el
+                  usuario lo pida (ver fix de UX). */}
+              <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
+                <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
+              </Accordion>
 
               <Accordion title="Domicilio para recetas electrónicas" desc="Se usa exclusivamente para la emisión de recetas electrónicas y no es visible para tus pacientes.">
                 {recetasError && (
@@ -1307,7 +1316,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
             <>
               <Accordion title="Sedes y horarios" desc="Define tus sedes y los horarios de atención en cada una." defaultOpen>
                 <SedesHorariosSection plan={profile.plan} onMultiChange={setMultiSede} />
-                {!multiSede && (
+                {multiSede === false && (
                 <div style={{ marginTop: 18 }}>
                   <div style={{ marginBottom: 16 }}>
                   {DIAS_SEMANA_CONFIG.map(({ key, label }, idx) => {

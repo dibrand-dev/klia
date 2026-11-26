@@ -112,6 +112,10 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
 
   async function guardarEditor(e: React.FormEvent) {
     e.preventDefault()
+    // Defensa adicional: el <form> de este SlideOver no debería quedar
+    // nunca anidado dentro de otro <form>, pero si lo estuviera, el evento
+    // submit burbujearía y dispararía el onSubmit del form externo también.
+    e.stopPropagation()
     setEditorError(null)
     if (!editorTipo) { setEditorError('Seleccioná el tipo de matrícula.') ; return }
     if (editorTipo === 'provincial' && !editorProvincia) { setEditorError('Seleccioná la provincia.'); return }
@@ -174,6 +178,8 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
 
   async function handleVerificar(e: React.FormEvent) {
     e.preventDefault()
+    // Misma defensa que guardarEditor — ver comentario ahí.
+    e.stopPropagation()
     setVerError(null)
     setVerResultado(null)
     if (!verDni.trim() || !verNumero.trim()) { setVerError('Completá el DNI y el número de matrícula.'); return }
