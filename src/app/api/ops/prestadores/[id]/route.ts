@@ -52,12 +52,44 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (estado_cuenta !== undefined) updateData.estado_cuenta = estado_cuenta
   if (trial_fin !== undefined) updateData.trial_fin = trial_fin
 
-  const { error } = await serviceClient()
+  const db = serviceClient()
+  const { error } = await db
     .from('profiles')
     .update(updateData)
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Fase 3 matrículas (Ajustes v3): este PATCH escribe profiles.matricula
+  // directo, con service_role, sin pasar por profesional_matriculas — igual
+  // hueco que el onboarding. "Fila sin tipo" = la matrícula legacy, sin
+  // distinguir provincial/nacional (este formulario de OPS no pide esa
+  // distinción) — se busca por tipo/provincia nulos, nunca por número, para
+  // no duplicar fila si el admin solo corrige el número.
+  if (matricula !== undefined) {
+    const { data: existentes } = await db
+      .from('profesional_matriculas')
+      .select('id, tipo, provincia')
+      .eq('profesional_id', params.id)
+    const filaSinTipo = (existentes ?? []).find((m) => !m.tipo && !m.provincia)
+
+    if (typeof matricula === 'string' && matricula.trim()) {
+      const numero = matricula.trim()
+      if (filaSinTipo) {
+        await db.from('profesional_matriculas').update({ numero }).eq('id', filaSinTipo.id)
+      } else {
+        await db.from('profesional_matriculas').insert({
+          profesional_id: params.id,
+          numero,
+          origen: 'manual',
+          verificada: false,
+        })
+      }
+    } else if (filaSinTipo) {
+      await db.from('profesional_matriculas').delete().eq('id', filaSinTipo.id)
+    }
+  }
+
   return NextResponse.json({ ok: true })
 }
 
