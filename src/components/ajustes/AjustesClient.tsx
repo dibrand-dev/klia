@@ -304,9 +304,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     especialidad: profile.especialidad ?? '',
     titulo_credencial_adicional: profile.titulo_credencial_adicional ?? '',
     dni: profile.dni ?? '',
-    matricula: profile.matricula ?? '',
-    matricula_tipo: (profile as Record<string, unknown>).matricula_tipo as string ?? '',
-    matricula_provincia: (profile as Record<string, unknown>).matricula_provincia as string ?? '',
+    // matricula / matricula_tipo / matricula_provincia — sacados del estado
+    // de este formulario (Fase 3, ajustes-v3): ahora los sincroniza el
+    // trigger trg_sync_matricula_principal desde profesional_matriculas. Si
+    // quedaran acá, cada guardado de "Datos personales" pisaría ese valor
+    // con lo que había al cargar la pantalla.
     telefono: profile.telefono ?? '',
     pais: profile.pais ?? 'Argentina',
     provincia: profile.provincia ?? '',
@@ -518,9 +520,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
       dni: dniClean || null,
       especialidad: perfilForm.especialidad || null,
       titulo_credencial_adicional: perfilForm.titulo_credencial_adicional || null,
-      matricula: perfilForm.matricula || null,
-      matricula_tipo: perfilForm.matricula_tipo || null,
-      matricula_provincia: perfilForm.matricula_tipo === 'provincial' ? (perfilForm.matricula_provincia || null) : null,
+      // matricula / matricula_tipo / matricula_provincia: ya no se guardan
+      // desde este formulario — las sincroniza trg_sync_matricula_principal
+      // desde profesional_matriculas (ver migración 024). Guardarlas acá
+      // pisaría ese valor sincronizado con lo que había al cargar la
+      // pantalla.
       telefono: perfilForm.telefono || null,
       pais: perfilForm.pais || null,
       provincia: perfilForm.provincia || null,
@@ -856,7 +860,12 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   // ── Chips de estado del Resumen — solo lectura de datos ya existentes,
   // nunca se guarda nada acá. ────────────────────────────────────────────
-  const perfilFaltante = !profile.nombre ? 'nombre' : !perfilForm.especialidad ? 'especialidad' : !perfilForm.dni ? 'DNI' : !perfilForm.matricula ? 'matrícula' : null
+  // profile.matricula en vez de perfilForm.matricula: ya no vive en el
+  // estado del formulario (Fase 3). Sigue siendo la misma lectura que
+  // antes (el campo viejo) — el punto 7 de Fase 3 (leer
+  // profesional_matriculas / matrícula verificada para este chip) queda
+  // para la próxima etapa, no está hecho todavía.
+  const perfilFaltante = !profile.nombre ? 'nombre' : !perfilForm.especialidad ? 'especialidad' : !perfilForm.dni ? 'DNI' : !profile.matricula ? 'matrícula' : null
   const perfilCompleto = !perfilFaltante
 
   const cobrosCompleto = mpConectado || !!(transferenciaBanco && transferenciaAlias && transferenciaTitular)
@@ -1166,38 +1175,30 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
-                <Accordion title="Matrícula" desc="Se muestra en tu perfil público y en documentos.">
-                  <div className={grid2Class}>
-                    <div style={fieldStyle}>
-                      <label style={labelStyle}>Tipo de matrícula</label>
-                      <select style={inputStyle} value={perfilForm.matricula_tipo} onChange={e => setPerfilForm(p => ({ ...p, matricula_tipo: e.target.value, matricula_provincia: e.target.value !== 'provincial' ? '' : p.matricula_provincia }))}>
-                        <option value="">Seleccioná el tipo</option>
-                        <option value="provincial">Provincial</option>
-                        <option value="nacional">Nacional</option>
-                      </select>
-                    </div>
-                    {perfilForm.matricula_tipo === 'provincial' && (
-                      <div style={fieldStyle}>
-                        <label style={labelStyle}>Provincia de la matrícula</label>
-                        <select style={inputStyle} value={perfilForm.matricula_provincia} onChange={e => setPerfilForm(p => ({ ...p, matricula_provincia: e.target.value }))}>
-                          <option value="">Seleccioná la provincia</option>
-                          {(PAISES_PROVINCIAS['Argentina'] ?? []).map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                        </select>
-                      </div>
-                    )}
-                    <div style={fieldStyle}>
-                      <label style={labelStyle}>Número de matrícula</label>
-                      <input style={inputStyle} type="text" placeholder="Ej: 12345" value={perfilForm.matricula} onChange={e => setPerfilForm(p => ({ ...p, matricula: e.target.value }))} />
-                      {perfilForm.matricula && (
-                        <span style={{ fontSize: 12, color: 'var(--muted-2)', marginTop: 4, display: 'block' }}>
-                          Se mostrará como: {perfilForm.matricula_tipo === 'provincial'
-                            ? `MP ${perfilForm.matricula}${perfilForm.matricula_provincia ? ` (${perfilForm.matricula_provincia})` : ''}`
-                            : perfilForm.matricula_tipo === 'nacional'
-                            ? `MN ${perfilForm.matricula}`
-                            : perfilForm.matricula}
-                        </span>
-                      )}
-                    </div>
+                <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '10px 12px', borderRadius: 8,
+                    background: 'var(--accent-soft-2)', border: '1px solid var(--accent-soft)',
+                    fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.55, marginBottom: 14,
+                  }}>
+                    <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'var(--accent)', strokeWidth: 2, fill: 'none', flexShrink: 0, marginTop: 1 }}>
+                      <circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>
+                    </svg>
+                    <span>La carga y verificación de matrícula provincial y nacional (REFEPS) se está rediseñando — por ahora, este es el valor actual, de solo lectura.</span>
+                  </div>
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Matrícula actual</label>
+                    <input
+                      style={{ ...inputStyle, background: 'var(--surface-2)', color: 'var(--muted)' }}
+                      value={
+                        !profile.matricula ? 'Sin cargar'
+                        : profile.matricula_tipo === 'provincial' ? `MP ${profile.matricula}${profile.matricula_provincia ? ` (${profile.matricula_provincia})` : ''}`
+                        : profile.matricula_tipo === 'nacional' ? `MN ${profile.matricula}`
+                        : profile.matricula
+                      }
+                      readOnly
+                    />
                   </div>
                 </Accordion>
 
