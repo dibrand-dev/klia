@@ -477,14 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-25_
+_Actualizado el 2026-11-26_
 
 ```
-76e71fa feat: validación de matrícula vía Practitioner del Bus de Interoperabilidad
-f38a824 fix: aviso de registros en semanas anteriores en la solapa Registro y null guard en /portal
-0338fb2 fix: validar DNI y fecha de nacimiento en el cliente en la reserva pública
-d0f6d58 fix: limpiar dni y fecha de nacimiento de la reserva pendiente al confirmar transferencia
-99bdf71 feat: dedupe de pacientes por DNI en reserva pública
-5f24ca5 feat: DNI y fecha de nacimiento en reserva pública con toggles por profesional
-de8c6e5 docs: CLAUDE.md - commits del dia 2026-11-24
+caa0df2 feat: verificación REFEPS con matrículas múltiples y persistencia
+7060955 docs: CLAUDE.md - commits del dia 2026-11-25
 ```
