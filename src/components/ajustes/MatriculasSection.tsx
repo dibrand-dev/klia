@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import SlideOver from '@/components/ui/SlideOver'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -65,6 +66,16 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
   matriculasIniciales: ProfesionalMatricula[]
 }) {
   const [matriculas, setMatriculas] = useState<ProfesionalMatricula[]>(matriculasIniciales)
+
+  // Los dos SlideOver de esta sección se montan vía createPortal a
+  // document.body (ver más abajo) para que su <form> interno nunca quede
+  // anidado dentro del <form> de Perfil — así el acordeón "Matrícula" puede
+  // vivir en su posición normal dentro de ese form sin que el submit de un
+  // SlideOver burbujee y dispare handlePerfilGrupoSave. `mounted` evita un
+  // mismatch de hidratación (document no existe durante el render de
+  // servidor): recién se porta después del mount en cliente.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   async function refetch() {
     const supabase = createClient()
@@ -298,7 +309,8 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
         La principal es la que sale en recetas y certificados. Si REFEPS trae más de una provincial, aparecen todas.
       </p>
 
-      {/* SlideOver: Verificar con REFEPS */}
+      {/* SlideOver: Verificar con REFEPS — portal a document.body, ver comentario junto a `mounted`. */}
+      {mounted && createPortal(
       <SlideOver
         open={verOpen}
         onClose={() => { if (!verLoading) setVerOpen(false) }}
@@ -344,9 +356,12 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
             </div>
           )}
         </form>
-      </SlideOver>
+      </SlideOver>,
+      document.body,
+      )}
 
-      {/* SlideOver: Cargar / editar matrícula */}
+      {/* SlideOver: Cargar / editar matrícula — portal a document.body, ver comentario junto a `mounted`. */}
+      {mounted && createPortal(
       <SlideOver
         open={editorOpen}
         onClose={() => { if (!editorLoading) setEditorOpen(false) }}
@@ -401,7 +416,9 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
             <input style={inputStyle} type="text" value={editorNumero} onChange={(e) => setEditorNumero(e.target.value)} placeholder="Ej: 12345" />
           </div>
         </form>
-      </SlideOver>
+      </SlideOver>,
+      document.body,
+      )}
 
       <ConfirmDialog
         open={!!confirmEliminarId}

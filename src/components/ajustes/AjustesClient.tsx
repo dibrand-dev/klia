@@ -1187,6 +1187,10 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
+                <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
+                  <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
+                </Accordion>
+
                 <Accordion title="Redes sociales" desc="Hasta 3. Se muestran en la sección Contacto de los planes que compartís con tus pacientes.">
                   <RedesSocialesField initialValue={redesRef.current} onChange={(v) => { redesRef.current = v }} />
                 </Accordion>
@@ -1225,15 +1229,6 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </button>
                 </div>
               </form>
-
-              {/* Fuera del <form> de Perfil a propósito: MatriculasSection abre
-                  SlideOvers con su propio <form> interno. Si quedara anidado
-                  dentro de otro <form>, el evento submit del interno burbujea
-                  hasta el externo y dispara handlePerfilGrupoSave sin que el
-                  usuario lo pida (ver fix de UX). */}
-              <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
-                <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
-              </Accordion>
 
               <Accordion title="Domicilio para recetas electrónicas" desc="Se usa exclusivamente para la emisión de recetas electrónicas y no es visible para tus pacientes.">
                 {recetasError && (
