@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Script from 'next/script'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import dynamic from 'next/dynamic'
@@ -67,6 +68,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <>
+      {/* Zoho SalesIQ — solo acá, nunca en el layout raíz: visible únicamente
+          para el profesional autenticado, nunca en /login, /registro, /ops
+          ni en el portal público de reservas (/p/[slug], que no tiene
+          layout propio y hereda solo el raíz). */}
+      <Script id="zsiq-init" strategy="afterInteractive">
+        {`window.$zoho=window.$zoho || {};$zoho.salesiq=$zoho.salesiq||{ready:function(){}}`}
+      </Script>
+      <Script
+        id="zsiqscript"
+        src="https://salesiq.zohopublic.com/widget?wc=siq195479a499f719dd02043e3c9eb1e5e6"
+        strategy="afterInteractive"
+      />
       <AppShell
         profile={profile}
         modulos={modulos}
