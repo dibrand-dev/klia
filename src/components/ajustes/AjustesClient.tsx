@@ -941,8 +941,16 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   if (!bookingActivo || reservasPasosOk < 4) resumenTareas.push({ label: 'Activá tu link de reservas', detalle: `${reservasPasosOk} de 4 pasos completos.`, grupo: 'reservas' })
 
   // ── Envoltorio de cada grupo: botón Volver + header (icono/título/desc del
-  // propio GRUPOS) + contenido. Usa currentGroup/GRUPOS/goToGroup por clausura. ──
-  function GrupoShell({ children }: { children: React.ReactNode }) {
+  // propio GRUPOS) + contenido. Usa currentGroup/GRUPOS/goToGroup por clausura.
+  // Ojo: es una función que se INVOCA ({renderGrupoShell(...)}), nunca un
+  // componente usado como <GrupoShell> — estando definida dentro del cuerpo
+  // de AjustesClient, una referencia de función nueva en cada render haría
+  // que React la trate como un tipo de componente distinto cada vez y
+  // remonte todo el subárbol (perdía foco y saltaba el scroll al tipear
+  // una sola tecla en cualquier campo de cualquier grupo — bug cazado y
+  // corregido). Llamada directamente como función no tiene ese problema:
+  // el JSX que devuelve se inserta en el mismo lugar del árbol de siempre. ──
+  function renderGrupoShell(children: React.ReactNode) {
     const grupo = GRUPOS.find(g => g.id === currentGroup)
     if (!grupo) return null
     return (
@@ -1071,7 +1079,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </div>
         </>
       ) : (
-        <GrupoShell>
+        renderGrupoShell(
+        <>
 
           {currentGroup === 'perfil' && (
             <>
@@ -2017,7 +2026,8 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
           </Accordion>
             </>
           )}
-        </GrupoShell>
+        </>,
+        )
       )}
 
       <SlideOver
