@@ -18,6 +18,7 @@ import SlideOver from '@/components/ui/SlideOver'
 import FirmaUploader from '@/components/ui/FirmaUploader'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import MontoInput from '@/components/ui/MontoInput'
+import FechaNacimientoInput from '@/components/ui/FechaNacimientoInput'
 import { type Moneda, formatearMonto, parsearMontoInput, formatearMontoInputInicial } from '@/lib/monedas'
 import { calcularDeudaMes, resolverPoliticaInasistencia } from '@/lib/deuda'
 import ArchivosTab from './ArchivosTab'
@@ -415,7 +416,7 @@ export default function PacienteDetalle({
             </div>
             <div>
               <label className={labelCls}>Fecha de Nacimiento</label>
-              <input name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} className={inputCls} />
+              <FechaNacimientoInput name="fecha_nacimiento" className={inputCls} value={form.fecha_nacimiento} onChange={iso => setForm(prev => ({ ...prev, fecha_nacimiento: iso }))} />
             </div>
             <div>
               <label className={labelCls}>Teléfono</label>

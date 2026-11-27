@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ProfileData, SedePublica } from '@/app/p/[slug]/page'
 import { validarDniReserva, validarFechaNacimientoReserva } from '@/lib/booking/validar-datos-reserva'
+import FechaNacimientoInput from '@/components/ui/FechaNacimientoInput'
 
 interface FormData {
   nombre: string
@@ -120,33 +121,60 @@ function InputField({
             {prefix}
           </div>
         )}
-        <input
-          id={id}
-          type={type ?? 'text'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          required={required}
-          inputMode={inputMode}
-          min={min}
-          max={max}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
-          style={{
-            flex: 1,
-            padding: '11px 14px',
-            border: `1.5px solid ${borderColor}`,
-            borderRadius: prefix ? '0 10px 10px 0' : 10,
-            fontSize: 14,
-            color: '#0B1220',
-            background: '#fff',
-            outline: 'none',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            transition: 'border-color 0.15s',
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => { setFocused(false); onBlur?.() }}
-        />
+        {type === 'date' ? (
+          <FechaNacimientoInput
+            id={id}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            required={required}
+            mostrarError={false}
+            ariaInvalid={error ? true : undefined}
+            ariaDescribedBy={error ? errorId : undefined}
+            style={{
+              flex: 1,
+              padding: '11px 14px',
+              border: `1.5px solid ${borderColor}`,
+              borderRadius: prefix ? '0 10px 10px 0' : 10,
+              fontSize: 14,
+              color: '#0B1220',
+              background: '#fff',
+              outline: 'none',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); onBlur?.() }}
+          />
+        ) : (
+          <input
+            id={id}
+            type={type ?? 'text'}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            required={required}
+            inputMode={inputMode}
+            min={min}
+            max={max}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            style={{
+              flex: 1,
+              padding: '11px 14px',
+              border: `1.5px solid ${borderColor}`,
+              borderRadius: prefix ? '0 10px 10px 0' : 10,
+              fontSize: 14,
+              color: '#0B1220',
+              background: '#fff',
+              outline: 'none',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); onBlur?.() }}
+          />
+        )}
       </div>
       {error && (
         <p id={errorId} style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--danger)' }}>{error}</p>

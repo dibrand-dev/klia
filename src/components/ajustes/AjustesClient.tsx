@@ -14,6 +14,7 @@ import SedesHorariosSection from '@/components/ajustes/sedes/SedesHorariosSectio
 import RedesSocialesField, { type RedesSociales } from '@/components/ajustes/RedesSocialesField'
 import TiposTurnoSection from '@/components/tipos-turno/TiposTurnoSection'
 import MatriculasSection from '@/components/ajustes/MatriculasSection'
+import FechaNacimientoInput from '@/components/ui/FechaNacimientoInput'
 import { contarTiposDisponibles } from '@/lib/booking/contar-tipos-disponibles'
 import { ESPECIALIDADES } from '@/lib/especialidades'
 import { PAISES, PAISES_PROVINCIAS } from '@/lib/geografica'
@@ -1181,7 +1182,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                     </div>
                     <div style={fieldStyle}>
                       <label style={labelStyle}>Fecha de nacimiento</label>
-                      <input style={inputStyle} type="date" value={recetasForm.fecha_nacimiento} onChange={e => setRecetasForm(p => ({ ...p, fecha_nacimiento: e.target.value }))} />
+                      <FechaNacimientoInput style={inputStyle} value={recetasForm.fecha_nacimiento} onChange={iso => setRecetasForm(p => ({ ...p, fecha_nacimiento: iso }))} />
                     </div>
                     <div style={fieldStyle}>
                       <label style={labelStyle}>Teléfono de contacto</label>

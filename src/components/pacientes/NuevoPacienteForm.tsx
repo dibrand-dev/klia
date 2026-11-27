@@ -7,6 +7,7 @@ import { PAISES, PLANES_POR_OS } from '@/lib/data/salud-ar'
 import type { ProfesionalObraSocial } from '@/types/database'
 import MonedaSelector from '@/components/ui/MonedaSelector'
 import MontoInput from '@/components/ui/MontoInput'
+import FechaNacimientoInput from '@/components/ui/FechaNacimientoInput'
 import { type Moneda, parsearMontoInput } from '@/lib/monedas'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
@@ -416,7 +417,7 @@ export default function NuevoPacienteForm({ terapeutaId, obrasSociales = [], pro
               </div>
               <div className="field">
                 <label>Fecha de Nacimiento</label>
-                <input name="fecha_nacimiento" type="date" value={form.fecha_nacimiento} onChange={handleChange} />
+                <FechaNacimientoInput name="fecha_nacimiento" value={form.fecha_nacimiento} onChange={iso => setForm(prev => ({ ...prev, fecha_nacimiento: iso }))} />
               </div>
               <div className="field">
                 <label>Teléfono</label>
