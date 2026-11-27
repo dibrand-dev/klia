@@ -317,7 +317,7 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
         title="Verificar con REFEPS"
         width="sm"
         footer={(
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', borderTop: '1px solid var(--border)', padding: '12px 20px' }}>
             {verError && <span style={{ fontSize: 12, color: 'var(--danger)' }}>{verError}</span>}
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setVerOpen(false)} disabled={verLoading} style={{ padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}>
@@ -368,7 +368,7 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
         title={editorId ? 'Editar matrícula' : `Cargar matrícula ${editorTipoFijo ?? ''}`}
         width="sm"
         footer={(
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', borderTop: '1px solid var(--border)', padding: '12px 20px' }}>
             {editorId && (
               <button type="button" onClick={() => setConfirmEliminarId(editorId)} style={{ background: 'none', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
                 Eliminar

@@ -1996,7 +1996,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
         title="Eliminar cuenta"
         width="sm"
         footer={(
-          <div style={secFootStyle}>
+          <div style={{ ...secFootStyle, marginTop: 0, paddingTop: 0, padding: '12px 20px' }}>
             <button
               type="button"
               onClick={() => setEliminarOpen(false)}
