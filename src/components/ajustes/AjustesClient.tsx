@@ -203,16 +203,24 @@ function ToggleRow({ name, desc, on, onChange, disabled }: {
 
 // ── Accordion — misma tarjeta/bordes que el resto de la app, con resumen
 // en el header (Ajustes v3, Fase 1: orden y estética únicamente). ───────
-function Accordion({ title, desc, right, defaultOpen = false, children }: {
+function Accordion({ title, desc, right, defaultOpen = false, forceOpen, id, children }: {
   title: string
   desc?: string
   right?: React.ReactNode
   defaultOpen?: boolean
+  // Fuerza la apertura (p.ej. al llegar desde una tarea del Resumen que
+  // apunta a este acordeón puntual) sin romper el toggle manual normal:
+  // el usuario sigue pudiendo cerrarlo después con el click de siempre.
+  forceOpen?: boolean
+  id?: string
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  useEffect(() => {
+    if (forceOpen) setOpen(true)
+  }, [forceOpen])
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 12, marginBottom: 14, overflow: 'hidden', background: 'var(--surface)' }}>
+    <div id={id} style={{ border: '1px solid var(--border)', borderRadius: 12, marginBottom: 14, overflow: 'hidden', background: 'var(--surface)' }}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -848,6 +856,11 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
   const GRUPO_IDS = GRUPOS.map(g => g.id)
 
   const [currentGroup, setCurrentGroup] = useState<string | null>(null)
+  // Acordeón puntual a abrir y hacia el que hacer scroll suave al entrar a
+  // un grupo desde una tarea del Resumen (ej. "Verificá tu matrícula" →
+  // grupo perfil, acordeón matricula). null = comportamiento de siempre
+  // (scroll al tope del grupo).
+  const [acordeonObjetivo, setAcordeonObjetivo] = useState<string | null>(null)
 
   useEffect(() => {
     function leerHash() {
@@ -860,11 +873,21 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function goToGroup(id: string | null) {
+  function goToGroup(id: string | null, acordeon?: string | null) {
     setCurrentGroup(id)
+    setAcordeonObjetivo(acordeon ?? null)
     window.history.pushState(null, '', id ? `#${id}` : window.location.pathname + window.location.search)
-    window.scrollTo({ top: 0 })
+    // Con acordeón puntual, el scroll lo hace el efecto de abajo una vez que
+    // ese acordeón ya está en el DOM (abierto) — acá solo se mantiene el
+    // scroll-al-tope de siempre cuando no se pide uno.
+    if (!acordeon) window.scrollTo({ top: 0 })
   }
+
+  useEffect(() => {
+    if (!acordeonObjetivo || !currentGroup) return
+    const el = document.getElementById(`acordeon-${acordeonObjetivo}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [currentGroup, acordeonObjetivo])
 
   // ── Chips de estado del Resumen — solo lectura de datos ya existentes,
   // nunca se guarda nada acá. ────────────────────────────────────────────
@@ -902,12 +925,18 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
   const integracionesCompleto = mpConectado && googleConectado
 
-  const resumenTareas: { label: string; detalle: string; grupo: string }[] = []
-  if (!perfilCompleto) resumenTareas.push({ label: 'Completá tu perfil', detalle: `Falta ${perfilFaltante}.`, grupo: 'perfil' })
+  const resumenTareas: { label: string; detalle: string; grupo: string; acordeon?: string }[] = []
+  if (!perfilCompleto) resumenTareas.push({
+    label: 'Completá tu perfil', detalle: `Falta ${perfilFaltante}.`, grupo: 'perfil',
+    // Si lo que falta es la matrícula, el acordeón a abrir es el de
+    // Matrícula; nombre/especialidad/DNI viven en Datos personales, que ya
+    // está abierto por defecto — no hace falta acordeón puntual ahí.
+    ...(perfilFaltante === 'matrícula' ? { acordeon: 'matricula' } : {}),
+  })
   // No cuenta como "Pendiente" (perfilCompleto sigue siendo solo
   // existencia, igual que Fase 1) — es un aviso aparte en "Te falta
   // configurar" para la matrícula cargada pero todavía sin verificar.
-  else if (hayMatricula && !matriculaVerificada) resumenTareas.push({ label: 'Verificá tu matrícula', detalle: 'Con REFEPS, para habilitar recetas electrónicas.', grupo: 'perfil' })
+  else if (hayMatricula && !matriculaVerificada) resumenTareas.push({ label: 'Verificá tu matrícula', detalle: 'Con REFEPS, para habilitar recetas electrónicas.', grupo: 'perfil', acordeon: 'matricula' })
   if (!bookingActivo || reservasPasosOk < 4) resumenTareas.push({ label: 'Activá tu link de reservas', detalle: `${reservasPasosOk} de 4 pasos completos.`, grupo: 'reservas' })
 
   // ── Envoltorio de cada grupo: botón Volver + header (icono/título/desc del
@@ -990,7 +1019,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <button
                     key={t.grupo}
                     type="button"
-                    onClick={() => goToGroup(t.grupo)}
+                    onClick={() => goToGroup(t.grupo, t.acordeon)}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                       padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)',
@@ -1020,7 +1049,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => goToGroup(g.id)}
+                  onClick={() => goToGroup(g.id, g.id === 'perfil' && perfilFaltante === 'matrícula' ? 'matricula' : undefined)}
                   style={{
                     display: 'flex', flexDirection: 'column', gap: 10,
                     padding: 18, borderRadius: 14, border: '1px solid var(--border)',
@@ -1187,7 +1216,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
-                <Accordion title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
+                <Accordion id="acordeon-matricula" forceOpen={acordeonObjetivo === 'matricula'} title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
                   <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
                 </Accordion>
 

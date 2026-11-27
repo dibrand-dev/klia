@@ -66,6 +66,10 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
   matriculasIniciales: ProfesionalMatricula[]
 }) {
   const [matriculas, setMatriculas] = useState<ProfesionalMatricula[]>(matriculasIniciales)
+  // El profesional tiene que dejar siempre al menos una matrícula cargada:
+  // con una sola, "Eliminar" no se muestra (ni en el menú "···" de la fila
+  // ni en el footer del editor), se reemplaza por el aviso correspondiente.
+  const soloUnaMatricula = matriculas.length <= 1
 
   // Los dos SlideOver de esta sección se montan vía createPortal a
   // document.body (ver más abajo) para que su <form> interno nunca quede
@@ -151,6 +155,10 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
 
   async function confirmarEliminar() {
     if (!confirmEliminarId) return
+    // Defensa adicional además de ocultar el botón: nunca borrar la última
+    // matrícula, aunque el ConfirmDialog ya estuviera abierto cuando
+    // matriculas pasó a tener una sola fila.
+    if (soloUnaMatricula) { setConfirmEliminarId(null); return }
     setEliminarLoading(true)
     const supabase = createClient()
     const { error } = await supabase.from('profesional_matriculas').delete().eq('id', confirmEliminarId)
@@ -286,7 +294,7 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
           )
         }
         return filas.map((m) => (
-          <FilaMatricula key={m.id} m={m} onEditar={() => abrirEditar(m)} onEliminar={() => setConfirmEliminarId(m.id)} onMarcarPrincipal={() => marcarPrincipal(m.id)} />
+          <FilaMatricula key={m.id} m={m} onEditar={() => abrirEditar(m)} onEliminar={() => setConfirmEliminarId(m.id)} onMarcarPrincipal={() => marcarPrincipal(m.id)} eliminarDeshabilitado={soloUnaMatricula} />
         ))
       })}
 
@@ -370,9 +378,15 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
         footer={(
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', borderTop: '1px solid var(--border)', padding: '12px 20px' }}>
             {editorId && (
-              <button type="button" onClick={() => setConfirmEliminarId(editorId)} style={{ background: 'none', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
-                Eliminar
-              </button>
+              soloUnaMatricula ? (
+                <span style={{ fontSize: 12, color: 'var(--muted-2)', lineHeight: 1.4 }}>
+                  Tenés que dejar al menos una matrícula.
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirmEliminarId(editorId)} style={{ background: 'none', border: 'none', color: '#DC2626', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+                  Eliminar
+                </button>
+              )
             )}
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setEditorOpen(false)} disabled={editorLoading} style={{ padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)' }}>
@@ -433,11 +447,12 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
   )
 }
 
-function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal }: {
+function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal, eliminarDeshabilitado }: {
   m: ProfesionalMatricula
   onEditar: () => void
   onEliminar: () => void
   onMarcarPrincipal: () => void
+  eliminarDeshabilitado: boolean
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
   return (
@@ -478,9 +493,15 @@ function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal }: {
                 <button type="button" onClick={() => { setMenuAbierto(false); onEditar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
                   Editar
                 </button>
-                <button type="button" onClick={() => { setMenuAbierto(false); onEliminar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: '#DC2626', cursor: 'pointer' }}>
-                  Eliminar
-                </button>
+                {eliminarDeshabilitado ? (
+                  <div style={{ padding: '7px 10px', fontSize: 11.5, color: 'var(--muted-2)', lineHeight: 1.4, maxWidth: 160 }}>
+                    Tenés que dejar al menos una matrícula.
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => { setMenuAbierto(false); onEliminar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: '#DC2626', cursor: 'pointer' }}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             )}
           </div>
