@@ -1216,7 +1216,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
-                <Accordion id="acordeon-matricula" forceOpen={acordeonObjetivo === 'matricula'} title="Matrícula" desc="Provincial y nacional — se muestra en tu perfil público y en documentos.">
+                <Accordion id="acordeon-matricula" forceOpen={acordeonObjetivo === 'matricula'} title="Matrícula" desc="Provincial y nacional. Se muestra en tu perfil público y en documentos.">
                   <MatriculasSection profesionalId={profile.id} dniInicial={profile.dni} matriculasIniciales={matriculas} />
                 </Accordion>
 
@@ -1998,7 +1998,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               title="Próximamente"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'not-allowed', border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--muted)', opacity: 0.8 }}
             >
-              Cambiar contraseña — Próximamente
+              Cambiar contraseña (Próximamente)
             </button>
           </Accordion>
 
