@@ -477,9 +477,9 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-26_
+_Actualizado el 2026-11-27_
 
 ```
-caa0df2 feat: verificación REFEPS con matrículas múltiples y persistencia
-7060955 docs: CLAUDE.md - commits del dia 2026-11-25
+fe6def9 chore: referencia de diseño Ajustes v3 (solo orden y estética, no se despliega)
+26d79ca docs: CLAUDE.md - commits del dia 2026-11-26
 ```
