@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import SlideOver from '@/components/ui/SlideOver'
@@ -186,9 +186,12 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
   const [verError, setVerError] = useState<string | null>(null)
   const [verResultado, setVerResultado] = useState<{ texto: string; tono: 'ok' | 'warn' | 'muted' } | null>(null)
 
-  function abrirVerificar() {
+  // Sin matrícula puntual (botón del banner) precarga la principal, como
+  // siempre. Con una matrícula puntual (acción "Verificar" de una fila sin
+  // verificar), precarga el número de esa fila.
+  function abrirVerificar(m?: ProfesionalMatricula) {
     setVerDni(dniInicial ?? '')
-    setVerNumero(principal?.numero ?? '')
+    setVerNumero((m ?? principal)?.numero ?? '')
     setVerConsentimiento(false)
     setVerError(null)
     setVerResultado(null)
@@ -274,7 +277,7 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
               : 'Completamos tu perfil automáticamente y habilitás las recetas electrónicas. Alcanza con la provincial o la nacional.'}
           </div>
         </div>
-        <button type="button" onClick={abrirVerificar} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'var(--ink)', color: 'white', whiteSpace: 'nowrap' }}>
+        <button type="button" onClick={() => abrirVerificar()} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', background: 'var(--ink)', color: 'white', whiteSpace: 'nowrap' }}>
           {hayVerificada ? 'Volver a verificar' : 'Verificar con REFEPS'}
         </button>
       </div>
@@ -294,7 +297,7 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
           )
         }
         return filas.map((m) => (
-          <FilaMatricula key={m.id} m={m} onEditar={() => abrirEditar(m)} onEliminar={() => setConfirmEliminarId(m.id)} onMarcarPrincipal={() => marcarPrincipal(m.id)} eliminarDeshabilitado={soloUnaMatricula} />
+          <FilaMatricula key={m.id} m={m} onEditar={() => abrirEditar(m)} onEliminar={() => setConfirmEliminarId(m.id)} onMarcarPrincipal={() => marcarPrincipal(m.id)} onVerificar={() => abrirVerificar(m)} eliminarDeshabilitado={soloUnaMatricula} />
         ))
       })}
 
@@ -447,14 +450,68 @@ export default function MatriculasSection({ profesionalId, dniInicial, matricula
   )
 }
 
-function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal, eliminarDeshabilitado }: {
+function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal, onVerificar, eliminarDeshabilitado }: {
   m: ProfesionalMatricula
   onEditar: () => void
   onEliminar: () => void
   onMarcarPrincipal: () => void
+  onVerificar: () => void
   eliminarDeshabilitado: boolean
 }) {
   const [menuAbierto, setMenuAbierto] = useState(false)
+  // Posición del menú "···", calculada contra el botón al abrir. Se porta a
+  // document.body (más abajo) porque el acordeón recorta overflow y en la
+  // última fila el menú quedaba escondido debajo de la card.
+  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null)
+  const botonMenuRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  function abrirMenu() {
+    const boton = botonMenuRef.current
+    if (!boton) return
+    const rect = boton.getBoundingClientRect()
+    const margen = 4
+    const anchoMenu = 160
+    const altoEstimado = 110
+    const entraAbajo = window.innerHeight - rect.bottom >= altoEstimado + margen
+    setMenuPos({
+      left: Math.max(8, rect.right - anchoMenu),
+      // bottom (en vez de top) para el caso "hacia arriba": ancla desde el
+      // borde inferior de la pantalla, así no hace falta conocer de antemano
+      // la altura real del menú (varía según si muestra el aviso de "dejá
+      // al menos una matrícula" o el botón Eliminar).
+      ...(entraAbajo ? { top: rect.bottom + margen } : { bottom: window.innerHeight - rect.top + margen }),
+    })
+    setMenuAbierto(true)
+  }
+
+  useEffect(() => {
+    if (!menuAbierto) return
+    function cerrarSiEsAfuera(e: MouseEvent) {
+      const target = e.target as Node
+      if (menuRef.current?.contains(target) || botonMenuRef.current?.contains(target)) return
+      setMenuAbierto(false)
+    }
+    function cerrarConEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuAbierto(false)
+    }
+    function cerrarPorScrollOResize() {
+      setMenuAbierto(false)
+    }
+    document.addEventListener('mousedown', cerrarSiEsAfuera)
+    document.addEventListener('keydown', cerrarConEscape)
+    // capture:true en scroll para detectar también el scroll de un
+    // contenedor interno (no solo el de la ventana).
+    window.addEventListener('scroll', cerrarPorScrollOResize, true)
+    window.addEventListener('resize', cerrarPorScrollOResize)
+    return () => {
+      document.removeEventListener('mousedown', cerrarSiEsAfuera)
+      document.removeEventListener('keydown', cerrarConEscape)
+      window.removeEventListener('scroll', cerrarPorScrollOResize, true)
+      window.removeEventListener('resize', cerrarPorScrollOResize)
+    }
+  }, [menuAbierto])
+
   return (
     <div style={{
       border: `1px solid ${m.es_principal ? 'var(--ink)' : 'var(--border)'}`,
@@ -474,6 +531,11 @@ function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal, eliminarDes
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
         <Chip text={m.verificada ? 'Verificada' : 'Sin verificar'} tone={m.verificada ? 'ok' : 'warn'} />
         <div style={{ flex: 1 }} />
+        {!m.verificada && (
+          <button type="button" onClick={onVerificar} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', padding: 0 }}>
+            Verificar
+          </button>
+        )}
         {m.es_principal ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>★ Principal</span>
         ) : (
@@ -483,26 +545,42 @@ function FilaMatricula({ m, onEditar, onEliminar, onMarcarPrincipal, eliminarDes
         )}
         {m.origen === 'manual' && (
           <div style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setMenuAbierto((v) => !v)} aria-label="Más acciones" style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-2)', borderRadius: 6 }}>
+            <button
+              ref={botonMenuRef}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (menuAbierto) setMenuAbierto(false); else abrirMenu() }}
+              aria-label="Más acciones"
+              style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-2)', borderRadius: 6 }}
+            >
               <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: 'currentColor' }}>
                 <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
               </svg>
             </button>
-            {menuAbierto && (
-              <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 10, minWidth: 140, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(14,20,48,.14)', padding: 4 }}>
-                <button type="button" onClick={() => { setMenuAbierto(false); onEditar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
+            {menuAbierto && menuPos && createPortal(
+              <div
+                ref={menuRef}
+                onClick={(e) => e.stopPropagation()}
+                style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, bottom: menuPos.bottom, zIndex: 50, minWidth: 140, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(14,20,48,.14)', padding: 4 }}
+              >
+                <button type="button" onClick={(e) => { e.stopPropagation(); setMenuAbierto(false); onEditar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
                   Editar
                 </button>
+                {!m.verificada && (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setMenuAbierto(false); onVerificar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
+                    Verificar
+                  </button>
+                )}
                 {eliminarDeshabilitado ? (
                   <div style={{ padding: '7px 10px', fontSize: 11.5, color: 'var(--muted-2)', lineHeight: 1.4, maxWidth: 160 }}>
                     Tenés que dejar al menos una matrícula.
                   </div>
                 ) : (
-                  <button type="button" onClick={() => { setMenuAbierto(false); onEliminar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: '#DC2626', cursor: 'pointer' }}>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setMenuAbierto(false); onEliminar() }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, border: 'none', background: 'none', fontSize: 13, color: '#DC2626', cursor: 'pointer' }}>
                     Eliminar
                   </button>
                 )}
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
         )}

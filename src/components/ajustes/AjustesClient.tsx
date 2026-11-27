@@ -1244,7 +1244,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   </div>
                 </Accordion>
 
-                <div style={secFootStyle}>
+                <div style={{ ...secFootStyle, marginBottom: 14 }}>
                   {perfilSaved && (
                     <span style={{ fontSize: 12, color: 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', display: 'inline-block' }} />
