@@ -219,7 +219,7 @@ export default function SedeSlideOver({ open, onClose, sede, coloresUsados, onSa
                   key={p.c}
                   type="button"
                   disabled={taken}
-                  title={taken ? `${p.n} — en uso` : p.n}
+                  title={taken ? `${p.n} (en uso)` : p.n}
                   onClick={() => !taken && setColor(p.c)}
                   style={{
                     width: 34, height: 34, borderRadius: 9,

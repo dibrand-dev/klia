@@ -1447,7 +1447,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Mercado Pago</div>
                     <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>
-                      {mpConectado ? `Vinculado${mpNombre ? ` — ${mpNombre}` : ''}` : 'No conectado todavía.'}
+                      {mpConectado ? `Vinculado${mpNombre ? `: ${mpNombre}` : ''}` : 'No conectado todavía.'}
                     </div>
                   </div>
                   {mpConectado ? (
@@ -1464,7 +1464,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
 
                 <form onSubmit={handleTransferenciaSave}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Transferencia bancaria</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Medio de pago alternativo a Mercado Pago — se muestra en tu link público de reservas junto al pago online, si lo tenés conectado.</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.55 }}>Medio de pago alternativo a Mercado Pago. Se muestra en tu link público de reservas junto al pago online, si lo tenés conectado.</div>
                   <div className={grid2Class} style={{ marginBottom: 16 }}>
                     <div>
                       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 500, color: 'var(--ink-2)', marginBottom: 6 }}>Banco</label>
@@ -1587,7 +1587,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 16px', gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Cuándo enviar el aviso</div>
-                      <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Contado desde el fin de la sesión. Un solo aviso por email por sesión — no aplica a obras sociales, bonificadas, ausencias ni cancelaciones.</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--muted-2)', marginTop: 3 }}>Contado desde el fin de la sesión. Un solo aviso por email por sesión. No aplica a obras sociales, bonificadas, ausencias ni cancelaciones.</div>
                     </div>
                     <select
                       style={{ ...inputStyle, width: 240, flexShrink: 0 }}
@@ -1754,7 +1754,7 @@ export default function AjustesClient({ profile, obrasSociales, suscripcion, goo
               >
                 <ToggleRow
                   name="Requiere pago para confirmar"
-                  desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa — Klia no cobra ninguna comisión adicional."
+                  desc="El turno se confirma solo cuando el paciente completa el pago con Mercado Pago. Mercado Pago cobra una comisión por cada cobro que procesa. Klia no cobra ninguna comisión adicional."
                   on={bookingRequierePago}
                   onChange={() => setBookingRequierePago(v => !v)}
                 />
