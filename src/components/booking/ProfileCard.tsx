@@ -68,7 +68,21 @@ export default function ProfileCard({ profile }: Props) {
           {profile.especialidad}
         </p>
       )}
-      {profile.matricula && (
+      {profile.matriculaVerificada && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, margin: '0 0 4px' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" />
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--green-ink)' }}>Verificado</span>
+        </div>
+      )}
+      {profile.matriculas.length > 0 ? (
+        profile.matriculas.map((m) => (
+          <p key={`${m.etiqueta}-${m.numero}`} style={{ margin: 0, fontSize: 12.5, color: '#5B6472' }}>
+            {m.etiqueta} {m.numero}
+          </p>
+        ))
+      ) : profile.matricula && (
         <span style={{
           display: 'inline-block',
           fontSize: 11, fontWeight: 600, color: '#8A93A1',

@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import dynamicImport from 'next/dynamic'
 import Image from 'next/image'
 import { puedeUsarTiposTurno } from '@/lib/modulos'
+import { matriculasParaMostrar, tieneMatriculaVerificada, type MatriculaParaMostrar } from '@/lib/matriculas-publicas'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,8 @@ export type ProfileData = {
   apellido: string
   especialidad: string | null
   matricula: string | null
+  matriculas: MatriculaParaMostrar[]
+  matriculaVerificada: boolean
   avatar_url: string | null
   booking_slug: string
   booking_bio: string | null
@@ -96,6 +99,11 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     .eq('activa', true)
     .order('nombre')
 
+  const { data: matriculasRaw } = await supabase
+    .from('profesional_matriculas')
+    .select('tipo, numero, habilitada, verificada')
+    .eq('profesional_id', data.id)
+
   const { data: colaboradoras } = await supabase
     .from('colaboradores')
     .select('colaborador_id')
@@ -146,6 +154,8 @@ async function getProfile(slug: string): Promise<ProfileData | null> {
     apellido: data.apellido ?? '',
     especialidad: data.especialidad ?? null,
     matricula: data.matricula ?? null,
+    matriculas: matriculasParaMostrar(matriculasRaw ?? []),
+    matriculaVerificada: tieneMatriculaVerificada(matriculasRaw ?? []),
     avatar_url: data.avatar_url ?? null,
     booking_slug: data.booking_slug ?? slug,
     booking_bio: data.booking_bio ?? null,
