@@ -232,7 +232,7 @@ export default function IntegracionesClient({
             </span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4, lineHeight: 1.55 }}>
-            Tus pacientes pueden pagar sesiones directamente a tu cuenta. <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>El dinero entra al instante</strong> — KLIA no retiene fondos.
+            Tus pacientes pueden pagar sesiones directamente a tu cuenta. <strong style={{ color: 'var(--ink-2)', fontWeight: 600 }}>El dinero entra al instante</strong>. KLIA no retiene fondos.
           </p>
           {mpActualConectado ? (
             <div>

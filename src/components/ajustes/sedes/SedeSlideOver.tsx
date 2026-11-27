@@ -97,7 +97,7 @@ export default function SedeSlideOver({ open, onClose, sede, coloresUsados, onSa
         onClose()
       } else {
         const data = await res.json()
-        setError(data.error === 'tiene_turnos' ? 'Esta sede tiene turnos registrados — no se puede eliminar, pero podés desactivarla.' : (data.error ?? 'Error al eliminar la sede'))
+        setError(data.error === 'tiene_turnos' ? 'Esta sede tiene turnos registrados, no se puede eliminar, pero podés desactivarla.' : (data.error ?? 'Error al eliminar la sede'))
         setConfirmarEliminar(false)
       }
     } finally {
@@ -139,10 +139,10 @@ export default function SedeSlideOver({ open, onClose, sede, coloresUsados, onSa
           </div>
         }
         footer={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', borderTop: '1px solid var(--border)', padding: '12px 20px' }}>
             {sede && sede.tieneTurnos ? (
-              <span style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4, maxWidth: 240 }}>
-                Esta sede tiene turnos registrados — no se puede eliminar, pero podés desactivarla.
+              <span style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4, flex: 1 }}>
+                Esta sede tiene turnos registrados, no se puede eliminar, pero podés desactivarla.
               </span>
             ) : sede && (
               <button
@@ -219,7 +219,7 @@ export default function SedeSlideOver({ open, onClose, sede, coloresUsados, onSa
                   key={p.c}
                   type="button"
                   disabled={taken}
-                  title={taken ? `${p.n} — en uso` : p.n}
+                  title={taken ? `${p.n} (en uso)` : p.n}
                   onClick={() => !taken && setColor(p.c)}
                   style={{
                     width: 34, height: 34, borderRadius: 9,

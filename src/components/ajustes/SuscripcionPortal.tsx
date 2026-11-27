@@ -130,7 +130,7 @@ export default function SuscripcionPortal({
               <p className="font-bold text-on-surface">Estás en período de prueba</p>
               <p className="text-sm text-on-surface-variant">
                 Te {diasRestantes === 1 ? 'queda' : 'quedan'}{' '}
-                <strong>{diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}</strong> de tu prueba gratuita de 21 días — Plan Premium completo.
+                <strong>{diasRestantes} {diasRestantes === 1 ? 'día' : 'días'}</strong> de tu prueba gratuita de 21 días, con Plan Premium completo.
               </p>
             </div>
           </div>

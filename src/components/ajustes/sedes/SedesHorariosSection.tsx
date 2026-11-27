@@ -38,25 +38,47 @@ export default function SedesHorariosSection({ plan, onMultiChange }: Props) {
     const res = await fetch('/api/sedes')
     if (!res.ok) return
     const { sedes: lista } = await res.json() as { sedes: SucursalConTurnos[] }
+    const entries = lista.length >= 1
+      ? await Promise.all(lista.map(async s => {
+          const r = await fetch(`/api/sedes/${s.id}/horarios`)
+          const { horarios } = await r.json() as { horarios: HorarioSucursal[] }
+          return [s.id, horarios ?? []] as const
+        }))
+      : []
+    // Los 3 set juntos, en el mismo tick (nada de `await` entre medio) — se
+    // baten en un solo render. Separarlos (sedes primero, horarios después
+    // de un segundo round-trip) es lo que generaba el parpadeo: un render
+    // intermedio con sedes ya cargadas pero horariosPorSede todavía vacío.
+    setHorariosPorSede(Object.fromEntries(entries))
+    setSedeSeleccionadaId(prev => (prev && lista.some(s => s.id === prev)) ? prev : (lista[0]?.id ?? null))
     setSedes(lista)
-    if (lista.length >= 1) {
-      const entries = await Promise.all(lista.map(async s => {
-        const r = await fetch(`/api/sedes/${s.id}/horarios`)
-        const { horarios } = await r.json() as { horarios: HorarioSucursal[] }
-        return [s.id, horarios ?? []] as const
-      }))
-      setHorariosPorSede(Object.fromEntries(entries))
-      setSedeSeleccionadaId(prev => (prev && lista.some(s => s.id === prev)) ? prev : (lista[0]?.id ?? null))
-    }
   }, [])
 
   useEffect(() => { cargarSedes() }, [cargarSedes])
 
   useEffect(() => {
-    onMultiChange?.((sedes?.length ?? 0) > 1)
+    // Mientras sedes es null (todavía no se sabe) no se avisa nada — null
+    // distingue "no se sabe" de "se sabe que es una sola sede", así
+    // AjustesClient puede esperar en vez de asumir multiSede=false.
+    if (sedes) onMultiChange?.(sedes.length > 1)
   }, [sedes, onMultiChange])
 
-  if (!sedes) return null
+  if (!sedes) {
+    // Altura aproximada de una sede real (header + 1 fila), para no saltar
+    // de alto cuando lleguen los datos reales.
+    return (
+      <section style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px 26px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 18, borderBottom: '1px solid var(--border)' }}>
+          <div className="animate-pulse" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-2)', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div className="animate-pulse" style={{ width: 80, height: 14, borderRadius: 4, background: 'var(--surface-2)', marginBottom: 8 }} />
+            <div className="animate-pulse" style={{ width: '70%', height: 11, borderRadius: 4, background: 'var(--surface-2)' }} />
+          </div>
+        </div>
+        <div className="animate-pulse" style={{ height: 68, borderRadius: 12, background: 'var(--surface-2)' }} />
+      </section>
+    )
+  }
 
   // Piso de 1: el profesional siempre tiene "su" sede actual, aunque todavía no
   // haya creado ninguna fila real en sucursales (hoy, 0 para todos) — con esto

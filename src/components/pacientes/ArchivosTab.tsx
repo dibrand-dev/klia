@@ -257,7 +257,7 @@ export default function ArchivosTab({ pacienteId, pacienteNombre }: Props) {
         title="Subir archivo"
         subtitle={pacienteNombre}
         footer={
-          <div className="flex gap-3">
+          <div className="flex gap-3 px-6 pb-6 pt-3 border-t border-gray-200">
             <button onClick={() => setPanelOpen(false)} className="btn-secondary flex-1 py-3 text-sm font-semibold">
               Cancelar
             </button>
