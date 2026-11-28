@@ -477,9 +477,19 @@ Todo módulo que trate datos personales de pacientes o profesionales debe:
 - **Seguridad**: RLS habilitado en todas las tablas de Supabase que contengan datos personales. Ninguna tabla con datos sensibles accesible sin autenticación.
 
 ## Ultimos cambios
-_Actualizado el 2026-11-27_
+_Actualizado el 2026-11-28_
 
 ```
-fe6def9 chore: referencia de diseño Ajustes v3 (solo orden y estética, no se despliega)
-26d79ca docs: CLAUDE.md - commits del dia 2026-11-26
+4bf3424 feat: widget de chat Zoho SalesIQ para profesionales logueados
+f44c310 feat: matrículas con prefijo e insignia Verificado en la página pública de reservas
+d1cf583 fix: sin venir del dashboard muestra solo pacientes entre 2 semanas y 90 días
+5b577c8 fix: Ajustes remontaba la sección en cada tecla (pérdida de foco y salto de página)
+d62f0fc fix: fecha de nacimiento se puede escribir manualmente
+fa2963c fix: menú de matrícula recortado, verificar por fila, espacio bajo Guardar
+d88ab9c fix: últimas dos rayas en copy de Ajustes
+f0e1958 fix: tareas del Resumen abren y hacen scroll al acordeón de Matrícula
+e01c49e fix: reemplaza rayas por puntuación estándar en copy de Ajustes
+3ccc80f fix: footer de SlideOvers pegado a los márgenes + raya en copy de sedes
+f1f3411 fix: acordeón Matrícula vuelve a su posición en Perfil, SlideOvers via portal
+7a2f465 docs: CLAUDE.md - commits del dia 2026-11-27
 ```
